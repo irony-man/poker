@@ -118,8 +118,7 @@ export default function HomePage() {
   function onOffline(e: React.FormEvent) {
     e.preventDefault();
     const display = encodeURIComponent(name.trim() || 'Player');
-    const bots = Math.min(3, Math.max(1, offlineSeats - 1));
-    router.push(`/offline?name=${display}&seats=${offlineSeats}&bots=${bots}`);
+    router.push(`/offline?name=${display}&seats=${offlineSeats}`);
   }
 
   return (
@@ -271,7 +270,7 @@ export default function HomePage() {
               >
                 {[2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
                   <option key={n} value={n}>
-                    {n} seats · {Math.min(3, n - 1)} bots
+                    {n} seats · {n - 1} bots
                   </option>
                 ))}
               </select>

@@ -9,7 +9,6 @@ function OfflineInner() {
   const search = useSearchParams();
   const name = (search.get('name') || 'Player').slice(0, 32);
   const seats = Math.min(9, Math.max(2, Number(search.get('seats')) || 6));
-  const bots = Math.min(seats - 1, Math.max(1, Number(search.get('bots')) || 2));
 
   const config: TableConfig = useMemo(
     () => ({
@@ -23,7 +22,7 @@ function OfflineInner() {
     [seats],
   );
 
-  return <OfflineTableView config={config} botCount={bots} playerName={name} />;
+  return <OfflineTableView config={config} playerName={name} />;
 }
 
 export default function OfflinePage() {

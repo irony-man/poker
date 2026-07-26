@@ -70,7 +70,6 @@ class OfflineViewModel @Inject constructor(
 
     private val route = savedStateHandle.toRoute<OfflineTableRoute>()
     private val seats: Int = route.seats
-    private val bots: Int = route.bots
     private val name: String = route.name
     @Volatile private var humanAvatarId: Int = 0
 
@@ -142,14 +141,15 @@ class OfflineViewModel @Inject constructor(
             if (!human.ok) return@launch
             state = human.state
             val taken = mutableSetOf(name)
-            repeat(bots.coerceAtMost(seats - 1)) { i ->
+            val botCount = (seats - 1).coerceAtLeast(1)
+            repeat(botCount) { i ->
                 val empty = state.players.firstOrNull { it.status == PlayerStatus.Empty } ?: return@repeat
                 val botName = pickBotName(taken)
                 taken.add(botName)
                 val r = sitDown(state, empty.seat, makeBotUserId("off-$i"), botName, config.minBuyIn)
                 if (r.ok) state = r.state
             }
-            pushSystem("Dealer", "Offline table ready — you vs ${bots.coerceAtMost(seats - 1)} bot(s)")
+            pushSystem("Dealer", "Offline table ready — you vs $botCount bot(s)")
             syncState(state)
             _uiState.update { it.copy(bootstrapped = true) }
             scheduleBotLoop(state)

@@ -120,11 +120,9 @@ function announceEvents(
 
 export function OfflineTableView({
   config,
-  botCount,
   playerName,
 }: {
   config: TableConfig;
-  botCount: number;
   playerName: string;
 }) {
   const pushChat = useSession((s) => s.pushChat);
@@ -162,7 +160,7 @@ export function OfflineTableView({
     if (!seated.ok) return;
     s = seated.state;
     const taken = new Set([playerName]);
-    const bots = Math.min(botCount, config.maxSeats - 1);
+    const bots = Math.max(1, config.maxSeats - 1);
     for (let i = 0; i < bots; i++) {
       const empty = s.players.find((p) => p.status === 'empty');
       if (!empty) break;
@@ -179,7 +177,7 @@ export function OfflineTableView({
       at: Date.now(),
     });
     setBootstrapped(true);
-  }, [botCount, config, playerName, pushChat, setSession]);
+  }, [config, playerName, pushChat, setSession]);
 
   const publicTable: PublicTable | null = useMemo(() => {
     if (!bootstrapped) return null;

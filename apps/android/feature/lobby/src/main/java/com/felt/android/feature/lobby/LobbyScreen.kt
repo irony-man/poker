@@ -178,7 +178,7 @@ fun LobbyScreen(
                     options = (2..9).toList(),
                     onSelect = viewModel::onOfflineSeatsChange,
                 ) { seats ->
-                    "$seats · ${minOf(3, seats - 1)} bots"
+                    "$seats · ${seats - 1} bots"
                 }
                 FeltGhostButton(
                     text = "Launch offline game",

@@ -22,7 +22,6 @@ data class LobbyUiState(
     val botCount: Int = 2,
     val inviteCode: String = "",
     val offlineSeats: Int = 6,
-    val offlineBots: Int = 3,
     val busy: Boolean = false,
     val error: String? = null,
 )
@@ -58,7 +57,6 @@ class LobbyViewModel @Inject constructor(
     fun onBotCountChange(value: Int) = _uiState.update { it.copy(botCount = value) }
     fun onInviteChange(value: String) = _uiState.update { it.copy(inviteCode = value) }
     fun onOfflineSeatsChange(value: Int) = _uiState.update { it.copy(offlineSeats = value) }
-    fun onOfflineBotsChange(value: Int) = _uiState.update { it.copy(offlineBots = value) }
     fun clearError() = _uiState.update { it.copy(error = null) }
 
     fun host(onSuccess: (tableId: String, invite: String) -> Unit) {
@@ -105,7 +103,7 @@ class LobbyViewModel @Inject constructor(
 
     fun offline(onNavigate: (seats: Int, bots: Int, name: String) -> Unit) {
         val state = _uiState.value
-        val bots = minOf(3, state.offlineSeats - 1).coerceAtLeast(1)
+        val bots = (state.offlineSeats - 1).coerceAtLeast(1)
         onNavigate(
             state.offlineSeats,
             bots,

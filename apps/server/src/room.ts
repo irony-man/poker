@@ -311,15 +311,47 @@ export class Room {
 
   maybeAutoStart(): void {
     if (this.state.street !== 'waiting') return;
+    const humans = this.state.players.filter(
+      (p) => p.userId && p.stack > 0 && !isBotUserId(p.userId),
+    ).length;
     const ready = this.state.players.filter((p) => p.userId && p.stack > 0).length;
-    if (ready >= 2) {
-      // Small delay so clients see waiting state
+    // Wait for at least one human so bots don't start the hand before the host sits
+    if (humans >= 1 && ready >= 2) {
       setTimeout(() => {
-        if (this.state.street === 'waiting') {
-          void this.startHand(this.meta.hostUserId);
+        if (this.state.street !== 'waiting') return;
+        const human = this.state.players.find(
+          (p) => p.userId && p.stack > 0 && !isBotUserId(p.userId),
+        );
+        const stillReady = this.state.players.filter((p) => p.userId && p.stack > 0).length;
+        if (human?.userId && stillReady >= 2) {
+          void this.startHand(human.userId);
         }
       }, 1500);
     }
+  }
+
+  startHand(userId: string): { ok: boolean; error?: string } {
+    if (this.seatOf(userId) === null) {
+      return { ok: false, error: 'Sit down before starting a hand' };
+    }
+    if (this.state.street !== 'waiting' && this.state.street !== 'payout') {
+      return { ok: false, error: 'Hand in progress' };
+    }
+    if (this.state.street === 'payout') {
+      this.state = returnToWaiting(this.state);
+    }
+    const ready = this.state.players.filter((p) => p.userId && p.stack > 0).length;
+    if (ready < 2) {
+      return { ok: false, error: 'Need at least 2 players with chips' };
+    }
+    const handId = nanoid(10);
+    this.handStartedAt = Date.now();
+    const result = startHand(this.state, this.config, handId, (n) => randomBytes(n));
+    if (!result.ok) return { ok: false, error: result.error };
+    this.state = result.state;
+    this.announceEngineEvents(result.events);
+    void this.afterStateChange();
+    return { ok: true };
   }
 
   sit(userId: string, name: string, seat: number, buyIn: number): { ok: boolean; error?: string } {
@@ -349,27 +381,6 @@ export class Room {
     const result = topUp(this.state, seat, amount, this.config.maxBuyIn);
     if (!result.ok) return { ok: false, error: result.error };
     this.state = result.state;
-    void this.afterStateChange();
-    return { ok: true };
-  }
-
-  startHand(userId: string): { ok: boolean; error?: string } {
-    if (userId !== this.meta.hostUserId) {
-      // Allow any seated player to start for casual home games
-      if (this.seatOf(userId) === null) return { ok: false, error: 'Not seated' };
-    }
-    if (this.state.street !== 'waiting' && this.state.street !== 'payout') {
-      return { ok: false, error: 'Hand in progress' };
-    }
-    if (this.state.street === 'payout') {
-      this.state = returnToWaiting(this.state);
-    }
-    const handId = nanoid(10);
-    this.handStartedAt = Date.now();
-    const result = startHand(this.state, this.config, handId, (n) => randomBytes(n));
-    if (!result.ok) return { ok: false, error: result.error };
-    this.state = result.state;
-    this.announceEngineEvents(result.events);
     void this.afterStateChange();
     return { ok: true };
   }

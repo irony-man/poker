@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { TableView } from '@/components/TableView';
 import { register } from '@/lib/api';
 import { useSession } from '@/lib/store';
@@ -13,24 +13,37 @@ function TablePageInner() {
   const setSession = useSession((s) => s.setSession);
   const userId = useSession((s) => s.userId);
   const tableId = params.id;
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const raw = localStorage.getItem('felt-session');
-    if (raw) {
-      try {
-        setSession(JSON.parse(raw));
-        return;
-      } catch {
-        /* fall through */
+    let cancelled = false;
+    async function refreshSession() {
+      const raw = localStorage.getItem('felt-session');
+      let displayName = `Guest${Math.floor(Math.random() * 999)}`;
+      if (raw) {
+        try {
+          const prev = JSON.parse(raw) as { name?: string };
+          if (prev.name) displayName = prev.name;
+        } catch {
+          /* ignore */
+        }
       }
-    }
-    void register(`Guest${Math.floor(Math.random() * 999)}`).then((s) => {
+      // Always re-register to get a fresh WS ticket (server may have restarted)
+      const s = await register(displayName);
+      if (cancelled) return;
       setSession(s);
       localStorage.setItem('felt-session', JSON.stringify(s));
+      setReady(true);
+    }
+    void refreshSession().catch(() => {
+      if (!cancelled) setReady(true);
     });
+    return () => {
+      cancelled = true;
+    };
   }, [setSession]);
 
-  if (!userId) {
+  if (!ready || !userId) {
     return <p className="text-cream/60">Connecting…</p>;
   }
 

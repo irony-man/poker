@@ -37,10 +37,9 @@ export default function HomePage() {
   }, [maxSeats, botCount]);
 
   async function ensureSession(displayName: string) {
-    if (userId && ticket && sessionName === displayName) {
-      return { userId, name: sessionName, ticket };
-    }
-    const s = await register(displayName);
+    // Always hit the API so returning users get a fresh ticket after
+    // expiry or a Render free-tier cold start (in-memory auth resets).
+    const s = await register(displayName.trim() || 'Player');
     setSession(s);
     localStorage.setItem('felt-session', JSON.stringify(s));
     return s;

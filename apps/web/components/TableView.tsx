@@ -201,7 +201,9 @@ export function TableView({ tableId }: { tableId: string }) {
         <div className="mt-4 pb-[env(safe-area-inset-bottom)]">
           <ActionControls onAction={onAction} />
           <div className="mt-2 w-full max-w-xl mx-auto flex flex-wrap gap-2 justify-center items-center">
-            {table?.street === 'waiting' && mySeat !== undefined && (
+            {(table?.street === 'waiting' || table?.street === 'payout') &&
+              mySeat !== undefined &&
+              table.players.filter((p) => p.userId && p.stack > 0).length >= 2 && (
               <button
                 type="button"
                 onClick={() => send({ type: 'start_hand', tableId })}
@@ -209,6 +211,15 @@ export function TableView({ tableId }: { tableId: string }) {
               >
                 Start hand
               </button>
+            )}
+            {(table?.street === 'waiting' || table?.street === 'payout') && mySeat === undefined && (
+              <p className="w-full text-center text-xs text-cream/50">
+                Sit at an empty seat to play
+                {table.players.filter((p) => p.userId && p.stack > 0).length >= 2
+                  ? ' — then tap Start hand'
+                  : ' (add bots or wait for friends)'}
+                .
+              </p>
             )}
             {(table?.street === 'waiting' || table?.street === 'payout') && emptySeats > 0 && (
               <>

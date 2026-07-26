@@ -33,8 +33,8 @@ export class AuthStore {
     return this.users.get(id);
   }
 
-  /** One-time (or short-lived) WS ticket. */
-  issueTicket(userId: string, ttlMs = 60_000): string {
+  /** Short-lived WS ticket (refresh on every page load / register). */
+  issueTicket(userId: string, ttlMs = 7 * 24 * 60 * 60 * 1000): string {
     const ticket = randomBytes(24).toString('hex');
     this.tickets.set(ticket, { ticket, userId, expiresAt: Date.now() + ttlMs });
     return ticket;

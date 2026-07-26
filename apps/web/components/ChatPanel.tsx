@@ -22,7 +22,7 @@ export function ChatPanel({
 
   return (
     <div className="relative flex h-full min-h-0 flex-col bg-ink-panel">
-      <div className="shrink-0 flex items-center justify-between gap-2 border-b border-cyan/15 px-4 py-3">
+      <div className="shrink-0 flex items-center justify-between gap-2 border-b border-cyan/15 px-4 py-3 pr-16">
         <span className="text-[11px] font-display font-semibold uppercase tracking-[0.2em] text-cyan">
           Comms
         </span>

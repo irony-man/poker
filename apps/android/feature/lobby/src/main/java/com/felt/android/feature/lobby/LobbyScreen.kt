@@ -34,6 +34,7 @@ import com.felt.android.core.designsystem.FeltGhostButton
 import com.felt.android.core.designsystem.FeltLabel
 import com.felt.android.core.designsystem.FeltPrimaryButton
 import com.felt.android.core.designsystem.HudPanel
+import com.felt.android.core.designsystem.LockPortraitOrientation
 import com.felt.android.core.designsystem.StatusChip
 
 @Composable
@@ -44,6 +45,8 @@ fun LobbyScreen(
     modifier: Modifier = Modifier,
     viewModel: LobbyViewModel = hiltViewModel(),
 ) {
+    LockPortraitOrientation()
+
     val state by viewModel.uiState.collectAsState()
     val scroll = rememberScrollState()
     val maxBots = (state.maxSeats - 1).coerceAtLeast(0)

@@ -24,8 +24,11 @@ import { ChipStack, formatChips } from './ChipStack';
 import { PlayingCard } from './PlayingCard';
 import { SeatView } from './SeatView';
 import { TableShell } from './TableShell';
+import { TurnTimerBar } from './TurnTimer';
+import { WinHandModal } from './WinHandModal';
 import { playTick } from '@/lib/audio';
 import { useSession, type ChatMessage, type PrivateView, type PublicTable } from '@/lib/store';
+import { seatAnglesForHero } from '@/lib/tableLayout';
 
 const HUMAN_ID = 'offline-human';
 
@@ -33,12 +36,6 @@ function randomBytes(n: number): Uint8Array {
   const buf = new Uint8Array(n);
   crypto.getRandomValues(buf);
   return buf;
-}
-
-function seatAngles(maxSeats: number): number[] {
-  const start = 90;
-  const step = 360 / maxSeats;
-  return Array.from({ length: maxSeats }, (_, i) => start + i * step);
 }
 
 function formatAction(
@@ -134,6 +131,8 @@ export function OfflineTableView({
 
   const [state, setState] = useState<HandState>(() => createEmptyTable(config));
   const [bootstrapped, setBootstrapped] = useState(false);
+  const [turnEndsAt, setTurnEndsAt] = useState<number | null>(null);
+  const [dismissedWinHandId, setDismissedWinHandId] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevVersion = useRef<number | null>(null);
 
@@ -142,6 +141,7 @@ export function OfflineTableView({
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
+    setTurnEndsAt(null);
   };
 
   const syncChat = useCallback(
@@ -181,8 +181,9 @@ export function OfflineTableView({
 
   const publicTable: PublicTable | null = useMemo(() => {
     if (!bootstrapped) return null;
-    return toPublicView('offline', state, config) as unknown as PublicTable;
-  }, [bootstrapped, state, config]);
+    const view = toPublicView('offline', state, config) as unknown as PublicTable;
+    return { ...view, turnEndsAt };
+  }, [bootstrapped, state, config, turnEndsAt]);
 
   const priv: PrivateView | null = useMemo(() => {
     if (!bootstrapped) return null;
@@ -203,6 +204,8 @@ export function OfflineTableView({
       if (!actor) return;
 
       if (isBotUserId(actor.userId)) {
+        const delay = 650 + Math.floor(Math.random() * 1100);
+        setTurnEndsAt(Date.now() + delay);
         timerRef.current = setTimeout(() => {
           setState((curr) => {
             if (curr.toAct === null || curr.toAct !== s.toAct) return curr;
@@ -214,11 +217,12 @@ export function OfflineTableView({
             syncChat(result.state, result.events);
             return result.state;
           });
-        }, 650 + Math.floor(Math.random() * 1100));
+        }, delay);
         return;
       }
 
-      // Human turn — soft timeout
+      // Human turn — timeout: check if free, else fold
+      setTurnEndsAt(Date.now() + config.turnTimeMs);
       timerRef.current = setTimeout(() => {
         setState((curr) => {
           if (curr.toAct === null || !curr.players[curr.toAct] || isBotUserId(curr.players[curr.toAct]!.userId)) {
@@ -230,7 +234,7 @@ export function OfflineTableView({
           pushChat({
             userId: 'system',
             name: 'Dealer',
-            text: 'Time — auto action',
+            text: 'Time — folded',
             at: Date.now(),
           });
           return result.state;
@@ -302,7 +306,10 @@ export function OfflineTableView({
     setState(result.state);
   };
 
-  const angles = useMemo(() => seatAngles(config.maxSeats), [config.maxSeats]);
+  const angles = useMemo(
+    () => seatAnglesForHero(config.maxSeats, mySeat),
+    [config.maxSeats, mySeat],
+  );
   const winBySeat = useMemo(() => {
     const map = new Map<number, { amount: number; handName?: string }>();
     for (const w of publicTable?.winners ?? []) {
@@ -339,6 +346,13 @@ export function OfflineTableView({
     return codes;
   }, [publicTable]);
   const highlightMode = winningCards.size > 0;
+  const showWinModal =
+    publicTable?.street === 'payout' &&
+    publicTable.winners.length > 0 &&
+    publicTable.handId !== dismissedWinHandId;
+  const youWon = !!publicTable?.winners.some(
+    (w) => publicTable.players[w.seat]?.userId === HUMAN_ID,
+  );
 
   // Patch session private/table for ActionControls which reads zustand
   useEffect(() => {
@@ -407,36 +421,13 @@ export function OfflineTableView({
             </div>
           </div>
 
-          {publicTable.street === 'payout' && publicTable.winners.length > 0 && (
-            <div className="absolute left-1/2 top-[12%] -translate-x-1/2 z-30 w-[min(92%,22rem)]">
-              <div className="rounded-lg border border-gold/40 bg-ink-panel/95 px-4 py-3 text-center shadow-glow backdrop-blur-md">
-                <div className="text-[10px] font-display uppercase tracking-[0.25em] text-gold/80 mb-1">
-                  Winner
-                </div>
-                {publicTable.winners.map((w, i) => {
-                  const name = publicTable.players[w.seat]?.name ?? `Seat ${w.seat}`;
-                  return (
-                    <div key={`${w.seat}-${i}`} className="py-1">
-                      <div className="font-display text-lg text-gold">{name}</div>
-                      <div className="text-sm text-cream/80">
-                        {w.handName && w.handName !== 'Uncontested'
-                          ? `${w.handName} · +${formatChips(w.amount)}`
-                          : `+${formatChips(w.amount)}`}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {publicTable.players.map((p, i) => {
+          {publicTable.players.map((p) => {
             const win = winBySeat.get(p.seat);
             return (
               <SeatView
                 key={p.seat}
                 player={p}
-                angle={angles[i] ?? 90}
+                angle={angles[p.seat] ?? 90}
                 isDealer={publicTable.dealerButton === p.seat && publicTable.street !== 'waiting'}
                 isToAct={publicTable.toAct === p.seat}
                 isSelf={p.userId === HUMAN_ID}
@@ -449,6 +440,8 @@ export function OfflineTableView({
                 }
                 myCards={p.seat === mySeat ? priv?.holeCards ?? null : null}
                 winningCards={highlightMode ? winningCards : null}
+                turnEndsAt={publicTable.toAct === p.seat ? turnEndsAt : null}
+                turnTotalMs={config.turnTimeMs}
                 canManageBots={false}
               />
             );
@@ -456,6 +449,15 @@ export function OfflineTableView({
         </div>
 
         <div className="mt-4 pb-[env(safe-area-inset-bottom)]">
+          {turnEndsAt && publicTable.toAct !== null && (
+            <div className="mb-2">
+              <TurnTimerBar
+                endsAt={turnEndsAt}
+                totalMs={config.turnTimeMs}
+                isMyTurn={publicTable.toAct === mySeat}
+              />
+            </div>
+          )}
           <ActionControls onAction={onAction} />
           <div className="mt-2 w-full max-w-xl mx-auto flex flex-wrap gap-2 justify-center">
             {(publicTable.street === 'waiting' || publicTable.street === 'payout') && (
@@ -470,6 +472,25 @@ export function OfflineTableView({
           </div>
         </div>
       </div>
+
+      {showWinModal && publicTable && (
+        <WinHandModal
+          youWon={youWon}
+          canStartNext
+          winners={publicTable.winners.map((w) => ({
+            seat: w.seat,
+            name: publicTable.players[w.seat]?.name ?? `Seat ${w.seat}`,
+            amount: w.amount,
+            handName: w.handName,
+            isSelf: publicTable.players[w.seat]?.userId === HUMAN_ID,
+          }))}
+          onNextHand={() => {
+            setDismissedWinHandId(publicTable.handId);
+            start();
+          }}
+          onDismiss={() => setDismissedWinHandId(publicTable.handId)}
+        />
+      )}
     </TableShell>
   );
 }

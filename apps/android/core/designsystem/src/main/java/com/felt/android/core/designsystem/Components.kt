@@ -3,6 +3,7 @@ package com.felt.android.core.designsystem
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -74,6 +75,7 @@ fun FeltPrimaryButton(
         onClick = onClick,
         modifier = modifier,
         enabled = enabled,
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = FeltColors.Gold,
             contentColor = FeltColors.Ink,
@@ -82,7 +84,7 @@ fun FeltPrimaryButton(
         ),
         shape = RoundedCornerShape(12.dp),
     ) {
-        Text(text = text, fontWeight = FontWeight.Bold)
+        Text(text = text, fontWeight = FontWeight.Bold, maxLines = 1)
     }
 }
 
@@ -97,6 +99,7 @@ fun FeltGhostButton(
         onClick = onClick,
         modifier = modifier,
         enabled = enabled,
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
         colors = ButtonDefaults.outlinedButtonColors(
             contentColor = FeltColors.Cream,
             disabledContentColor = FeltColors.Cream.copy(alpha = 0.35f),

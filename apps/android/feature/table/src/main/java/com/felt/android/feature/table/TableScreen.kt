@@ -9,7 +9,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -37,8 +39,12 @@ import com.felt.android.core.designsystem.FeltPrimaryButton
 import com.felt.android.core.designsystem.FeltTableLayout
 import com.felt.android.core.designsystem.HudPanel
 import com.felt.android.core.designsystem.LegalActionsUi
+import com.felt.android.core.designsystem.LockPortraitOrientation
 import com.felt.android.core.designsystem.StatusChip
 import com.felt.android.core.designsystem.TableActionControls
+import com.felt.android.core.designsystem.TurnTimerBar
+import com.felt.android.core.designsystem.WinHandDialog
+import com.felt.android.core.designsystem.WinLineUi
 import com.felt.android.core.model.ConnectionStatus
 import com.felt.android.core.model.PublicTable
 
@@ -48,15 +54,24 @@ fun TableScreen(
     modifier: Modifier = Modifier,
     viewModel: TableViewModel = hiltViewModel(),
 ) {
+    LockPortraitOrientation()
+
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var chatInput by remember { mutableStateOf("") }
     var buyInSeat by remember { mutableIntStateOf(-1) }
+    var dismissedWinHandId by remember { mutableStateOf<String?>(null) }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(FeltColors.Ink)
+            .statusBarsPadding()
+            .navigationBarsPadding(),
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(12.dp),
+                .padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -64,7 +79,19 @@ fun TableScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 FeltGhostButton(text = "← Lobby", onClick = onBack)
-                ConnectionBadge(state.connection)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    ConnectionBadge(state.connection)
+                    if (state.spectating) {
+                        StatusChip(text = "Spectating", accent = FeltColors.Gold)
+                    }
+                    FeltGhostButton(
+                        text = if (state.chatOpen) "Hide" else "Chat",
+                        onClick = { viewModel.dispatch(TableContract.Intent.ToggleChat) },
+                    )
+                }
             }
 
             state.invite?.let { code ->
@@ -73,20 +100,16 @@ fun TableScreen(
                     color = FeltColors.Gold,
                     fontFamily = FontFamily.Monospace,
                     fontSize = 12.sp,
-                    modifier = Modifier.padding(vertical = 4.dp),
-                )
-            }
-
-            if (state.spectating) {
-                StatusChip(
-                    text = "Spectating",
-                    accent = FeltColors.Gold,
-                    modifier = Modifier.padding(bottom = 4.dp),
+                    modifier = Modifier.padding(top = 4.dp),
                 )
             }
 
             state.lastError?.let { err ->
-                StatusChip(text = "$err", accent = FeltColors.Danger, modifier = Modifier.padding(bottom = 8.dp))
+                StatusChip(
+                    text = err,
+                    accent = FeltColors.Danger,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
             }
 
             state.emojiBurst?.let { burst ->
@@ -98,39 +121,60 @@ fun TableScreen(
             }
 
             if (state.loading && state.table == null) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = FeltColors.Gold)
                 }
             } else {
                 state.table?.let { table ->
+                    val tableUi = table.toTableUi()
+
                     FeltTableLayout(
-                        table = table.toTableUi(),
+                        table = tableUi,
                         userId = state.userId,
                         holeCards = state.private?.holeCards,
                         onSit = { buyInSeat = it },
                         canSit = !state.spectating,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(top = 6.dp),
                     )
 
                     if (state.spectating) {
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                "Watching — chat still works",
+                                "Watching",
                                 color = FeltColors.Cream.copy(alpha = 0.55f),
                                 fontSize = 12.sp,
+                                modifier = Modifier.weight(1f),
                             )
                             FeltGhostButton(
                                 text = "Sit and play",
-                                onClick = { viewModel.dispatch(TableContract.Intent.EnableSitToPlay) },
+                                onClick = {
+                                    viewModel.dispatch(TableContract.Intent.EnableSitToPlay)
+                                },
                             )
                         }
                     }
 
+                    if (tableUi.turnEndsAt != null && tableUi.toAct != null) {
+                        TurnTimerBar(
+                            endsAt = tableUi.turnEndsAt,
+                            totalMs = tableUi.turnTimeMs,
+                            isMyTurn = tableUi.toAct ==
+                                table.players.find { it.userId == state.userId }?.seat,
+                            modifier = Modifier.padding(top = 6.dp),
+                        )
+                    }
+
                     TableActionControls(
-                        table = table.toTableUi(),
+                        table = tableUi,
                         userId = state.userId,
                         legal = state.private?.legal?.let {
                             LegalActionsUi(it.types, it.callAmount, it.minRaiseTo, it.maxRaiseTo)
@@ -138,7 +182,11 @@ fun TableScreen(
                         onAction = { action, amount ->
                             viewModel.dispatch(TableContract.Intent.SendAction(action, amount))
                         },
-                        waitingLabel = if (state.spectating) "Spectating — you are not seated" else null,
+                        waitingLabel = if (state.spectating) {
+                            "Spectating — you are not seated"
+                        } else {
+                            null
+                        },
                     )
 
                     if (!state.spectating) {
@@ -155,13 +203,6 @@ fun TableScreen(
                     }
                 }
             }
-        }
-
-        Row(modifier = Modifier.align(Alignment.TopEnd).padding(12.dp)) {
-            FeltGhostButton(
-                text = if (state.chatOpen) "Hide chat" else "Chat",
-                onClick = { viewModel.dispatch(TableContract.Intent.ToggleChat) },
-            )
         }
 
         if (state.chatOpen) {
@@ -196,6 +237,40 @@ fun TableScreen(
                 },
             )
         }
+
+        val table = state.table
+        val showWin = table != null &&
+            table.street == "payout" &&
+            table.winners.isNotEmpty() &&
+            table.handId != dismissedWinHandId
+        if (showWin && table != null) {
+            val youWon = table.winners.any { w ->
+                table.players.find { it.seat == w.seat }?.userId == state.userId
+            }
+            val mySeat = table.players.find { it.userId == state.userId }?.seat
+            val canStart = !state.spectating &&
+                mySeat != null &&
+                table.players.count { it.userId != null && it.stack > 0 } >= 2
+            WinHandDialog(
+                winners = table.winners.map { w ->
+                    val player = table.players.find { it.seat == w.seat }
+                    WinLineUi(
+                        seat = w.seat,
+                        name = player?.name ?: "Seat ${w.seat}",
+                        amount = w.amount,
+                        handName = w.handName,
+                        isSelf = player?.userId == state.userId,
+                    )
+                },
+                youWon = youWon,
+                canStartNext = canStart,
+                onNextHand = {
+                    dismissedWinHandId = table.handId
+                    viewModel.dispatch(TableContract.Intent.StartHand)
+                },
+                onDismiss = { dismissedWinHandId = table.handId },
+            )
+        }
     }
 }
 
@@ -224,21 +299,36 @@ private fun TableFooterControls(
     val seated = table.players.count { it.userId != null && it.stack > 0 }
     var botCount by remember { mutableIntStateOf(minOf(3, emptySeats.coerceAtLeast(1))) }
 
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+    Column(
+        modifier = Modifier.padding(top = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         if ((table.street == "waiting" || table.street == "payout") && mySeat != null && seated >= 2) {
-            FeltGhostButton(text = "Start hand", onClick = onStartHand)
+            FeltGhostButton(
+                text = "Start hand",
+                onClick = onStartHand,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
         if ((table.street == "waiting" || table.street == "payout") && emptySeats > 0) {
-            FeltGhostButton(text = "Add $botCount bots", onClick = { onAddBots(botCount) })
-            FeltGhostButton(text = "Remove bots", onClick = onRemoveBots)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                FeltGhostButton(
+                    text = "Add $botCount bots",
+                    onClick = { onAddBots(botCount) },
+                    modifier = Modifier.weight(1f),
+                )
+                FeltGhostButton(
+                    text = "Remove bots",
+                    onClick = onRemoveBots,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
         if (mySeat != null && (table.street == "waiting" || table.street == "payout")) {
             FeltGhostButton(
                 text = "Top up +${table.config.minBuyIn}",
                 onClick = { onTopUp(mySeat, table.config.minBuyIn) },
+                modifier = Modifier.fillMaxWidth(),
             )
         }
     }

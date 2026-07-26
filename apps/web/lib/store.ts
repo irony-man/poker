@@ -30,6 +30,8 @@ export interface PublicTable {
   version: number;
   winners: { seat: number; amount: number; handName?: string }[];
   showdownHands?: { seat: number; handName: string; cards?: string[] }[];
+  /** Epoch ms when current turn expires (server clock). */
+  turnEndsAt?: number | null;
   config: {
     maxSeats: number;
     smallBlind: number;

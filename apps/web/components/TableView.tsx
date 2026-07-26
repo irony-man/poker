@@ -6,15 +6,12 @@ import { ChipStack, formatChips } from './ChipStack';
 import { PlayingCard } from './PlayingCard';
 import { SeatView } from './SeatView';
 import { TableShell } from './TableShell';
+import { TurnTimerBar } from './TurnTimer';
+import { WinHandModal } from './WinHandModal';
 import { playTick } from '@/lib/audio';
 import { usePokerSocket } from '@/lib/ws';
 import { useSession } from '@/lib/store';
-
-function seatAngles(maxSeats: number): number[] {
-  const start = 90;
-  const step = 360 / maxSeats;
-  return Array.from({ length: maxSeats }, (_, i) => start + i * step);
-}
+import { seatAnglesForHero } from '@/lib/tableLayout';
 
 export function TableView({
   tableId,
@@ -33,6 +30,7 @@ export function TableView({
   const [buyInOpen, setBuyInOpen] = useState<number | null>(null);
   const [botAddCount, setBotAddCount] = useState(3);
   const [spectating, setSpectating] = useState(initialSpectate);
+  const [dismissedWinHandId, setDismissedWinHandId] = useState<string | null>(null);
   const prevVersion = useRef<number | null>(null);
 
   useEffect(() => {
@@ -45,17 +43,18 @@ export function TableView({
     prevVersion.current = table.version;
   }, [table]);
 
-  const angles = useMemo(
-    () => seatAngles(table?.config.maxSeats ?? 6),
-    [table?.config.maxSeats],
-  );
-
   const mySeat = table?.players.find((p) => p.userId === userId)?.seat;
   const isSpectating = spectating && mySeat === undefined;
+
+  const angles = useMemo(
+    () => seatAnglesForHero(table?.config.maxSeats ?? 6, mySeat),
+    [table?.config.maxSeats, mySeat],
+  );
 
   useEffect(() => {
     if (mySeat !== undefined && spectating) setSpectating(false);
   }, [mySeat, spectating]);
+
   const winBySeat = useMemo(() => {
     const map = new Map<number, { amount: number; handName?: string }>();
     for (const w of table?.winners ?? []) {
@@ -91,6 +90,15 @@ export function TableView({
     return codes;
   }, [table]);
   const highlightMode = winningCards.size > 0;
+  const showWinModal =
+    table?.street === 'payout' &&
+    (table.winners?.length ?? 0) > 0 &&
+    table.handId !== dismissedWinHandId;
+  const youWon = !!table?.winners.some((w) => table.players[w.seat]?.userId === userId);
+  const canStartNext =
+    !isSpectating &&
+    mySeat !== undefined &&
+    (table?.players.filter((p) => p.userId && p.stack > 0).length ?? 0) >= 2;
 
   const emptySeats = table?.players.filter((p) => p.status === 'empty').length ?? 0;
   const botSeats = table?.players.filter((p) => p.userId?.startsWith('bot:')).length ?? 0;
@@ -192,36 +200,13 @@ export function TableView({
             </div>
           </div>
 
-          {table?.street === 'payout' && (table.winners?.length ?? 0) > 0 && (
-            <div className="absolute left-1/2 top-[12%] -translate-x-1/2 z-30 w-[min(92%,22rem)]">
-              <div className="rounded-lg border border-gold/40 bg-ink-panel/95 px-4 py-3 text-center shadow-glow backdrop-blur-md">
-                <div className="text-[10px] font-display uppercase tracking-[0.25em] text-gold/80 mb-1">
-                  Winner
-                </div>
-                {table.winners.map((w, i) => {
-                  const name = table.players[w.seat]?.name ?? `Seat ${w.seat}`;
-                  return (
-                    <div key={`${w.seat}-${i}`} className="py-1">
-                      <div className="font-display text-lg text-gold">{name}</div>
-                      <div className="text-sm text-cream/80">
-                        {w.handName && w.handName !== 'Uncontested'
-                          ? `${w.handName} · +${formatChips(w.amount)}`
-                          : `+${formatChips(w.amount)}`}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {table?.players.map((p, i) => {
+          {table?.players.map((p) => {
             const win = winBySeat.get(p.seat);
             return (
               <SeatView
                 key={p.seat}
                 player={p}
-                angle={angles[i] ?? 90}
+                angle={angles[p.seat] ?? 90}
                 isDealer={table.dealerButton === p.seat && table.street !== 'waiting'}
                 isToAct={table.toAct === p.seat}
                 isSelf={p.userId === userId}
@@ -234,6 +219,8 @@ export function TableView({
                 }
                 myCards={p.seat === mySeat ? priv?.holeCards ?? null : null}
                 winningCards={highlightMode ? winningCards : null}
+                turnEndsAt={table.toAct === p.seat ? table.turnEndsAt : null}
+                turnTotalMs={table.config.turnTimeMs}
                 canManageBots={
                   !isSpectating && (table.street === 'waiting' || table.street === 'payout')
                 }
@@ -254,6 +241,15 @@ export function TableView({
         </div>
 
         <div className="mt-4 pb-[env(safe-area-inset-bottom)]">
+          {table?.turnEndsAt && table.toAct !== null && (
+            <div className="mb-2">
+              <TurnTimerBar
+                endsAt={table.turnEndsAt}
+                totalMs={table.config.turnTimeMs}
+                isMyTurn={table.toAct === mySeat}
+              />
+            </div>
+          )}
           <ActionControls onAction={onAction} spectating={isSpectating} />
           <div className="mt-2 w-full max-w-xl mx-auto flex flex-wrap gap-2 justify-center items-center">
             {isSpectating && (
@@ -367,7 +363,26 @@ export function TableView({
         </div>
       </div>
 
-      {buyInOpen !== null && table && (
+          {showWinModal && table && (
+            <WinHandModal
+              youWon={youWon}
+              canStartNext={canStartNext}
+              winners={table.winners.map((w) => ({
+                seat: w.seat,
+                name: table.players[w.seat]?.name ?? `Seat ${w.seat}`,
+                amount: w.amount,
+                handName: w.handName,
+                isSelf: table.players[w.seat]?.userId === userId,
+              }))}
+              onNextHand={() => {
+                setDismissedWinHandId(table.handId);
+                send({ type: 'start_hand', tableId });
+              }}
+              onDismiss={() => setDismissedWinHandId(table.handId)}
+            />
+          )}
+
+          {buyInOpen !== null && table && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-4">
           <form
             className="w-full max-w-sm rounded-2xl bg-[#161310] border border-cream/15 p-5 space-y-4"

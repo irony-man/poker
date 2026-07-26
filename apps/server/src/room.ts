@@ -43,6 +43,8 @@ export class Room {
   state: HandState;
   private timers = new Map<string, NodeJS.Timeout>();
   private turnTimer: NodeJS.Timeout | null = null;
+  /** Epoch ms when the current human turn expires; null for bots / idle. */
+  private turnEndsAt: number | null = null;
   private connections = new Map<string, ConnectionContext>(); // userId -> conn
   private spectators = new Set<string>();
   private rateLimits = new Map<string, RateBucket>();
@@ -94,6 +96,7 @@ export class Room {
       clearTimeout(this.turnTimer);
       this.turnTimer = null;
     }
+    this.turnEndsAt = null;
   }
 
   private armTurnTimer(): void {
@@ -111,10 +114,12 @@ export class Room {
     const actor = this.state.players[seat];
     if (actor && isBotUserId(actor.userId)) {
       const delay = 650 + Math.floor(Math.random() * 1400);
+      this.turnEndsAt = Date.now() + delay;
       this.turnTimer = setTimeout(() => this.runBotTurn(seat), delay);
       return;
     }
 
+    this.turnEndsAt = Date.now() + this.config.turnTimeMs;
     this.turnTimer = setTimeout(() => {
       const result = applyTimeout(this.state, this.config);
       if (result.ok) {
@@ -263,7 +268,10 @@ export class Room {
     const conn = this.connections.get(userId);
     if (!conn) return;
     const seat = this.seatOf(userId);
-    const table = toPublicView(this.meta.id, this.state, this.config);
+    const table = {
+      ...toPublicView(this.meta.id, this.state, this.config),
+      turnEndsAt: this.turnEndsAt,
+    };
     const priv = seat !== null ? toPrivateView(this.state, seat, this.config) : null;
     conn.send({ type: 'state_sync', table, private: priv });
   }

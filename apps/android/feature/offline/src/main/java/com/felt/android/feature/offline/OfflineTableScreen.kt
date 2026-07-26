@@ -1,12 +1,16 @@
 package com.felt.android.feature.offline
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -30,10 +34,12 @@ import com.felt.android.core.designsystem.FeltPrimaryButton
 import com.felt.android.core.designsystem.FeltTableLayout
 import com.felt.android.core.designsystem.HudPanel
 import com.felt.android.core.designsystem.LegalActionsUi
+import com.felt.android.core.designsystem.LockPortraitOrientation
 import com.felt.android.core.designsystem.StatusChip
 import com.felt.android.core.designsystem.TableActionControls
-import com.felt.android.core.designsystem.TablePlayerUi
-import com.felt.android.core.designsystem.TableUiState
+import com.felt.android.core.designsystem.TurnTimerBar
+import com.felt.android.core.designsystem.WinHandDialog
+import com.felt.android.core.designsystem.WinLineUi
 
 @Composable
 fun OfflineTableScreen(
@@ -41,10 +47,19 @@ fun OfflineTableScreen(
     modifier: Modifier = Modifier,
     viewModel: OfflineViewModel = hiltViewModel(),
 ) {
+    LockPortraitOrientation()
+
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var chatInput by remember { mutableStateOf("") }
+    var dismissedWinHandId by remember { mutableStateOf<String?>(null) }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(FeltColors.Ink)
+            .statusBarsPadding()
+            .navigationBarsPadding(),
+    ) {
         if (!state.bootstrapped || state.publicTable == null) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = FeltColors.Gold)
@@ -53,11 +68,12 @@ fun OfflineTableScreen(
         }
 
         val table = state.publicTable!!
+        val tableUi = table.toOfflineTableUi()
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(12.dp),
+                .padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -65,21 +81,42 @@ fun OfflineTableScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 FeltGhostButton(text = "← Lobby", onClick = onBack)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     StatusChip(text = "Offline", accent = FeltColors.Neon)
                     StatusChip(text = table.street, accent = FeltColors.Cyan)
+                    FeltGhostButton(
+                        text = if (state.chatOpen) "Hide" else "Chat",
+                        onClick = viewModel::toggleChat,
+                    )
                 }
             }
 
             FeltTableLayout(
-                table = table.toOfflineTableUi(),
+                table = tableUi,
                 userId = HUMAN_USER_ID,
                 holeCards = state.holeCards,
                 onSit = {},
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
             )
 
+            if (tableUi.turnEndsAt != null && tableUi.toAct != null) {
+                TurnTimerBar(
+                    endsAt = tableUi.turnEndsAt,
+                    totalMs = tableUi.turnTimeMs,
+                    isMyTurn = tableUi.toAct ==
+                        table.players.find { it.userId == HUMAN_USER_ID }?.seat,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+            }
+
             TableActionControls(
-                table = table.toOfflineTableUi(),
+                table = tableUi,
                 userId = HUMAN_USER_ID,
                 legal = state.legal?.let {
                     LegalActionsUi(it.types, it.callAmount, it.minRaiseTo, it.maxRaiseTo)
@@ -98,27 +135,17 @@ fun OfflineTableScreen(
             }
         }
 
-        Row(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(12.dp),
-        ) {
-            FeltGhostButton(
-                text = if (state.chatOpen) "Hide chat" else "Chat",
-                onClick = viewModel::toggleChat,
-            )
-        }
-
         if (state.chatOpen) {
             HudPanel(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
+                    .fillMaxHeight()
                     .width(280.dp)
                     .padding(8.dp),
             ) {
-                Column {
+                Column(modifier = Modifier.fillMaxSize()) {
                     Text("Chat", color = FeltColors.Gold, fontWeight = FontWeight.Bold)
-                    LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
+                    LazyColumn(modifier = Modifier.weight(1f)) {
                         items(state.chat) { msg ->
                             Text(
                                 "${msg.name}: ${msg.text}",
@@ -148,6 +175,36 @@ fun OfflineTableScreen(
                     }
                 }
             }
+        }
+
+        val tableForWin = state.publicTable
+        val showWin = tableForWin != null &&
+            tableForWin.street == "payout" &&
+            tableForWin.winners.isNotEmpty() &&
+            tableForWin.handId != dismissedWinHandId
+        if (showWin && tableForWin != null) {
+            val youWon = tableForWin.winners.any { w ->
+                tableForWin.players.find { it.seat == w.seat }?.userId == HUMAN_USER_ID
+            }
+            WinHandDialog(
+                winners = tableForWin.winners.map { w ->
+                    val player = tableForWin.players.find { it.seat == w.seat }
+                    WinLineUi(
+                        seat = w.seat,
+                        name = player?.name ?: "Seat ${w.seat}",
+                        amount = w.amount,
+                        handName = w.handName,
+                        isSelf = player?.userId == HUMAN_USER_ID,
+                    )
+                },
+                youWon = youWon,
+                canStartNext = true,
+                onNextHand = {
+                    dismissedWinHandId = tableForWin.handId
+                    viewModel.startHandManual()
+                },
+                onDismiss = { dismissedWinHandId = tableForWin.handId },
+            )
         }
     }
 }

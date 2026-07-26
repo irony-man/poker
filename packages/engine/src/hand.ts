@@ -645,15 +645,10 @@ export function applyAction(
   return afterAction(s, events);
 }
 
-/** Auto-action on timeout: check if possible, else fold. */
+/** Auto-action on timeout: fold (even when a check is available). */
 export function applyTimeout(state: HandState, config: TableConfig): ApplyResult {
   if (state.toAct === null) return { state, events: [], ok: false, error: 'No one to act' };
   const seat = state.toAct;
-  const p = state.players[seat]!;
-  const toCall = state.currentBet - p.bet;
-  if (toCall <= 0) {
-    return applyAction(state, seat, { type: 'check', seq: state.actionSeq }, config);
-  }
   return applyAction(state, seat, { type: 'fold', seq: state.actionSeq }, config);
 }
 

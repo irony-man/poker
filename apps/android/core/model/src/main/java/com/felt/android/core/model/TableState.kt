@@ -52,6 +52,7 @@ data class PublicTable(
     val version: Int,
     val winners: List<Winner>,
     val showdownHands: List<ShowdownHand> = emptyList(),
+    val turnEndsAt: Long? = null,
     val config: TableConfig,
 )
 

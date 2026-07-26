@@ -15,6 +15,7 @@ import com.felt.android.engine.PlayerStatus
 import com.felt.android.engine.Street
 import com.felt.android.engine.TableConfig
 import com.felt.android.engine.applyAction
+import com.felt.android.engine.applyTimeout
 import com.felt.android.engine.cardToString
 import com.felt.android.engine.chooseBotAction
 import com.felt.android.engine.createEmptyTable
@@ -85,6 +86,7 @@ class OfflineViewModel @Inject constructor(
 
     private var botJob: Job? = null
     private var payoutJob: Job? = null
+    private var turnEndsAt: Long? = null
 
     init {
         bootstrap()
@@ -174,7 +176,7 @@ class OfflineViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 handState = state,
-                publicTable = mapPublicTable(pub),
+                publicTable = mapPublicTable(pub, turnEndsAt),
                 legal = priv?.legal?.let { la ->
                     LegalActions(
                         types = la.types.map { t -> t.name.lowercase() },
@@ -190,24 +192,50 @@ class OfflineViewModel @Inject constructor(
 
     private fun scheduleBotLoop(state: HandState) {
         botJob?.cancel()
-        val toAct = state.toAct ?: return
+        turnEndsAt = null
+        val toAct = state.toAct ?: run {
+            syncState(state)
+            return
+        }
         if (state.street == Street.Waiting || state.street == Street.Payout || state.street == Street.Showdown) {
+            syncState(state)
             return
         }
         val actor = state.players.getOrNull(toAct) ?: return
-        if (!isBotUserId(actor.userId)) return
 
+        if (isBotUserId(actor.userId)) {
+            val delayMs = Random.nextLong(700, 1500)
+            turnEndsAt = System.currentTimeMillis() + delayMs
+            syncState(state)
+            botJob = viewModelScope.launch {
+                delay(delayMs)
+                val current = _uiState.value.handState ?: return@launch
+                if (current.toAct != toAct) return@launch
+                val intent = chooseBotAction(current, toAct, config)
+                val result = if (intent != null) {
+                    applyAction(current, toAct, intent, config)
+                } else {
+                    applyTimeout(current, config)
+                }
+                if (result.ok) applyEngineResult(result.state, result.events)
+            }
+            return
+        }
+
+        // Human clock — fold on timeout
+        turnEndsAt = System.currentTimeMillis() + config.turnTimeMs
+        syncState(state)
         botJob = viewModelScope.launch {
-            delay(Random.nextLong(700, 1500))
+            delay(config.turnTimeMs)
             val current = _uiState.value.handState ?: return@launch
             if (current.toAct != toAct) return@launch
-            val intent = chooseBotAction(current, toAct, config)
-            val result = if (intent != null) {
-                applyAction(current, toAct, intent, config)
-            } else {
-                return@launch
+            val actorNow = current.players.getOrNull(toAct) ?: return@launch
+            if (isBotUserId(actorNow.userId)) return@launch
+            val result = applyTimeout(current, config)
+            if (result.ok) {
+                pushSystem("Dealer", "Time — folded")
+                applyEngineResult(result.state, result.events)
             }
-            if (result.ok) applyEngineResult(result.state, result.events)
         }
     }
 
@@ -284,7 +312,10 @@ class OfflineViewModel @Inject constructor(
         }
     }
 
-    private fun mapPublicTable(view: com.felt.android.engine.PublicTableView): PublicTable =
+    private fun mapPublicTable(
+        view: com.felt.android.engine.PublicTableView,
+        endsAt: Long?,
+    ): PublicTable =
         PublicTable(
             tableId = view.tableId,
             handId = view.handId,
@@ -317,6 +348,7 @@ class OfflineViewModel @Inject constructor(
             showdownHands = view.showdownHands.map {
                 com.felt.android.core.model.ShowdownHand(it.seat, it.handName, it.cards)
             },
+            turnEndsAt = endsAt,
             config = com.felt.android.core.model.TableConfig(
                 maxSeats = view.config.maxSeats,
                 smallBlind = view.config.smallBlind,

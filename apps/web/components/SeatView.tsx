@@ -2,6 +2,7 @@
 
 import { ChipStack, formatChips } from './ChipStack';
 import { PlayingCard } from './PlayingCard';
+import { SeatTurnRing } from './TurnTimer';
 import type { PublicPlayer } from '@/lib/store';
 
 export function SeatView({
@@ -14,6 +15,8 @@ export function SeatView({
   handName,
   myCards,
   winningCards,
+  turnEndsAt,
+  turnTotalMs,
   onSit,
   onAddBot,
   onRemoveBot,
@@ -30,6 +33,8 @@ export function SeatView({
   handName?: string | null;
   myCards: [string, string] | null;
   winningCards?: Set<string> | null;
+  turnEndsAt?: number | null;
+  turnTotalMs?: number;
   onSit?: () => void;
   onAddBot?: () => void;
   onRemoveBot?: () => void;
@@ -149,6 +154,11 @@ export function SeatView({
                   : 'bg-gradient-to-b from-[#151b22] to-[#0a0e12] text-cream border border-white/10'
           }`}
         >
+          <SeatTurnRing
+            endsAt={turnEndsAt}
+            totalMs={turnTotalMs ?? 20000}
+            active={!!isToAct}
+          />
           {isDealer && (
             <span className="absolute -left-2.5 -top-2.5 flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-b from-cream to-[#c4b89a] text-[11px] font-display font-bold text-ink shadow-md ring-1 ring-black/20">
               D

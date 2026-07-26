@@ -716,16 +716,10 @@ fun applyAction(
     return afterAction(s, events)
 }
 
-/** Auto-action on timeout: check if possible, else fold. */
+/** Auto-action on timeout: fold (even when a check is available). */
 fun applyTimeout(state: HandState, config: TableConfig): ApplyResult {
     val seat = state.toAct ?: return ApplyResult(state, ok = false, error = "No one to act")
-    val p = state.players[seat]
-    val toCall = state.currentBet - p.bet
-    return if (toCall <= 0) {
-        applyAction(state, seat, ActionIntent(ActionType.Check, seq = state.actionSeq), config)
-    } else {
-        applyAction(state, seat, ActionIntent(ActionType.Fold, seq = state.actionSeq), config)
-    }
+    return applyAction(state, seat, ActionIntent(ActionType.Fold, seq = state.actionSeq), config)
 }
 
 fun returnToWaiting(state: HandState): HandState {

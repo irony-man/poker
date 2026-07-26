@@ -25,6 +25,8 @@ object PublicTableMapper {
             actionSeq = actionSeq,
             bigBlind = config.bigBlind,
             winningCards = winningCards,
+            turnEndsAt = turnEndsAt,
+            turnTimeMs = config.turnTimeMs.toLong(),
             players = players.map {
                 TablePlayerUi(
                     seat = it.seat,

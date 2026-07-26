@@ -54,7 +54,16 @@ export default function HomePage() {
   }
 
   async function ensureSession(displayName: string) {
-    const s = await register(displayName.trim() || 'Player', avatarId);
+    const raw = localStorage.getItem('felt-session');
+    let prevUserId: string | undefined;
+    if (raw) {
+      try {
+        prevUserId = (JSON.parse(raw) as { userId?: string }).userId;
+      } catch {
+        /* ignore */
+      }
+    }
+    const s = await register(displayName.trim() || 'Player', avatarId, prevUserId);
     const session = { ...s, avatarId: s.avatarId ?? avatarId };
     setSession(session);
     localStorage.setItem('felt-session', JSON.stringify(session));

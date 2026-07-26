@@ -113,7 +113,8 @@ class LobbyViewModel @Inject constructor(
 
     private suspend fun ensureSession(displayName: String): SessionDto {
         val avatarId = _uiState.value.avatarId.coerceIn(0, 7)
-        val session = feltApi.register(RegisterRequest(displayName, avatarId))
+        val prevId = sessionPreferences.getSession()?.userId
+        val session = feltApi.register(RegisterRequest(displayName, avatarId, prevId))
             .copy(avatarId = avatarId)
         sessionPreferences.saveSession(session)
         sessionPreferences.saveAvatarId(avatarId)

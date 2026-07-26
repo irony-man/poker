@@ -23,17 +23,23 @@ function TablePageInner() {
       const raw = localStorage.getItem('felt-session');
       let displayName = `Guest${Math.floor(Math.random() * 999)}`;
       let avatarId = loadSavedAvatarId();
+      let prevUserId: string | undefined;
       if (raw) {
         try {
-          const prev = JSON.parse(raw) as { name?: string; avatarId?: number };
+          const prev = JSON.parse(raw) as {
+            name?: string;
+            avatarId?: number;
+            userId?: string;
+          };
           if (prev.name) displayName = prev.name;
           if (typeof prev.avatarId === 'number') avatarId = prev.avatarId;
+          if (prev.userId) prevUserId = prev.userId;
         } catch {
           /* ignore */
         }
       }
-      // Always re-register to get a fresh WS ticket (server may have restarted)
-      const s = await register(displayName, avatarId);
+      // Re-register with stable userId when possible (avoids name collisions).
+      const s = await register(displayName, avatarId, prevUserId);
       if (cancelled) return;
       const session = { ...s, avatarId: s.avatarId ?? avatarId };
       setSession(session);

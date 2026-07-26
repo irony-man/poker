@@ -85,19 +85,6 @@ class TableViewModel @Inject constructor(
     }
 
     private fun leaveTable() {
-        val state = _uiState.value
-        val table = state.table
-        val userId = state.userId
-        val seat = table?.players?.find { it.userId == userId }?.seat
-        val me = seat?.let { table.players.find { p -> p.seat == it } }
-        if (seat != null && me != null && (me.status == "active" || me.status == "allin")) {
-            if (table.toAct == seat && state.private?.legal?.types?.contains("fold") == true) {
-                sendAction("fold", null)
-            }
-        }
-        if (seat != null) {
-            repository.send(ClientMessage.Stand(tableId, seat))
-        }
         repository.send(ClientMessage.LeaveTable(tableId))
     }
 

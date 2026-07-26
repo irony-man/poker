@@ -1,11 +1,11 @@
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 export const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? 'ws://localhost:4000/ws';
 
-export async function register(name: string, avatarId?: number) {
+export async function register(name: string, avatarId?: number, userId?: string) {
   const res = await fetch(`${API_URL}/api/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, avatarId }),
+    body: JSON.stringify({ name, avatarId, userId }),
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json() as Promise<{

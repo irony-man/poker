@@ -143,4 +143,6 @@ export const RegisterBodySchema = z.object({
   name: z.string().min(1).max(32),
   /** Preset profile picture index (0–7). */
   avatarId: z.number().int().min(0).max(7).optional(),
+  /** Stable client session id — resume the same user when the process still knows them. */
+  userId: z.string().min(1).max(64).optional(),
 });

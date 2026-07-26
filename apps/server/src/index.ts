@@ -54,7 +54,7 @@ async function main() {
       res.status(400).json({ error: parsed.error.message });
       return;
     }
-    const user = auth.register(parsed.data.name, parsed.data.avatarId);
+    const user = auth.register(parsed.data.name, parsed.data.avatarId, parsed.data.userId);
     const ticket = auth.issueTicket(user.id);
     res.json({
       userId: user.id,
@@ -202,7 +202,11 @@ async function main() {
       if (msg.type === 'join_table') {
         const room = rooms.get(msg.tableId);
         if (!room) {
-          send({ type: 'error', message: 'Table not found', code: 'not_found' });
+          send({
+            type: 'error',
+            message: 'Table not found — server may have restarted. Create a new table from the lobby.',
+            code: 'not_found',
+          });
           return;
         }
         if (tableId) {
@@ -215,7 +219,7 @@ async function main() {
       }
 
       if (msg.type === 'leave_table') {
-        rooms.get(msg.tableId)?.detach(userId);
+        rooms.get(msg.tableId)?.leave(userId);
         if (tableId === msg.tableId) tableId = null;
         return;
       }
@@ -279,7 +283,8 @@ async function main() {
 
     ws.on('close', () => {
       if (userId && tableId) {
-        rooms.get(tableId)?.detach(userId);
+        // Unexpected disconnect — fold/vacate so the table isn't stuck with a ghost seat.
+        rooms.get(tableId)?.leave(userId);
       }
     });
   });

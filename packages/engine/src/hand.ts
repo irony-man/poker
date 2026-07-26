@@ -233,6 +233,58 @@ export function standUp(state: HandState, seat: number): ApplyResult {
   return { state: s, events: [], ok: true };
 }
 
+/**
+ * Leave a seat cleanly: fold if still active in a hand (even off-turn), then vacate when legal.
+ * All-in seats cannot vacate until the hand ends — caller should detach the connection anyway.
+ */
+export function leaveSeat(state: HandState, seat: number): ApplyResult {
+  const p0 = state.players[seat];
+  if (!p0 || p0.status === 'empty') {
+    return { state, events: [], ok: false, error: 'Empty seat' };
+  }
+
+  const midHand =
+    state.street !== 'waiting' && state.street !== 'payout' && state.street !== 'showdown';
+
+  if (midHand && p0.status === 'allin') {
+    return { state, events: [], ok: false, error: 'All-in — finish the hand first' };
+  }
+
+  if (midHand && p0.status === 'active') {
+    const s = cloneState(state);
+    const events: EngineEvent[] = [];
+    const p = s.players[seat]!;
+    p.status = 'folded';
+    events.push({ type: 'action', seat, action: 'fold', amount: 0 });
+    s.actedSinceAggression.add(seat);
+    s.actionSeq += 1;
+
+    let progressed: ApplyResult;
+    if (s.toAct === seat) {
+      progressed = afterAction(s, events);
+    } else {
+      const living = livingPlayers(s);
+      if (living.length <= 1) {
+        progressed = goToShowdown(s, events);
+      } else if (onlyBotsRemainAfterHumanFold(s, living)) {
+        progressed = runoutToShowdown(s, events);
+      } else {
+        s.version += 1;
+        progressed = { state: s, events, ok: true };
+      }
+    }
+    if (!progressed.ok) return progressed;
+
+    const vacated = standUp(progressed.state, seat);
+    if (vacated.ok) {
+      return { state: vacated.state, events: progressed.events, ok: true };
+    }
+    return progressed;
+  }
+
+  return standUp(state, seat);
+}
+
 export function topUp(state: HandState, seat: number, amount: number, maxBuyIn: number): ApplyResult {
   const s = cloneState(state);
   if (s.street !== 'waiting' && s.street !== 'payout') {

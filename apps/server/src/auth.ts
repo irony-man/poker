@@ -19,27 +19,30 @@ export interface WsTicket {
 export class AuthStore {
   private users = new Map<string, User>();
   private tickets = new Map<string, WsTicket>();
-  private nameIndex = new Map<string, string>();
 
-  register(name: string, avatarId?: number): User {
-    const existing = this.nameIndex.get(name.toLowerCase());
-    if (existing) {
-      const user = this.users.get(existing)!;
-      if (avatarId !== undefined) {
-        user.avatarId = clampAvatarId(avatarId);
+  /**
+   * Register or refresh a session.
+   * Identity is keyed by `userId` (never by display name) so two people named
+   * "Player" do not steal each other's connection / seat.
+   */
+  register(name: string, avatarId?: number, userId?: string): User {
+    if (userId) {
+      const existing = this.users.get(userId);
+      if (existing) {
+        existing.name = name.slice(0, 32);
+        if (avatarId !== undefined) existing.avatarId = clampAvatarId(avatarId);
+        return existing;
       }
-      return user;
     }
 
     const id = nanoid(12);
     const user: User = {
       id,
-      name,
+      name: name.slice(0, 32),
       avatarId: avatarId !== undefined ? clampAvatarId(avatarId) : avatarIdFromUserId(id),
       createdAt: Date.now(),
     };
     this.users.set(user.id, user);
-    this.nameIndex.set(name.toLowerCase(), user.id);
     return user;
   }
 
@@ -61,7 +64,6 @@ export class AuthStore {
       this.tickets.delete(ticket);
       return null;
     }
-    // Allow reuse within TTL for reconnects; delete after long idle via expiry
     const user = this.users.get(t.userId);
     return user ?? null;
   }

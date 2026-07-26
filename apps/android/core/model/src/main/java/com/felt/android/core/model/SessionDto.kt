@@ -14,6 +14,7 @@ data class SessionDto(
 data class RegisterRequest(
     val name: String,
     val avatarId: Int? = null,
+    val userId: String? = null,
 )
 
 @Serializable

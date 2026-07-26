@@ -75,6 +75,7 @@ interface SessionState {
   setSession: (s: { userId: string; name: string; ticket: string }) => void;
   setConnection: (c: SessionState['connection']) => void;
   applyStateSync: (table: PublicTable, priv: PrivateView | null) => void;
+  clearTable: () => void;
   pushChat: (m: ChatMessage) => void;
   setError: (e: string | null) => void;
   setEmoji: (e: { emoji: string; name: string; at: number } | null) => void;
@@ -97,6 +98,7 @@ export const useSession = create<SessionState>((set) => ({
       if (prev.table && table.version < prev.table.version) return prev;
       return { table, private: priv };
     }),
+  clearTable: () => set({ table: null, private: null, chat: [], lastError: null }),
   pushChat: (m) => set((s) => ({ chat: [...s.chat.slice(-80), m] })),
   setError: (lastError) => set({ lastError }),
   setEmoji: (emojiBurst) => set({ emojiBurst }),

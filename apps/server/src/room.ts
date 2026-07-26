@@ -8,6 +8,7 @@ import {
   returnToWaiting,
   sitDown,
   standUp,
+  leaveSeat,
   startHand,
   topUp,
   toPrivateView,
@@ -77,6 +78,29 @@ export class Room {
   detach(userId: string): void {
     this.connections.delete(userId);
     this.spectators.delete(userId);
+  }
+
+  /** Fold/stand if seated, then detach the websocket — preferred leave path. */
+  leave(userId: string): { ok: boolean; error?: string } {
+    const seat = this.seatOf(userId);
+    if (seat !== null) {
+      const name = this.state.players[seat]?.name ?? 'Player';
+      const result = leaveSeat(this.state, seat);
+      if (result.ok) {
+        this.state = result.state;
+        this.announceEngineEvents(result.events);
+        this.systemChat('Dealer', `${name} leaves the table`);
+        void this.afterStateChange();
+      } else if (result.error?.includes('All-in')) {
+        this.systemChat('Dealer', `${name} disconnects (all-in — seat stays until hand ends)`);
+        // Keep seat for the runout; just drop the socket below.
+      } else {
+        // Best-effort: still detach so reconnects aren't blocked.
+        this.systemChat('Dealer', `${name} leaves`);
+      }
+    }
+    this.detach(userId);
+    return { ok: true };
   }
 
   private rateLimit(key: string, max = 20, windowMs = 5000): boolean {

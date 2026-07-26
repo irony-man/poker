@@ -28,6 +28,7 @@ export function TableView({
   const connection = useSession((s) => s.connection);
   const lastError = useSession((s) => s.lastError);
   const setError = useSession((s) => s.setError);
+  const clearTable = useSession((s) => s.clearTable);
   const { send } = usePokerSocket(tableId);
   const router = useRouter();
   const [buyInOpen, setBuyInOpen] = useState<number | null>(null);
@@ -119,20 +120,8 @@ export function TableView({
   };
 
   const leaveRoom = () => {
-    if (!table) {
-      router.push('/');
-      return;
-    }
-    const me = mySeat !== undefined ? table.players[mySeat] : undefined;
-    if (mySeat !== undefined && me && (me.status === 'active' || me.status === 'allin')) {
-      if (table.toAct === mySeat && priv?.legal?.types.includes('fold')) {
-        onAction('fold');
-      }
-    }
-    if (mySeat !== undefined) {
-      send({ type: 'stand', tableId, seat: mySeat });
-    }
     send({ type: 'leave_table', tableId });
+    clearTable();
     router.push('/');
   };
 

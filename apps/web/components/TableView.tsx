@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionControls } from './ActionControls';
-import { ChatPanel } from './ChatPanel';
 import { ChipStack, formatChips } from './ChipStack';
 import { PlayingCard } from './PlayingCard';
 import { SeatView } from './SeatView';
+import { TableShell } from './TableShell';
 import { playTick } from '@/lib/audio';
 import { usePokerSocket } from '@/lib/ws';
 import { useSession } from '@/lib/store';
@@ -85,8 +85,11 @@ export function TableView({ tableId }: { tableId: string }) {
     (table?.sidePots?.reduce((s, p) => s + p.amount, 0) ?? 0);
 
   return (
-    <div className="flex flex-col lg:flex-row gap-4 h-[calc(100dvh-5rem)]">
-      <div className="flex-1 flex flex-col min-h-0">
+    <TableShell
+      onSend={(text) => send({ type: 'chat', tableId, text })}
+      onEmoji={(emoji) => send({ type: 'emoji', tableId, emoji })}
+    >
+      <div className="flex flex-1 flex-col min-h-0">
         <div className="flex items-center justify-between mb-2 text-sm text-cream/60">
           <div className="flex items-center gap-2">
             <span className="rounded-full bg-cream/10 px-2.5 py-0.5 text-cream capitalize tracking-wide">
@@ -292,13 +295,6 @@ export function TableView({ tableId }: { tableId: string }) {
         </div>
       </div>
 
-      <div className="lg:w-72 shrink-0 relative">
-        <ChatPanel
-          onSend={(text) => send({ type: 'chat', tableId, text })}
-          onEmoji={(emoji) => send({ type: 'emoji', tableId, emoji })}
-        />
-      </div>
-
       {buyInOpen !== null && table && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-4">
           <form
@@ -338,6 +334,6 @@ export function TableView({ tableId }: { tableId: string }) {
           </form>
         </div>
       )}
-    </div>
+    </TableShell>
   );
 }

@@ -20,10 +20,10 @@ import {
   type TableConfig,
 } from '@poker/engine';
 import { ActionControls } from './ActionControls';
-import { ChatPanel } from './ChatPanel';
 import { ChipStack, formatChips } from './ChipStack';
 import { PlayingCard } from './PlayingCard';
 import { SeatView } from './SeatView';
+import { TableShell } from './TableShell';
 import { playTick } from '@/lib/audio';
 import { useSession, type ChatMessage, type PrivateView, type PublicTable } from '@/lib/store';
 
@@ -335,8 +335,13 @@ export function OfflineTableView({
     (publicTable.sidePots?.reduce((s, p) => s + p.amount, 0) ?? 0);
 
   return (
-    <div className="flex flex-col lg:flex-row gap-4 h-[calc(100dvh-5rem)]">
-      <div className="flex-1 flex flex-col min-h-0">
+    <TableShell
+      onSend={(text) =>
+        pushChat({ userId: HUMAN_ID, name: playerName, text, at: Date.now() })
+      }
+      onEmoji={() => undefined}
+    >
+      <div className="flex flex-1 flex-col min-h-0">
         <div className="flex items-center justify-between mb-2 text-sm text-cream/60">
           <div className="flex items-center gap-2">
             <span className="rounded-full bg-emerald-900/50 border border-emerald-500/30 px-2.5 py-0.5 text-emerald-300 tracking-wide text-xs">
@@ -430,15 +435,6 @@ export function OfflineTableView({
           </div>
         </div>
       </div>
-
-      <div className="lg:w-72 shrink-0 relative">
-        <ChatPanel
-          onSend={(text) =>
-            pushChat({ userId: HUMAN_ID, name: playerName, text, at: Date.now() })
-          }
-          onEmoji={() => undefined}
-        />
-      </div>
-    </div>
+    </TableShell>
   );
 }

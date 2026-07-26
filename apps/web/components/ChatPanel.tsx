@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { useSession } from '@/lib/store';
 
 export function ChatPanel({
@@ -11,25 +12,37 @@ export function ChatPanel({
 }) {
   const chat = useSession((s) => s.chat);
   const emojiBurst = useSession((s) => s.emojiBurst);
+  const scroller = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [chat.length]);
 
   return (
-    <div className="flex flex-col h-48 md:h-full rounded-xl border border-cream/10 bg-ink/60 overflow-hidden">
-      <div className="px-3 py-2 text-xs uppercase tracking-wider text-cream/50 border-b border-cream/10">
+    <div className="relative flex h-full min-h-0 flex-col bg-[#100e0c]">
+      <div className="shrink-0 px-4 py-3 text-xs uppercase tracking-[0.18em] text-cream/45 border-b border-cream/10">
         Table chat
       </div>
-      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1 text-sm">
+      <div ref={scroller} className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-2 text-sm">
+        {chat.length === 0 && (
+          <p className="text-cream/35 text-xs">No messages yet.</p>
+        )}
         {chat.map((m, i) => {
           const isSystem = m.userId === 'system';
           return (
             <div
               key={`${m.at}-${i}`}
-              className={isSystem ? 'text-cream/70 italic' : undefined}
+              className={isSystem ? 'text-cream/65 italic' : undefined}
             >
-              <span className={`font-semibold ${isSystem ? 'text-cream/50 not-italic' : 'text-gold-light'}`}>
+              <span
+                className={`font-semibold ${isSystem ? 'text-cream/45 not-italic' : 'text-gold-light'}`}
+              >
                 {m.name}
               </span>
-              <span className="text-cream/40"> · </span>
-              <span>{m.text}</span>
+              <span className="text-cream/35"> · </span>
+              <span className="break-words">{m.text}</span>
             </div>
           );
         })}
@@ -39,7 +52,7 @@ export function ChatPanel({
           {emojiBurst.emoji}
         </div>
       )}
-      <div className="flex gap-1 px-2 py-2 border-t border-cream/10">
+      <div className="shrink-0 flex gap-1 px-3 py-2 border-t border-cream/10">
         {['🔥', '😂', '👏', '😮'].map((e) => (
           <button
             key={e}
@@ -52,7 +65,7 @@ export function ChatPanel({
         ))}
       </div>
       <form
-        className="flex gap-2 p-2 border-t border-cream/10"
+        className="shrink-0 flex gap-2 p-3 border-t border-cream/10"
         onSubmit={(e) => {
           e.preventDefault();
           const fd = new FormData(e.currentTarget);

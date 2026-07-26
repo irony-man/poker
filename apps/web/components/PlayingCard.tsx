@@ -49,9 +49,12 @@ export function PlayingCard({
   faceDown?: boolean;
   small?: boolean;
 }) {
-  const w = small ? 'w-14 h-[5.25rem] sm:w-16 sm:h-24' : 'w-[4.75rem] h-[7rem] sm:w-20 sm:h-[7.5rem]';
+  // small = opponents; default = your hole cards / board
+  const w = small
+    ? 'w-12 h-[4.5rem] sm:w-14 sm:h-[5.25rem]'
+    : 'w-20 h-[7.5rem] sm:w-24 sm:h-36';
   const radius = small ? 'rounded-lg' : 'rounded-xl';
-  const shell = `${w} ${radius} relative overflow-hidden shadow-[0_6px_16px_rgba(0,0,0,0.5)] ring-1 ring-black/25 bg-[#f7f2e8]`;
+  const shell = `${w} ${radius} relative overflow-hidden shadow-[0_8px_20px_rgba(0,0,0,0.55)] ring-1 ring-black/25 bg-[#f7f2e8]`;
 
   if (faceDown || !code) {
     const Back = deck.B2 as CardSvg;

@@ -88,7 +88,7 @@ export function SeatView({
         style={{ left: `${x}%`, top: `${y}%` }}
         className={`absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 ${isToAct || isWinner ? 'z-20' : 'z-10'}`}
       >
-        <div className="flex gap-1 drop-shadow-lg">
+        <div className={`flex drop-shadow-lg ${isSelf ? 'gap-1.5 -mt-1 mb-1 scale-110 origin-bottom' : 'gap-1'}`}>
           {faceDown ? (
             <>
               <PlayingCard faceDown small={!isSelf} />

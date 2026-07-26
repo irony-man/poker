@@ -42,3 +42,11 @@ services:
         value: https://felt-server-hgi4.onrender.com
       - key: NEXT_PUBLIC_WS_URL
         value: wss://felt-server-hgi4.onrender.com/ws
+      - key: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: NEXT_PUBLIC_CLERK_SIGN_IN_URL
+        value: /sign-in
+      - key: NEXT_PUBLIC_CLERK_SIGN_UP_URL
+        value: /sign-up

@@ -1,6 +1,6 @@
 import type { Card } from './cards.js';
 import { createDeck, shuffle } from './cards.js';
-import { evaluateBest } from './eval.js';
+import { evaluateBest, categoryOf, HAND_CATEGORY_NAMES } from './eval.js';
 import { awardPots, buildSidePots, type PotAward, type PotLayer } from './pots.js';
 
 export type Street = 'waiting' | 'preflop' | 'flop' | 'turn' | 'river' | 'showdown' | 'payout';
@@ -58,6 +58,8 @@ export interface HandState {
   sidePots: PotLayer[];
   actionSeq: number;
   winners: PotAward[];
+  /** Hand category names for revealed seats at showdown. */
+  showdownHands: { seat: number; handName: string }[];
   /** Seats that have acted since last aggression this street. */
   actedSinceAggression: Set<number>;
   version: number;
@@ -91,6 +93,7 @@ function cloneState(state: HandState): HandState {
     })),
     sidePots: state.sidePots.map((p) => ({ ...p, eligible: [...p.eligible] })),
     winners: state.winners.map((w) => ({ ...w })),
+    showdownHands: state.showdownHands.map((h) => ({ ...h })),
     actedSinceAggression: new Set(state.actedSinceAggression),
   };
 }
@@ -127,6 +130,7 @@ export function createEmptyTable(config: TableConfig): HandState {
     sidePots: [],
     actionSeq: 0,
     winners: [],
+    showdownHands: [],
     actedSinceAggression: new Set(),
     version: 0,
   };
@@ -237,6 +241,7 @@ function resetHandFields(state: HandState, handId: string, config: TableConfig):
   state.pot = 0;
   state.sidePots = [];
   state.winners = [];
+  state.showdownHands = [];
   state.currentBet = 0;
   state.lastRaiseSize = config.bigBlind;
   state.minRaiseTo = config.bigBlind * 2;
@@ -439,7 +444,8 @@ function goToShowdown(state: HandState, events: EngineEvent[]): ApplyResult {
   if (living.length === 1) {
     // Award without reveal
     const winner = living[0]!;
-    state.winners = [{ seat: winner.seat, amount: state.pot }];
+    state.winners = [{ seat: winner.seat, amount: state.pot, handName: 'Uncontested' }];
+    state.showdownHands = [];
     winner.stack += state.pot;
     state.pot = 0;
     state.street = 'payout';
@@ -455,6 +461,11 @@ function goToShowdown(state: HandState, events: EngineEvent[]): ApplyResult {
     ranks.set(p.seat, evaluateBest(seven));
   }
 
+  state.showdownHands = [...ranks.entries()].map(([seat, rank]) => ({
+    seat,
+    handName: HAND_CATEGORY_NAMES[categoryOf(rank)],
+  }));
+
   const contributions = state.players
     .filter((p) => p.committed > 0)
     .map((p) => ({
@@ -464,7 +475,12 @@ function goToShowdown(state: HandState, events: EngineEvent[]): ApplyResult {
     }));
 
   state.sidePots = buildSidePots(contributions);
-  state.winners = awardPots(state.sidePots, ranks, state.dealerButton, state.players.length);
+  const awards = awardPots(state.sidePots, ranks, state.dealerButton, state.players.length);
+  state.winners = awards.map((w) => {
+    const handName =
+      state.showdownHands.find((h) => h.seat === w.seat)?.handName ?? 'High Card';
+    return { ...w, handName };
+  });
 
   for (const w of state.winners) {
     state.players[w.seat]!.stack += w.amount;
@@ -643,6 +659,8 @@ export function returnToWaiting(state: HandState): HandState {
   s.deck = [];
   s.pot = 0;
   s.sidePots = [];
+  s.winners = [];
+  s.showdownHands = [];
   s.actionSeq = 0;
   for (const p of s.players) {
     p.bet = 0;

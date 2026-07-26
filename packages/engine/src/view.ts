@@ -30,7 +30,9 @@ export interface PublicTableView {
   sidePots: PotLayer[];
   actionSeq: number;
   version: number;
-  winners: { seat: number; amount: number }[];
+  winners: { seat: number; amount: number; handName?: string }[];
+  /** Revealed showdown hands (category name) keyed by seat for UI. */
+  showdownHands: { seat: number; handName: string }[];
   config: TableConfig;
 }
 
@@ -73,6 +75,7 @@ export function toPublicView(tableId: string, state: HandState, config: TableCon
     actionSeq: state.actionSeq,
     version: state.version,
     winners: state.winners,
+    showdownHands: state.showdownHands,
     config,
   };
 }

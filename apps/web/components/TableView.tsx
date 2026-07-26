@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionControls } from './ActionControls';
 import { ChatPanel } from './ChatPanel';
+import { ChipStack, formatChips } from './ChipStack';
 import { PlayingCard } from './PlayingCard';
 import { SeatView } from './SeatView';
 import { playTick } from '@/lib/audio';
@@ -10,7 +11,6 @@ import { usePokerSocket } from '@/lib/ws';
 import { useSession } from '@/lib/store';
 
 function seatAngles(maxSeats: number): number[] {
-  // Start from bottom (90°) and distribute clockwise
   const start = 90;
   const step = 360 / maxSeats;
   return Array.from({ length: maxSeats }, (_, i) => start + i * step);
@@ -43,6 +43,26 @@ export function TableView({ tableId }: { tableId: string }) {
   );
 
   const mySeat = table?.players.find((p) => p.userId === userId)?.seat;
+  const winBySeat = useMemo(() => {
+    const map = new Map<number, { amount: number; handName?: string }>();
+    for (const w of table?.winners ?? []) {
+      const prev = map.get(w.seat);
+      map.set(w.seat, {
+        amount: (prev?.amount ?? 0) + w.amount,
+        handName: w.handName ?? prev?.handName,
+      });
+    }
+    return map;
+  }, [table?.winners]);
+
+  const handNameBySeat = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const h of table?.showdownHands ?? []) map.set(h.seat, h.handName);
+    for (const [seat, w] of winBySeat) {
+      if (w.handName && !map.has(seat)) map.set(seat, w.handName);
+    }
+    return map;
+  }, [table?.showdownHands, winBySeat]);
 
   const onAction = (action: string, amount?: number) => {
     if (!table) return;
@@ -56,17 +76,32 @@ export function TableView({ tableId }: { tableId: string }) {
     });
   };
 
+  const potTotal =
+    (table?.pot ?? 0) ||
+    (table?.sidePots?.reduce((s, p) => s + p.amount, 0) ?? 0);
+
   return (
     <div className="flex flex-col lg:flex-row gap-4 h-[calc(100dvh-5rem)]">
       <div className="flex-1 flex flex-col min-h-0">
         <div className="flex items-center justify-between mb-2 text-sm text-cream/60">
-          <div>
-            Street: <span className="text-cream capitalize">{table?.street ?? '…'}</span>
-            {table?.handId ? ` · #${table.handId}` : ''}
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-cream/10 px-2.5 py-0.5 text-cream capitalize tracking-wide">
+              {table?.street ?? '…'}
+            </span>
+            {table?.handId ? <span className="font-mono text-xs opacity-60">#{table.handId}</span> : null}
+            {table && (
+              <span className="text-xs text-cream/40">
+                blinds {table.config.smallBlind}/{table.config.bigBlind}
+              </span>
+            )}
           </div>
           <div
             className={
-              connection === 'open' ? 'text-emerald-400' : connection === 'connecting' ? 'text-amber-400' : 'text-red-400'
+              connection === 'open'
+                ? 'text-emerald-400'
+                : connection === 'connecting'
+                  ? 'text-amber-400'
+                  : 'text-red-400'
             }
           >
             {connection}
@@ -83,43 +118,80 @@ export function TableView({ tableId }: { tableId: string }) {
           </button>
         )}
 
-        <div className="relative flex-1 felt-surface rounded-[40%] border-[10px] border-[#2a1c0e] shadow-felt min-h-[320px]">
-          <div className="absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-3">
-            <div className="text-gold-light text-sm font-semibold tracking-wide">
-              Pot {table?.pot ?? 0}
+        <div className="relative flex-1 felt-surface rounded-[42%] border-[12px] border-[#3a2814] shadow-felt min-h-[340px] overflow-hidden">
+          <div className="pointer-events-none absolute inset-6 rounded-[40%] border border-white/5" />
+
+          <div className="absolute left-1/2 top-[40%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-3 z-10">
+            <div className="flex flex-col items-center gap-1 rounded-2xl bg-ink/35 px-4 py-2 border border-cream/10 backdrop-blur-sm">
+              <div className="text-[10px] uppercase tracking-[0.2em] text-cream/50">Pot</div>
+              <ChipStack amount={Math.max(potTotal, table?.pot ?? 0)} size="lg" />
+              {(table?.sidePots?.length ?? 0) > 1 && (
+                <div className="text-[10px] text-cream/45">
+                  {table!.sidePots.length} pots
+                </div>
+              )}
             </div>
-            <div className="flex gap-1.5">
+            <div className="flex gap-1.5 min-h-[5.25rem] items-center">
               {(table?.community ?? []).map((c) => (
                 <PlayingCard key={c + table?.version} code={c} />
               ))}
               {table && table.community.length === 0 && table.street !== 'waiting' && (
-                <span className="text-cream/40 text-xs">No board yet</span>
+                <span className="text-cream/40 text-xs">Dealing…</span>
               )}
             </div>
           </div>
 
-          {table?.players.map((p, i) => (
-            <SeatView
-              key={p.seat}
-              player={p}
-              angle={angles[i] ?? 90}
-              isDealer={table.dealerButton === p.seat && table.street !== 'waiting'}
-              isToAct={table.toAct === p.seat}
-              isSelf={p.userId === userId}
-              myCards={p.seat === mySeat ? priv?.holeCards ?? null : null}
-              canManageBots={table.street === 'waiting' || table.street === 'payout'}
-              onSit={() => setBuyInOpen(p.seat)}
-              onAddBot={() =>
-                send({
-                  type: 'add_bot',
-                  tableId,
-                  seat: p.seat,
-                  buyIn: table.config.minBuyIn,
-                })
-              }
-              onRemoveBot={() => send({ type: 'remove_bot', tableId, seat: p.seat })}
-            />
-          ))}
+          {table?.street === 'payout' && (table.winners?.length ?? 0) > 0 && (
+            <div className="absolute left-1/2 top-[12%] -translate-x-1/2 z-30 w-[min(92%,22rem)]">
+              <div className="rounded-2xl border border-gold/40 bg-ink/90 px-4 py-3 text-center shadow-xl backdrop-blur-md">
+                <div className="text-[10px] uppercase tracking-[0.25em] text-gold/80 mb-1">Winner</div>
+                {table.winners.map((w, i) => {
+                  const name = table.players[w.seat]?.name ?? `Seat ${w.seat}`;
+                  return (
+                    <div key={`${w.seat}-${i}`} className="py-1">
+                      <div className="font-display text-lg text-gold">{name}</div>
+                      <div className="text-sm text-cream/80">
+                        {w.handName ?? 'Win'} · +{formatChips(w.amount)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {table?.players.map((p, i) => {
+            const win = winBySeat.get(p.seat);
+            return (
+              <SeatView
+                key={p.seat}
+                player={p}
+                angle={angles[i] ?? 90}
+                isDealer={table.dealerButton === p.seat && table.street !== 'waiting'}
+                isToAct={table.toAct === p.seat}
+                isSelf={p.userId === userId}
+                isWinner={table.street === 'payout' && !!win}
+                winAmount={win?.amount}
+                handName={
+                  table.street === 'payout' || table.street === 'showdown'
+                    ? handNameBySeat.get(p.seat) ?? null
+                    : null
+                }
+                myCards={p.seat === mySeat ? priv?.holeCards ?? null : null}
+                canManageBots={table.street === 'waiting' || table.street === 'payout'}
+                onSit={() => setBuyInOpen(p.seat)}
+                onAddBot={() =>
+                  send({
+                    type: 'add_bot',
+                    tableId,
+                    seat: p.seat,
+                    buyIn: table.config.minBuyIn,
+                  })
+                }
+                onRemoveBot={() => send({ type: 'remove_bot', tableId, seat: p.seat })}
+              />
+            );
+          })}
         </div>
 
         <div className="mt-4 pb-[env(safe-area-inset-bottom)]">

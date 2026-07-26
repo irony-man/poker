@@ -54,6 +54,8 @@ export function buildSidePots(contributions: Contribution[]): PotLayer[] {
 export interface PotAward {
   seat: number;
   amount: number;
+  /** Best-hand category name at showdown, or "Uncontested" when everyone else folded. */
+  handName?: string;
 }
 
 /**

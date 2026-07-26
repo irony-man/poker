@@ -28,7 +28,8 @@ export interface PublicTable {
   sidePots: { amount: number; eligible: number[] }[];
   actionSeq: number;
   version: number;
-  winners: { seat: number; amount: number }[];
+  winners: { seat: number; amount: number; handName?: string }[];
+  showdownHands?: { seat: number; handName: string }[];
   config: {
     maxSeats: number;
     smallBlind: number;

@@ -366,11 +366,13 @@ export class Room {
         if (e.winners.length === 1) {
           const w = e.winners[0]!;
           const name = this.state.players[w.seat]?.name ?? `Seat ${w.seat}`;
-          this.systemChat('Dealer', `${name} wins ${w.amount}`);
+          const hand = w.handName ? ` with ${w.handName}` : '';
+          this.systemChat('Dealer', `${name} wins ${w.amount}${hand}`);
         } else if (e.winners.length > 1) {
           const parts = e.winners.map((w) => {
             const name = this.state.players[w.seat]?.name ?? `Seat ${w.seat}`;
-            return `${name} ${w.amount}`;
+            const hand = w.handName ? ` (${w.handName})` : '';
+            return `${name} ${w.amount}${hand}`;
           });
           this.systemChat('Dealer', `Split pot — ${parts.join(', ')}`);
         }

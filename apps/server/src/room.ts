@@ -3,6 +3,7 @@ import { nanoid } from 'nanoid';
 import {
   applyAction,
   applyTimeout,
+  cardToString,
   createEmptyTable,
   returnToWaiting,
   sitDown,
@@ -11,6 +12,7 @@ import {
   topUp,
   toPrivateView,
   toPublicView,
+  type EngineEvent,
   type HandState,
   type TableConfig,
 } from '@poker/engine';
@@ -106,6 +108,7 @@ export class Room {
       const result = applyTimeout(this.state, this.config);
       if (result.ok) {
         this.state = result.state;
+        this.announceEngineEvents(result.events);
         void this.afterStateChange();
       }
     }, this.config.turnTimeMs);
@@ -236,6 +239,7 @@ export class Room {
     const result = startHand(this.state, this.config, handId, (n) => randomBytes(n));
     if (!result.ok) return { ok: false, error: result.error };
     this.state = result.state;
+    this.announceEngineEvents(result.events);
     void this.afterStateChange();
     return { ok: true };
   }
@@ -256,8 +260,50 @@ export class Room {
     const result = applyAction(this.state, seat, { type, amount, seq }, this.config);
     if (!result.ok) return { ok: false, error: result.error };
     this.state = result.state;
+    this.announceEngineEvents(result.events);
     void this.afterStateChange();
     return { ok: true };
+  }
+
+  private announceEngineEvents(events: EngineEvent[]): void {
+    for (const e of events) {
+      if (e.type === 'action') {
+        const p = this.state.players[e.seat];
+        const name = p?.name ?? `Seat ${e.seat}`;
+        this.systemChat(name, formatActionLine(e.action, e.amount));
+      } else if (e.type === 'street') {
+        const label = e.street.charAt(0).toUpperCase() + e.street.slice(1);
+        this.systemChat('Dealer', `${label} — ${e.cards.map(cardToString).join(' ')}`);
+      } else if (e.type === 'hand_ended') {
+        if (e.winners.length === 1) {
+          const w = e.winners[0]!;
+          const name = this.state.players[w.seat]?.name ?? `Seat ${w.seat}`;
+          this.systemChat('Dealer', `${name} wins ${w.amount}`);
+        } else if (e.winners.length > 1) {
+          const parts = e.winners.map((w) => {
+            const name = this.state.players[w.seat]?.name ?? `Seat ${w.seat}`;
+            return `${name} ${w.amount}`;
+          });
+          this.systemChat('Dealer', `Split pot — ${parts.join(', ')}`);
+        }
+      } else if (e.type === 'blinds_posted') {
+        const sb = this.state.players[e.sbSeat]?.name ?? `Seat ${e.sbSeat}`;
+        const bb = this.state.players[e.bbSeat]?.name ?? `Seat ${e.bbSeat}`;
+        this.systemChat('Dealer', `Blinds — ${sb} posts ${e.sb}, ${bb} posts ${e.bb}`);
+      }
+    }
+  }
+
+  private systemChat(name: string, text: string): void {
+    const msg = {
+      type: 'chat',
+      tableId: this.meta.id,
+      userId: 'system',
+      name,
+      text,
+      at: Date.now(),
+    };
+    for (const conn of this.connections.values()) conn.send(msg);
   }
 
   chat(userId: string, name: string, text: string): void {
@@ -270,6 +316,28 @@ export class Room {
     if (!this.rateLimit(userId, 15, 5000)) return;
     const msg = { type: 'emoji', tableId: this.meta.id, userId, name, emoji, at: Date.now() };
     for (const conn of this.connections.values()) conn.send(msg);
+  }
+}
+
+function formatActionLine(
+  action: 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'allin',
+  amount: number,
+): string {
+  switch (action) {
+    case 'fold':
+      return 'folds';
+    case 'check':
+      return 'checks';
+    case 'call':
+      return `calls ${amount}`;
+    case 'bet':
+      return `bets ${amount}`;
+    case 'raise':
+      return `raises to ${amount}`;
+    case 'allin':
+      return amount > 0 ? `goes all-in (${amount})` : 'goes all-in';
+    default:
+      return action;
   }
 }
 

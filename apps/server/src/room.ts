@@ -72,15 +72,16 @@ export class Room {
     this.spectators.delete(userId);
   }
 
-  private rateLimit(userId: string, max = 20, windowMs = 5000): boolean {
+  private rateLimit(key: string, max = 20, windowMs = 5000): boolean {
     const now = Date.now();
-    let b = this.rateLimits.get(userId);
+    let b = this.rateLimits.get(key);
     if (!b || now > b.resetAt) {
       b = { count: 0, resetAt: now + windowMs };
-      this.rateLimits.set(userId, b);
+      this.rateLimits.set(key, b);
     }
+    if (b.count >= max) return false;
     b.count += 1;
-    return b.count <= max;
+    return true;
   }
 
   private seatOf(userId: string): number | null {
@@ -355,7 +356,7 @@ export class Room {
   }
 
   sit(userId: string, name: string, seat: number, buyIn: number): { ok: boolean; error?: string } {
-    if (!this.rateLimit(userId)) return { ok: false, error: 'Rate limited' };
+    if (!this.rateLimit(`${userId}:sit`)) return { ok: false, error: 'Rate limited' };
     if (buyIn < this.config.minBuyIn || buyIn > this.config.maxBuyIn) {
       return { ok: false, error: 'Buy-in out of range' };
     }
@@ -392,7 +393,7 @@ export class Room {
     type: 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'allin',
     amount?: number,
   ): { ok: boolean; error?: string } {
-    if (!this.rateLimit(userId, 30, 5000)) return { ok: false, error: 'Rate limited' };
+    if (!this.rateLimit(`${userId}:action`, 30, 5000)) return { ok: false, error: 'Rate limited' };
     const seat = this.seatOf(userId);
     if (seat === null) return { ok: false, error: 'Not seated' };
     if (this.state.handId !== handId) return { ok: false, error: 'Wrong hand' };
@@ -452,15 +453,27 @@ export class Room {
   }
 
   chat(userId: string, name: string, text: string): void {
-    if (!this.rateLimit(userId, 10, 5000)) return;
+    if (!this.rateLimit(`${userId}:chat`, 10, 5000)) return;
     const msg = { type: 'chat', tableId: this.meta.id, userId, name, text, at: Date.now() };
     for (const conn of this.connections.values()) conn.send(msg);
   }
 
   emoji(userId: string, name: string, emoji: string): void {
-    if (!this.rateLimit(userId, 15, 5000)) return;
-    const msg = { type: 'emoji', tableId: this.meta.id, userId, name, emoji, at: Date.now() };
-    for (const conn of this.connections.values()) conn.send(msg);
+    if (!this.rateLimit(`${userId}:emoji`, 20, 5000)) return;
+    const at = Date.now();
+    const react = { type: 'emoji', tableId: this.meta.id, userId, name, emoji, at };
+    const chat = {
+      type: 'chat',
+      tableId: this.meta.id,
+      userId,
+      name,
+      text: emoji,
+      at,
+    };
+    for (const conn of this.connections.values()) {
+      conn.send(react);
+      conn.send(chat);
+    }
   }
 }
 

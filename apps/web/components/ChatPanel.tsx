@@ -53,7 +53,7 @@ export function ChatPanel({
         })}
       </div>
       {emojiBurst && (
-        <div className="pointer-events-none absolute inset-x-0 top-1/3 text-center text-5xl animate-bounce">
+        <div className="pointer-events-none absolute inset-x-0 top-1/4 z-10 text-center text-4xl animate-bounce">
           {emojiBurst.emoji}
         </div>
       )}
@@ -63,7 +63,8 @@ export function ChatPanel({
             key={e}
             type="button"
             onClick={() => onEmoji(e)}
-            className="rounded border border-transparent px-2 py-1 hover:border-cyan/30 hover:bg-cyan/10 text-lg"
+            className="rounded border border-transparent px-2 py-1 hover:border-cyan/30 hover:bg-cyan/10 text-lg active:scale-90 transition"
+            aria-label={`React ${e}`}
           >
             {e}
           </button>

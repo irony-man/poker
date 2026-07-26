@@ -130,6 +130,7 @@ export function OfflineTableView({
 }) {
   const pushChat = useSession((s) => s.pushChat);
   const setSession = useSession((s) => s.setSession);
+  const setEmoji = useSession((s) => s.setEmoji);
 
   const [state, setState] = useState<HandState>(() => createEmptyTable(config));
   const [bootstrapped, setBootstrapped] = useState(false);
@@ -344,7 +345,12 @@ export function OfflineTableView({
       onSend={(text) =>
         pushChat({ userId: HUMAN_ID, name: playerName, text, at: Date.now() })
       }
-      onEmoji={() => undefined}
+      onEmoji={(emoji) => {
+        const at = Date.now();
+        setEmoji({ emoji, name: playerName, at });
+        pushChat({ userId: HUMAN_ID, name: playerName, text: emoji, at });
+        window.setTimeout(() => setEmoji(null), 1800);
+      }}
     >
       <div className="flex flex-1 flex-col min-h-0">
         <div className="flex items-center justify-between mb-2 text-sm text-cream/60">

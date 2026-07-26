@@ -2,8 +2,24 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { ChatPanel } from './ChatPanel';
+import { useSession } from '@/lib/store';
 
 const STORAGE_KEY = 'felt-chat-open';
+
+function EmojiOverlay() {
+  const burst = useSession((s) => s.emojiBurst);
+  if (!burst) return null;
+  return (
+    <div className="pointer-events-none fixed inset-0 z-[60] flex items-center justify-center">
+      <div className="flex flex-col items-center gap-2 animate-bounce">
+        <span className="text-7xl drop-shadow-[0_8px_24px_rgba(0,0,0,0.65)]">{burst.emoji}</span>
+        <span className="rounded-full border border-gold/40 bg-ink/80 px-3 py-1 text-xs font-display font-semibold uppercase tracking-wider text-gold backdrop-blur">
+          {burst.name}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 /** Table + full-height chat sidebar (drawer on small screens). */
 export function TableShell({
@@ -39,6 +55,8 @@ export function TableShell({
 
   return (
     <div className="relative flex h-[calc(100dvh-4.25rem)] min-h-0 -mx-4 sm:-mx-8 -my-4">
+      <EmojiOverlay />
+
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto px-4 sm:px-8 py-4">
         {children}
       </div>

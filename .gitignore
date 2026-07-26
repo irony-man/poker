@@ -9,3 +9,5 @@ coverage/
 *.log
 .turbo/
 data/
+docker-compose.override.yml
+bin/cloudflared

@@ -1,0 +1,49 @@
+# Deploy via Render Blueprint: Dashboard → New → Blueprint
+# Repo: https://github.com/irony-man/poker
+#
+# Free instances sleep after ~15 min idle (cold start ~1 min).
+# WebSockets are supported: use wss:// for the game server.
+#
+# After the first deploy finishes, set these once in the dashboard
+# (Blueprint can't always know both public URLs at first build):
+#
+#   felt-server → WEB_ORIGIN = https://<felt-web>.onrender.com
+#   felt-web    → NEXT_PUBLIC_API_URL = https://<felt-server>.onrender.com
+#               → NEXT_PUBLIC_WS_URL  = wss://<felt-server>.onrender.com/ws
+#   then Manual Deploy → Clear build cache & deploy on felt-web
+
+services:
+  - type: web
+    name: felt-server
+    runtime: node
+    plan: free
+    region: oregon
+    branch: main
+    buildCommand: npm ci && npm run build -w @poker/engine -w @poker/protocol -w @poker/db -w @poker/server
+    startCommand: node apps/server/dist/index.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATA_DIR
+        value: /opt/render/project/src/data
+      # Set after you know the web URL (see header comment)
+      - key: WEB_ORIGIN
+        sync: false
+
+  - type: web
+    name: felt-web
+    runtime: node
+    plan: free
+    region: oregon
+    branch: main
+    buildCommand: npm ci && npm run build -w @poker/protocol && npm run build -w @poker/web
+    startCommand: npx next start -p $PORT -H 0.0.0.0
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # Set to the felt-server URL, then redeploy web (see header comment)
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+      - key: NEXT_PUBLIC_WS_URL
+        sync: false

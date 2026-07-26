@@ -1,0 +1,22 @@
+{
+  "name": "poker",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @poker/engine -w @poker/protocol -w @poker/db -w @poker/server -w @poker/web",
+    "dev": "npm run dev -w @poker/server & npm run dev -w @poker/web",
+    "dev:server": "npm run dev -w @poker/server",
+    "dev:web": "npm run dev -w @poker/web",
+    "test": "npm run test -w @poker/engine -w @poker/server",
+    "test:engine": "npm run test -w @poker/engine",
+    "smoke": "npm run smoke -w @poker/server",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

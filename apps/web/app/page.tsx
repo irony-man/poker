@@ -1,0 +1,146 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { createTable, register, resolveInvite } from '@/lib/api';
+import { useSession } from '@/lib/store';
+
+export default function HomePage() {
+  const router = useRouter();
+  const setSession = useSession((s) => s.setSession);
+  const userId = useSession((s) => s.userId);
+  const sessionName = useSession((s) => s.name);
+  const ticket = useSession((s) => s.ticket);
+  const [name, setName] = useState(sessionName ?? '');
+  const [invite, setInvite] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const raw = localStorage.getItem('felt-session');
+    if (raw) {
+      try {
+        const s = JSON.parse(raw) as { userId: string; name: string; ticket: string };
+        setSession(s);
+        setName(s.name);
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [setSession]);
+
+  async function ensureSession(displayName: string) {
+    if (userId && ticket && sessionName === displayName) {
+      return { userId, name: sessionName, ticket };
+    }
+    const s = await register(displayName);
+    setSession(s);
+    localStorage.setItem('felt-session', JSON.stringify(s));
+    return s;
+  }
+
+  async function onCreate(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const session = await ensureSession(name.trim() || 'Player');
+      const table = await createTable({
+        userId: session.userId,
+        name: `${session.name}'s Table`,
+        smallBlind: 5,
+        bigBlind: 10,
+        minBuyIn: 200,
+        maxBuyIn: 1000,
+        turnTimeMs: 20000,
+        maxSeats: 6,
+        isPrivate: true,
+      });
+      router.push(`/table/${table.tableId}?invite=${table.inviteCode}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onJoin(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await ensureSession(name.trim() || 'Player');
+      const t = await resolveInvite(invite.trim());
+      router.push(`/table/${t.tableId}?invite=${t.inviteCode}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-3xl pt-8 sm:pt-16">
+      <h1 className="font-display text-4xl sm:text-5xl text-gold leading-tight">Felt</h1>
+      <p className="mt-3 max-w-md text-cream/70 text-lg">
+        Private No-Limit Texas Hold&apos;em for home games. Authoritative server, invite links, real-time
+        table sync.
+      </p>
+
+      <div className="mt-10 grid gap-6 sm:grid-cols-2">
+        <form onSubmit={onCreate} className="space-y-4 rounded-2xl border border-cream/10 bg-ink/40 p-5">
+          <h2 className="font-display text-xl">Host a table</h2>
+          <label className="block text-sm text-cream/60">
+            Your name
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="mt-1 w-full rounded-md bg-cream/5 border border-cream/15 px-3 py-2 text-cream"
+              required
+              maxLength={32}
+            />
+          </label>
+          <button
+            disabled={busy}
+            type="submit"
+            className="w-full rounded-lg bg-gold py-2.5 font-semibold text-ink hover:bg-gold-light disabled:opacity-50"
+          >
+            Create private table
+          </button>
+        </form>
+
+        <form onSubmit={onJoin} className="space-y-4 rounded-2xl border border-cream/10 bg-ink/40 p-5">
+          <h2 className="font-display text-xl">Join with invite</h2>
+          <label className="block text-sm text-cream/60">
+            Your name
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="mt-1 w-full rounded-md bg-cream/5 border border-cream/15 px-3 py-2 text-cream"
+              required
+              maxLength={32}
+            />
+          </label>
+          <label className="block text-sm text-cream/60">
+            Invite code
+            <input
+              value={invite}
+              onChange={(e) => setInvite(e.target.value)}
+              className="mt-1 w-full rounded-md bg-cream/5 border border-cream/15 px-3 py-2 text-cream"
+              required
+            />
+          </label>
+          <button
+            disabled={busy}
+            type="submit"
+            className="w-full rounded-lg border border-gold/50 py-2.5 font-semibold text-gold hover:bg-gold/10 disabled:opacity-50"
+          >
+            Join table
+          </button>
+        </form>
+      </div>
+
+      {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
+    </div>
+  );
+}

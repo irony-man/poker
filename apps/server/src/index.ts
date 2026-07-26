@@ -10,7 +10,20 @@ import { RoomManager } from './room.js';
 import path from 'node:path';
 
 const PORT = Number(process.env.PORT ?? 4000);
-const WEB_ORIGIN = process.env.WEB_ORIGIN ?? 'http://localhost:3000';
+/** Comma-separated allowlist; empty entries ignored. Defaults include local Next.js. */
+const EXTRA_ORIGINS = (process.env.WEB_ORIGIN ?? 'http://localhost:3000')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+function isAllowedOrigin(origin: string | undefined): boolean {
+  if (!origin) return true; // non-browser / same-origin tools
+  if (EXTRA_ORIGINS.includes(origin)) return true;
+  if (/^https:\/\/[a-z0-9-]+\.onrender\.com$/i.test(origin)) return true;
+  if (/^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/i.test(origin)) return true;
+  if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) return true;
+  return false;
+}
 
 async function main() {
   const auth = new AuthStore();
@@ -20,7 +33,15 @@ async function main() {
   const rooms = new RoomManager(kv, history);
 
   const app = express();
-  app.use(cors({ origin: WEB_ORIGIN, credentials: true }));
+  app.use(
+    cors({
+      origin(origin, callback) {
+        if (isAllowedOrigin(origin)) callback(null, true);
+        else callback(new Error(`CORS blocked: ${origin}`));
+      },
+      credentials: true,
+    }),
+  );
   app.use(express.json());
 
   app.get('/health', (_req, res) => {

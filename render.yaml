@@ -4,13 +4,10 @@
 # Free instances sleep after ~15 min idle (cold start ~1 min).
 # WebSockets are supported: use wss:// for the game server.
 #
-# After the first deploy finishes, set these once in the dashboard
-# (Blueprint can't always know both public URLs at first build):
-#
-#   felt-server → WEB_ORIGIN = https://<felt-web>.onrender.com
-#   felt-web    → NEXT_PUBLIC_API_URL = https://<felt-server>.onrender.com
-#               → NEXT_PUBLIC_WS_URL  = wss://<felt-server>.onrender.com/ws
-#   then Manual Deploy → Clear build cache & deploy on felt-web
+# After first deploy, set on felt-web then Clear build cache & deploy:
+#   NEXT_PUBLIC_API_URL = https://<felt-server>.onrender.com
+#   NEXT_PUBLIC_WS_URL  = wss://<felt-server>.onrender.com/ws
+# felt-server allows any https://*.onrender.com origin for CORS by default.
 
 services:
   - type: web

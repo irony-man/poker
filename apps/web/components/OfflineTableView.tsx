@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import dynamic from 'next/dynamic';
 import {
   applyAction,
   applyTimeout,
@@ -27,11 +26,6 @@ import { PlayingCard } from './PlayingCard';
 import { SeatView } from './SeatView';
 import { playTick } from '@/lib/audio';
 import { useSession, type ChatMessage, type PrivateView, type PublicTable } from '@/lib/store';
-
-const TableAtmosphere = dynamic(
-  () => import('./three/TableAtmosphere').then((m) => m.TableAtmosphere),
-  { ssr: false },
-);
 
 const HUMAN_ID = 'offline-human';
 
@@ -361,10 +355,6 @@ export function OfflineTableView({
         </div>
 
         <div className="relative flex-1 felt-surface rounded-[42%] border-[12px] border-[#3a2814] shadow-felt min-h-[340px] overflow-hidden">
-          <TableAtmosphere
-            celebrate={publicTable.street === 'payout'}
-            dealKey={publicTable.community.length}
-          />
           <div className="pointer-events-none absolute inset-6 rounded-[40%] border border-white/5 z-[1]" />
 
           <div className="absolute left-1/2 top-[40%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-3 z-10">

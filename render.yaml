@@ -32,7 +32,7 @@ services:
     plan: free
     region: oregon
     branch: main
-    buildCommand: npm ci && npm run build -w @poker/protocol && npm run build -w @poker/web
+    buildCommand: npm ci && npm run build -w @poker/engine -w @poker/protocol && npm run build -w @poker/web
     # Build output lives in apps/web/.next — start must run from that directory
     startCommand: cd apps/web && npx next start -H 0.0.0.0 -p $PORT
     envVars:

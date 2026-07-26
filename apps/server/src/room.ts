@@ -18,6 +18,7 @@ import {
 } from '@poker/engine';
 import type { KvStore } from './kv.js';
 import type { HandHistoryStore } from './history.js';
+import { chooseBotAction, isBotUserId, makeBotUserId, pickBotName } from './bot.js';
 
 export interface TableMeta {
   id: string;
@@ -104,6 +105,15 @@ export class Room {
     ) {
       return;
     }
+
+    const seat = this.state.toAct;
+    const actor = this.state.players[seat];
+    if (actor && isBotUserId(actor.userId)) {
+      const delay = 650 + Math.floor(Math.random() * 1400);
+      this.turnTimer = setTimeout(() => this.runBotTurn(seat), delay);
+      return;
+    }
+
     this.turnTimer = setTimeout(() => {
       const result = applyTimeout(this.state, this.config);
       if (result.ok) {
@@ -112,6 +122,84 @@ export class Room {
         void this.afterStateChange();
       }
     }, this.config.turnTimeMs);
+  }
+
+  private runBotTurn(seat: number): void {
+    if (this.state.toAct !== seat) return;
+    const actor = this.state.players[seat];
+    if (!actor || !isBotUserId(actor.userId)) return;
+
+    const intent = chooseBotAction(this.state, seat, this.config);
+    if (!intent) return;
+
+    const result = applyAction(this.state, seat, intent, this.config);
+    if (!result.ok) {
+      // Safety: never stall the hand
+      const fallback = applyTimeout(this.state, this.config);
+      if (fallback.ok) {
+        this.state = fallback.state;
+        this.announceEngineEvents(fallback.events);
+        void this.afterStateChange();
+      }
+      return;
+    }
+    this.state = result.state;
+    this.announceEngineEvents(result.events);
+    void this.afterStateChange();
+  }
+
+  addBot(
+    _requestedBy: string,
+    seat?: number,
+    buyIn?: number,
+  ): { ok: boolean; error?: string } {
+    if (this.state.street !== 'waiting' && this.state.street !== 'payout') {
+      return { ok: false, error: 'Add bots between hands' };
+    }
+    if (this.state.street === 'payout') {
+      this.state = returnToWaiting(this.state);
+    }
+
+    const emptySeats = this.state.players.filter((p) => p.status === 'empty').map((p) => p.seat);
+    if (emptySeats.length === 0) return { ok: false, error: 'Table full' };
+
+    const target =
+      seat !== undefined && emptySeats.includes(seat) ? seat : emptySeats[0]!;
+    const amount = buyIn ?? this.config.minBuyIn;
+    if (amount < this.config.minBuyIn || amount > this.config.maxBuyIn) {
+      return { ok: false, error: 'Buy-in out of range' };
+    }
+
+    const taken = new Set(
+      this.state.players.filter((p) => p.name).map((p) => p.name!),
+    );
+    const name = pickBotName(taken);
+    const userId = makeBotUserId(nanoid(8));
+    const result = sitDown(this.state, target, userId, name, amount);
+    if (!result.ok) return { ok: false, error: result.error };
+    this.state = result.state;
+    this.systemChat('Dealer', `${name} joins as a bot (seat ${target})`);
+    void this.afterStateChange();
+    this.maybeAutoStart();
+    return { ok: true };
+  }
+
+  removeBot(seat: number): { ok: boolean; error?: string } {
+    const p = this.state.players[seat];
+    if (!p || !isBotUserId(p.userId)) return { ok: false, error: 'Not a bot seat' };
+    if (this.state.street !== 'waiting' && this.state.street !== 'payout') {
+      return { ok: false, error: 'Remove bots between hands' };
+    }
+    if (this.state.street === 'payout') {
+      this.state = returnToWaiting(this.state);
+    }
+    const name = p.name ?? 'Bot';
+    const result = standUp(this.state, seat);
+    if (!result.ok) return { ok: false, error: result.error };
+    this.state = result.state;
+    this.systemChat('Dealer', `${name} leaves the table`);
+    void this.afterStateChange();
+    return { ok: true };
   }
 
   private async persist(): Promise<void> {

@@ -107,34 +107,58 @@ export function TableView({ tableId }: { tableId: string }) {
               isToAct={table.toAct === p.seat}
               isSelf={p.userId === userId}
               myCards={p.seat === mySeat ? priv?.holeCards ?? null : null}
+              canManageBots={table.street === 'waiting' || table.street === 'payout'}
               onSit={() => setBuyInOpen(p.seat)}
+              onAddBot={() =>
+                send({
+                  type: 'add_bot',
+                  tableId,
+                  seat: p.seat,
+                  buyIn: table.config.minBuyIn,
+                })
+              }
+              onRemoveBot={() => send({ type: 'remove_bot', tableId, seat: p.seat })}
             />
           ))}
         </div>
 
         <div className="mt-4 pb-[env(safe-area-inset-bottom)]">
           <ActionControls onAction={onAction} />
-          {table?.street === 'waiting' && mySeat !== undefined && (
-            <button
-              type="button"
-              onClick={() => send({ type: 'start_hand', tableId })}
-              className="mt-2 w-full max-w-xl mx-auto block rounded-lg border border-gold/40 py-2 text-sm text-gold hover:bg-gold/10"
-            >
-              Start hand
-            </button>
-          )}
-          {mySeat !== undefined && (table?.street === 'waiting' || table?.street === 'payout') && (
-            <button
-              type="button"
-              onClick={() => {
-                const amount = table.config.minBuyIn;
-                send({ type: 'top_up', tableId, seat: mySeat, amount });
-              }}
-              className="mt-2 w-full max-w-xl mx-auto block text-xs text-cream/50 hover:text-cream"
-            >
-              Top up +{table.config.minBuyIn}
-            </button>
-          )}
+          <div className="mt-2 w-full max-w-xl mx-auto flex flex-wrap gap-2 justify-center">
+            {table?.street === 'waiting' && mySeat !== undefined && (
+              <button
+                type="button"
+                onClick={() => send({ type: 'start_hand', tableId })}
+                className="rounded-lg border border-gold/40 px-4 py-2 text-sm text-gold hover:bg-gold/10"
+              >
+                Start hand
+              </button>
+            )}
+            {(table?.street === 'waiting' || table?.street === 'payout') &&
+              table.players.some((p) => p.status === 'empty') && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    send({ type: 'add_bot', tableId, buyIn: table.config.minBuyIn })
+                  }
+                  className="rounded-lg border border-cream/25 px-4 py-2 text-sm text-cream/80 hover:bg-cream/10"
+                >
+                  Add bot
+                </button>
+              )}
+            {mySeat !== undefined && (table?.street === 'waiting' || table?.street === 'payout') && (
+              <button
+                type="button"
+                onClick={() => {
+                  const amount = table.config.minBuyIn;
+                  send({ type: 'top_up', tableId, seat: mySeat, amount });
+                }}
+                className="rounded-lg px-4 py-2 text-xs text-cream/50 hover:text-cream"
+              >
+                Top up +{table.config.minBuyIn}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

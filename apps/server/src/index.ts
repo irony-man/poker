@@ -241,6 +241,16 @@ async function main() {
         case 'emoji':
           r.emoji(userId, name, msg.emoji);
           break;
+        case 'add_bot': {
+          const result = r.addBot(userId, msg.seat, msg.buyIn);
+          if (!result.ok) send({ type: 'error', message: result.error ?? 'Add bot failed' });
+          break;
+        }
+        case 'remove_bot': {
+          const result = r.removeBot(msg.seat);
+          if (!result.ok) send({ type: 'error', message: result.error ?? 'Remove bot failed' });
+          break;
+        }
       }
     });
 

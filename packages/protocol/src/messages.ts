@@ -56,6 +56,17 @@ export const ClientMessageSchema = z.discriminatedUnion('type', [
     emoji: z.string().min(1).max(16),
   }),
   z.object({
+    type: z.literal('add_bot'),
+    tableId: z.string().min(1),
+    seat: z.number().int().min(0).max(9).optional(),
+    buyIn: z.number().int().positive().optional(),
+  }),
+  z.object({
+    type: z.literal('remove_bot'),
+    tableId: z.string().min(1),
+    seat: z.number().int().min(0).max(9),
+  }),
+  z.object({
     type: z.literal('ping'),
   }),
 ]);

@@ -13,17 +13,21 @@
   --cream: #f3efe6;
 }
 
-html,
-body {
-  height: 100%;
+html {
+  min-height: 100%;
+  background-color: var(--ink);
 }
 
 body {
+  min-height: 100dvh;
   @apply bg-ink text-cream font-body antialiased;
+  background-color: var(--ink);
   background-image:
     radial-gradient(ellipse at 20% 0%, rgba(201, 162, 39, 0.08), transparent 50%),
     radial-gradient(ellipse at 80% 100%, rgba(26, 92, 58, 0.25), transparent 45%),
     linear-gradient(160deg, #12100e 0%, #0c0a08 100%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
 }
 
 @layer components {

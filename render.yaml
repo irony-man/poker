@@ -4,10 +4,9 @@
 # Free instances sleep after ~15 min idle (cold start ~1 min).
 # WebSockets are supported: use wss:// for the game server.
 #
-# After first deploy, set on felt-web then Clear build cache & deploy:
-#   NEXT_PUBLIC_API_URL = https://<felt-server>.onrender.com
-#   NEXT_PUBLIC_WS_URL  = wss://<felt-server>.onrender.com/ws
-# felt-server allows any https://*.onrender.com origin for CORS by default.
+# Public URLs:
+#   web:    https://felt-web.onrender.com
+#   server: https://felt-server-hgi4.onrender.com
 
 services:
   - type: web
@@ -24,9 +23,8 @@ services:
         value: "22"
       - key: DATA_DIR
         value: /opt/render/project/src/data
-      # Set after you know the web URL (see header comment)
       - key: WEB_ORIGIN
-        sync: false
+        value: https://felt-web.onrender.com
 
   - type: web
     name: felt-web
@@ -40,8 +38,7 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
-      # Set to the felt-server URL, then redeploy web (see header comment)
       - key: NEXT_PUBLIC_API_URL
-        sync: false
+        value: https://felt-server-hgi4.onrender.com
       - key: NEXT_PUBLIC_WS_URL
-        sync: false
+        value: wss://felt-server-hgi4.onrender.com/ws

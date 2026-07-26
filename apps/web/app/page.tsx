@@ -13,6 +13,8 @@ export default function HomePage() {
   const ticket = useSession((s) => s.ticket);
   const [name, setName] = useState(sessionName ?? '');
   const [invite, setInvite] = useState('');
+  const [maxSeats, setMaxSeats] = useState(6);
+  const [botCount, setBotCount] = useState(2);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,6 +30,11 @@ export default function HomePage() {
       }
     }
   }, [setSession]);
+
+  useEffect(() => {
+    const maxBots = Math.max(0, maxSeats - 1);
+    if (botCount > maxBots) setBotCount(maxBots);
+  }, [maxSeats, botCount]);
 
   async function ensureSession(displayName: string) {
     if (userId && ticket && sessionName === displayName) {
@@ -53,7 +60,8 @@ export default function HomePage() {
         minBuyIn: 200,
         maxBuyIn: 1000,
         turnTimeMs: 20000,
-        maxSeats: 6,
+        maxSeats,
+        botCount,
         isPrivate: true,
       });
       router.push(`/table/${table.tableId}?invite=${table.inviteCode}`);
@@ -79,6 +87,8 @@ export default function HomePage() {
     }
   }
 
+  const maxBots = Math.max(0, maxSeats - 1);
+
   return (
     <div className="mx-auto max-w-3xl pt-8 sm:pt-16">
       <h1 className="font-display text-4xl sm:text-5xl text-gold leading-tight">Felt</h1>
@@ -99,6 +109,34 @@ export default function HomePage() {
               required
               maxLength={32}
             />
+          </label>
+          <label className="block text-sm text-cream/60">
+            Seats at table
+            <select
+              value={maxSeats}
+              onChange={(e) => setMaxSeats(Number(e.target.value))}
+              className="mt-1 w-full rounded-md bg-cream/5 border border-cream/15 px-3 py-2 text-cream"
+            >
+              {[2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+                <option key={n} value={n}>
+                  {n} seats
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm text-cream/60">
+            Starting bots
+            <select
+              value={botCount}
+              onChange={(e) => setBotCount(Number(e.target.value))}
+              className="mt-1 w-full rounded-md bg-cream/5 border border-cream/15 px-3 py-2 text-cream"
+            >
+              {Array.from({ length: maxBots + 1 }, (_, n) => (
+                <option key={n} value={n}>
+                  {n === 0 ? 'None' : `${n} bot${n === 1 ? '' : 's'}`}
+                </option>
+              ))}
+            </select>
           </label>
           <button
             disabled={busy}

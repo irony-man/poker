@@ -77,4 +77,22 @@ describe('bots', () => {
     expect(room.addBot('host').ok).toBe(true);
     expect(room.state.players.some((p) => isBotUserId(p.userId))).toBe(true);
   });
+
+  it('addBot can seat multiple bots at once', async () => {
+    const kv = new MemoryKv();
+    const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-bots-${Date.now()}`));
+    const rooms = new RoomManager(kv, history);
+    const meta = rooms.create({
+      name: 'Multi',
+      hostUserId: 'host',
+      isPrivate: true,
+      config,
+    });
+    const room = rooms.get(meta.id)!;
+    expect(room.sit('host', 'Host', 0, 500).ok).toBe(true);
+    const result = room.addBot('host', undefined, 200, 3);
+    expect(result.ok).toBe(true);
+    expect(result.added).toBe(3);
+    expect(room.state.players.filter((p) => isBotUserId(p.userId)).length).toBe(3);
+  });
 });

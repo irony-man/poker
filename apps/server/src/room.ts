@@ -152,7 +152,8 @@ export class Room {
     _requestedBy: string,
     seat?: number,
     buyIn?: number,
-  ): { ok: boolean; error?: string } {
+    count = 1,
+  ): { ok: boolean; error?: string; added?: number } {
     if (this.state.street !== 'waiting' && this.state.street !== 'payout') {
       return { ok: false, error: 'Add bots between hands' };
     }
@@ -160,28 +161,47 @@ export class Room {
       this.state = returnToWaiting(this.state);
     }
 
-    const emptySeats = this.state.players.filter((p) => p.status === 'empty').map((p) => p.seat);
-    if (emptySeats.length === 0) return { ok: false, error: 'Table full' };
-
-    const target =
-      seat !== undefined && emptySeats.includes(seat) ? seat : emptySeats[0]!;
     const amount = buyIn ?? this.config.minBuyIn;
     if (amount < this.config.minBuyIn || amount > this.config.maxBuyIn) {
       return { ok: false, error: 'Buy-in out of range' };
     }
 
-    const taken = new Set(
-      this.state.players.filter((p) => p.name).map((p) => p.name!),
+    // Specific seat → always one bot
+    const toAdd = seat !== undefined ? 1 : Math.max(1, Math.min(9, count));
+    let added = 0;
+    const joined: string[] = [];
+
+    for (let i = 0; i < toAdd; i++) {
+      const emptySeats = this.state.players.filter((p) => p.status === 'empty').map((p) => p.seat);
+      if (emptySeats.length === 0) break;
+
+      let nextSeat = emptySeats[0]!;
+      if (i === 0 && seat !== undefined) {
+        if (!emptySeats.includes(seat)) break;
+        nextSeat = seat;
+      }
+
+      const taken = new Set(this.state.players.filter((p) => p.name).map((p) => p.name!));
+      const name = pickBotName(taken);
+      const userId = makeBotUserId(nanoid(8));
+      const result = sitDown(this.state, nextSeat, userId, name, amount);
+      if (!result.ok) break;
+      this.state = result.state;
+      joined.push(name);
+      added += 1;
+    }
+
+    if (added === 0) return { ok: false, error: 'Table full' };
+
+    this.systemChat(
+      'Dealer',
+      added === 1
+        ? `${joined[0]} joins as a bot`
+        : `${added} bots join — ${joined.join(', ')}`,
     );
-    const name = pickBotName(taken);
-    const userId = makeBotUserId(nanoid(8));
-    const result = sitDown(this.state, target, userId, name, amount);
-    if (!result.ok) return { ok: false, error: result.error };
-    this.state = result.state;
-    this.systemChat('Dealer', `${name} joins as a bot (seat ${target})`);
     void this.afterStateChange();
     this.maybeAutoStart();
-    return { ok: true };
+    return { ok: true, added };
   }
 
   removeBot(seat: number): { ok: boolean; error?: string } {
@@ -200,6 +220,28 @@ export class Room {
     this.systemChat('Dealer', `${name} leaves the table`);
     void this.afterStateChange();
     return { ok: true };
+  }
+
+  removeAllBots(): { ok: boolean; error?: string; removed?: number } {
+    if (this.state.street !== 'waiting' && this.state.street !== 'payout') {
+      return { ok: false, error: 'Remove bots between hands' };
+    }
+    if (this.state.street === 'payout') {
+      this.state = returnToWaiting(this.state);
+    }
+    let removed = 0;
+    for (const p of [...this.state.players]) {
+      if (!isBotUserId(p.userId)) continue;
+      const result = standUp(this.state, p.seat);
+      if (result.ok) {
+        this.state = result.state;
+        removed += 1;
+      }
+    }
+    if (removed === 0) return { ok: false, error: 'No bots seated' };
+    this.systemChat('Dealer', `Removed ${removed} bot${removed === 1 ? '' : 's'}`);
+    void this.afterStateChange();
+    return { ok: true, removed };
   }
 
   private async persist(): Promise<void> {

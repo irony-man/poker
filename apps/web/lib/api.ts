@@ -20,6 +20,7 @@ export async function createTable(input: {
   maxBuyIn: number;
   turnTimeMs: number;
   maxSeats: number;
+  botCount?: number;
   isPrivate: boolean;
 }) {
   const res = await fetch(`${API_URL}/api/tables`, {

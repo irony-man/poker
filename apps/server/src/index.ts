@@ -99,11 +99,18 @@ async function main() {
         turnTimeMs: d.turnTimeMs,
       },
     });
+    const room = rooms.get(meta.id)!;
+    const maxBots = Math.max(0, d.maxSeats - 1);
+    const bots = Math.min(d.botCount, maxBots);
+    if (bots > 0) {
+      room.addBot(user.id, undefined, d.minBuyIn, bots);
+    }
     res.json({
       tableId: meta.id,
       inviteCode: meta.inviteCode,
       name: meta.name,
       config: meta.config,
+      botsAdded: bots,
     });
   });
 
@@ -242,13 +249,18 @@ async function main() {
           r.emoji(userId, name, msg.emoji);
           break;
         case 'add_bot': {
-          const result = r.addBot(userId, msg.seat, msg.buyIn);
+          const result = r.addBot(userId, msg.seat, msg.buyIn, msg.count ?? 1);
           if (!result.ok) send({ type: 'error', message: result.error ?? 'Add bot failed' });
           break;
         }
         case 'remove_bot': {
           const result = r.removeBot(msg.seat);
           if (!result.ok) send({ type: 'error', message: result.error ?? 'Remove bot failed' });
+          break;
+        }
+        case 'remove_all_bots': {
+          const result = r.removeAllBots();
+          if (!result.ok) send({ type: 'error', message: result.error ?? 'Remove bots failed' });
           break;
         }
       }

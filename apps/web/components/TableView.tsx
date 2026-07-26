@@ -25,6 +25,7 @@ export function TableView({ tableId }: { tableId: string }) {
   const setError = useSession((s) => s.setError);
   const { send } = usePokerSocket(tableId);
   const [buyInOpen, setBuyInOpen] = useState<number | null>(null);
+  const [botAddCount, setBotAddCount] = useState(3);
   const prevVersion = useRef<number | null>(null);
 
   useEffect(() => {
@@ -63,6 +64,9 @@ export function TableView({ tableId }: { tableId: string }) {
     }
     return map;
   }, [table?.showdownHands, winBySeat]);
+
+  const emptySeats = table?.players.filter((p) => p.status === 'empty').length ?? 0;
+  const botSeats = table?.players.filter((p) => p.userId?.startsWith('bot:')).length ?? 0;
 
   const onAction = (action: string, amount?: number) => {
     if (!table) return;
@@ -196,7 +200,7 @@ export function TableView({ tableId }: { tableId: string }) {
 
         <div className="mt-4 pb-[env(safe-area-inset-bottom)]">
           <ActionControls onAction={onAction} />
-          <div className="mt-2 w-full max-w-xl mx-auto flex flex-wrap gap-2 justify-center">
+          <div className="mt-2 w-full max-w-xl mx-auto flex flex-wrap gap-2 justify-center items-center">
             {table?.street === 'waiting' && mySeat !== undefined && (
               <button
                 type="button"
@@ -206,18 +210,61 @@ export function TableView({ tableId }: { tableId: string }) {
                 Start hand
               </button>
             )}
-            {(table?.street === 'waiting' || table?.street === 'payout') &&
-              table.players.some((p) => p.status === 'empty') && (
+            {(table?.street === 'waiting' || table?.street === 'payout') && emptySeats > 0 && (
+              <>
+                <label className="flex items-center gap-2 text-xs text-cream/60">
+                  Bots
+                  <select
+                    value={Math.min(botAddCount, emptySeats)}
+                    onChange={(e) => setBotAddCount(Number(e.target.value))}
+                    className="rounded-md bg-cream/5 border border-cream/15 px-2 py-1.5 text-cream text-sm"
+                  >
+                    {Array.from({ length: emptySeats }, (_, i) => i + 1).map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <button
                   type="button"
                   onClick={() =>
-                    send({ type: 'add_bot', tableId, buyIn: table.config.minBuyIn })
+                    send({
+                      type: 'add_bot',
+                      tableId,
+                      buyIn: table.config.minBuyIn,
+                      count: Math.min(botAddCount, emptySeats),
+                    })
                   }
                   className="rounded-lg border border-cream/25 px-4 py-2 text-sm text-cream/80 hover:bg-cream/10"
                 >
-                  Add bot
+                  Add bots
                 </button>
-              )}
+                <button
+                  type="button"
+                  onClick={() =>
+                    send({
+                      type: 'add_bot',
+                      tableId,
+                      buyIn: table.config.minBuyIn,
+                      count: emptySeats,
+                    })
+                  }
+                  className="rounded-lg border border-cream/15 px-3 py-2 text-xs text-cream/60 hover:bg-cream/10"
+                >
+                  Fill table
+                </button>
+              </>
+            )}
+            {(table?.street === 'waiting' || table?.street === 'payout') && botSeats > 0 && (
+              <button
+                type="button"
+                onClick={() => send({ type: 'remove_all_bots', tableId })}
+                className="rounded-lg px-3 py-2 text-xs text-cream/45 hover:text-red-300"
+              >
+                Remove all bots
+              </button>
+            )}
             {mySeat !== undefined && (table?.street === 'waiting' || table?.street === 'payout') && (
               <button
                 type="button"

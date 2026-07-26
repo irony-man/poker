@@ -60,11 +60,17 @@ export const ClientMessageSchema = z.discriminatedUnion('type', [
     tableId: z.string().min(1),
     seat: z.number().int().min(0).max(9).optional(),
     buyIn: z.number().int().positive().optional(),
+    /** How many bots to seat (ignored when `seat` is set). Default 1. */
+    count: z.number().int().min(1).max(9).optional(),
   }),
   z.object({
     type: z.literal('remove_bot'),
     tableId: z.string().min(1),
     seat: z.number().int().min(0).max(9),
+  }),
+  z.object({
+    type: z.literal('remove_all_bots'),
+    tableId: z.string().min(1),
   }),
   z.object({
     type: z.literal('ping'),
@@ -126,6 +132,8 @@ export const CreateTableBodySchema = z.object({
   maxBuyIn: z.number().int().positive().default(1000),
   turnTimeMs: z.number().int().positive().default(20000),
   maxSeats: z.number().int().min(2).max(9).default(6),
+  /** Seat bots when the table is created (host still needs to sit). */
+  botCount: z.number().int().min(0).max(8).default(0),
   isPrivate: z.boolean().default(true),
 });
 

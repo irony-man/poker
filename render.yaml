@@ -25,6 +25,8 @@ services:
         value: /opt/render/project/src/data
       - key: WEB_ORIGIN
         value: https://felt-web.onrender.com
+      - key: CLERK_SECRET_KEY
+        sync: false
 
   - type: web
     name: felt-web

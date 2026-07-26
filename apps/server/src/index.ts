@@ -4,6 +4,7 @@ import cors from 'cors';
 import { WebSocketServer, WebSocket } from 'ws';
 import { ClientMessageSchema, CreateTableBodySchema, RegisterBodySchema } from '@poker/protocol';
 import { AuthStore } from './auth.js';
+import { clerkAuthRequired, requireClerkIdentity } from './clerkAuth.js';
 import { createHistoryStore, writeSchemaDoc } from './history.js';
 import { createKv } from './kv.js';
 import { RoomManager } from './room.js';
@@ -48,13 +49,24 @@ async function main() {
     res.json({ ok: true });
   });
 
-  app.post('/api/register', (req, res) => {
+  app.post('/api/register', async (req, res) => {
     const parsed = RegisterBodySchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.message });
       return;
     }
-    const user = auth.register(parsed.data.name, parsed.data.avatarId, parsed.data.userId);
+
+    let userId = parsed.data.userId;
+    if (clerkAuthRequired()) {
+      const identity = await requireClerkIdentity(req);
+      if (!identity) {
+        res.status(401).json({ error: 'Sign in required' });
+        return;
+      }
+      userId = identity.userId;
+    }
+
+    const user = auth.register(parsed.data.name, parsed.data.avatarId, userId);
     const ticket = auth.issueTicket(user.id);
     res.json({
       userId: user.id,
@@ -64,7 +76,27 @@ async function main() {
     });
   });
 
-  app.post('/api/ticket', (req, res) => {
+  app.post('/api/ticket', async (req, res) => {
+    if (clerkAuthRequired()) {
+      const identity = await requireClerkIdentity(req);
+      if (!identity) {
+        res.status(401).json({ error: 'Sign in required' });
+        return;
+      }
+      const existing = auth.getUser(identity.userId);
+      if (!existing) {
+        res.status(401).json({ error: 'Register first' });
+        return;
+      }
+      res.json({
+        ticket: auth.issueTicket(existing.id),
+        userId: existing.id,
+        name: existing.name,
+        avatarId: existing.avatarId,
+      });
+      return;
+    }
+
     const userId = String(req.body?.userId ?? '');
     const user = auth.getUser(userId);
     if (!user) {
@@ -79,13 +111,23 @@ async function main() {
     });
   });
 
-  app.post('/api/tables', (req, res) => {
+  app.post('/api/tables', async (req, res) => {
     const body = CreateTableBodySchema.safeParse(req.body);
     if (!body.success) {
       res.status(400).json({ error: body.error.message });
       return;
     }
-    const userId = String(req.body?.userId ?? '');
+
+    let userId = String(req.body?.userId ?? '');
+    if (clerkAuthRequired()) {
+      const identity = await requireClerkIdentity(req);
+      if (!identity) {
+        res.status(401).json({ error: 'Sign in required' });
+        return;
+      }
+      userId = identity.userId;
+    }
+
     const user = auth.getUser(userId);
     if (!user) {
       res.status(401).json({ error: 'Register first' });

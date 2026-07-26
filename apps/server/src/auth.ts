@@ -22,23 +22,33 @@ export class AuthStore {
 
   /**
    * Register or refresh a session.
-   * Identity is keyed by `userId` (never by display name) so two people named
-   * "Player" do not steal each other's connection / seat.
+   * When `userId` is provided (Clerk `sub`), that id is the stable identity.
    */
   register(name: string, avatarId?: number, userId?: string): User {
+    const trimmed = name.slice(0, 32);
+
     if (userId) {
       const existing = this.users.get(userId);
       if (existing) {
-        existing.name = name.slice(0, 32);
+        existing.name = trimmed;
         if (avatarId !== undefined) existing.avatarId = clampAvatarId(avatarId);
         return existing;
       }
+
+      const user: User = {
+        id: userId,
+        name: trimmed,
+        avatarId: avatarId !== undefined ? clampAvatarId(avatarId) : avatarIdFromUserId(userId),
+        createdAt: Date.now(),
+      };
+      this.users.set(user.id, user);
+      return user;
     }
 
     const id = nanoid(12);
     const user: User = {
       id,
-      name: name.slice(0, 32),
+      name: trimmed,
       avatarId: avatarId !== undefined ? clampAvatarId(avatarId) : avatarIdFromUserId(id),
       createdAt: Date.now(),
     };

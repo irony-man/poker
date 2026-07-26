@@ -1,13 +1,26 @@
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 export const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? 'ws://localhost:4000/ws';
 
-export async function register(name: string, avatarId?: number, userId?: string) {
+async function authHeaders(clerkToken?: string | null): Promise<HeadersInit> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (clerkToken) headers.Authorization = `Bearer ${clerkToken}`;
+  return headers;
+}
+
+export async function register(
+  name: string,
+  avatarId?: number,
+  options?: { clerkToken?: string | null },
+) {
   const res = await fetch(`${API_URL}/api/register`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, avatarId, userId }),
+    headers: await authHeaders(options?.clerkToken),
+    body: JSON.stringify({ name, avatarId }),
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(res.status === 401 ? 'Sign in required' : text);
+  }
   return res.json() as Promise<{
     userId: string;
     name: string;
@@ -16,24 +29,30 @@ export async function register(name: string, avatarId?: number, userId?: string)
   }>;
 }
 
-export async function createTable(input: {
-  userId: string;
-  name: string;
-  smallBlind: number;
-  bigBlind: number;
-  minBuyIn: number;
-  maxBuyIn: number;
-  turnTimeMs: number;
-  maxSeats: number;
-  botCount?: number;
-  isPrivate: boolean;
-}) {
+export async function createTable(
+  input: {
+    userId: string;
+    name: string;
+    smallBlind: number;
+    bigBlind: number;
+    minBuyIn: number;
+    maxBuyIn: number;
+    turnTimeMs: number;
+    maxSeats: number;
+    botCount?: number;
+    isPrivate: boolean;
+  },
+  options?: { clerkToken?: string | null },
+) {
   const res = await fetch(`${API_URL}/api/tables`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await authHeaders(options?.clerkToken),
     body: JSON.stringify(input),
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(res.status === 401 ? 'Sign in required' : text);
+  }
   return res.json() as Promise<{
     tableId: string;
     inviteCode: string;

@@ -12,6 +12,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@clerk/backend": "^3.13.1",
     "@poker/db": "*",
     "@poker/engine": "*",
     "@poker/protocol": "*",

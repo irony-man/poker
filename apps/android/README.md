@@ -25,6 +25,14 @@ Multi-module Jetpack Compose client for Felt poker.
 
 Override in `app/build.gradle.kts` for local server (`http://10.0.2.2:4000` on emulator).
 
+## Auth (Clerk)
+
+Online host/join requires a Clerk account (same app as the web client). Offline play does not.
+
+1. In the [Clerk Dashboard](https://dashboard.clerk.com), open **Native applications** and enable the **Native API**.
+2. The publishable key is baked into `BuildConfig.CLERK_PUBLISHABLE_KEY` (override with `clerk.publishable.key=…` in `local.properties`).
+3. The game server must have `CLERK_SECRET_KEY` set so `/api/register` accepts Bearer session JWTs.
+
 ## Modules
 
 | Module | Role |

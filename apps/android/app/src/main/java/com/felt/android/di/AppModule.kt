@@ -1,6 +1,9 @@
 package com.felt.android.di
 
 import com.felt.android.BuildConfig
+import com.felt.android.auth.ClerkAuthTokenProvider
+import com.felt.android.core.network.AuthTokenProvider
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -21,4 +24,12 @@ object AppModule {
     @Singleton
     @Named("ws_url")
     fun provideWsUrl(): String = BuildConfig.FELT_WS_URL
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class AuthModule {
+    @Binds
+    @Singleton
+    abstract fun bindAuthTokenProvider(impl: ClerkAuthTokenProvider): AuthTokenProvider
 }

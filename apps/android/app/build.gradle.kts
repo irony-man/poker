@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -9,7 +11,7 @@ plugins {
 
 android {
     namespace = "com.felt.android"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.felt.android"
@@ -28,6 +30,18 @@ android {
             "FELT_WS_URL",
             "\"wss://felt-server-hgi4.onrender.com/ws\"",
         )
+
+        val localProps = Properties().apply {
+            val f = rootProject.file("local.properties")
+            if (f.exists()) f.inputStream().use(::load)
+        }
+        // Publishable key only (safe in the APK). Override via local.properties:
+        // clerk.publishable.key=pk_test_...
+        val clerkPk = localProps.getProperty(
+            "clerk.publishable.key",
+            "pk_test_bW92aW5nLWNvYnJhLTE5LmNsZXJrLmFjY291bnRzLmRldiQ",
+        )
+        buildConfigField("String", "CLERK_PUBLISHABLE_KEY", "\"$clerkPk\"")
     }
 
     buildFeatures {
@@ -40,14 +54,17 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
 
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
@@ -70,6 +87,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.hilt.android)
     implementation(libs.hilt.navigation.compose)
+    implementation(libs.clerk.android.ui)
     ksp(libs.hilt.compiler)
 
     implementation(platform(libs.androidx.compose.bom))

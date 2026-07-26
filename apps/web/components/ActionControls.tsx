@@ -5,8 +5,10 @@ import { useSession } from '@/lib/store';
 
 export function ActionControls({
   onAction,
+  spectating = false,
 }: {
   onAction: (action: string, amount?: number) => void;
+  spectating?: boolean;
 }) {
   const table = useSession((s) => s.table);
   const priv = useSession((s) => s.private);
@@ -31,11 +33,13 @@ export function ActionControls({
   if (!isTurn || !legal || legal.types.length === 0) {
     return (
       <div className="hud-panel px-4 py-3 text-center text-sm font-medium tracking-wide text-cream/55">
-        {table?.street === 'waiting'
-          ? 'Waiting for players…'
-          : table?.toAct !== mySeat
-            ? 'Waiting for your turn…'
-            : '—'}
+        {spectating
+          ? 'Spectating — you are not seated'
+          : table?.street === 'waiting'
+            ? 'Waiting for players…'
+            : table?.toAct !== mySeat
+              ? 'Waiting for your turn…'
+              : '—'}
       </div>
     );
   }

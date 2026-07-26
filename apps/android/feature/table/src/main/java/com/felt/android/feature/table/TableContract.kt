@@ -20,6 +20,7 @@ object TableContract {
         data class AddBots(val count: Int) : Intent
         data object RemoveAllBots : Intent
         data class TopUp(val seat: Int, val amount: Int) : Intent
+        data object EnableSitToPlay : Intent
     }
 
     data class UiState(
@@ -34,6 +35,7 @@ object TableContract {
         val lastError: String? = null,
         val emojiBurst: EmojiBurst? = null,
         val loading: Boolean = true,
+        val spectating: Boolean = false,
     )
 
     sealed interface Effect {

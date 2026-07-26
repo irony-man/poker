@@ -61,6 +61,7 @@ data class TableConfig(
 data class ShowdownHand(
     val seat: Int,
     val handName: String,
+    val cards: List<String> = emptyList(),
 )
 
 data class HandState(
@@ -521,6 +522,7 @@ private fun goToShowdown(state: MutableHandState, events: MutableList<EngineEven
 
     val living = livingPlayers(state.toImmutable())
     val ranks = mutableMapOf<Int, HandRank>()
+    val bestCardsBySeat = mutableMapOf<Int, List<String>>()
 
     if (living.size == 1) {
         val winner = living[0]
@@ -539,11 +541,17 @@ private fun goToShowdown(state: MutableHandState, events: MutableList<EngineEven
         val seat = p.seat
         state.players[seat] = state.players[seat].copy(revealed = true)
         val seven = listOf(hole.first, hole.second) + state.community
-        ranks[seat] = evaluateBest(seven)
+        val best = evaluateBestHand(seven)
+        ranks[seat] = best.rank
+        bestCardsBySeat[seat] = best.cards.map { cardToString(it) }
     }
 
     state.showdownHands = ranks.entries.map { (seat, rank) ->
-        ShowdownHand(seat, HAND_CATEGORY_NAMES.getValue(categoryOf(rank)))
+        ShowdownHand(
+            seat = seat,
+            handName = HAND_CATEGORY_NAMES.getValue(categoryOf(rank)),
+            cards = bestCardsBySeat[seat].orEmpty(),
+        )
     }.toMutableList()
 
     val contributions = state.players

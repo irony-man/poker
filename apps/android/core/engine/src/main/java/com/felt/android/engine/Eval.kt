@@ -108,12 +108,15 @@ fun evaluate5(cards: List<Card>): HandRank {
     return pack(HandCategory.HighCard, ranks)
 }
 
-/** Best 5-card hand from 5–7 cards. */
-fun evaluateBest(cards: List<Card>): HandRank {
-    require(cards.size in 5..7) { "evaluateBest requires 5–7 cards" }
-    if (cards.size == 5) return evaluate5(cards)
+/** Best 5-card hand from 5–7 cards, including which cards form it. */
+data class BestHand(val rank: HandRank, val cards: List<Card>)
+
+fun evaluateBestHand(cards: List<Card>): BestHand {
+    require(cards.size in 5..7) { "evaluateBestHand requires 5–7 cards" }
+    if (cards.size == 5) return BestHand(evaluate5(cards), cards.map { it.copy() })
 
     var best = 0
+    var bestCards: List<Card> = emptyList()
     val n = cards.size
     val idx = IntArray(5) { it }
 
@@ -122,7 +125,10 @@ fun evaluateBest(cards: List<Card>): HandRank {
     fun comb(start: Int, depth: Int) {
         if (depth == 5) {
             val r = score()
-            if (r > best) best = r
+            if (r > best) {
+                best = r
+                bestCards = idx.map { cards[it].copy() }
+            }
             return
         }
         for (i in start..n - (5 - depth)) {
@@ -131,7 +137,10 @@ fun evaluateBest(cards: List<Card>): HandRank {
         }
     }
     comb(0, 0)
-    return best
+    return BestHand(best, bestCards)
 }
+
+/** Best 5-card hand rank from 5–7 cards. */
+fun evaluateBest(cards: List<Card>): HandRank = evaluateBestHand(cards).rank
 
 fun categoryOf(rank: HandRank): HandCategory = HandCategory.entries[rank shr 20]

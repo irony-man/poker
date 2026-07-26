@@ -1,6 +1,6 @@
 import type { Card } from './cards.js';
-import { createDeck, shuffle } from './cards.js';
-import { evaluateBest, categoryOf, HAND_CATEGORY_NAMES } from './eval.js';
+import { cardToString, createDeck, shuffle } from './cards.js';
+import { evaluateBestHand, categoryOf, HAND_CATEGORY_NAMES } from './eval.js';
 import { awardPots, buildSidePots, type PotAward, type PotLayer } from './pots.js';
 
 export type Street = 'waiting' | 'preflop' | 'flop' | 'turn' | 'river' | 'showdown' | 'payout';
@@ -58,8 +58,8 @@ export interface HandState {
   sidePots: PotLayer[];
   actionSeq: number;
   winners: PotAward[];
-  /** Hand category names for revealed seats at showdown. */
-  showdownHands: { seat: number; handName: string }[];
+  /** Hand category names + best five cards for revealed seats at showdown. */
+  showdownHands: { seat: number; handName: string; cards: string[] }[];
   /** Seats that have acted since last aggression this street. */
   actedSinceAggression: Set<number>;
   version: number;
@@ -93,7 +93,7 @@ function cloneState(state: HandState): HandState {
     })),
     sidePots: state.sidePots.map((p) => ({ ...p, eligible: [...p.eligible] })),
     winners: state.winners.map((w) => ({ ...w })),
-    showdownHands: state.showdownHands.map((h) => ({ ...h })),
+    showdownHands: state.showdownHands.map((h) => ({ ...h, cards: [...h.cards] })),
     actedSinceAggression: new Set(state.actedSinceAggression),
   };
 }
@@ -440,6 +440,7 @@ function goToShowdown(state: HandState, events: EngineEvent[]): ApplyResult {
 
   const living = livingPlayers(state);
   const ranks = new Map<number, number>();
+  const bestCardsBySeat = new Map<number, string[]>();
 
   if (living.length === 1) {
     // Award without reveal
@@ -458,12 +459,18 @@ function goToShowdown(state: HandState, events: EngineEvent[]): ApplyResult {
     if (!p.holeCards) continue;
     p.revealed = true;
     const seven = [...p.holeCards, ...state.community];
-    ranks.set(p.seat, evaluateBest(seven));
+    const best = evaluateBestHand(seven);
+    ranks.set(p.seat, best.rank);
+    bestCardsBySeat.set(
+      p.seat,
+      best.cards.map((c) => cardToString(c)),
+    );
   }
 
   state.showdownHands = [...ranks.entries()].map(([seat, rank]) => ({
     seat,
     handName: HAND_CATEGORY_NAMES[categoryOf(rank)],
+    cards: bestCardsBySeat.get(seat) ?? [],
   }));
 
   const contributions = state.players

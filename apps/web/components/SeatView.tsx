@@ -13,10 +13,12 @@ export function SeatView({
   winAmount,
   handName,
   myCards,
+  winningCards,
   onSit,
   onAddBot,
   onRemoveBot,
   canManageBots,
+  spectating,
   angle,
 }: {
   player: PublicPlayer;
@@ -27,10 +29,12 @@ export function SeatView({
   winAmount?: number;
   handName?: string | null;
   myCards: [string, string] | null;
+  winningCards?: Set<string> | null;
   onSit?: () => void;
   onAddBot?: () => void;
   onRemoveBot?: () => void;
   canManageBots?: boolean;
+  spectating?: boolean;
   angle: number;
 }) {
   const rad = (angle * Math.PI) / 180;
@@ -43,6 +47,16 @@ export function SeatView({
   const betY = 50 + Math.sin(rad) * 20;
 
   if (player.status === 'empty') {
+    if (spectating) {
+      return (
+        <div
+          style={{ left: `${x}%`, top: `${y}%` }}
+          className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-cream/20 bg-ink/40 px-3 py-1.5 text-[11px] font-display uppercase tracking-wider text-cream/40 backdrop-blur-sm"
+        >
+          Empty
+        </div>
+      );
+    }
     return (
       <div
         style={{ left: `${x}%`, top: `${y}%` }}
@@ -96,8 +110,18 @@ export function SeatView({
             </>
           ) : showCards ? (
             <>
-              <PlayingCard code={showCards[0]} small={!isSelf} />
-              <PlayingCard code={showCards[1]} small={!isSelf} />
+              <PlayingCard
+                code={showCards[0]}
+                small={!isSelf}
+                highlight={!!winningCards?.has(showCards[0]!)}
+                dimmed={!!winningCards && !winningCards.has(showCards[0]!)}
+              />
+              <PlayingCard
+                code={showCards[1]}
+                small={!isSelf}
+                highlight={!!winningCards?.has(showCards[1]!)}
+                dimmed={!!winningCards && !winningCards.has(showCards[1]!)}
+              />
             </>
           ) : null}
         </div>

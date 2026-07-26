@@ -38,6 +38,7 @@ data class TablePlayerUi(
     val stack: Int,
     val bet: Int,
     val status: String,
+    val holeCards: List<String>? = null,
 )
 
 data class TableUiState(
@@ -50,6 +51,7 @@ data class TableUiState(
     val actionSeq: Int,
     val bigBlind: Int,
     val players: List<TablePlayerUi>,
+    val winningCards: Set<String> = emptySet(),
 )
 
 data class LegalActionsUi(
@@ -66,6 +68,7 @@ fun FeltTableLayout(
     holeCards: List<String>?,
     onSit: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    canSit: Boolean = true,
 ) {
     BoxWithConstraints(
         modifier = modifier
@@ -91,7 +94,14 @@ fun FeltTableLayout(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             modifier = Modifier.padding(top = 8.dp),
                         ) {
-                            table.community.forEach { card -> CardCodeText(card) }
+                            val highlightMode = table.winningCards.isNotEmpty()
+                            table.community.forEach { card ->
+                                CardCodeText(
+                                    code = card,
+                                    highlight = highlightMode && card in table.winningCards,
+                                    dimmed = highlightMode && card !in table.winningCards,
+                                )
+                            }
                         }
                         if (table.community.isEmpty() && table.street != "waiting") {
                             Text("Dealing…", color = FeltColors.Cream.copy(alpha = 0.4f), fontSize = 12.sp)
@@ -106,8 +116,14 @@ fun FeltTableLayout(
                         isSelf = player.userId == userId,
                         isDealer = table.dealerButton == player.seat && table.street != "waiting",
                         isToAct = table.toAct == player.seat,
-                        myCards = if (player.userId == userId) holeCards else null,
+                        myCards = when {
+                            player.userId == userId -> holeCards
+                            !player.holeCards.isNullOrEmpty() -> player.holeCards
+                            else -> null
+                        },
+                        winningCards = table.winningCards,
                         onSit = { onSit(player.seat) },
+                        canSit = canSit,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -124,8 +140,10 @@ private fun SeatChip(
     isDealer: Boolean,
     isToAct: Boolean,
     myCards: List<String>?,
+    winningCards: Set<String>,
     onSit: () -> Unit,
     modifier: Modifier = Modifier,
+    canSit: Boolean = true,
 ) {
     BoxWithConstraints(modifier = modifier) {
         val rad = Math.toRadians(angleDeg)
@@ -161,32 +179,54 @@ private fun SeatChip(
                     Text("Bet ${formatChips(player.bet)}", fontSize = 9.sp, color = FeltColors.Cream.copy(0.5f))
                 }
             } else {
-                FeltGhostButton(text = "Sit", onClick = onSit)
+                if (canSit) {
+                    FeltGhostButton(text = "Sit", onClick = onSit)
+                } else {
+                    Text("Empty", fontSize = 11.sp, color = FeltColors.Cream.copy(alpha = 0.4f))
+                }
             }
             myCards?.let { cards ->
-                Text(
-                    text = cards.joinToString("  "),
-                    fontFamily = FontFamily.Monospace,
-                    color = FeltColors.Gold,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    val highlightMode = winningCards.isNotEmpty()
+                    cards.forEach { code ->
+                        CardCodeText(
+                            code = code,
+                            highlight = highlightMode && code in winningCards,
+                            dimmed = highlightMode && code !in winningCards,
+                        )
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun CardCodeText(code: String) {
+private fun CardCodeText(
+    code: String,
+    highlight: Boolean = false,
+    dimmed: Boolean = false,
+) {
     Text(
         text = code,
         modifier = Modifier
             .clip(RoundedCornerShape(4.dp))
-            .background(FeltColors.Cream)
+            .then(
+                if (highlight) Modifier.border(2.dp, FeltColors.Gold, RoundedCornerShape(4.dp))
+                else Modifier,
+            )
+            .background(
+                when {
+                    highlight -> FeltColors.Gold
+                    dimmed -> FeltColors.Cream.copy(alpha = 0.35f)
+                    else -> FeltColors.Cream
+                },
+            )
             .padding(horizontal = 8.dp, vertical = 4.dp),
-        color = FeltColors.Ink,
+        color = if (highlight) FeltColors.Ink else FeltColors.Ink.copy(alpha = if (dimmed) 0.45f else 1f),
         fontFamily = FontFamily.Monospace,
         fontWeight = FontWeight.Bold,
+        fontSize = if (highlight) 16.sp else 14.sp,
     )
 }
 
@@ -197,6 +237,7 @@ fun TableActionControls(
     legal: LegalActionsUi?,
     onAction: (String, Int?) -> Unit,
     modifier: Modifier = Modifier,
+    waitingLabel: String? = null,
 ) {
     val mySeat = table.players.find { it.userId == userId }?.seat
     val isTurn = table.toAct == mySeat && legal != null
@@ -208,11 +249,12 @@ fun TableActionControls(
     if (!isTurn || legal == null || legal.types.isEmpty()) {
         HudPanel(modifier = modifier.fillMaxWidth().padding(top = 8.dp)) {
             Text(
-                text = when {
-                    table.street == "waiting" -> "Waiting for players…"
-                    table.toAct != mySeat -> "Waiting for your turn…"
-                    else -> "—"
-                },
+                text = waitingLabel
+                    ?: when {
+                        table.street == "waiting" -> "Waiting for players…"
+                        table.toAct != mySeat -> "Waiting for your turn…"
+                        else -> "—"
+                    },
                 color = FeltColors.Cream.copy(alpha = 0.55f),
                 modifier = Modifier.fillMaxWidth(),
             )

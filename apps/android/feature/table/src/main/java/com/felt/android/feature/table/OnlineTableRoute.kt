@@ -6,4 +6,5 @@ import kotlinx.serialization.Serializable
 data class OnlineTableRoute(
     val tableId: String,
     val invite: String? = null,
+    val spectate: Boolean = false,
 )

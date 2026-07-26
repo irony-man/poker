@@ -16,7 +16,13 @@ function seatAngles(maxSeats: number): number[] {
   return Array.from({ length: maxSeats }, (_, i) => start + i * step);
 }
 
-export function TableView({ tableId }: { tableId: string }) {
+export function TableView({
+  tableId,
+  initialSpectate = false,
+}: {
+  tableId: string;
+  initialSpectate?: boolean;
+}) {
   const table = useSession((s) => s.table);
   const priv = useSession((s) => s.private);
   const userId = useSession((s) => s.userId);
@@ -26,6 +32,7 @@ export function TableView({ tableId }: { tableId: string }) {
   const { send } = usePokerSocket(tableId);
   const [buyInOpen, setBuyInOpen] = useState<number | null>(null);
   const [botAddCount, setBotAddCount] = useState(3);
+  const [spectating, setSpectating] = useState(initialSpectate);
   const prevVersion = useRef<number | null>(null);
 
   useEffect(() => {
@@ -44,6 +51,11 @@ export function TableView({ tableId }: { tableId: string }) {
   );
 
   const mySeat = table?.players.find((p) => p.userId === userId)?.seat;
+  const isSpectating = spectating && mySeat === undefined;
+
+  useEffect(() => {
+    if (mySeat !== undefined && spectating) setSpectating(false);
+  }, [mySeat, spectating]);
   const winBySeat = useMemo(() => {
     const map = new Map<number, { amount: number; handName?: string }>();
     for (const w of table?.winners ?? []) {
@@ -66,6 +78,19 @@ export function TableView({ tableId }: { tableId: string }) {
     }
     return map;
   }, [table?.showdownHands, winBySeat]);
+
+  /** Best-five card codes for any seat that won chips this hand. */
+  const winningCards = useMemo(() => {
+    const codes = new Set<string>();
+    if (!table || (table.street !== 'payout' && table.street !== 'showdown')) return codes;
+    const winnerSeats = new Set(table.winners.map((w) => w.seat));
+    for (const h of table.showdownHands ?? []) {
+      if (!winnerSeats.has(h.seat)) continue;
+      for (const c of h.cards ?? []) codes.add(c);
+    }
+    return codes;
+  }, [table]);
+  const highlightMode = winningCards.size > 0;
 
   const emptySeats = table?.players.filter((p) => p.status === 'empty').length ?? 0;
   const botSeats = table?.players.filter((p) => p.userId?.startsWith('bot:')).length ?? 0;
@@ -97,6 +122,9 @@ export function TableView({ tableId }: { tableId: string }) {
             <span className="status-chip border-cyan/25 bg-cyan/10 text-cyan capitalize">
               {table?.street ?? '…'}
             </span>
+            {isSpectating && (
+              <span className="status-chip border-gold/30 bg-gold/10 text-gold">Spectating</span>
+            )}
             {table?.handId ? <span className="font-mono text-xs opacity-60">#{table.handId}</span> : null}
             {table && (
               <span className="text-xs text-cream/40">
@@ -151,7 +179,12 @@ export function TableView({ tableId }: { tableId: string }) {
             </div>
             <div className="flex gap-1.5 min-h-[5.25rem] items-center">
               {(table?.community ?? []).map((c) => (
-                <PlayingCard key={c + table?.version} code={c} />
+                <PlayingCard
+                  key={c + table?.version}
+                  code={c}
+                  highlight={highlightMode && winningCards.has(c)}
+                  dimmed={highlightMode && !winningCards.has(c)}
+                />
               ))}
               {table && table.community.length === 0 && table.street !== 'waiting' && (
                 <span className="text-cream/40 text-xs font-display uppercase tracking-wider">Dealing…</span>
@@ -200,7 +233,11 @@ export function TableView({ tableId }: { tableId: string }) {
                     : null
                 }
                 myCards={p.seat === mySeat ? priv?.holeCards ?? null : null}
-                canManageBots={table.street === 'waiting' || table.street === 'payout'}
+                winningCards={highlightMode ? winningCards : null}
+                canManageBots={
+                  !isSpectating && (table.street === 'waiting' || table.street === 'payout')
+                }
+                spectating={isSpectating}
                 onSit={() => setBuyInOpen(p.seat)}
                 onAddBot={() =>
                   send({
@@ -217,8 +254,22 @@ export function TableView({ tableId }: { tableId: string }) {
         </div>
 
         <div className="mt-4 pb-[env(safe-area-inset-bottom)]">
-          <ActionControls onAction={onAction} />
+          <ActionControls onAction={onAction} spectating={isSpectating} />
           <div className="mt-2 w-full max-w-xl mx-auto flex flex-wrap gap-2 justify-center items-center">
+            {isSpectating && (
+              <div className="w-full flex flex-col sm:flex-row items-center justify-center gap-2 mb-1">
+                <p className="text-center text-xs text-cream/55">
+                  Watching the table — chat and reactions still work
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setSpectating(false)}
+                  className="btn-ghost text-sm py-2"
+                >
+                  Sit and play
+                </button>
+              </div>
+            )}
             {(table?.street === 'waiting' || table?.street === 'payout') &&
               mySeat !== undefined &&
               table.players.filter((p) => p.userId && p.stack > 0).length >= 2 && (
@@ -230,7 +281,9 @@ export function TableView({ tableId }: { tableId: string }) {
                 Start hand
               </button>
             )}
-            {(table?.street === 'waiting' || table?.street === 'payout') && mySeat === undefined && (
+            {!isSpectating &&
+              (table?.street === 'waiting' || table?.street === 'payout') &&
+              mySeat === undefined && (
               <p className="w-full text-center text-xs text-cream/50">
                 Sit at an empty seat to play
                 {table.players.filter((p) => p.userId && p.stack > 0).length >= 2
@@ -239,7 +292,9 @@ export function TableView({ tableId }: { tableId: string }) {
                 .
               </p>
             )}
-            {(table?.street === 'waiting' || table?.street === 'payout') && emptySeats > 0 && (
+            {!isSpectating &&
+              (table?.street === 'waiting' || table?.street === 'payout') &&
+              emptySeats > 0 && (
               <>
                 <label className="flex items-center gap-2 text-xs text-cream/60">
                   Bots
@@ -285,7 +340,9 @@ export function TableView({ tableId }: { tableId: string }) {
                 </button>
               </>
             )}
-            {(table?.street === 'waiting' || table?.street === 'payout') && botSeats > 0 && (
+            {!isSpectating &&
+              (table?.street === 'waiting' || table?.street === 'payout') &&
+              botSeats > 0 && (
               <button
                 type="button"
                 onClick={() => send({ type: 'remove_all_bots', tableId })}

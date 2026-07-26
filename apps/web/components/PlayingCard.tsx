@@ -44,24 +44,34 @@ export function PlayingCard({
   code,
   faceDown = false,
   small = false,
+  highlight = false,
+  dimmed = false,
 }: {
   code?: string;
   faceDown?: boolean;
   small?: boolean;
+  /** Part of the winning five-card hand at showdown. */
+  highlight?: boolean;
+  /** Showdown: not used in a winning hand. */
+  dimmed?: boolean;
 }) {
   // small = opponents; default = your hole cards / board
   const w = small
     ? 'w-12 h-[4.5rem] sm:w-14 sm:h-[5.25rem]'
     : 'w-20 h-[7.5rem] sm:w-24 sm:h-36';
   const radius = small ? 'rounded-lg' : 'rounded-xl';
-  const shell = `${w} ${radius} relative overflow-hidden shadow-[0_8px_20px_rgba(0,0,0,0.55)] ring-1 ring-black/25 bg-[#f7f2e8]`;
+  const winRing = highlight
+    ? 'ring-2 ring-gold shadow-[0_0_22px_rgba(232,185,74,0.65)] scale-105 z-10'
+    : 'ring-1 ring-black/25';
+  const dim = dimmed && !highlight ? 'opacity-35 saturate-50' : '';
+  const shell = `${w} ${radius} relative overflow-hidden shadow-[0_8px_20px_rgba(0,0,0,0.55)] ${winRing} ${dim} bg-[#f7f2e8] transition-[opacity,transform,box-shadow] duration-300`;
 
   if (faceDown || !code) {
     const Back = deck.B2 as CardSvg;
     return (
       <motion.div
         initial={{ rotateY: 88, opacity: 0, scale: 0.9 }}
-        animate={{ rotateY: 0, opacity: 1, scale: 1 }}
+        animate={{ rotateY: 0, opacity: dimmed && !highlight ? 0.35 : 1, scale: highlight ? 1.05 : 1 }}
         transition={{ type: 'spring', stiffness: 260, damping: 20 }}
         style={{ transformStyle: 'preserve-3d' }}
         className={shell}
@@ -86,11 +96,19 @@ export function PlayingCard({
   return (
     <motion.div
       initial={{ y: -36, opacity: 0, rotateZ: -8 }}
-      animate={{ y: 0, opacity: 1, rotateZ: 0 }}
+      animate={{
+        y: 0,
+        opacity: dimmed && !highlight ? 0.35 : 1,
+        rotateZ: 0,
+        scale: highlight ? 1.05 : 1,
+      }}
       transition={{ type: 'spring', stiffness: 320, damping: 22 }}
       className={shell}
     >
       <CardFace DeckCard={Face} className="w-full h-full" />
+      {highlight && (
+        <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-transparent via-gold to-transparent" />
+      )}
     </motion.div>
   );
 }

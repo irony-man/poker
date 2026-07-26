@@ -10,6 +10,7 @@ function TablePageInner() {
   const params = useParams<{ id: string }>();
   const search = useSearchParams();
   const invite = search.get('invite');
+  const spectate = search.get('mode') === 'spectate';
   const setSession = useSession((s) => s.setSession);
   const userId = useSession((s) => s.userId);
   const tableId = params.id;
@@ -54,7 +55,7 @@ function TablePageInner() {
           Invite code: <span className="text-gold font-mono">{invite}</span> — share with friends
         </p>
       )}
-      <TableView tableId={tableId} />
+      <TableView tableId={tableId} initialSpectate={spectate} />
     </div>
   );
 }

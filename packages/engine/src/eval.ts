@@ -116,14 +116,15 @@ export function evaluate5(cards: Card[]): HandRank {
   return pack(HandCategory.HighCard, ranks);
 }
 
-/** Best 5-card hand from 5–7 cards. */
-export function evaluateBest(cards: Card[]): HandRank {
+/** Best 5-card hand from 5–7 cards, including which cards form it. */
+export function evaluateBestHand(cards: Card[]): { rank: HandRank; cards: Card[] } {
   if (cards.length < 5 || cards.length > 7) {
-    throw new Error('evaluateBest requires 5–7 cards');
+    throw new Error('evaluateBestHand requires 5–7 cards');
   }
-  if (cards.length === 5) return evaluate5(cards);
+  if (cards.length === 5) return { rank: evaluate5(cards), cards: cards.map((c) => ({ ...c })) };
 
   let best = 0;
+  let bestCards: Card[] = [];
   const n = cards.length;
   const idx = [0, 1, 2, 3, 4];
 
@@ -133,7 +134,10 @@ export function evaluateBest(cards: Card[]): HandRank {
   const comb = (start: number, depth: number) => {
     if (depth === 5) {
       const r = score();
-      if (r > best) best = r;
+      if (r > best) {
+        best = r;
+        bestCards = idx.map((i) => ({ ...cards[i]! }));
+      }
       return;
     }
     for (let i = start; i <= n - (5 - depth); i++) {
@@ -142,7 +146,12 @@ export function evaluateBest(cards: Card[]): HandRank {
     }
   };
   comb(0, 0);
-  return best;
+  return { rank: best, cards: bestCards };
+}
+
+/** Best 5-card hand rank from 5–7 cards. */
+export function evaluateBest(cards: Card[]): HandRank {
+  return evaluateBestHand(cards).rank;
 }
 
 export function categoryOf(rank: HandRank): HandCategory {

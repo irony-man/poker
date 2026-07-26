@@ -75,19 +75,29 @@ export default function HomePage() {
     }
   }
 
-  async function onJoin(e: React.FormEvent) {
-    e.preventDefault();
+  async function enterInvite(mode: 'play' | 'spectate') {
     setBusy(true);
     setError(null);
     try {
       await ensureSession(name.trim() || 'Player');
       const t = await resolveInvite(invite.trim());
-      router.push(`/table/${t.tableId}?invite=${t.inviteCode}`);
+      const spectate = mode === 'spectate' ? '&mode=spectate' : '';
+      router.push(`/table/${t.tableId}?invite=${t.inviteCode}${spectate}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
     } finally {
       setBusy(false);
     }
+  }
+
+  async function onJoin(e: React.FormEvent) {
+    e.preventDefault();
+    await enterInvite('play');
+  }
+
+  async function onSpectate(e: React.FormEvent) {
+    e.preventDefault();
+    await enterInvite('spectate');
   }
 
   const maxBots = Math.max(0, maxSeats - 1);
@@ -100,29 +110,32 @@ export default function HomePage() {
   }
 
   return (
-    <div className="relative mx-auto max-w-4xl pt-6 sm:pt-12 pb-10">
-      <div className="pointer-events-none absolute -top-8 left-1/2 h-48 w-[28rem] -translate-x-1/2 rounded-full bg-gold/10 blur-3xl" />
+    <div className="relative mx-auto w-full max-w-5xl px-1 sm:px-0 pt-4 sm:pt-8 pb-8">
+      <div className="pointer-events-none absolute -top-6 left-1/2 h-40 w-[24rem] -translate-x-1/2 rounded-full bg-gold/10 blur-3xl" />
 
-      <div className="relative text-center sm:text-left">
-        <p className="status-chip border-gold/30 bg-gold/10 text-gold mx-auto sm:mx-0 w-fit mb-4">
+      <div className="relative text-center">
+        <p className="status-chip border-gold/30 bg-gold/10 text-gold mx-auto w-fit mb-3">
           Casino night · private tables
         </p>
-        <h1 className="font-display text-5xl sm:text-7xl font-extrabold tracking-[0.06em] text-transparent bg-clip-text bg-gradient-to-br from-gold-light via-gold to-gold-dim uppercase leading-none">
+        <h1 className="font-display text-5xl sm:text-6xl font-extrabold tracking-[0.06em] text-transparent bg-clip-text bg-gradient-to-br from-gold-light via-gold to-gold-dim uppercase leading-none">
           Felt
         </h1>
-        <p className="mt-4 max-w-lg text-cream/65 text-lg sm:text-xl font-medium tracking-wide mx-auto sm:mx-0">
-          Drop into No-Limit Texas Hold&apos;em. Host a private table, join with a code, or grind offline
-          vs bots.
+        <p className="mt-3 mx-auto max-w-xl text-cream/65 text-base sm:text-lg font-medium tracking-wide leading-relaxed">
+          Drop into No-Limit Texas Hold&apos;em. Host a private table, join or spectate with a code, or
+          grind offline vs bots.
         </p>
       </div>
 
-      <div className="mt-10 grid gap-5 sm:grid-cols-2">
-        <form onSubmit={onCreate} className="hud-panel space-y-4 p-5">
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 sm:gap-5 sm:items-stretch">
+        <form
+          onSubmit={onCreate}
+          className="hud-panel flex h-full flex-col gap-3.5 p-5 sm:p-6"
+        >
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-display text-xl font-bold uppercase tracking-wider text-gold">Host</h2>
             <span className="text-[10px] font-display uppercase tracking-[0.2em] text-cyan/70">Online</span>
           </div>
-          <label>
+          <label className="block">
             <span className="hud-label">Callsign</span>
             <input
               value={name}
@@ -132,7 +145,7 @@ export default function HomePage() {
               maxLength={32}
             />
           </label>
-          <label>
+          <label className="block">
             <span className="hud-label">Seats</span>
             <select
               value={maxSeats}
@@ -146,7 +159,7 @@ export default function HomePage() {
               ))}
             </select>
           </label>
-          <label>
+          <label className="block">
             <span className="hud-label">Starting bots</span>
             <select
               value={botCount}
@@ -160,17 +173,17 @@ export default function HomePage() {
               ))}
             </select>
           </label>
-          <button disabled={busy} type="submit" className="btn-primary w-full">
+          <button disabled={busy} type="submit" className="btn-primary mt-auto w-full">
             Create private table
           </button>
         </form>
 
-        <form onSubmit={onJoin} className="hud-panel space-y-4 p-5">
+        <form onSubmit={onJoin} className="hud-panel flex h-full flex-col gap-3.5 p-5 sm:p-6">
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-display text-xl font-bold uppercase tracking-wider text-gold">Join</h2>
             <span className="text-[10px] font-display uppercase tracking-[0.2em] text-cyan/70">Invite</span>
           </div>
-          <label>
+          <label className="block">
             <span className="hud-label">Callsign</span>
             <input
               value={name}
@@ -180,7 +193,7 @@ export default function HomePage() {
               maxLength={32}
             />
           </label>
-          <label>
+          <label className="block">
             <span className="hud-label">Invite code</span>
             <input
               value={invite}
@@ -189,68 +202,83 @@ export default function HomePage() {
               required
             />
           </label>
-          <button disabled={busy} type="submit" className="btn-ghost w-full">
-            Enter table
+          <div className="mt-auto grid grid-cols-2 gap-2.5 pt-1">
+            <button disabled={busy} type="submit" className="btn-ghost w-full">
+              Enter table
+            </button>
+            <button
+              disabled={busy || !invite.trim()}
+              type="button"
+              onClick={onSpectate}
+              className="rounded border border-cyan/35 bg-cyan/10 px-4 py-2.5 text-sm font-display font-semibold uppercase tracking-wider text-cyan transition hover:bg-cyan/20 disabled:opacity-40"
+            >
+              Spectate
+            </button>
+          </div>
+        </form>
+
+        <form
+          onSubmit={onOffline}
+          className="hud-panel flex flex-col gap-3.5 p-5 sm:col-span-2 sm:p-6"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="font-display text-xl font-bold uppercase tracking-wider text-gold">
+                Offline arena
+              </h2>
+              <p className="mt-1 text-sm text-cream/45 font-medium">
+                Local bots · no server · same engine
+              </p>
+            </div>
+            <span className="status-chip border-felt-neon/30 bg-felt-neon/10 text-felt-neon shrink-0">
+              Solo mode
+            </span>
+          </div>
+          <div className="grid gap-3.5 sm:grid-cols-3 sm:gap-4">
+            <label className="block min-w-0">
+              <span className="hud-label">Callsign</span>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="hud-input"
+                required
+                maxLength={32}
+              />
+            </label>
+            <label className="block min-w-0">
+              <span className="hud-label">Seats</span>
+              <select
+                value={offlineSeats}
+                onChange={(e) => setOfflineSeats(Number(e.target.value))}
+                className="field-select mt-1"
+              >
+                {[2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+                  <option key={n} value={n}>
+                    {n} seats
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block min-w-0">
+              <span className="hud-label">Bots</span>
+              <select
+                value={offlineBots}
+                onChange={(e) => setOfflineBots(Number(e.target.value))}
+                className="field-select mt-1"
+              >
+                {Array.from({ length: maxOfflineBots }, (_, i) => i + 1).map((n) => (
+                  <option key={n} value={n}>
+                    {n} bot{n === 1 ? '' : 's'}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <button type="submit" className="btn-ghost w-full sm:w-auto sm:self-start">
+            Launch offline game
           </button>
         </form>
       </div>
-
-      <form onSubmit={onOffline} className="hud-panel mt-5 space-y-4 p-5">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="font-display text-xl font-bold uppercase tracking-wider text-gold">
-              Offline arena
-            </h2>
-            <p className="mt-1 text-sm text-cream/45 font-medium">
-              Local bots · no server · same engine
-            </p>
-          </div>
-          <span className="status-chip border-felt-neon/30 bg-felt-neon/10 text-felt-neon">Solo mode</span>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <label>
-            <span className="hud-label">Callsign</span>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="hud-input"
-              required
-              maxLength={32}
-            />
-          </label>
-          <label>
-            <span className="hud-label">Seats</span>
-            <select
-              value={offlineSeats}
-              onChange={(e) => setOfflineSeats(Number(e.target.value))}
-              className="field-select mt-1"
-            >
-              {[2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-                <option key={n} value={n}>
-                  {n} seats
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span className="hud-label">Bots</span>
-            <select
-              value={offlineBots}
-              onChange={(e) => setOfflineBots(Number(e.target.value))}
-              className="field-select mt-1"
-            >
-              {Array.from({ length: maxOfflineBots }, (_, i) => i + 1).map((n) => (
-                <option key={n} value={n}>
-                  {n} bot{n === 1 ? '' : 's'}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <button type="submit" className="btn-ghost">
-          Launch offline game
-        </button>
-      </form>
 
       {error && (
         <p className="mt-4 status-chip border-red-500/40 bg-red-950/50 text-red-300">{error}</p>

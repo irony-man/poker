@@ -77,6 +77,14 @@ fun TableScreen(
                 )
             }
 
+            if (state.spectating) {
+                StatusChip(
+                    text = "Spectating",
+                    accent = FeltColors.Gold,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+            }
+
             state.lastError?.let { err ->
                 StatusChip(text = "$err", accent = FeltColors.Danger, modifier = Modifier.padding(bottom = 8.dp))
             }
@@ -100,7 +108,26 @@ fun TableScreen(
                         userId = state.userId,
                         holeCards = state.private?.holeCards,
                         onSit = { buyInSeat = it },
+                        canSit = !state.spectating,
                     )
+
+                    if (state.spectating) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                "Watching — chat still works",
+                                color = FeltColors.Cream.copy(alpha = 0.55f),
+                                fontSize = 12.sp,
+                            )
+                            FeltGhostButton(
+                                text = "Sit and play",
+                                onClick = { viewModel.dispatch(TableContract.Intent.EnableSitToPlay) },
+                            )
+                        }
+                    }
 
                     TableActionControls(
                         table = table.toTableUi(),
@@ -111,18 +138,21 @@ fun TableScreen(
                         onAction = { action, amount ->
                             viewModel.dispatch(TableContract.Intent.SendAction(action, amount))
                         },
+                        waitingLabel = if (state.spectating) "Spectating — you are not seated" else null,
                     )
 
-                    TableFooterControls(
-                        table = table,
-                        userId = state.userId,
-                        onStartHand = { viewModel.dispatch(TableContract.Intent.StartHand) },
-                        onAddBots = { viewModel.dispatch(TableContract.Intent.AddBots(it)) },
-                        onRemoveBots = { viewModel.dispatch(TableContract.Intent.RemoveAllBots) },
-                        onTopUp = { seat, amount ->
-                            viewModel.dispatch(TableContract.Intent.TopUp(seat, amount))
-                        },
-                    )
+                    if (!state.spectating) {
+                        TableFooterControls(
+                            table = table,
+                            userId = state.userId,
+                            onStartHand = { viewModel.dispatch(TableContract.Intent.StartHand) },
+                            onAddBots = { viewModel.dispatch(TableContract.Intent.AddBots(it)) },
+                            onRemoveBots = { viewModel.dispatch(TableContract.Intent.RemoveAllBots) },
+                            onTopUp = { seat, amount ->
+                                viewModel.dispatch(TableContract.Intent.TopUp(seat, amount))
+                            },
+                        )
+                    }
                 }
             }
         }

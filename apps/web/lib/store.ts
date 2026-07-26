@@ -29,7 +29,7 @@ export interface PublicTable {
   actionSeq: number;
   version: number;
   winners: { seat: number; amount: number; handName?: string }[];
-  showdownHands?: { seat: number; handName: string }[];
+  showdownHands?: { seat: number; handName: string; cards?: string[] }[];
   config: {
     maxSeats: number;
     smallBlind: number;

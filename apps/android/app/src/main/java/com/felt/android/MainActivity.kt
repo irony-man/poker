@@ -2,10 +2,14 @@ package com.felt.android
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
+import com.felt.android.core.designsystem.FeltColors
 import com.felt.android.core.designsystem.FeltTheme
 import com.felt.android.navigation.FeltNavHost
 import dagger.hilt.android.AndroidEntryPoint
@@ -14,10 +18,20 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        val ink = FeltColors.Ink.toArgb()
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(ink),
+            navigationBarStyle = SystemBarStyle.dark(ink),
+        )
         setContent {
             FeltTheme {
-                FeltNavHost(modifier = Modifier.fillMaxSize())
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = FeltColors.Ink,
+                    contentColor = FeltColors.Cream,
+                ) {
+                    FeltNavHost(modifier = Modifier.fillMaxSize())
+                }
             }
         }
     }

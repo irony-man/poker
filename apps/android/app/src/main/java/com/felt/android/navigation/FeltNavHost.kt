@@ -27,8 +27,10 @@ fun FeltNavHost(modifier: Modifier = Modifier) {
                 onHosted = { tableId, invite ->
                     navController.navigate(OnlineTableRoute(tableId = tableId, invite = invite))
                 },
-                onJoined = { tableId, invite ->
-                    navController.navigate(OnlineTableRoute(tableId = tableId, invite = invite))
+                onJoined = { tableId, invite, spectate ->
+                    navController.navigate(
+                        OnlineTableRoute(tableId = tableId, invite = invite, spectate = spectate),
+                    )
                 },
                 onOffline = { seats, bots, name ->
                     navController.navigate(OfflineTableRoute(seats = seats, bots = bots, name = name))

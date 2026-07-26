@@ -315,7 +315,7 @@ class OfflineViewModel @Inject constructor(
                 com.felt.android.core.model.Winner(it.seat, it.amount, it.handName)
             },
             showdownHands = view.showdownHands.map {
-                com.felt.android.core.model.ShowdownHand(it.seat, it.handName)
+                com.felt.android.core.model.ShowdownHand(it.seat, it.handName, it.cards)
             },
             config = com.felt.android.core.model.TableConfig(
                 maxSeats = view.config.maxSeats,

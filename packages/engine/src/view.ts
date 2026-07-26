@@ -31,8 +31,8 @@ export interface PublicTableView {
   actionSeq: number;
   version: number;
   winners: { seat: number; amount: number; handName?: string }[];
-  /** Revealed showdown hands (category name) keyed by seat for UI. */
-  showdownHands: { seat: number; handName: string }[];
+  /** Revealed showdown hands (category + best five cards) for UI. */
+  showdownHands: { seat: number; handName: string; cards: string[] }[];
   config: TableConfig;
 }
 

@@ -326,6 +326,20 @@ export function OfflineTableView({
     return map;
   }, [publicTable?.showdownHands, winBySeat]);
 
+  const winningCards = useMemo(() => {
+    const codes = new Set<string>();
+    if (!publicTable || (publicTable.street !== 'payout' && publicTable.street !== 'showdown')) {
+      return codes;
+    }
+    const winnerSeats = new Set(publicTable.winners.map((w) => w.seat));
+    for (const h of publicTable.showdownHands ?? []) {
+      if (!winnerSeats.has(h.seat)) continue;
+      for (const c of h.cards ?? []) codes.add(c);
+    }
+    return codes;
+  }, [publicTable]);
+  const highlightMode = winningCards.size > 0;
+
   // Patch session private/table for ActionControls which reads zustand
   useEffect(() => {
     if (!publicTable) return;
@@ -380,7 +394,12 @@ export function OfflineTableView({
             </div>
             <div className="flex gap-1.5 min-h-[5.25rem] items-center">
               {publicTable.community.map((c) => (
-                <PlayingCard key={c + publicTable.version} code={c} />
+                <PlayingCard
+                  key={c + publicTable.version}
+                  code={c}
+                  highlight={highlightMode && winningCards.has(c)}
+                  dimmed={highlightMode && !winningCards.has(c)}
+                />
               ))}
               {publicTable.community.length === 0 && publicTable.street !== 'waiting' && (
                 <span className="text-cream/40 text-xs font-display uppercase tracking-wider">Dealing…</span>
@@ -429,6 +448,7 @@ export function OfflineTableView({
                     : null
                 }
                 myCards={p.seat === mySeat ? priv?.holeCards ?? null : null}
+                winningCards={highlightMode ? winningCards : null}
                 canManageBots={false}
               />
             );

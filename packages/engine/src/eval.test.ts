@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { parseCards } from '../src/cards.js';
-import { HandCategory, categoryOf, compareHandRanks, evaluateBest, evaluate5 } from '../src/eval.js';
+import {
+  HandCategory,
+  categoryOf,
+  compareHandRanks,
+  evaluateBest,
+  evaluateBestHand,
+  evaluate5,
+} from '../src/eval.js';
 
 describe('evaluate5', () => {
   it('ranks royal flush highest', () => {
@@ -32,6 +39,14 @@ describe('evaluateBest 7-card', () => {
     // Pair of aces with flush available on board+hand
     const rank = evaluateBest(parseCards('Ah Kh 2h 3h 4h 9c 9d'));
     expect(categoryOf(rank)).toBe(HandCategory.Flush);
+  });
+
+  it('returns the five cards that make the hand', () => {
+    const seven = parseCards('Ah Kh 2h 3h 4h 9c 9d');
+    const { rank, cards } = evaluateBestHand(seven);
+    expect(categoryOf(rank)).toBe(HandCategory.Flush);
+    expect(cards).toHaveLength(5);
+    expect(cards.every((c) => c.suit === 'h')).toBe(true);
   });
 
   it('exact tie ranks equal', () => {

@@ -35,7 +35,12 @@ class TableViewModel @Inject constructor(
     private val invite: String? = route.invite
 
     private val _uiState = MutableStateFlow(
-        TableContract.UiState(tableId = tableId, invite = invite, loading = true),
+        TableContract.UiState(
+            tableId = tableId,
+            invite = invite,
+            loading = true,
+            spectating = route.spectate,
+        ),
     )
     val uiState = _uiState.asStateFlow()
 
@@ -73,6 +78,8 @@ class TableViewModel @Inject constructor(
                 repository.send(ClientMessage.RemoveAllBots(tableId))
             is TableContract.Intent.TopUp ->
                 repository.send(ClientMessage.TopUp(tableId, intent.seat, intent.amount))
+            TableContract.Intent.EnableSitToPlay ->
+                _uiState.update { it.copy(spectating = false) }
         }
     }
 
@@ -99,11 +106,13 @@ class TableViewModel @Inject constructor(
                                 if (current.table != null && table.version < current.table.version) {
                                     current
                                 } else {
+                                    val seated = table.players.any { it.userId == current.userId }
                                     current.copy(
                                         table = table,
                                         private = msg.privateView,
                                         loading = false,
                                         connection = ConnectionStatus.Open,
+                                        spectating = if (seated) false else current.spectating,
                                     )
                                 }
                             }

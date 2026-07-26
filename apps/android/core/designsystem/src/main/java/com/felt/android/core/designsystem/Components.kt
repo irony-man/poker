@@ -2,6 +2,7 @@ package com.felt.android.core.designsystem
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -56,7 +57,7 @@ fun HudPanel(
                 ),
             )
             .border(1.dp, FeltColors.Gold.copy(alpha = 0.25f), RoundedCornerShape(16.dp))
-            .padding(16.dp),
+            .padding(18.dp),
     ) {
         content()
     }
@@ -105,8 +106,34 @@ fun FeltGhostButton(
         ),
         shape = RoundedCornerShape(12.dp),
     ) {
-        Text(text = text, fontWeight = FontWeight.SemiBold)
+        Text(text = text, fontWeight = FontWeight.SemiBold, maxLines = 1)
     }
+}
+
+/** Compact selectable chip for seat/bot counts — avoids full-width OutlinedButton crowding. */
+@Composable
+fun FeltChoiceChip(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val bg = if (selected) FeltColors.Gold.copy(alpha = 0.22f) else FeltColors.Ink.copy(alpha = 0.45f)
+    val border = if (selected) FeltColors.Gold else FeltColors.Cream.copy(alpha = 0.2f)
+    val fg = if (selected) FeltColors.Gold else FeltColors.Cream.copy(alpha = 0.8f)
+    Text(
+        text = text,
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(bg)
+            .border(1.dp, border, RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        color = fg,
+        fontSize = 13.sp,
+        fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+        maxLines = 1,
+    )
 }
 
 @Composable

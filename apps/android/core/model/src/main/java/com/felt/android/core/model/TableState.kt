@@ -31,6 +31,7 @@ data class Winner(
 data class ShowdownHand(
     val seat: Int,
     val handName: String,
+    val cards: List<String> = emptyList(),
 )
 
 @Serializable

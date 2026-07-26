@@ -12,6 +12,7 @@ data class PublicPlayer(
     val status: String,
     val hasCards: Boolean,
     val holeCards: List<String>? = null,
+    val avatarId: Int? = null,
 )
 
 @Serializable

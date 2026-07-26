@@ -54,9 +54,14 @@ async function main() {
       res.status(400).json({ error: parsed.error.message });
       return;
     }
-    const user = auth.register(parsed.data.name);
+    const user = auth.register(parsed.data.name, parsed.data.avatarId);
     const ticket = auth.issueTicket(user.id);
-    res.json({ userId: user.id, name: user.name, ticket });
+    res.json({
+      userId: user.id,
+      name: user.name,
+      ticket,
+      avatarId: user.avatarId,
+    });
   });
 
   app.post('/api/ticket', (req, res) => {
@@ -66,7 +71,12 @@ async function main() {
       res.status(401).json({ error: 'Unknown user' });
       return;
     }
-    res.json({ ticket: auth.issueTicket(user.id), userId: user.id, name: user.name });
+    res.json({
+      ticket: auth.issueTicket(user.id),
+      userId: user.id,
+      name: user.name,
+      avatarId: user.avatarId,
+    });
   });
 
   app.post('/api/tables', (req, res) => {
@@ -180,7 +190,7 @@ async function main() {
         }
         userId = user.id;
         name = user.name;
-        send({ type: 'auth_ok', userId, name });
+        send({ type: 'auth_ok', userId, name, avatarId: user.avatarId });
         return;
       }
 
@@ -199,7 +209,8 @@ async function main() {
           rooms.get(tableId)?.detach(userId);
         }
         tableId = msg.tableId;
-        room.attach({ userId, name, send });
+        const avatarId = auth.getUser(userId)?.avatarId ?? 0;
+        room.attach({ userId, name, avatarId, send });
         return;
       }
 

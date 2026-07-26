@@ -27,8 +27,14 @@ class TableRepository @Inject constructor(
         val session = runCatching {
             feltApi.refreshTicket(TicketRequest(saved.userId))
         }.getOrElse {
-            feltApi.register(RegisterRequest(saved.name))
-        }.also { sessionPreferences.saveSession(it) }
+            feltApi.register(RegisterRequest(saved.name, saved.avatarId))
+        }.let { it.copy(avatarId = saved.avatarId) }
+            .also { sessionPreferences.saveSession(it) }
+
+        // Persist current avatar preference on the server user record.
+        runCatching {
+            feltApi.register(RegisterRequest(saved.name, saved.avatarId))
+        }
 
         wsClient.connect()
         wsClient.send(ClientMessage.Auth(session.ticket))

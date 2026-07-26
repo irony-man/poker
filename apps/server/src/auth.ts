@@ -1,9 +1,11 @@
 import { randomBytes } from 'node:crypto';
 import { nanoid } from 'nanoid';
+import { avatarIdFromUserId, clampAvatarId } from './avatars.js';
 
 export interface User {
   id: string;
   name: string;
+  avatarId: number;
   createdAt: number;
 }
 
@@ -19,11 +21,23 @@ export class AuthStore {
   private tickets = new Map<string, WsTicket>();
   private nameIndex = new Map<string, string>();
 
-  register(name: string): User {
+  register(name: string, avatarId?: number): User {
     const existing = this.nameIndex.get(name.toLowerCase());
-    if (existing) return this.users.get(existing)!;
+    if (existing) {
+      const user = this.users.get(existing)!;
+      if (avatarId !== undefined) {
+        user.avatarId = clampAvatarId(avatarId);
+      }
+      return user;
+    }
 
-    const user: User = { id: nanoid(12), name, createdAt: Date.now() };
+    const id = nanoid(12);
+    const user: User = {
+      id,
+      name,
+      avatarId: avatarId !== undefined ? clampAvatarId(avatarId) : avatarIdFromUserId(id),
+      createdAt: Date.now(),
+    };
     this.users.set(user.id, user);
     this.nameIndex.set(name.toLowerCase(), user.id);
     return user;

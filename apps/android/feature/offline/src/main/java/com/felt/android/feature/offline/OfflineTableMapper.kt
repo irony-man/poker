@@ -54,6 +54,10 @@ internal fun PublicTable.toOfflineTableUi(): TableUiState {
                 status = it.status,
                 hasCards = it.hasCards,
                 holeCards = it.holeCards,
+                avatarId = it.avatarId ?: when {
+                    it.userId != null -> com.felt.android.core.designsystem.avatarIdFromUserId(it.userId)
+                    else -> null
+                },
             )
         },
     )

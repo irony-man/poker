@@ -54,10 +54,10 @@ export function TableShell({
   }
 
   return (
-    <div className="relative flex h-[calc(100dvh-4.25rem)] min-h-0 -mx-4 sm:-mx-8 -my-4">
+    <div className="relative flex h-[calc(100dvh-3.5rem)] min-h-0 -mx-4 sm:-mx-8 -my-4">
       <EmojiOverlay />
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto px-4 sm:px-8 py-4">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-2 sm:px-4 py-2">
         {children}
       </div>
 

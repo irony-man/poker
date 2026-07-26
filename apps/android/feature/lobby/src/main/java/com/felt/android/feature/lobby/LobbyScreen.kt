@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.felt.android.core.designsystem.AvatarPicker
 import com.felt.android.core.designsystem.FeltChoiceChip
 import com.felt.android.core.designsystem.FeltColors
 import com.felt.android.core.designsystem.FeltGhostButton
@@ -50,7 +51,6 @@ fun LobbyScreen(
     val state by viewModel.uiState.collectAsState()
     val scroll = rememberScrollState()
     val maxBots = (state.maxSeats - 1).coerceAtLeast(0)
-    val maxOfflineBots = (state.offlineSeats - 1).coerceAtLeast(1)
 
     Column(
         modifier = modifier
@@ -75,6 +75,13 @@ fun LobbyScreen(
             fontSize = 15.sp,
             lineHeight = 22.sp,
         )
+
+        HudPanel(modifier = Modifier.fillMaxWidth()) {
+            AvatarPicker(
+                value = state.avatarId,
+                onChange = viewModel::onAvatarChange,
+            )
+        }
 
         HudPanel(modifier = Modifier.fillMaxWidth()) {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -170,13 +177,9 @@ fun LobbyScreen(
                     selected = state.offlineSeats,
                     options = (2..9).toList(),
                     onSelect = viewModel::onOfflineSeatsChange,
-                )
-                ChoiceRow(
-                    label = "Bots",
-                    selected = state.offlineBots.coerceIn(1, maxOfflineBots),
-                    options = (1..maxOfflineBots).toList(),
-                    onSelect = viewModel::onOfflineBotsChange,
-                )
+                ) { seats ->
+                    "$seats · ${minOf(3, seats - 1)} bots"
+                }
                 FeltGhostButton(
                     text = "Launch offline game",
                     onClick = { viewModel.offline(onOffline) },

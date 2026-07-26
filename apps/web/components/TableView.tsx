@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { ActionControls } from './ActionControls';
+import { FloatingActionDock } from './FloatingActionDock';
 import { PlayingCard } from './PlayingCard';
 import { PotBanner } from './PotBanner';
 import { SeatView } from './SeatView';
@@ -27,6 +29,7 @@ export function TableView({
   const lastError = useSession((s) => s.lastError);
   const setError = useSession((s) => s.setError);
   const { send } = usePokerSocket(tableId);
+  const router = useRouter();
   const [buyInOpen, setBuyInOpen] = useState<number | null>(null);
   const [botAddCount, setBotAddCount] = useState(3);
   const [spectating, setSpectating] = useState(initialSpectate);
@@ -115,6 +118,25 @@ export function TableView({
     });
   };
 
+  const leaveRoom = () => {
+    if (!table) {
+      router.push('/');
+      return;
+    }
+    const me = mySeat !== undefined ? table.players[mySeat] : undefined;
+    if (mySeat !== undefined && me && (me.status === 'active' || me.status === 'allin')) {
+      if (table.toAct === mySeat && priv?.legal?.types.includes('fold')) {
+        onAction('fold');
+      }
+    }
+    if (mySeat !== undefined) {
+      send({ type: 'stand', tableId, seat: mySeat });
+    }
+    send({ type: 'leave_table', tableId });
+    router.push('/');
+  };
+
+  const isMyTurn = table?.toAct === mySeat && !!priv?.legal?.types.length;
   const potTotal =
     (table?.pot ?? 0) ||
     (table?.sidePots?.reduce((s, p) => s + p.amount, 0) ?? 0);
@@ -140,25 +162,30 @@ export function TableView({
               </span>
             )}
           </div>
-          <div
-            className={
-              connection === 'open'
-                ? 'status-chip border-felt-neon/30 bg-felt-neon/10 text-felt-neon'
-                : connection === 'connecting'
-                  ? 'status-chip border-amber-400/30 bg-amber-400/10 text-amber-300'
-                  : 'status-chip border-red-500/40 bg-red-950/50 text-red-300'
-            }
-          >
-            <span
-              className={`h-1.5 w-1.5 rounded-full ${
+          <div className="flex items-center gap-2">
+            <div
+              className={
                 connection === 'open'
-                  ? 'bg-felt-neon animate-live-blink'
+                  ? 'status-chip border-felt-neon/30 bg-felt-neon/10 text-felt-neon'
                   : connection === 'connecting'
-                    ? 'bg-amber-300 animate-live-blink'
-                    : 'bg-red-400'
-              }`}
-            />
-            {connection}
+                    ? 'status-chip border-amber-400/30 bg-amber-400/10 text-amber-300'
+                    : 'status-chip border-red-500/40 bg-red-950/50 text-red-300'
+              }
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  connection === 'open'
+                    ? 'bg-felt-neon animate-live-blink'
+                    : connection === 'connecting'
+                      ? 'bg-amber-300 animate-live-blink'
+                      : 'bg-red-400'
+                }`}
+              />
+              {connection}
+            </div>
+            <button type="button" onClick={leaveRoom} className="btn-ghost text-xs py-1.5 px-3">
+              Leave
+            </button>
           </div>
         </div>
 
@@ -172,7 +199,8 @@ export function TableView({
           </button>
         )}
 
-        <div className="relative flex-1 felt-surface rounded-[42%] border-[12px] table-rim shadow-felt min-h-[340px] overflow-hidden">
+        <div className="relative min-h-0 flex-1">
+          <div className="absolute inset-0 felt-surface rounded-[36%] border-[10px] table-rim shadow-felt overflow-hidden sm:rounded-[42%] sm:border-[12px]">
           <div className="pointer-events-none absolute inset-6 rounded-[40%] border border-felt-neon/10 z-[1]" />
 
           {/* Pot sits above the board so community cards never cover it */}
@@ -222,9 +250,7 @@ export function TableView({
                 winningCards={highlightMode ? winningCards : null}
                 turnEndsAt={table.toAct === p.seat ? table.turnEndsAt : null}
                 turnTotalMs={table.config.turnTimeMs}
-                canManageBots={
-                  !isSpectating && (table.street === 'waiting' || table.street === 'payout')
-                }
+                canManageBots={!isSpectating}
                 spectating={isSpectating}
                 onSit={() => setBuyInOpen(p.seat)}
                 onAddBot={() =>
@@ -239,130 +265,93 @@ export function TableView({
               />
             );
           })}
-        </div>
+          </div>
 
-        <div className="mt-4 pb-[env(safe-area-inset-bottom)]">
-          {table?.turnEndsAt &&
-            table.toAct !== null &&
-            table.toAct !== mySeat && (
-            <div className="mb-2">
-              <TurnTimerBar
-                endsAt={table.turnEndsAt}
-                totalMs={table.config.turnTimeMs}
-              />
+          {table?.turnEndsAt && table.toAct !== null && table.toAct !== mySeat && (
+            <div className="absolute inset-x-0 top-2 z-30 flex justify-center px-3">
+              <div className="w-full max-w-sm">
+                <TurnTimerBar endsAt={table.turnEndsAt} totalMs={table.config.turnTimeMs} />
+              </div>
             </div>
           )}
-          <ActionControls onAction={onAction} spectating={isSpectating} />
-          <div className="mt-2 w-full max-w-xl mx-auto flex flex-wrap gap-2 justify-center items-center">
-            {isSpectating && (
-              <div className="w-full flex flex-col sm:flex-row items-center justify-center gap-2 mb-1">
-                <p className="text-center text-xs text-cream/55">
-                  Watching the table — chat and reactions still work
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setSpectating(false)}
-                  className="btn-ghost text-sm py-2"
-                >
+
+          <div className="absolute inset-x-0 bottom-0 z-30 flex justify-center px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+            <div className="flex max-w-full flex-wrap items-center justify-center gap-1.5 rounded-full border border-cream/15 bg-ink/85 px-2 py-1.5 shadow-lg backdrop-blur-md">
+              {isSpectating && (
+                <button type="button" onClick={() => setSpectating(false)} className="btn-ghost text-xs py-1.5">
                   Sit and play
                 </button>
-              </div>
-            )}
-            {(table?.street === 'waiting' || table?.street === 'payout') &&
-              mySeat !== undefined &&
-              table.players.filter((p) => p.userId && p.stack > 0).length >= 2 && (
-              <button
-                type="button"
-                onClick={() => send({ type: 'start_hand', tableId })}
-                className="btn-ghost text-sm py-2"
-              >
-                Start hand
-              </button>
-            )}
-            {!isSpectating &&
-              (table?.street === 'waiting' || table?.street === 'payout') &&
-              mySeat === undefined && (
-              <p className="w-full text-center text-xs text-cream/50">
-                Sit at an empty seat to play
-                {table.players.filter((p) => p.userId && p.stack > 0).length >= 2
-                  ? ' — then tap Start hand'
-                  : ' (add bots or wait for friends)'}
-                .
-              </p>
-            )}
-            {!isSpectating &&
-              (table?.street === 'waiting' || table?.street === 'payout') &&
-              emptySeats > 0 && (
-              <>
-                <label className="flex items-center gap-2 text-xs text-cream/60">
-                  Bots
-                  <select
-                    value={Math.min(botAddCount, emptySeats)}
-                    onChange={(e) => setBotAddCount(Number(e.target.value))}
-                    className="field-select w-auto py-1.5 text-sm"
+              )}
+              {(table?.street === 'waiting' || table?.street === 'payout') &&
+                mySeat !== undefined &&
+                table.players.filter((p) => p.userId && p.stack > 0).length >= 2 && (
+                <button
+                  type="button"
+                  onClick={() => send({ type: 'start_hand', tableId })}
+                  className="btn-ghost text-xs py-1.5"
+                >
+                  Start hand
+                </button>
+              )}
+              {!isSpectating && emptySeats > 0 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      send({
+                        type: 'add_bot',
+                        tableId,
+                        buyIn: table!.config.minBuyIn,
+                        count: Math.min(Math.max(1, botAddCount), emptySeats),
+                      })
+                    }
+                    className="rounded-full border border-cream/25 px-3 py-1.5 text-xs text-cream/80 hover:bg-cream/10"
                   >
-                    {Array.from({ length: emptySeats }, (_, i) => i + 1).map((n) => (
-                      <option key={n} value={n}>
-                        {n}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                    + Bot
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      send({
+                        type: 'add_bot',
+                        tableId,
+                        buyIn: table!.config.minBuyIn,
+                        count: emptySeats,
+                      })
+                    }
+                    className="rounded-full border border-cream/15 px-2.5 py-1.5 text-[10px] text-cream/55 hover:bg-cream/10"
+                  >
+                    Fill
+                  </button>
+                </>
+              )}
+              {!isSpectating && botSeats > 0 && (
+                <button
+                  type="button"
+                  onClick={() => send({ type: 'remove_all_bots', tableId })}
+                  className="rounded-full px-2.5 py-1.5 text-[10px] text-cream/45 hover:text-red-300"
+                >
+                  − Bots
+                </button>
+              )}
+              {mySeat !== undefined && (table?.street === 'waiting' || table?.street === 'payout') && (
                 <button
                   type="button"
                   onClick={() =>
-                    send({
-                      type: 'add_bot',
-                      tableId,
-                      buyIn: table.config.minBuyIn,
-                      count: Math.min(botAddCount, emptySeats),
-                    })
+                    send({ type: 'top_up', tableId, seat: mySeat, amount: table!.config.minBuyIn })
                   }
-                  className="rounded-lg border border-cream/25 px-4 py-2 text-sm text-cream/80 hover:bg-cream/10"
+                  className="rounded-full px-2.5 py-1.5 text-[10px] text-cream/50 hover:text-cream"
                 >
-                  Add bots
+                  Top up
                 </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    send({
-                      type: 'add_bot',
-                      tableId,
-                      buyIn: table.config.minBuyIn,
-                      count: emptySeats,
-                    })
-                  }
-                  className="rounded-lg border border-cream/15 px-3 py-2 text-xs text-cream/60 hover:bg-cream/10"
-                >
-                  Fill table
-                </button>
-              </>
-            )}
-            {!isSpectating &&
-              (table?.street === 'waiting' || table?.street === 'payout') &&
-              botSeats > 0 && (
-              <button
-                type="button"
-                onClick={() => send({ type: 'remove_all_bots', tableId })}
-                className="rounded-lg px-3 py-2 text-xs text-cream/45 hover:text-red-300"
-              >
-                Remove all bots
-              </button>
-            )}
-            {mySeat !== undefined && (table?.street === 'waiting' || table?.street === 'payout') && (
-              <button
-                type="button"
-                onClick={() => {
-                  const amount = table.config.minBuyIn;
-                  send({ type: 'top_up', tableId, seat: mySeat, amount });
-                }}
-                className="rounded-lg px-4 py-2 text-xs text-cream/50 hover:text-cream"
-              >
-                Top up +{table.config.minBuyIn}
-              </button>
-            )}
+              )}
+            </div>
           </div>
         </div>
+
+        <FloatingActionDock expanded={!!isMyTurn} label="Actions">
+          <ActionControls onAction={onAction} spectating={isSpectating} bare />
+        </FloatingActionDock>
       </div>
 
           {showWinModal && table && (

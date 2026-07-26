@@ -2,6 +2,7 @@
 
 import { ChipStack, formatChips } from './ChipStack';
 import { PlayingCard } from './PlayingCard';
+import { PlayerAvatar } from './PlayerAvatar';
 import { SeatTurnRing } from './TurnTimer';
 import type { PublicPlayer } from '@/lib/store';
 
@@ -93,6 +94,8 @@ export function SeatView({
   const showCards = isSelf && myCards ? myCards : player.holeCards;
   const faceDown = !showCards && player.hasCards;
   const dealKey = handId ?? 'idle';
+  const avatarSize = isSelf ? 52 : 44;
+  const ringBox = avatarSize + 12;
 
   return (
     <>
@@ -152,45 +155,66 @@ export function SeatView({
         )}
 
         <div
-          className={`relative min-w-[6.75rem] rounded-2xl px-3 py-2 text-center shadow-lg transition ${
-            isWinner
-              ? 'bg-gold text-ink ring-2 ring-gold-light shadow-glow'
-              : isToAct
-                ? 'bg-gold text-ink ring-2 ring-gold-light animate-hud-pulse'
-                : isSelf
-                  ? 'bg-gradient-to-b from-[#1a2210] to-[#0c1008] text-cream border border-gold/50'
-                  : 'bg-gradient-to-b from-[#151b22] to-[#0a0e12] text-cream border border-white/10'
+          className={`relative flex items-center justify-center ${
+            isToAct ? 'animate-hud-pulse' : ''
           }`}
+          style={{ width: ringBox, height: ringBox }}
         >
           <SeatTurnRing
             endsAt={turnEndsAt}
             totalMs={turnTotalMs ?? 20000}
             active={!!isToAct}
+            size={ringBox}
+          />
+          <PlayerAvatar
+            avatarId={player.avatarId}
+            userId={player.userId}
+            size={avatarSize}
+            className={
+              isWinner
+                ? 'ring-2 ring-gold shadow-glow'
+                : isSelf
+                  ? 'ring-2 ring-gold/55'
+                  : ''
+            }
           />
           {isDealer && (
-            <span className="absolute -left-2.5 -top-2.5 flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-b from-cream to-[#c4b89a] text-[11px] font-display font-bold text-ink shadow-md ring-1 ring-black/20">
+            <span className="absolute -left-0.5 -top-0.5 z-[1] flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-b from-cream to-[#c4b89a] text-[10px] font-display font-bold text-ink shadow-md ring-1 ring-black/20">
               D
             </span>
           )}
-          {isBot && !isWinner && !isToAct && (
-            <span className="absolute -right-1.5 -top-1.5 rounded bg-cyan/20 px-1 text-[8px] font-display uppercase tracking-wide text-cyan">
+          {isBot && !isWinner && (
+            <span className="absolute -right-0.5 -bottom-0.5 z-[1] rounded bg-cyan/25 px-1 text-[7px] font-display uppercase tracking-wide text-cyan">
               bot
             </span>
           )}
-          <div className="text-[13px] font-display font-semibold truncate max-w-[7.5rem] tracking-wide leading-tight">
-            {player.name}
-            {isSelf ? ' · you' : ''}
-          </div>
-          <div className="mt-1.5 flex justify-center">
-            <ChipStack amount={player.stack} size="sm" compact />
-          </div>
           {player.status === 'folded' && (
-            <div className="absolute inset-0 rounded-2xl bg-black/70 flex items-center justify-center text-[10px] font-display uppercase tracking-widest text-cream/75">
+            <div className="absolute inset-[6px] rounded-full bg-black/70 flex items-center justify-center text-[9px] font-display uppercase tracking-widest text-cream/80">
               Fold
             </div>
           )}
+        </div>
+
+        <div
+          className={`min-w-[5.5rem] rounded-xl px-2.5 py-1 text-center shadow-md ${
+            isWinner
+              ? 'bg-gold text-ink'
+              : isToAct
+                ? 'bg-gold/90 text-ink'
+                : isSelf
+                  ? 'bg-ink/85 text-cream border border-gold/40'
+                  : 'bg-ink/80 text-cream border border-white/10'
+          }`}
+        >
+          <div className="text-[12px] font-display font-semibold truncate max-w-[7rem] tracking-wide leading-tight">
+            {player.name}
+            {isSelf ? ' · you' : ''}
+          </div>
+          <div className="mt-0.5 flex justify-center">
+            <ChipStack amount={player.stack} size="sm" compact />
+          </div>
           {player.status === 'allin' && (
-            <div className="mt-1 text-[9px] font-display uppercase tracking-[0.18em] text-felt-neon">
+            <div className="text-[8px] font-display uppercase tracking-[0.16em] text-felt-neon">
               All-in
             </div>
           )}

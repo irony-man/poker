@@ -21,6 +21,7 @@ object TableContract {
         data object RemoveAllBots : Intent
         data class TopUp(val seat: Int, val amount: Int) : Intent
         data object EnableSitToPlay : Intent
+        data object LeaveTable : Intent
     }
 
     data class UiState(

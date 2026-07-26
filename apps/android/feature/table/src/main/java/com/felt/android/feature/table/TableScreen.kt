@@ -37,6 +37,7 @@ import com.felt.android.core.designsystem.FeltColors
 import com.felt.android.core.designsystem.FeltGhostButton
 import com.felt.android.core.designsystem.FeltPrimaryButton
 import com.felt.android.core.designsystem.FeltTableLayout
+import com.felt.android.core.designsystem.FloatingActionPanel
 import com.felt.android.core.designsystem.HudPanel
 import com.felt.android.core.designsystem.LegalActionsUi
 import com.felt.android.core.designsystem.LockPortraitOrientation
@@ -78,7 +79,10 @@ fun TableScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                FeltGhostButton(text = "← Lobby", onClick = onBack)
+                FeltGhostButton(text = "← Lobby", onClick = {
+                    viewModel.dispatch(TableContract.Intent.LeaveTable)
+                    onBack()
+                })
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -87,6 +91,13 @@ fun TableScreen(
                     if (state.spectating) {
                         StatusChip(text = "Spectating", accent = FeltColors.Gold)
                     }
+                    FeltGhostButton(
+                        text = "Leave",
+                        onClick = {
+                            viewModel.dispatch(TableContract.Intent.LeaveTable)
+                            onBack()
+                        },
+                    )
                     FeltGhostButton(
                         text = if (state.chatOpen) "Hide" else "Chat",
                         onClick = { viewModel.dispatch(TableContract.Intent.ToggleChat) },
@@ -127,18 +138,56 @@ fun TableScreen(
             } else {
                 state.table?.let { table ->
                     val tableUi = table.toTableUi()
+                    val mySeat = table.players.find { it.userId == state.userId }?.seat
+                    val isMyTurn = tableUi.toAct == mySeat &&
+                        (state.private?.legal?.types?.isNotEmpty() == true)
 
-                    FeltTableLayout(
-                        table = tableUi,
-                        userId = state.userId,
-                        holeCards = state.private?.holeCards,
-                        onSit = { buyInSeat = it },
-                        canSit = !state.spectating,
+                    Box(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth()
                             .padding(top = 6.dp),
-                    )
+                    ) {
+                        FeltTableLayout(
+                            table = tableUi,
+                            userId = state.userId,
+                            holeCards = state.private?.holeCards,
+                            onSit = { buyInSeat = it },
+                            canSit = !state.spectating,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+
+                        if (tableUi.turnEndsAt != null &&
+                            tableUi.toAct != null &&
+                            tableUi.toAct != mySeat
+                        ) {
+                            TurnTimerBar(
+                                endsAt = tableUi.turnEndsAt,
+                                totalMs = tableUi.turnTimeMs,
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .padding(8.dp),
+                            )
+                        }
+
+                        FloatingActionPanel(expanded = isMyTurn) {
+                            TableActionControls(
+                                table = tableUi,
+                                userId = state.userId,
+                                legal = state.private?.legal?.let {
+                                    LegalActionsUi(it.types, it.callAmount, it.minRaiseTo, it.maxRaiseTo)
+                                },
+                                onAction = { action, amount ->
+                                    viewModel.dispatch(TableContract.Intent.SendAction(action, amount))
+                                },
+                                waitingLabel = if (state.spectating) {
+                                    "Spectating — you are not seated"
+                                } else {
+                                    null
+                                },
+                            )
+                        }
+                    }
 
                     if (state.spectating) {
                         Row(
@@ -162,34 +211,6 @@ fun TableScreen(
                             )
                         }
                     }
-
-                    val mySeat = table.players.find { it.userId == state.userId }?.seat
-                    if (tableUi.turnEndsAt != null &&
-                        tableUi.toAct != null &&
-                        tableUi.toAct != mySeat
-                    ) {
-                        TurnTimerBar(
-                            endsAt = tableUi.turnEndsAt,
-                            totalMs = tableUi.turnTimeMs,
-                            modifier = Modifier.padding(top = 6.dp),
-                        )
-                    }
-
-                    TableActionControls(
-                        table = tableUi,
-                        userId = state.userId,
-                        legal = state.private?.legal?.let {
-                            LegalActionsUi(it.types, it.callAmount, it.minRaiseTo, it.maxRaiseTo)
-                        },
-                        onAction = { action, amount ->
-                            viewModel.dispatch(TableContract.Intent.SendAction(action, amount))
-                        },
-                        waitingLabel = if (state.spectating) {
-                            "Spectating — you are not seated"
-                        } else {
-                            null
-                        },
-                    )
 
                     if (!state.spectating) {
                         TableFooterControls(
@@ -309,14 +330,14 @@ private fun TableFooterControls(
         modifier = Modifier.padding(top = 6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        if ((table.street == "waiting" || table.street == "payout") && mySeat != null && seated >= 2) {
+        if (mySeat != null && seated >= 2 && (table.street == "waiting" || table.street == "payout")) {
             FeltGhostButton(
                 text = "Start hand",
                 onClick = onStartHand,
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-        if ((table.street == "waiting" || table.street == "payout") && emptySeats > 0) {
+        if (emptySeats > 0) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 FeltGhostButton(
                     text = "Add $botCount bots",

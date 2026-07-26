@@ -4,9 +4,11 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
+import com.felt.android.core.datastore.SessionPreferences
 import com.felt.android.core.model.ChatMessage
 import com.felt.android.core.model.LegalActions
 import com.felt.android.core.model.PublicTable
+import com.felt.android.core.designsystem.avatarIdFromUserId
 import com.felt.android.engine.ActionIntent
 import com.felt.android.engine.ActionType
 import com.felt.android.engine.EngineEvent
@@ -63,12 +65,14 @@ data class OfflineUiState(
 @HiltViewModel
 class OfflineViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
+    private val sessionPreferences: SessionPreferences,
 ) : ViewModel() {
 
     private val route = savedStateHandle.toRoute<OfflineTableRoute>()
     private val seats: Int = route.seats
     private val bots: Int = route.bots
     private val name: String = route.name
+    @Volatile private var humanAvatarId: Int = 0
 
     private val config = TableConfig(
         maxSeats = seats,
@@ -89,7 +93,10 @@ class OfflineViewModel @Inject constructor(
     private var turnEndsAt: Long? = null
 
     init {
-        bootstrap()
+        viewModelScope.launch {
+            humanAvatarId = sessionPreferences.getAvatarId()
+            bootstrap()
+        }
     }
 
     fun toggleChat() = _uiState.update { it.copy(chatOpen = !it.chatOpen) }
@@ -319,6 +326,11 @@ class OfflineViewModel @Inject constructor(
                     status = p.status.name.lowercase(),
                     hasCards = p.hasCards,
                     holeCards = p.holeCards?.let { listOf(it.first, it.second) },
+                    avatarId = when {
+                        p.userId == HUMAN_ID -> humanAvatarId
+                        p.userId != null -> avatarIdFromUserId(p.userId)
+                        else -> null
+                    },
                 )
             },
             dealerButton = view.dealerButton,

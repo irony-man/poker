@@ -53,6 +53,7 @@ object PublicTableMapper {
                     status = it.status,
                     hasCards = it.hasCards,
                     holeCards = it.holeCards,
+                    avatarId = it.avatarId,
                 )
             },
         )

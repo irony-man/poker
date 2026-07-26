@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Slider
@@ -44,6 +45,7 @@ data class TablePlayerUi(
     val status: String,
     val hasCards: Boolean = false,
     val holeCards: List<String>? = null,
+    val avatarId: Int? = null,
 )
 
 data class TableUiState(
@@ -269,17 +271,79 @@ private fun SeatChip(
                 )
             }
 
-            Box(contentAlignment = Alignment.Center) {
-                if (isToAct) {
-                    SeatTurnRing(
-                        endsAt = turnEndsAt,
-                        totalMs = turnTotalMs,
-                        active = true,
-                        modifier = Modifier.align(Alignment.Center),
+            if (player.status == "empty") {
+                if (canSit) {
+                    FeltGhostButton(text = "Sit", onClick = onSit)
+                } else {
+                    Text("Empty", fontSize = 11.sp, color = FeltColors.Cream.copy(alpha = 0.4f))
+                }
+            } else {
+                val avatarSize = if (isSelf) 48.dp else 42.dp
+                val ringSize = avatarSize + 12.dp
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.size(ringSize),
+                ) {
+                    if (isToAct) {
+                        SeatTurnRing(
+                            endsAt = turnEndsAt,
+                            totalMs = turnTotalMs,
+                            active = true,
+                            ringSize = ringSize,
+                        )
+                    }
+                    PlayerAvatar(
+                        avatarId = player.avatarId,
+                        userId = player.userId,
+                        size = avatarSize,
+                        selected = isSelf || isWinner,
                     )
+                    if (isDealer) {
+                        Text(
+                            "D",
+                            color = FeltColors.Ink,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(FeltColors.Cream)
+                                .padding(horizontal = 4.dp, vertical = 1.dp),
+                        )
+                    }
+                    if (isBot && !isWinner) {
+                        Text(
+                            "BOT",
+                            color = FeltColors.Cyan,
+                            fontSize = 7.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(FeltColors.Cyan.copy(alpha = 0.2f))
+                                .padding(horizontal = 3.dp, vertical = 1.dp),
+                        )
+                    }
+                    if (player.status == "folded") {
+                        Box(
+                            modifier = Modifier
+                                .size(avatarSize)
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(FeltColors.Ink.copy(alpha = 0.72f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                "FOLD",
+                                color = FeltColors.Cream.copy(alpha = 0.8f),
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
                 }
                 Column(
                     modifier = Modifier
+                        .padding(top = 4.dp)
                         .clip(RoundedCornerShape(10.dp))
                         .background(
                             when {
@@ -296,20 +360,12 @@ private fun SeatChip(
                                 else -> Modifier
                             },
                         )
-                        .padding(6.dp),
+                        .padding(horizontal = 6.dp, vertical = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    if (isDealer) {
-                        Text(
-                            "D",
-                            color = if (isWinner || isToAct) FeltColors.Ink else FeltColors.Gold,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
                     Text(
                         text = buildString {
-                            append(player.name ?: if (player.status == "empty") "Empty" else "Seat ${player.seat}")
+                            append(player.name ?: "Seat ${player.seat}")
                             if (isSelf) append(" · you")
                         },
                         color = when {
@@ -322,42 +378,22 @@ private fun SeatChip(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    if (isBot && !isWinner && !isToAct) {
-                        Text("BOT", color = FeltColors.Cyan.copy(alpha = 0.8f), fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                    CasinoChip(amount = player.stack)
+                    if (player.bet > 0) {
+                        Text(
+                            "Bet ${formatChips(player.bet)}",
+                            fontSize = 9.sp,
+                            color = if (isWinner || isToAct) FeltColors.Ink.copy(0.55f)
+                            else FeltColors.Cream.copy(0.5f),
+                        )
                     }
-                    if (player.status != "empty") {
-                        CasinoChip(amount = player.stack)
-                        if (player.bet > 0) {
-                            Text(
-                                "Bet ${formatChips(player.bet)}",
-                                fontSize = 9.sp,
-                                color = if (isWinner || isToAct) FeltColors.Ink.copy(0.55f)
-                                else FeltColors.Cream.copy(0.5f),
-                            )
-                        }
-                        if (player.status == "allin") {
-                            Text(
-                                "ALL-IN",
-                                fontSize = 8.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isWinner || isToAct) FeltColors.Ink else FeltColors.Neon,
-                            )
-                        }
-                        if (player.status == "folded") {
-                            Text(
-                                "FOLD",
-                                fontSize = 8.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isWinner || isToAct) FeltColors.Ink.copy(0.6f)
-                                else FeltColors.Cream.copy(0.45f),
-                            )
-                        }
-                    } else {
-                        if (canSit) {
-                            FeltGhostButton(text = "Sit", onClick = onSit)
-                        } else {
-                            Text("Empty", fontSize = 11.sp, color = FeltColors.Cream.copy(alpha = 0.4f))
-                        }
+                    if (player.status == "allin") {
+                        Text(
+                            "ALL-IN",
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isWinner || isToAct) FeltColors.Ink else FeltColors.Neon,
+                        )
                     }
                 }
             }

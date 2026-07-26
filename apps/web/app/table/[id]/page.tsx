@@ -4,6 +4,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import { TableView } from '@/components/TableView';
 import { register } from '@/lib/api';
+import { loadSavedAvatarId, saveAvatarId } from '@/lib/avatars';
 import { useSession } from '@/lib/store';
 
 function TablePageInner() {
@@ -21,19 +22,23 @@ function TablePageInner() {
     async function refreshSession() {
       const raw = localStorage.getItem('felt-session');
       let displayName = `Guest${Math.floor(Math.random() * 999)}`;
+      let avatarId = loadSavedAvatarId();
       if (raw) {
         try {
-          const prev = JSON.parse(raw) as { name?: string };
+          const prev = JSON.parse(raw) as { name?: string; avatarId?: number };
           if (prev.name) displayName = prev.name;
+          if (typeof prev.avatarId === 'number') avatarId = prev.avatarId;
         } catch {
           /* ignore */
         }
       }
       // Always re-register to get a fresh WS ticket (server may have restarted)
-      const s = await register(displayName);
+      const s = await register(displayName, avatarId);
       if (cancelled) return;
-      setSession(s);
-      localStorage.setItem('felt-session', JSON.stringify(s));
+      const session = { ...s, avatarId: s.avatarId ?? avatarId };
+      setSession(session);
+      localStorage.setItem('felt-session', JSON.stringify(session));
+      saveAvatarId(session.avatarId);
       setReady(true);
     }
     void refreshSession().catch(() => {

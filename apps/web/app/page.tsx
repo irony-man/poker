@@ -2,7 +2,9 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { AvatarPicker } from '@/components/PlayerAvatar';
 import { createTable, register, resolveInvite } from '@/lib/api';
+import { loadSavedAvatarId, saveAvatarId } from '@/lib/avatars';
 import { useSession } from '@/lib/store';
 
 export default function HomePage() {
@@ -10,21 +12,31 @@ export default function HomePage() {
   const setSession = useSession((s) => s.setSession);
   const sessionName = useSession((s) => s.name);
   const [name, setName] = useState(sessionName ?? '');
+  const [avatarId, setAvatarId] = useState(0);
   const [invite, setInvite] = useState('');
   const [maxSeats, setMaxSeats] = useState(6);
   const [botCount, setBotCount] = useState(2);
   const [offlineSeats, setOfflineSeats] = useState(6);
-  const [offlineBots, setOfflineBots] = useState(3);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setAvatarId(loadSavedAvatarId());
     const raw = localStorage.getItem('felt-session');
     if (raw) {
       try {
-        const s = JSON.parse(raw) as { userId: string; name: string; ticket: string };
+        const s = JSON.parse(raw) as {
+          userId: string;
+          name: string;
+          ticket: string;
+          avatarId?: number;
+        };
         setSession(s);
         setName(s.name);
+        if (typeof s.avatarId === 'number') {
+          setAvatarId(s.avatarId);
+          saveAvatarId(s.avatarId);
+        }
       } catch {
         /* ignore */
       }
@@ -36,17 +48,18 @@ export default function HomePage() {
     if (botCount > maxBots) setBotCount(maxBots);
   }, [maxSeats, botCount]);
 
-  useEffect(() => {
-    const maxBots = Math.max(1, offlineSeats - 1);
-    if (offlineBots > maxBots) setOfflineBots(maxBots);
-    if (offlineBots < 1) setOfflineBots(1);
-  }, [offlineSeats, offlineBots]);
+  function pickAvatar(id: number) {
+    setAvatarId(id);
+    saveAvatarId(id);
+  }
 
   async function ensureSession(displayName: string) {
-    const s = await register(displayName.trim() || 'Player');
-    setSession(s);
-    localStorage.setItem('felt-session', JSON.stringify(s));
-    return s;
+    const s = await register(displayName.trim() || 'Player', avatarId);
+    const session = { ...s, avatarId: s.avatarId ?? avatarId };
+    setSession(session);
+    localStorage.setItem('felt-session', JSON.stringify(session));
+    saveAvatarId(session.avatarId);
+    return session;
   }
 
   async function onCreate(e: React.FormEvent) {
@@ -101,12 +114,12 @@ export default function HomePage() {
   }
 
   const maxBots = Math.max(0, maxSeats - 1);
-  const maxOfflineBots = Math.max(1, offlineSeats - 1);
 
   function onOffline(e: React.FormEvent) {
     e.preventDefault();
     const display = encodeURIComponent(name.trim() || 'Player');
-    router.push(`/offline?name=${display}&seats=${offlineSeats}&bots=${offlineBots}`);
+    const bots = Math.min(3, Math.max(1, offlineSeats - 1));
+    router.push(`/offline?name=${display}&seats=${offlineSeats}&bots=${bots}`);
   }
 
   return (
@@ -126,7 +139,11 @@ export default function HomePage() {
         </p>
       </div>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 sm:gap-5 sm:items-stretch">
+      <div className="mt-6 hud-panel mx-auto max-w-xl p-4 sm:p-5">
+        <AvatarPicker value={avatarId} onChange={pickAvatar} />
+      </div>
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 sm:gap-5 sm:items-stretch">
         <form
           onSubmit={onCreate}
           className="hud-panel flex h-full flex-col gap-3.5 p-5 sm:p-6"
@@ -234,7 +251,7 @@ export default function HomePage() {
               Solo mode
             </span>
           </div>
-          <div className="grid gap-3.5 sm:grid-cols-3 sm:gap-4">
+          <div className="grid gap-3.5 sm:grid-cols-2 sm:gap-4">
             <label className="block min-w-0">
               <span className="hud-label">Callsign</span>
               <input
@@ -254,21 +271,7 @@ export default function HomePage() {
               >
                 {[2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
                   <option key={n} value={n}>
-                    {n} seats
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block min-w-0">
-              <span className="hud-label">Bots</span>
-              <select
-                value={offlineBots}
-                onChange={(e) => setOfflineBots(Number(e.target.value))}
-                className="field-select mt-1"
-              >
-                {Array.from({ length: maxOfflineBots }, (_, i) => i + 1).map((n) => (
-                  <option key={n} value={n}>
-                    {n} bot{n === 1 ? '' : 's'}
+                    {n} seats · {Math.min(3, n - 1)} bots
                   </option>
                 ))}
               </select>

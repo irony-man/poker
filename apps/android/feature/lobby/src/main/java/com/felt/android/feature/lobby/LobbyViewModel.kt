@@ -6,7 +6,6 @@ import com.felt.android.core.datastore.SessionPreferences
 import com.felt.android.core.model.CreateTableRequest
 import com.felt.android.core.model.RegisterRequest
 import com.felt.android.core.model.SessionDto
-import com.felt.android.core.model.TicketRequest
 import com.felt.android.core.network.FeltApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -18,6 +17,7 @@ import kotlinx.coroutines.launch
 
 data class LobbyUiState(
     val name: String = "",
+    val avatarId: Int = 0,
     val maxSeats: Int = 6,
     val botCount: Int = 2,
     val inviteCode: String = "",
@@ -38,13 +38,22 @@ class LobbyViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            sessionPreferences.getSession()?.name?.let { saved ->
-                _uiState.update { it.copy(name = saved) }
+            sessionPreferences.getSession()?.let { saved ->
+                _uiState.update {
+                    it.copy(name = saved.name, avatarId = saved.avatarId)
+                }
+            } ?: run {
+                val avatar = sessionPreferences.getAvatarId()
+                _uiState.update { it.copy(avatarId = avatar) }
             }
         }
     }
 
     fun onNameChange(value: String) = _uiState.update { it.copy(name = value) }
+    fun onAvatarChange(value: Int) {
+        _uiState.update { it.copy(avatarId = value.coerceIn(0, 7)) }
+        viewModelScope.launch { sessionPreferences.saveAvatarId(value) }
+    }
     fun onMaxSeatsChange(value: Int) = _uiState.update { it.copy(maxSeats = value) }
     fun onBotCountChange(value: Int) = _uiState.update { it.copy(botCount = value) }
     fun onInviteChange(value: String) = _uiState.update { it.copy(inviteCode = value) }
@@ -96,22 +105,20 @@ class LobbyViewModel @Inject constructor(
 
     fun offline(onNavigate: (seats: Int, bots: Int, name: String) -> Unit) {
         val state = _uiState.value
+        val bots = minOf(3, state.offlineSeats - 1).coerceAtLeast(1)
         onNavigate(
             state.offlineSeats,
-            state.offlineBots.coerceIn(1, state.offlineSeats - 1),
+            bots,
             state.name.trim().ifBlank { "Player" },
         )
     }
 
     private suspend fun ensureSession(displayName: String): SessionDto {
-        val saved = sessionPreferences.getSession()
-        val session = if (saved != null) {
-            runCatching { feltApi.refreshTicket(TicketRequest(saved.userId)) }
-                .getOrElse { feltApi.register(RegisterRequest(displayName)) }
-        } else {
-            feltApi.register(RegisterRequest(displayName))
-        }
+        val avatarId = _uiState.value.avatarId.coerceIn(0, 7)
+        val session = feltApi.register(RegisterRequest(displayName, avatarId))
+            .copy(avatarId = avatarId)
         sessionPreferences.saveSession(session)
+        sessionPreferences.saveAvatarId(avatarId)
         return session
     }
 }

@@ -18,6 +18,7 @@ import {
 } from '@poker/engine';
 import type { KvStore } from './kv.js';
 import type { HandHistoryStore } from './history.js';
+import { avatarIdFromUserId, clampAvatarId } from './avatars.js';
 import { chooseBotAction, isBotUserId, makeBotUserId, pickBotName } from './bot.js';
 
 export interface TableMeta {
@@ -33,6 +34,7 @@ export interface TableMeta {
 export interface ConnectionContext {
   userId: string;
   name: string;
+  avatarId: number;
   send: (msg: unknown) => void;
 }
 
@@ -48,6 +50,8 @@ export class Room {
   private connections = new Map<string, ConnectionContext>(); // userId -> conn
   private spectators = new Set<string>();
   private rateLimits = new Map<string, RateBucket>();
+  /** Preset avatar index per seated/connected user (incl. bots). */
+  private avatarByUser = new Map<string, number>();
   private kv: KvStore;
   private history: HandHistoryStore;
   private handStartedAt = 0;
@@ -66,6 +70,7 @@ export class Room {
   attach(conn: ConnectionContext): void {
     this.connections.set(conn.userId, conn);
     this.spectators.add(conn.userId);
+    this.avatarByUser.set(conn.userId, clampAvatarId(conn.avatarId));
     this.pushTo(conn.userId);
   }
 
@@ -160,9 +165,7 @@ export class Room {
     buyIn?: number,
     count = 1,
   ): { ok: boolean; error?: string; added?: number } {
-    if (this.state.street !== 'waiting' && this.state.street !== 'payout') {
-      return { ok: false, error: 'Add bots between hands' };
-    }
+    // Allowed mid-hand — new bots sit as `seated` and join on the next deal.
     if (this.state.street === 'payout') {
       this.state = returnToWaiting(this.state);
     }
@@ -193,6 +196,7 @@ export class Room {
       const result = sitDown(this.state, nextSeat, userId, name, amount);
       if (!result.ok) break;
       this.state = result.state;
+      this.avatarByUser.set(userId, avatarIdFromUserId(userId));
       joined.push(name);
       added += 1;
     }
@@ -206,16 +210,13 @@ export class Room {
         : `${added} bots join — ${joined.join(', ')}`,
     );
     void this.afterStateChange();
-    this.maybeAutoStart();
+    if (this.state.street === 'waiting') this.maybeAutoStart();
     return { ok: true, added };
   }
 
   removeBot(seat: number): { ok: boolean; error?: string } {
     const p = this.state.players[seat];
     if (!p || !isBotUserId(p.userId)) return { ok: false, error: 'Not a bot seat' };
-    if (this.state.street !== 'waiting' && this.state.street !== 'payout') {
-      return { ok: false, error: 'Remove bots between hands' };
-    }
     if (this.state.street === 'payout') {
       this.state = returnToWaiting(this.state);
     }
@@ -229,9 +230,6 @@ export class Room {
   }
 
   removeAllBots(): { ok: boolean; error?: string; removed?: number } {
-    if (this.state.street !== 'waiting' && this.state.street !== 'payout') {
-      return { ok: false, error: 'Remove bots between hands' };
-    }
     if (this.state.street === 'payout') {
       this.state = returnToWaiting(this.state);
     }
@@ -244,7 +242,7 @@ export class Room {
         removed += 1;
       }
     }
-    if (removed === 0) return { ok: false, error: 'No bots seated' };
+    if (removed === 0) return { ok: false, error: 'No bots available to remove' };
     this.systemChat('Dealer', `Removed ${removed} bot${removed === 1 ? '' : 's'}`);
     void this.afterStateChange();
     return { ok: true, removed };
@@ -264,14 +262,25 @@ export class Room {
     await this.kv.publish(`table:${this.meta.id}:events`, JSON.stringify({ version: this.state.version }));
   }
 
+  private enrichPublic() {
+    const base = toPublicView(this.meta.id, this.state, this.config);
+    return {
+      ...base,
+      turnEndsAt: this.turnEndsAt,
+      players: base.players.map((p) => ({
+        ...p,
+        avatarId: p.userId
+          ? (this.avatarByUser.get(p.userId) ?? avatarIdFromUserId(p.userId))
+          : null,
+      })),
+    };
+  }
+
   private pushTo(userId: string): void {
     const conn = this.connections.get(userId);
     if (!conn) return;
     const seat = this.seatOf(userId);
-    const table = {
-      ...toPublicView(this.meta.id, this.state, this.config),
-      turnEndsAt: this.turnEndsAt,
-    };
+    const table = this.enrichPublic();
     const priv = seat !== null ? toPrivateView(this.state, seat, this.config) : null;
     conn.send({ type: 'state_sync', table, private: priv });
   }
@@ -362,6 +371,11 @@ export class Room {
     const result = sitDown(this.state, seat, userId, name, buyIn);
     if (!result.ok) return { ok: false, error: result.error };
     this.state = result.state;
+    const conn = this.connections.get(userId);
+    if (conn) this.avatarByUser.set(userId, clampAvatarId(conn.avatarId));
+    else if (!this.avatarByUser.has(userId)) {
+      this.avatarByUser.set(userId, avatarIdFromUserId(userId));
+    }
     void this.afterStateChange();
     this.maybeAutoStart();
     return { ok: true };

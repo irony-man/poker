@@ -20,6 +20,7 @@ import {
   type TableConfig,
 } from '@poker/engine';
 import { ActionControls } from './ActionControls';
+import { FloatingActionDock } from './FloatingActionDock';
 import { PlayingCard } from './PlayingCard';
 import { PotBanner } from './PotBanner';
 import { SeatView } from './SeatView';
@@ -27,6 +28,7 @@ import { TableShell } from './TableShell';
 import { TurnTimerBar } from './TurnTimer';
 import { WinHandModal } from './WinHandModal';
 import { playTick } from '@/lib/audio';
+import { avatarIdFromUserId, loadSavedAvatarId } from '@/lib/avatars';
 import { useSession, type ChatMessage, type PrivateView, type PublicTable } from '@/lib/store';
 import { seatAnglesForHero } from '@/lib/tableLayout';
 
@@ -182,7 +184,20 @@ export function OfflineTableView({
   const publicTable: PublicTable | null = useMemo(() => {
     if (!bootstrapped) return null;
     const view = toPublicView('offline', state, config) as unknown as PublicTable;
-    return { ...view, turnEndsAt };
+    const humanAvatar = loadSavedAvatarId();
+    return {
+      ...view,
+      turnEndsAt,
+      players: view.players.map((p) => ({
+        ...p,
+        avatarId:
+          p.userId === HUMAN_ID
+            ? humanAvatar
+            : p.userId
+              ? avatarIdFromUserId(p.userId)
+              : null,
+      })),
+    };
   }, [bootstrapped, state, config, turnEndsAt]);
 
   const priv: PrivateView | null = useMemo(() => {
@@ -346,6 +361,7 @@ export function OfflineTableView({
     return <p className="text-cream/60">Dealing offline table…</p>;
   }
 
+  const isMyTurn = publicTable.toAct === mySeat && !!(priv?.legal?.types.length);
   const potTotal =
     (publicTable.pot || 0) ||
     (publicTable.sidePots?.reduce((s, p) => s + p.amount, 0) ?? 0);
@@ -380,7 +396,8 @@ export function OfflineTableView({
           </a>
         </div>
 
-        <div className="relative flex-1 felt-surface rounded-[42%] border-[12px] table-rim shadow-felt min-h-[340px] overflow-hidden">
+        <div className="relative min-h-0 flex-1">
+          <div className="absolute inset-0 felt-surface rounded-[36%] border-[10px] table-rim shadow-felt overflow-hidden sm:rounded-[42%] sm:border-[12px]">
           <div className="pointer-events-none absolute inset-6 rounded-[40%] border border-felt-neon/10 z-[1]" />
 
           <div className="absolute left-1/2 top-[22%] z-20 -translate-x-1/2 -translate-y-1/2">
@@ -430,32 +447,30 @@ export function OfflineTableView({
               />
             );
           })}
-        </div>
+          </div>
 
-        <div className="mt-4 pb-[env(safe-area-inset-bottom)]">
-          {turnEndsAt &&
-            publicTable.toAct !== null &&
-            publicTable.toAct !== mySeat && (
-            <div className="mb-2">
-              <TurnTimerBar
-                endsAt={turnEndsAt}
-                totalMs={config.turnTimeMs}
-              />
+          {turnEndsAt && publicTable.toAct !== null && publicTable.toAct !== mySeat && (
+            <div className="absolute inset-x-0 top-2 z-30 flex justify-center px-3">
+              <div className="w-full max-w-sm">
+                <TurnTimerBar endsAt={turnEndsAt} totalMs={config.turnTimeMs} />
+              </div>
             </div>
           )}
-          <ActionControls onAction={onAction} />
-          <div className="mt-2 w-full max-w-xl mx-auto flex flex-wrap gap-2 justify-center">
-            {(publicTable.street === 'waiting' || publicTable.street === 'payout') && (
-              <button
-                type="button"
-                onClick={start}
-                className="btn-ghost text-sm py-2"
-              >
-                {publicTable.street === 'waiting' ? 'Start hand' : 'Next hand'}
-              </button>
-            )}
+
+          <div className="absolute inset-x-0 bottom-0 z-30 flex justify-center px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+            <div className="flex max-w-full flex-wrap items-center justify-center gap-1.5 rounded-full border border-cream/15 bg-ink/85 px-2 py-1.5 backdrop-blur-md">
+              {(publicTable.street === 'waiting' || publicTable.street === 'payout') && (
+                <button type="button" onClick={start} className="btn-ghost text-xs py-1.5">
+                  {publicTable.street === 'waiting' ? 'Start hand' : 'Next hand'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
+
+        <FloatingActionDock expanded={!!isMyTurn} label="Actions">
+          <ActionControls onAction={onAction} bare />
+        </FloatingActionDock>
       </div>
 
       {showWinModal && publicTable && (

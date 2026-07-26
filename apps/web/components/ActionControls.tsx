@@ -7,9 +7,12 @@ import { useSession } from '@/lib/store';
 export function ActionControls({
   onAction,
   spectating = false,
+  bare = false,
 }: {
   onAction: (action: string, amount?: number) => void;
   spectating?: boolean;
+  /** Skip outer hud-panel chrome (when nested in FloatingActionDock). */
+  bare?: boolean;
 }) {
   const table = useSession((s) => s.table);
   const priv = useSession((s) => s.private);
@@ -34,9 +37,19 @@ export function ActionControls({
     setRaiseTo(min);
   }, [min, table?.actionSeq]);
 
+  const shell = bare
+    ? 'w-full overflow-hidden'
+    : 'hud-panel mx-auto w-full max-w-xl overflow-hidden p-0';
+
   if (!isTurn || !legal || legal.types.length === 0) {
     return (
-      <div className="hud-panel px-4 py-3 text-center text-sm font-medium tracking-wide text-cream/55">
+      <div
+        className={
+          bare
+            ? 'px-4 py-3 text-center text-sm font-medium tracking-wide text-cream/55'
+            : 'hud-panel px-4 py-3 text-center text-sm font-medium tracking-wide text-cream/55'
+        }
+      >
         {spectating
           ? 'Spectating — you are not seated'
           : table?.street === 'waiting'
@@ -54,7 +67,7 @@ export function ActionControls({
   const potBet = snap(Math.min(max, Math.max(min, pot + (table?.currentBet ?? 0))));
 
   return (
-    <div className="hud-panel mx-auto w-full max-w-xl overflow-hidden p-0">
+    <div className={shell}>
       <MoveTimerStrip endsAt={turnEndsAt} totalMs={turnTimeMs} />
       <div className="space-y-3 p-4">
         <div className="flex items-center justify-between gap-3">
@@ -135,6 +148,11 @@ export function ActionControls({
               className="btn-primary col-span-1"
             >
               {legal.types.includes('bet') ? 'Bet' : 'Raise'} {raiseTo}
+            </button>
+          )}
+          {legal.types.includes('allin') && (
+            <button type="button" onClick={() => onAction('allin')} className="btn-primary">
+              All-in
             </button>
           )}
         </div>

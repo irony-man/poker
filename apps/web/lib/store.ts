@@ -11,6 +11,8 @@ export interface PublicPlayer {
   status: string;
   hasCards: boolean;
   holeCards: [string, string] | null;
+  /** Preset profile picture index (0–7). */
+  avatarId?: number | null;
 }
 
 export interface PublicTable {

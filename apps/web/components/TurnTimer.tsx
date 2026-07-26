@@ -92,10 +92,13 @@ export function SeatTurnRing({
   endsAt,
   totalMs,
   active,
+  size = 56,
 }: {
   endsAt: number | null | undefined;
   totalMs: number;
   active: boolean;
+  /** Outer box size in px (avatar + ring padding). */
+  size?: number;
 }) {
   const remaining = useTurnRemainingMs(active ? endsAt : null);
   if (!active || !endsAt || remaining <= 0 || totalMs <= 0) return null;
@@ -107,7 +110,9 @@ export function SeatTurnRing({
 
   return (
     <svg
-      className="pointer-events-none absolute -inset-2 h-[calc(100%+1rem)] w-[calc(100%+1rem)]"
+      className="pointer-events-none absolute inset-0"
+      width={size}
+      height={size}
       viewBox="0 0 56 56"
       aria-hidden
     >
@@ -116,8 +121,8 @@ export function SeatTurnRing({
         cy="28"
         r={r}
         fill="none"
-        stroke="rgba(255,255,255,0.08)"
-        strokeWidth="3"
+        stroke="rgba(255,255,255,0.12)"
+        strokeWidth="3.5"
       />
       <circle
         cx="28"
@@ -125,7 +130,7 @@ export function SeatTurnRing({
         r={r}
         fill="none"
         stroke={urgent ? '#f87171' : '#2AFF9A'}
-        strokeWidth="3"
+        strokeWidth="3.5"
         strokeLinecap="round"
         strokeDasharray={`${dash} ${c}`}
         transform="rotate(-90 28 28)"

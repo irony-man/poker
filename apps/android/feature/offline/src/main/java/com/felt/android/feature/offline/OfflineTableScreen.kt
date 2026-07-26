@@ -32,6 +32,7 @@ import com.felt.android.core.designsystem.FeltColors
 import com.felt.android.core.designsystem.FeltGhostButton
 import com.felt.android.core.designsystem.FeltPrimaryButton
 import com.felt.android.core.designsystem.FeltTableLayout
+import com.felt.android.core.designsystem.FloatingActionPanel
 import com.felt.android.core.designsystem.HudPanel
 import com.felt.android.core.designsystem.LegalActionsUi
 import com.felt.android.core.designsystem.LockPortraitOrientation
@@ -94,37 +95,47 @@ fun OfflineTableScreen(
                 }
             }
 
-            FeltTableLayout(
-                table = tableUi,
-                userId = HUMAN_USER_ID,
-                holeCards = state.holeCards,
-                onSit = {},
+            val mySeat = table.players.find { it.userId == HUMAN_USER_ID }?.seat
+            val isMyTurn = tableUi.toAct == mySeat && (state.legal?.types?.isNotEmpty() == true)
+
+            Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
                     .padding(top = 8.dp),
-            )
-
-            val mySeat = table.players.find { it.userId == HUMAN_USER_ID }?.seat
-            if (tableUi.turnEndsAt != null &&
-                tableUi.toAct != null &&
-                tableUi.toAct != mySeat
             ) {
-                TurnTimerBar(
-                    endsAt = tableUi.turnEndsAt,
-                    totalMs = tableUi.turnTimeMs,
-                    modifier = Modifier.padding(top = 6.dp),
+                FeltTableLayout(
+                    table = tableUi,
+                    userId = HUMAN_USER_ID,
+                    holeCards = state.holeCards,
+                    onSit = {},
+                    modifier = Modifier.fillMaxSize(),
                 )
-            }
 
-            TableActionControls(
-                table = tableUi,
-                userId = HUMAN_USER_ID,
-                legal = state.legal?.let {
-                    LegalActionsUi(it.types, it.callAmount, it.minRaiseTo, it.maxRaiseTo)
-                },
-                onAction = { action, amount -> viewModel.sendAction(action, amount) },
-            )
+                if (tableUi.turnEndsAt != null &&
+                    tableUi.toAct != null &&
+                    tableUi.toAct != mySeat
+                ) {
+                    TurnTimerBar(
+                        endsAt = tableUi.turnEndsAt,
+                        totalMs = tableUi.turnTimeMs,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(8.dp),
+                    )
+                }
+
+                FloatingActionPanel(expanded = isMyTurn) {
+                    TableActionControls(
+                        table = tableUi,
+                        userId = HUMAN_USER_ID,
+                        legal = state.legal?.let {
+                            LegalActionsUi(it.types, it.callAmount, it.minRaiseTo, it.maxRaiseTo)
+                        },
+                        onAction = { action, amount -> viewModel.sendAction(action, amount) },
+                    )
+                }
+            }
 
             if (table.street == "waiting" || table.street == "payout") {
                 FeltGhostButton(

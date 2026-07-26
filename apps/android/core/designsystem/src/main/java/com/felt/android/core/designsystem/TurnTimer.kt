@@ -142,6 +142,7 @@ fun SeatTurnRing(
     totalMs: Long,
     active: Boolean,
     modifier: Modifier = Modifier,
+    ringSize: androidx.compose.ui.unit.Dp = 56.dp,
 ) {
     val remaining = rememberTurnRemainingMs(if (active) endsAt else null)
     if (!active || endsAt == null || remaining <= 0L || totalMs <= 0L) return
@@ -149,12 +150,12 @@ fun SeatTurnRing(
     val urgent = remaining <= 5_000L
     val accent = if (urgent) FeltColors.Danger else FeltColors.Neon
 
-    Canvas(modifier = modifier.size(48.dp)) {
-        val stroke = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
-        val diam = size.minDimension - stroke.width
-        val topLeft = Offset((size.width - diam) / 2f, (size.height - diam) / 2f)
+    Canvas(modifier = modifier.size(ringSize)) {
+        val stroke = Stroke(width = 3.5.dp.toPx(), cap = StrokeCap.Round)
+        val diam = this.size.minDimension - stroke.width
+        val topLeft = Offset((this.size.width - diam) / 2f, (this.size.height - diam) / 2f)
         drawArc(
-            color = FeltColors.Cream.copy(alpha = 0.1f),
+            color = FeltColors.Cream.copy(alpha = 0.12f),
             startAngle = -90f,
             sweepAngle = 360f,
             useCenter = false,

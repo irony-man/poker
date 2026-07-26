@@ -26,6 +26,22 @@ body {
     linear-gradient(160deg, #12100e 0%, #0c0a08 100%);
 }
 
+@layer components {
+  .field-select {
+    @apply w-full rounded-md border border-cream/25 bg-[#1c1814] px-3 py-2 text-cream outline-none;
+    color-scheme: dark;
+  }
+
+  .field-select:focus {
+    @apply border-gold/60;
+  }
+
+  .field-select option {
+    background-color: #f3efe6;
+    color: #0c0a08;
+  }
+}
+
 @layer utilities {
   .felt-surface {
     background:

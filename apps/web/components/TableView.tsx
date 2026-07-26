@@ -217,7 +217,7 @@ export function TableView({ tableId }: { tableId: string }) {
                   <select
                     value={Math.min(botAddCount, emptySeats)}
                     onChange={(e) => setBotAddCount(Number(e.target.value))}
-                    className="rounded-md bg-cream/5 border border-cream/15 px-2 py-1.5 text-cream text-sm"
+                    className="field-select w-auto py-1.5 text-sm"
                   >
                     {Array.from({ length: emptySeats }, (_, i) => i + 1).map((n) => (
                       <option key={n} value={n}>

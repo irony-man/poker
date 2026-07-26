@@ -115,7 +115,7 @@ export default function HomePage() {
             <select
               value={maxSeats}
               onChange={(e) => setMaxSeats(Number(e.target.value))}
-              className="mt-1 w-full rounded-md bg-cream/5 border border-cream/15 px-3 py-2 text-cream"
+              className="field-select mt-1"
             >
               {[2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
                 <option key={n} value={n}>
@@ -129,7 +129,7 @@ export default function HomePage() {
             <select
               value={botCount}
               onChange={(e) => setBotCount(Number(e.target.value))}
-              className="mt-1 w-full rounded-md bg-cream/5 border border-cream/15 px-3 py-2 text-cream"
+              className="field-select mt-1"
             >
               {Array.from({ length: maxBots + 1 }, (_, n) => (
                 <option key={n} value={n}>

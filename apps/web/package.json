@@ -9,6 +9,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@poker/engine": "*",
     "@poker/protocol": "*",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",

@@ -363,8 +363,8 @@ export function OfflineTableView({
           <div className="pointer-events-none absolute inset-6 rounded-[40%] border border-felt-neon/10 z-[1]" />
 
           <div className="absolute left-1/2 top-[40%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-3 z-10">
-            <div className="flex flex-col items-center gap-1 rounded-lg border border-gold/25 bg-ink-panel/70 px-4 py-2 backdrop-blur-md shadow-hud">
-              <div className="text-[10px] font-display uppercase tracking-[0.22em] text-gold/80">Pot</div>
+            <div className="flex flex-col items-center gap-1.5 rounded-2xl border border-gold/30 bg-ink/75 px-5 py-2.5 backdrop-blur-md shadow-[0_8px_28px_rgba(0,0,0,0.45)]">
+              <div className="text-[10px] font-display uppercase tracking-[0.22em] text-gold/75">Pot</div>
               <ChipStack amount={Math.max(potTotal, publicTable.pot)} size="lg" />
             </div>
             <div className="flex gap-1.5 min-h-[5.25rem] items-center">
@@ -372,7 +372,7 @@ export function OfflineTableView({
                 <PlayingCard key={c + publicTable.version} code={c} />
               ))}
               {publicTable.community.length === 0 && publicTable.street !== 'waiting' && (
-                <span className="text-cream/40 text-xs">Dealing…</span>
+                <span className="text-cream/40 text-xs font-display uppercase tracking-wider">Dealing…</span>
               )}
             </div>
           </div>

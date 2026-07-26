@@ -1,94 +1,122 @@
 'use client';
 
-import { motion } from 'framer-motion';
-
-/** Casino chip palette with rim colors + edge marks. */
-const DENOMS = [
-  { value: 1000, face: '#111111', rim: '#c9a227', mark: '#e8d48b' },
-  { value: 500, face: '#5b21b6', rim: '#ddd6fe', mark: '#f5f3ff' },
-  { value: 100, face: '#0f172a', rim: '#f8fafc', mark: '#e2e8f0' },
-  { value: 25, face: '#15803d', rim: '#bbf7d0', mark: '#dcfce7' },
-  { value: 10, face: '#1d4ed8', rim: '#bfdbfe', mark: '#dbeafe' },
-  { value: 5, face: '#b91c1c', rim: '#fecaca', mark: '#fee2e2' },
-  { value: 1, face: '#e7e5e4', rim: '#78716c', mark: '#a8a29e' },
+/** Classic casino colors — no purple clutter at table scale. */
+const CHIP_STYLES = [
+  { min: 1000, face: '#1a1a1a', rim: '#e0b43a', ink: '#ffe29a' },
+  { min: 500, face: '#0b3d2e', rim: '#2aff9a', ink: '#d8ffe9' },
+  { min: 100, face: '#0c1a33', rim: '#e8eef5', ink: '#ffffff' },
+  { min: 25, face: '#14532d', rim: '#86efac', ink: '#ecfdf5' },
+  { min: 10, face: '#1e3a8a', rim: '#93c5fd', ink: '#eff6ff' },
+  { min: 5, face: '#991b1b', rim: '#fca5a5', ink: '#fef2f2' },
+  { min: 1, face: '#e7e5e4', rim: '#78716c', ink: '#292524' },
 ] as const;
 
-function breakDown(amount: number) {
-  let remaining = Math.max(0, Math.floor(amount));
-  const parts: { value: number; count: number; face: string; rim: string; mark: string }[] = [];
-  for (const d of DENOMS) {
-    const count = Math.floor(remaining / d.value);
-    if (count > 0) {
-      parts.push({
-        value: d.value,
-        count: Math.min(count, 10),
-        face: d.face,
-        rim: d.rim,
-        mark: d.mark,
-      });
-      remaining -= count * d.value;
-    }
+function styleForAmount(amount: number) {
+  for (const s of CHIP_STYLES) {
+    if (amount >= s.min) return s;
   }
-  return parts;
+  return CHIP_STYLES[CHIP_STYLES.length - 1]!;
 }
 
 export function formatChips(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 10_000) return `${(n / 1000).toFixed(1)}k`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1)}M`;
+  if (n >= 10_000) return `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k`;
   return n.toLocaleString();
 }
 
-function ChipDisc({
-  face,
-  rim,
-  mark,
-  size,
-  label,
+/** Single polished casino chip (SVG). */
+export function ChipDisc({
+  amount,
+  size = 28,
+  showValue = false,
 }: {
-  face: string;
-  rim: string;
-  mark: string;
-  size: number;
-  label?: string;
+  amount: number;
+  size?: number;
+  showValue?: boolean;
 }) {
+  const s = styleForAmount(amount);
+  const id = `chip-${amount}-${size}-${s.face.replace('#', '')}`;
+
   return (
-    <span
-      className="relative inline-block rounded-full shadow-[0_2px_4px_rgba(0,0,0,0.45)]"
-      style={{
-        width: size,
-        height: size,
-        background: `radial-gradient(circle at 35% 30%, ${rim}55, ${face} 55%, #00000055 100%)`,
-        boxShadow: `inset 0 0 0 ${Math.max(2, size * 0.08)}px ${rim}, 0 2px 4px rgba(0,0,0,0.4)`,
-      }}
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 64 64"
+      className="shrink-0 drop-shadow-[0_2px_4px_rgba(0,0,0,0.55)]"
+      aria-hidden
     >
-      {/* edge ticks */}
-      {Array.from({ length: 8 }).map((_, i) => (
-        <span
+      <defs>
+        <radialGradient id={`${id}-face`} cx="35%" cy="30%" r="70%">
+          <stop offset="0%" stopColor={s.rim} stopOpacity="0.35" />
+          <stop offset="45%" stopColor={s.face} />
+          <stop offset="100%" stopColor="#000" stopOpacity="0.45" />
+        </radialGradient>
+        <linearGradient id={`${id}-shine`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#fff" stopOpacity="0.35" />
+          <stop offset="40%" stopColor="#fff" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {/* outer rim */}
+      <circle cx="32" cy="32" r="30" fill={s.rim} />
+      <circle cx="32" cy="32" r="26" fill={`url(#${id}-face)`} />
+      {/* inner ring */}
+      <circle cx="32" cy="32" r="22" fill="none" stroke={s.rim} strokeWidth="2.2" opacity="0.9" />
+      {/* edge dashes */}
+      {Array.from({ length: 12 }).map((_, i) => {
+        const a = (i * 30 * Math.PI) / 180;
+        const x1 = 32 + Math.cos(a) * 27.2;
+        const y1 = 32 + Math.sin(a) * 27.2;
+        const x2 = 32 + Math.cos(a) * 30;
+        const y2 = 32 + Math.sin(a) * 30;
+        return (
+          <line
+            key={i}
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            stroke={s.face}
+            strokeWidth="3.2"
+            strokeLinecap="round"
+            opacity="0.85"
+          />
+        );
+      })}
+      <circle cx="32" cy="32" r="14" fill={s.face} stroke={s.rim} strokeWidth="1.5" />
+      <ellipse cx="24" cy="22" rx="10" ry="6" fill={`url(#${id}-shine)`} />
+      {showValue && (
+        <text
+          x="32"
+          y="36"
+          textAnchor="middle"
+          fill={s.ink}
+          fontSize="11"
+          fontWeight="700"
+          fontFamily="Oxanium, sans-serif"
+        >
+          {amount >= 1000 ? `${Math.round(amount / 1000)}k` : amount}
+        </text>
+      )}
+    </svg>
+  );
+}
+
+/** Short visual stack of identical discs for pot / bet emphasis. */
+function StackVisual({ amount, size, count }: { amount: number; size: number; count: number }) {
+  const n = Math.max(1, Math.min(count, 5));
+  const step = Math.max(3, size * 0.14);
+  return (
+    <div className="relative" style={{ width: size, height: size + (n - 1) * step }}>
+      {Array.from({ length: n }).map((_, i) => (
+        <div
           key={i}
-          className="absolute left-1/2 top-0 origin-bottom"
-          style={{
-            width: Math.max(2, size * 0.1),
-            height: size * 0.18,
-            marginLeft: -Math.max(1, size * 0.05),
-            background: mark,
-            transform: `rotate(${i * 45}deg) translateY(0)`,
-            borderRadius: 1,
-            opacity: 0.9,
-          }}
-        />
+          className="absolute left-0"
+          style={{ bottom: i * step, zIndex: n - i }}
+        >
+          <ChipDisc amount={amount} size={size} showValue={i === n - 1 && size >= 30} />
+        </div>
       ))}
-      <span
-        className="absolute inset-[22%] rounded-full flex items-center justify-center font-bold"
-        style={{
-          background: `radial-gradient(circle at 40% 35%, ${rim}33, ${face})`,
-          color: mark,
-          fontSize: Math.max(7, size * 0.28),
-          textShadow: '0 1px 1px rgba(0,0,0,0.35)',
-        }}
-      >
-        {label}
-      </span>
-    </span>
+    </div>
   );
 }
 
@@ -96,48 +124,48 @@ export function ChipStack({
   amount,
   size = 'md',
   label,
+  compact,
 }: {
   amount: number;
   size?: 'sm' | 'md' | 'lg';
+  /** Show numeric label (default true). */
   label?: boolean;
+  /** Force single-chip + text (used on seats). */
+  compact?: boolean;
 }) {
   if (amount <= 0) return null;
-  const parts = breakDown(amount);
-  const disc = size === 'sm' ? 18 : size === 'lg' ? 34 : 24;
-  const gap = size === 'sm' ? 2.2 : size === 'lg' ? 3.4 : 2.8;
+
+  const showLabel = label !== false;
+  const isCompact = compact || size === 'sm';
+
+  if (isCompact) {
+    const disc = size === 'lg' ? 28 : size === 'md' ? 22 : 18;
+    return (
+      <div className="inline-flex items-center gap-1.5">
+        <ChipDisc amount={amount} size={disc} />
+        {showLabel && (
+          <span
+            className={`font-display font-bold tabular-nums tracking-wide ${
+              size === 'sm' ? 'text-[12px]' : size === 'lg' ? 'text-base' : 'text-sm'
+            }`}
+          >
+            {formatChips(amount)}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  const disc = size === 'lg' ? 36 : 26;
+  const stackCount = amount >= 200 ? 4 : amount >= 50 ? 3 : amount >= 20 ? 2 : 1;
 
   return (
-    <div className="inline-flex items-end gap-2">
-      {parts.map((p) => (
-        <motion.div
-          key={p.value}
-          className="relative"
-          style={{ width: disc, height: disc * 0.45 + p.count * gap }}
-          initial={{ y: 8, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ type: 'spring', stiffness: 380, damping: 24 }}
-        >
-          {Array.from({ length: p.count }).map((_, i) => (
-            <span
-              key={i}
-              className="absolute left-0"
-              style={{ bottom: i * gap }}
-            >
-              <ChipDisc
-                face={p.face}
-                rim={p.rim}
-                mark={p.mark}
-                size={disc}
-                label={size === 'lg' ? String(p.value >= 1000 ? `${p.value / 1000}k` : p.value) : undefined}
-              />
-            </span>
-          ))}
-        </motion.div>
-      ))}
-      {label !== false && (
+    <div className="inline-flex items-end gap-2.5">
+      <StackVisual amount={amount} size={disc} count={stackCount} />
+      {showLabel && (
         <span
-          className={`font-semibold tabular-nums drop-shadow ${
-            size === 'sm' ? 'text-[11px]' : size === 'lg' ? 'text-sm' : 'text-xs'
+          className={`pb-0.5 font-display font-bold tabular-nums tracking-wide ${
+            size === 'lg' ? 'text-lg text-gold-light' : 'text-sm'
           }`}
         >
           {formatChips(amount)}

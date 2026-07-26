@@ -51,7 +51,7 @@ export function PlayingCard({
 }) {
   const w = small ? 'w-11 h-[4.1rem]' : 'w-16 h-24';
   const radius = small ? 'rounded-lg' : 'rounded-xl';
-  const shell = `${w} ${radius} relative overflow-hidden shadow-[0_8px_20px_rgba(0,0,0,0.45)] bg-[#f7f2e8]`;
+  const shell = `${w} ${radius} relative overflow-hidden shadow-[0_6px_16px_rgba(0,0,0,0.5)] ring-1 ring-black/25 bg-[#f7f2e8]`;
 
   if (faceDown || !code) {
     const Back = deck.B2 as CardSvg;

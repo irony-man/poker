@@ -1,5 +1,8 @@
 package com.felt.android.core.designsystem
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -11,17 +14,21 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 
 private val CardFace = Color(0xFFF7F2E8)
 private val CardBack = Color(0xFF1A3050)
@@ -61,13 +68,48 @@ fun PlayingCard(
     dimmed: Boolean = false,
     width: Dp = 46.dp,
     height: Dp = 66.dp,
+    /** Stagger for one-shot deal-in; remount (via key) to replay. */
+    dealDelayMs: Int = 0,
+    animateDeal: Boolean = true,
 ) {
     val shape = RoundedCornerShape(6.dp)
-    val alpha = if (dimmed && !highlight) 0.4f else 1f
+    val faceAlpha = if (dimmed && !highlight) 0.4f else 1f
+
+    val progress = remember { Animatable(if (animateDeal) 0f else 1f) }
+    LaunchedEffect(Unit) {
+        if (!animateDeal) {
+            progress.snapTo(1f)
+            return@LaunchedEffect
+        }
+        if (dealDelayMs > 0) delay(dealDelayMs.toLong())
+        progress.animateTo(
+            1f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMediumLow,
+            ),
+        )
+    }
+
+    val t = progress.value
+    val dealOffsetY = if (faceDown || code == null) 0f else (1f - t) * -36f
+    val dealRotZ = if (faceDown || code == null) 0f else (1f - t) * -8f
+    val dealRotY = if (faceDown || code == null) (1f - t) * 88f else 0f
+    val dealScale = if (faceDown || code == null) 0.9f + 0.1f * t else 1f
+
     Box(
         modifier = modifier
             .width(width)
             .height(height)
+            .graphicsLayer {
+                this.alpha = t.coerceIn(0f, 1f)
+                translationY = dealOffsetY
+                rotationZ = dealRotZ
+                rotationY = dealRotY
+                scaleX = dealScale
+                scaleY = dealScale
+                cameraDistance = 16f * density
+            }
             .shadow(if (highlight) 10.dp else 4.dp, shape)
             .clip(shape)
             .then(
@@ -100,13 +142,13 @@ fun PlayingCard(
                 if (parsed == null) {
                     Text(
                         text = code,
-                        color = FeltColors.Ink.copy(alpha = alpha),
+                        color = FeltColors.Ink.copy(alpha = faceAlpha),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace,
                     )
                 } else {
-                    val ink = (if (parsed.isRed) Color(0xFFC62828) else Color(0xFF121212)).copy(alpha = alpha)
+                    val ink = (if (parsed.isRed) Color(0xFFC62828) else Color(0xFF121212)).copy(alpha = faceAlpha)
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -130,7 +172,7 @@ fun PlayingCard(
                         Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                             Text(
                                 text = parsed.suit,
-                                color = ink.copy(alpha = 0.9f * alpha),
+                                color = ink.copy(alpha = 0.9f * faceAlpha),
                                 fontSize = 22.sp,
                             )
                         }
@@ -138,7 +180,7 @@ fun PlayingCard(
                 }
             }
         }
-                        if (highlight) {
+        if (highlight) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)

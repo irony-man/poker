@@ -187,16 +187,20 @@ fun OfflineTableScreen(
                 tableForWin.players.find { it.seat == w.seat }?.userId == HUMAN_USER_ID
             }
             WinHandDialog(
-                winners = tableForWin.winners.map { w ->
-                    val player = tableForWin.players.find { it.seat == w.seat }
-                    WinLineUi(
-                        seat = w.seat,
-                        name = player?.name ?: "Seat ${w.seat}",
-                        amount = w.amount,
-                        handName = w.handName,
-                        isSelf = player?.userId == HUMAN_USER_ID,
-                    )
-                },
+                winners = tableForWin.winners
+                    .groupBy { it.seat }
+                    .map { (seat, awards) ->
+                        val player = tableForWin.players.find { it.seat == seat }
+                        val cards = tableForWin.showdownHands.find { it.seat == seat }?.cards.orEmpty()
+                        WinLineUi(
+                            seat = seat,
+                            name = player?.name ?: "Seat $seat",
+                            amount = awards.sumOf { it.amount },
+                            handName = awards.firstNotNullOfOrNull { it.handName },
+                            cards = cards,
+                            isSelf = player?.userId == HUMAN_USER_ID,
+                        )
+                    },
                 youWon = youWon,
                 canStartNext = true,
                 onNextHand = {

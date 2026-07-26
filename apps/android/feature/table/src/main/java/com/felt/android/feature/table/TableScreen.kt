@@ -252,16 +252,20 @@ fun TableScreen(
                 mySeat != null &&
                 table.players.count { it.userId != null && it.stack > 0 } >= 2
             WinHandDialog(
-                winners = table.winners.map { w ->
-                    val player = table.players.find { it.seat == w.seat }
-                    WinLineUi(
-                        seat = w.seat,
-                        name = player?.name ?: "Seat ${w.seat}",
-                        amount = w.amount,
-                        handName = w.handName,
-                        isSelf = player?.userId == state.userId,
-                    )
-                },
+                winners = table.winners
+                    .groupBy { it.seat }
+                    .map { (seat, awards) ->
+                        val player = table.players.find { it.seat == seat }
+                        val cards = table.showdownHands.find { it.seat == seat }?.cards.orEmpty()
+                        WinLineUi(
+                            seat = seat,
+                            name = player?.name ?: "Seat $seat",
+                            amount = awards.sumOf { it.amount },
+                            handName = awards.firstNotNullOfOrNull { it.handName },
+                            cards = cards,
+                            isSelf = player?.userId == state.userId,
+                        )
+                    },
                 youWon = youWon,
                 canStartNext = canStart,
                 onNextHand = {

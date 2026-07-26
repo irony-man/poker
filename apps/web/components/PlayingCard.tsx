@@ -46,6 +46,8 @@ export function PlayingCard({
   small = false,
   highlight = false,
   dimmed = false,
+  /** Stagger delay for the one-shot deal-in (seconds). */
+  dealDelay = 0,
 }: {
   code?: string;
   faceDown?: boolean;
@@ -54,6 +56,7 @@ export function PlayingCard({
   highlight?: boolean;
   /** Showdown: not used in a winning hand. */
   dimmed?: boolean;
+  dealDelay?: number;
 }) {
   // small = opponents; default = your hole cards / board
   const w = small
@@ -71,8 +74,8 @@ export function PlayingCard({
     return (
       <motion.div
         initial={{ rotateY: 88, opacity: 0, scale: 0.9 }}
-        animate={{ rotateY: 0, opacity: dimmed && !highlight ? 0.35 : 1, scale: highlight ? 1.05 : 1 }}
-        transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+        animate={{ rotateY: 0, opacity: 1, scale: 1 }}
+        transition={{ type: 'spring', stiffness: 260, damping: 20, delay: dealDelay }}
         style={{ transformStyle: 'preserve-3d' }}
         className={shell}
       >
@@ -96,13 +99,8 @@ export function PlayingCard({
   return (
     <motion.div
       initial={{ y: -36, opacity: 0, rotateZ: -8 }}
-      animate={{
-        y: 0,
-        opacity: dimmed && !highlight ? 0.35 : 1,
-        rotateZ: 0,
-        scale: highlight ? 1.05 : 1,
-      }}
-      transition={{ type: 'spring', stiffness: 320, damping: 22 }}
+      animate={{ y: 0, opacity: 1, rotateZ: 0 }}
+      transition={{ type: 'spring', stiffness: 320, damping: 22, delay: dealDelay }}
       className={shell}
     >
       <CardFace DeckCard={Face} className="w-full h-full" />

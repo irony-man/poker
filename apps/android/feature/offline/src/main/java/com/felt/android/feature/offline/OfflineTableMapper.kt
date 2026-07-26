@@ -17,6 +17,7 @@ internal fun PublicTable.toOfflineTableUi(): TableUiState {
         emptySet()
     }
     return TableUiState(
+        handId = handId,
         street = street,
         community = community,
         pot = pot,
@@ -26,6 +27,21 @@ internal fun PublicTable.toOfflineTableUi(): TableUiState {
         actionSeq = actionSeq,
         bigBlind = config.bigBlind,
         winningCards = winningCards,
+        handNameBySeat = if (street == "payout" || street == "showdown") {
+            buildMap {
+                showdownHands.forEach { put(it.seat, it.handName) }
+                winners.forEach { w ->
+                    w.handName?.let { put(w.seat, it) }
+                }
+            }
+        } else {
+            emptyMap()
+        },
+        winAmountBySeat = if (street == "payout" || street == "showdown") {
+            winners.groupBy { it.seat }.mapValues { (_, list) -> list.sumOf { it.amount } }
+        } else {
+            emptyMap()
+        },
         turnEndsAt = turnEndsAt,
         turnTimeMs = config.turnTimeMs.toLong(),
         players = players.map {
@@ -36,6 +52,7 @@ internal fun PublicTable.toOfflineTableUi(): TableUiState {
                 stack = it.stack,
                 bet = it.bet,
                 status = it.status,
+                hasCards = it.hasCards,
                 holeCards = it.holeCards,
             )
         },

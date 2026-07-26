@@ -13,6 +13,7 @@ export function SeatView({
   isWinner,
   winAmount,
   handName,
+  handId,
   myCards,
   winningCards,
   turnEndsAt,
@@ -31,6 +32,8 @@ export function SeatView({
   isWinner?: boolean;
   winAmount?: number;
   handName?: string | null;
+  /** Remount hole cards when a new hand deals. */
+  handId?: string | null;
   myCards: [string, string] | null;
   winningCards?: Set<string> | null;
   turnEndsAt?: number | null;
@@ -89,6 +92,7 @@ export function SeatView({
 
   const showCards = isSelf && myCards ? myCards : player.holeCards;
   const faceDown = !showCards && player.hasCards;
+  const dealKey = handId ?? 'idle';
 
   return (
     <>
@@ -110,20 +114,24 @@ export function SeatView({
         <div className={`flex drop-shadow-lg ${isSelf ? 'gap-1.5 -mt-1 mb-1 scale-110 origin-bottom' : 'gap-1'}`}>
           {faceDown ? (
             <>
-              <PlayingCard faceDown small={!isSelf} />
-              <PlayingCard faceDown small={!isSelf} />
+              <PlayingCard key={`${dealKey}-${player.seat}-back-0`} faceDown small={!isSelf} dealDelay={0} />
+              <PlayingCard key={`${dealKey}-${player.seat}-back-1`} faceDown small={!isSelf} dealDelay={0.08} />
             </>
           ) : showCards ? (
             <>
               <PlayingCard
+                key={`${dealKey}-${player.seat}-${showCards[0]}`}
                 code={showCards[0]}
                 small={!isSelf}
+                dealDelay={0}
                 highlight={!!winningCards?.has(showCards[0]!)}
                 dimmed={!!winningCards && !winningCards.has(showCards[0]!)}
               />
               <PlayingCard
+                key={`${dealKey}-${player.seat}-${showCards[1]}`}
                 code={showCards[1]}
                 small={!isSelf}
+                dealDelay={0.08}
                 highlight={!!winningCards?.has(showCards[1]!)}
                 dimmed={!!winningCards && !winningCards.has(showCards[1]!)}
               />

@@ -19,6 +19,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -39,10 +40,12 @@ data class TablePlayerUi(
     val stack: Int,
     val bet: Int,
     val status: String,
+    val hasCards: Boolean = false,
     val holeCards: List<String>? = null,
 )
 
 data class TableUiState(
+    val handId: String = "",
     val street: String,
     val community: List<String>,
     val pot: Int,
@@ -53,6 +56,8 @@ data class TableUiState(
     val bigBlind: Int,
     val players: List<TablePlayerUi>,
     val winningCards: Set<String> = emptySet(),
+    val handNameBySeat: Map<Int, String> = emptyMap(),
+    val winAmountBySeat: Map<Int, Int> = emptyMap(),
     val turnEndsAt: Long? = null,
     val turnTimeMs: Long = 20_000L,
 )
@@ -98,14 +103,17 @@ fun FeltTableLayout(
                             modifier = Modifier.padding(top = 8.dp),
                         ) {
                             val highlightMode = table.winningCards.isNotEmpty()
-                            table.community.forEach { card ->
-                                PlayingCard(
-                                    code = card,
-                                    highlight = highlightMode && card in table.winningCards,
-                                    dimmed = highlightMode && card !in table.winningCards,
-                                    width = 40.dp,
-                                    height = 56.dp,
-                                )
+                            table.community.forEachIndexed { index, card ->
+                                key("${table.handId}-$card") {
+                                    PlayingCard(
+                                        code = card,
+                                        highlight = highlightMode && card in table.winningCards,
+                                        dimmed = highlightMode && card !in table.winningCards,
+                                        width = 40.dp,
+                                        height = 56.dp,
+                                        dealDelayMs = index * 70,
+                                    )
+                                }
                             }
                         }
                         if (table.community.isEmpty() && table.street != "waiting") {
@@ -114,15 +122,20 @@ fun FeltTableLayout(
                     }
                 }
 
-                table.players.forEachIndexed { _, player ->
+                table.players.forEach { player ->
                     SeatChip(
                         player = player,
+                        handId = table.handId,
                         angleDeg = seatAngleForHero(player.seat, table.maxSeats, userId?.let { uid ->
                             table.players.find { it.userId == uid }?.seat
                         }),
                         isSelf = player.userId == userId,
                         isDealer = table.dealerButton == player.seat && table.street != "waiting",
                         isToAct = table.toAct == player.seat,
+                        isWinner = table.winAmountBySeat.containsKey(player.seat) &&
+                            (table.street == "payout" || table.street == "showdown"),
+                        winAmount = table.winAmountBySeat[player.seat],
+                        handName = table.handNameBySeat[player.seat],
                         myCards = when {
                             player.userId == userId -> holeCards
                             !player.holeCards.isNullOrEmpty() -> player.holeCards
@@ -144,10 +157,14 @@ fun FeltTableLayout(
 @Composable
 private fun SeatChip(
     player: TablePlayerUi,
+    handId: String,
     angleDeg: Double,
     isSelf: Boolean,
     isDealer: Boolean,
     isToAct: Boolean,
+    isWinner: Boolean,
+    winAmount: Int?,
+    handName: String?,
     myCards: List<String>?,
     winningCards: Set<String>,
     turnEndsAt: Long?,
@@ -160,20 +177,88 @@ private fun SeatChip(
         val rad = Math.toRadians(angleDeg)
         val x = maxWidth * (0.5f + cos(rad).toFloat() * 0.40f)
         val y = maxHeight * (0.5f + sin(rad).toFloat() * 0.36f)
+        val faceDown = myCards.isNullOrEmpty() && player.hasCards
+        val dealKey = handId.ifBlank { "idle" }
+        val highlightMode = winningCards.isNotEmpty()
+        val isBot = player.userId?.startsWith("bot:") == true
 
         Column(
             modifier = Modifier
                 .offset(x = x - 52.dp, y = y - 40.dp)
-                .width(104.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(FeltColors.Ink.copy(alpha = 0.82f))
-                .then(
-                    if (isToAct) Modifier.border(1.dp, FeltColors.Neon, RoundedCornerShape(10.dp))
-                    else Modifier,
-                )
-                .padding(6.dp),
+                .width(104.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            when {
+                faceDown -> {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.padding(bottom = 4.dp),
+                    ) {
+                        key("$dealKey-${player.seat}-back-0") {
+                            PlayingCard(
+                                code = null,
+                                faceDown = true,
+                                width = if (isSelf) 42.dp else 34.dp,
+                                height = if (isSelf) 60.dp else 48.dp,
+                                dealDelayMs = 0,
+                            )
+                        }
+                        key("$dealKey-${player.seat}-back-1") {
+                            PlayingCard(
+                                code = null,
+                                faceDown = true,
+                                width = if (isSelf) 42.dp else 34.dp,
+                                height = if (isSelf) 60.dp else 48.dp,
+                                dealDelayMs = 80,
+                            )
+                        }
+                    }
+                }
+                !myCards.isNullOrEmpty() -> {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.padding(bottom = 4.dp),
+                    ) {
+                        myCards.forEachIndexed { index, code ->
+                            key("$dealKey-${player.seat}-$code") {
+                                PlayingCard(
+                                    code = code,
+                                    highlight = highlightMode && code in winningCards,
+                                    dimmed = highlightMode && code !in winningCards,
+                                    width = if (isSelf) 42.dp else 34.dp,
+                                    height = if (isSelf) 60.dp else 48.dp,
+                                    dealDelayMs = index * 80,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!handName.isNullOrBlank() && (isWinner || myCards != null)) {
+                Text(
+                    text = handName,
+                    color = if (isWinner) FeltColors.Ink else FeltColors.Cream.copy(alpha = 0.85f),
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .padding(bottom = 4.dp)
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(
+                            if (isWinner) FeltColors.Gold
+                            else FeltColors.Ink.copy(alpha = 0.8f),
+                        )
+                        .border(
+                            1.dp,
+                            if (isWinner) FeltColors.Gold else FeltColors.Cream.copy(alpha = 0.2f),
+                            RoundedCornerShape(999.dp),
+                        )
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                )
+            }
+
             Box(contentAlignment = Alignment.Center) {
                 if (isToAct) {
                     SeatTurnRing(
@@ -183,22 +268,79 @@ private fun SeatChip(
                         modifier = Modifier.align(Alignment.Center),
                     )
                 }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(
+                            when {
+                                isWinner -> FeltColors.Gold
+                                isToAct -> FeltColors.Gold.copy(alpha = 0.92f)
+                                isSelf -> FeltColors.Ink.copy(alpha = 0.9f)
+                                else -> FeltColors.Ink.copy(alpha = 0.82f)
+                            },
+                        )
+                        .then(
+                            when {
+                                isWinner || isToAct -> Modifier.border(1.dp, FeltColors.Gold, RoundedCornerShape(10.dp))
+                                isSelf -> Modifier.border(1.dp, FeltColors.Gold.copy(alpha = 0.45f), RoundedCornerShape(10.dp))
+                                else -> Modifier
+                            },
+                        )
+                        .padding(6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
                     if (isDealer) {
-                        Text("D", color = FeltColors.Gold, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            "D",
+                            color = if (isWinner || isToAct) FeltColors.Ink else FeltColors.Gold,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
                     }
                     Text(
-                        text = player.name ?: if (player.status == "empty") "Empty" else "Seat ${player.seat}",
-                        color = if (isSelf) FeltColors.Cyan else FeltColors.Cream,
+                        text = buildString {
+                            append(player.name ?: if (player.status == "empty") "Empty" else "Seat ${player.seat}")
+                            if (isSelf) append(" · you")
+                        },
+                        color = when {
+                            isWinner || isToAct -> FeltColors.Ink
+                            isSelf -> FeltColors.Cyan
+                            else -> FeltColors.Cream
+                        },
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    if (isBot && !isWinner && !isToAct) {
+                        Text("BOT", color = FeltColors.Cyan.copy(alpha = 0.8f), fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                    }
                     if (player.status != "empty") {
                         CasinoChip(amount = player.stack)
                         if (player.bet > 0) {
-                            Text("Bet ${formatChips(player.bet)}", fontSize = 9.sp, color = FeltColors.Cream.copy(0.5f))
+                            Text(
+                                "Bet ${formatChips(player.bet)}",
+                                fontSize = 9.sp,
+                                color = if (isWinner || isToAct) FeltColors.Ink.copy(0.55f)
+                                else FeltColors.Cream.copy(0.5f),
+                            )
+                        }
+                        if (player.status == "allin") {
+                            Text(
+                                "ALL-IN",
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isWinner || isToAct) FeltColors.Ink else FeltColors.Neon,
+                            )
+                        }
+                        if (player.status == "folded") {
+                            Text(
+                                "FOLD",
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isWinner || isToAct) FeltColors.Ink.copy(0.6f)
+                                else FeltColors.Cream.copy(0.45f),
+                            )
                         }
                     } else {
                         if (canSit) {
@@ -207,24 +349,17 @@ private fun SeatChip(
                             Text("Empty", fontSize = 11.sp, color = FeltColors.Cream.copy(alpha = 0.4f))
                         }
                     }
-                    myCards?.let { cards ->
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            modifier = Modifier.padding(top = 4.dp),
-                        ) {
-                            val highlightMode = winningCards.isNotEmpty()
-                            cards.forEach { code ->
-                                PlayingCard(
-                                    code = code,
-                                    highlight = highlightMode && code in winningCards,
-                                    dimmed = highlightMode && code !in winningCards,
-                                    width = if (isSelf) 42.dp else 34.dp,
-                                    height = if (isSelf) 60.dp else 48.dp,
-                                )
-                            }
-                        }
-                    }
                 }
+            }
+
+            if (isWinner && winAmount != null && winAmount > 0) {
+                Text(
+                    text = "+${formatChips(winAmount)}",
+                    color = FeltColors.Gold,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
             }
         }
     }

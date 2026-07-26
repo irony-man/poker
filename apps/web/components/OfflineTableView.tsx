@@ -407,10 +407,11 @@ export function OfflineTableView({
               <ChipStack amount={Math.max(potTotal, publicTable.pot)} size="lg" />
             </div>
             <div className="flex gap-1.5 min-h-[5.25rem] items-center">
-              {publicTable.community.map((c) => (
+              {publicTable.community.map((c, i) => (
                 <PlayingCard
-                  key={c + publicTable.version}
+                  key={`${publicTable.handId}-${c}`}
                   code={c}
+                  dealDelay={i * 0.07}
                   highlight={highlightMode && winningCards.has(c)}
                   dimmed={highlightMode && !winningCards.has(c)}
                 />
@@ -438,6 +439,7 @@ export function OfflineTableView({
                     ? handNameBySeat.get(p.seat) ?? null
                     : null
                 }
+                handId={publicTable.handId}
                 myCards={p.seat === mySeat ? priv?.holeCards ?? null : null}
                 winningCards={highlightMode ? winningCards : null}
                 turnEndsAt={publicTable.toAct === p.seat ? turnEndsAt : null}
@@ -477,13 +479,34 @@ export function OfflineTableView({
         <WinHandModal
           youWon={youWon}
           canStartNext
-          winners={publicTable.winners.map((w) => ({
-            seat: w.seat,
-            name: publicTable.players[w.seat]?.name ?? `Seat ${w.seat}`,
-            amount: w.amount,
-            handName: w.handName,
-            isSelf: publicTable.players[w.seat]?.userId === HUMAN_ID,
-          }))}
+          winners={(() => {
+            const bySeat = new Map<
+              number,
+              {
+                seat: number;
+                name: string;
+                amount: number;
+                handName?: string;
+                cards?: string[];
+                isSelf?: boolean;
+              }
+            >();
+            for (const w of publicTable.winners) {
+              const prev = bySeat.get(w.seat);
+              const cards =
+                publicTable.showdownHands?.find((h) => h.seat === w.seat)?.cards ??
+                prev?.cards;
+              bySeat.set(w.seat, {
+                seat: w.seat,
+                name: publicTable.players[w.seat]?.name ?? `Seat ${w.seat}`,
+                amount: (prev?.amount ?? 0) + w.amount,
+                handName: w.handName ?? prev?.handName,
+                cards,
+                isSelf: publicTable.players[w.seat]?.userId === HUMAN_ID,
+              });
+            }
+            return [...bySeat.values()];
+          })()}
           onNextHand={() => {
             setDismissedWinHandId(publicTable.handId);
             start();

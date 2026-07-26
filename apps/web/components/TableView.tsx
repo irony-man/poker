@@ -186,10 +186,11 @@ export function TableView({
               )}
             </div>
             <div className="flex gap-1.5 min-h-[5.25rem] items-center">
-              {(table?.community ?? []).map((c) => (
+              {(table?.community ?? []).map((c, i) => (
                 <PlayingCard
-                  key={c + table?.version}
+                  key={`${table?.handId ?? 'board'}-${c}`}
                   code={c}
+                  dealDelay={i * 0.07}
                   highlight={highlightMode && winningCards.has(c)}
                   dimmed={highlightMode && !winningCards.has(c)}
                 />
@@ -217,6 +218,7 @@ export function TableView({
                     ? handNameBySeat.get(p.seat) ?? null
                     : null
                 }
+                handId={table.handId}
                 myCards={p.seat === mySeat ? priv?.holeCards ?? null : null}
                 winningCards={highlightMode ? winningCards : null}
                 turnEndsAt={table.toAct === p.seat ? table.turnEndsAt : null}
@@ -367,13 +369,33 @@ export function TableView({
             <WinHandModal
               youWon={youWon}
               canStartNext={canStartNext}
-              winners={table.winners.map((w) => ({
-                seat: w.seat,
-                name: table.players[w.seat]?.name ?? `Seat ${w.seat}`,
-                amount: w.amount,
-                handName: w.handName,
-                isSelf: table.players[w.seat]?.userId === userId,
-              }))}
+              winners={(() => {
+                const bySeat = new Map<
+                  number,
+                  {
+                    seat: number;
+                    name: string;
+                    amount: number;
+                    handName?: string;
+                    cards?: string[];
+                    isSelf?: boolean;
+                  }
+                >();
+                for (const w of table.winners) {
+                  const prev = bySeat.get(w.seat);
+                  const cards =
+                    table.showdownHands?.find((h) => h.seat === w.seat)?.cards ?? prev?.cards;
+                  bySeat.set(w.seat, {
+                    seat: w.seat,
+                    name: table.players[w.seat]?.name ?? `Seat ${w.seat}`,
+                    amount: (prev?.amount ?? 0) + w.amount,
+                    handName: w.handName ?? prev?.handName,
+                    cards,
+                    isSelf: table.players[w.seat]?.userId === userId,
+                  });
+                }
+                return [...bySeat.values()];
+              })()}
               onNextHand={() => {
                 setDismissedWinHandId(table.handId);
                 send({ type: 'start_hand', tableId });

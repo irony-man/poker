@@ -36,16 +36,21 @@ object FeltColors {
     val InkPanel = Color(0xFF12161E)
     val InkRaised = Color(0xFF1A2030)
     val Cream = Color(0xFFF5F0E6)
-    val FeltGreen = Color(0xFF0D4A32)
-    val FeltGreenDark = Color(0xFF083024)
+    val FeltGreen = Color(0xFF1A7A48)
+    val FeltGreenDark = Color(0xFF0D4A2C)
     val Danger = Color(0xFFE05555)
+    val StackRed = Color(0xFFC62828)
+    val YouYellow = Color(0xFFF5C518)
 }
 
 fun formatChips(n: Int): String = when {
     n >= 1_000_000 -> "${n / 1_000_000}M"
-    n >= 1_000 -> "${n / 1_000}K"
+    n >= 10_000 -> "${n / 1_000}K"
+    n >= 1_000 -> n.toString().reversed().chunked(3).joinToString(",").reversed()
     else -> n.toString()
 }
+
+fun formatMoney(n: Int): String = "$${formatChips(n.coerceAtLeast(0))}"
 
 @Composable
 fun HudPanel(
@@ -221,20 +226,20 @@ fun FeltTableSurface(
 ) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(50))
+            .clip(RoundedCornerShape(28))
             .background(
                 Brush.radialGradient(
-                    listOf(FeltColors.FeltGreen, FeltColors.FeltGreenDark, FeltColors.Ink),
+                    listOf(Color(0xFF1A7A48), FeltColors.FeltGreenDark, FeltColors.Ink),
                 ),
             )
-            .border(12.dp, FeltColors.GoldDim.copy(alpha = 0.45f), RoundedCornerShape(50))
-            .padding(8.dp),
+            .border(8.dp, Color(0xFF5A3D22), RoundedCornerShape(28))
+            .padding(6.dp),
     ) {
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .clip(RoundedCornerShape(50))
-                .border(1.dp, FeltColors.Neon.copy(alpha = 0.12f), RoundedCornerShape(50)),
+                .clip(RoundedCornerShape(24))
+                .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(24)),
         )
         content()
     }
@@ -245,34 +250,18 @@ fun PotDisplay(
     amount: Int,
     modifier: Modifier = Modifier,
 ) {
-    Column(
+    Row(
         modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Row(
-            modifier = Modifier
-                .clip(RoundedCornerShape(999.dp))
-                .background(FeltColors.Ink.copy(alpha = 0.92f))
-                .border(1.dp, FeltColors.Gold.copy(alpha = 0.5f), RoundedCornerShape(999.dp))
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Text(
-                text = "POT",
-                color = FeltColors.Gold.copy(alpha = 0.8f),
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 2.sp,
-            )
-            Text(
-                text = formatChips(amount.coerceAtLeast(0)),
-                color = FeltColors.Gold,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.ExtraBold,
-                fontFamily = FontFamily.Monospace,
-            )
-        }
+        CasinoChip(amount = amount.coerceAtLeast(1), size = ChipSize.Sm)
+        Text(
+            text = formatMoney(amount),
+            color = Color.White,
+            fontSize = 32.sp,
+            fontWeight = FontWeight.ExtraBold,
+            fontFamily = FontFamily.Serif,
+        )
     }
 }

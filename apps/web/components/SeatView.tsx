@@ -6,6 +6,10 @@ import { PlayerAvatar } from './PlayerAvatar';
 import { SeatTurnRing } from './TurnTimer';
 import type { PublicPlayer } from '@/lib/store';
 
+function money(n: number): string {
+  return `$${formatChips(n)}`;
+}
+
 export function SeatView({
   player,
   isDealer,
@@ -33,7 +37,6 @@ export function SeatView({
   isWinner?: boolean;
   winAmount?: number;
   handName?: string | null;
-  /** Remount hole cards when a new hand deals. */
   handId?: string | null;
   myCards: [string, string] | null;
   winningCards?: Set<string> | null;
@@ -47,20 +50,19 @@ export function SeatView({
   angle: number;
 }) {
   const rad = (angle * Math.PI) / 180;
-  const x = 50 + Math.cos(rad) * 40;
-  const y = 50 + Math.sin(rad) * 36;
+  const x = 50 + Math.cos(rad) * 41;
+  const y = 50 + Math.sin(rad) * 37;
   const isBot = !!player.userId?.startsWith('bot:');
 
-  // Bet sits slightly toward table center from the seat
-  const betX = 50 + Math.cos(rad) * 24;
-  const betY = 50 + Math.sin(rad) * 20;
+  const betX = 50 + Math.cos(rad) * 23;
+  const betY = 50 + Math.sin(rad) * 19;
 
   if (player.status === 'empty') {
     if (spectating) {
       return (
         <div
           style={{ left: `${x}%`, top: `${y}%` }}
-          className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-cream/20 bg-ink/40 px-3 py-1.5 text-[11px] font-display uppercase tracking-wider text-cream/40 backdrop-blur-sm"
+          className="absolute -translate-x-1/2 -translate-y-1/2 rounded-md border border-dashed border-white/25 bg-black/25 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-white/45"
         >
           Empty
         </div>
@@ -74,7 +76,7 @@ export function SeatView({
         <button
           type="button"
           onClick={onSit}
-          className="rounded-full border border-dashed border-cream/35 bg-ink/55 px-3 py-1.5 text-[11px] font-display font-semibold uppercase tracking-wider text-cream/70 hover:border-gold hover:text-gold transition backdrop-blur-sm"
+          className="rounded-md border border-dashed border-white/40 bg-black/35 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-white/80 hover:border-white hover:text-white"
         >
           Sit
         </button>
@@ -82,7 +84,7 @@ export function SeatView({
           <button
             type="button"
             onClick={onAddBot}
-            className="rounded-full border border-dashed border-cream/35 bg-ink/55 px-3 py-1.5 text-[11px] font-display font-semibold uppercase tracking-wider text-cream/70 hover:border-gold hover:text-gold transition backdrop-blur-sm"
+            className="rounded-md border border-dashed border-white/40 bg-black/35 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-white/80 hover:border-white hover:text-white"
           >
             Bot
           </button>
@@ -94,8 +96,7 @@ export function SeatView({
   const showCards = isSelf && myCards ? myCards : player.holeCards;
   const faceDown = !showCards && player.hasCards;
   const dealKey = handId ?? 'idle';
-  const avatarSize = isSelf ? 52 : 44;
-  const ringBox = avatarSize + 12;
+  const folded = player.status === 'folded';
 
   return (
     <>
@@ -104,132 +105,135 @@ export function SeatView({
           style={{ left: `${betX}%`, top: `${betY}%` }}
           className="absolute z-[12] -translate-x-1/2 -translate-y-1/2"
         >
-          <div className="rounded-full border border-gold/30 bg-ink/70 px-2 py-1 shadow-lg backdrop-blur-sm">
-            <ChipStack amount={player.bet} size="sm" compact />
-          </div>
+          <ChipStack amount={player.bet} size="sm" compact />
         </div>
       )}
 
       <div
         style={{ left: `${x}%`, top: `${y}%` }}
-        className={`absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 ${isToAct || isWinner ? 'z-20' : 'z-10'}`}
+        className={`absolute -translate-x-1/2 -translate-y-1/2 ${isToAct || isWinner ? 'z-20' : 'z-10'} ${folded ? 'opacity-55' : ''}`}
       >
-        <div className={`flex drop-shadow-lg ${isSelf ? 'gap-1.5 -mt-1 mb-1 scale-110 origin-bottom' : 'gap-1'}`}>
-          {faceDown ? (
-            <>
-              <PlayingCard key={`${dealKey}-${player.seat}-back-0`} faceDown small={!isSelf} dealDelay={0} />
-              <PlayingCard key={`${dealKey}-${player.seat}-back-1`} faceDown small={!isSelf} dealDelay={0.08} />
-            </>
-          ) : showCards ? (
-            <>
-              <PlayingCard
-                key={`${dealKey}-${player.seat}-${showCards[0]}`}
-                code={showCards[0]}
-                small={!isSelf}
-                dealDelay={0}
-                highlight={!!winningCards?.has(showCards[0]!)}
-                dimmed={!!winningCards && !winningCards.has(showCards[0]!)}
+        <div
+          className={`relative flex flex-col items-center px-2.5 pb-2 pt-1.5 ${
+            isToAct ? 'rounded-[42%] border-2 border-dashed border-white/75' : ''
+          }`}
+        >
+          {isToAct && (
+            <div className="pointer-events-none absolute left-1/2 top-1/2 h-[118px] w-[118px] -translate-x-1/2 -translate-y-1/2">
+              <SeatTurnRing
+                endsAt={turnEndsAt}
+                totalMs={turnTotalMs ?? 20000}
+                active
+                size={118}
               />
-              <PlayingCard
-                key={`${dealKey}-${player.seat}-${showCards[1]}`}
-                code={showCards[1]}
-                small={!isSelf}
-                dealDelay={0.08}
-                highlight={!!winningCards?.has(showCards[1]!)}
-                dimmed={!!winningCards && !winningCards.has(showCards[1]!)}
-              />
-            </>
-          ) : null}
-        </div>
+            </div>
+          )}
 
-        {handName && (
           <div
-            className={`rounded-full px-2.5 py-0.5 text-[10px] font-display font-bold tracking-wide ${
-              isWinner
-                ? 'bg-gold text-ink shadow-glow'
-                : 'border border-cream/20 bg-ink/80 text-cream/85'
+            className={`relative z-[1] mb-1 flex drop-shadow-md ${
+              isSelf ? 'scale-110 gap-1 origin-bottom' : 'gap-0.5'
             }`}
           >
-            {handName}
+            {faceDown ? (
+              <>
+                <PlayingCard key={`${dealKey}-${player.seat}-back-0`} faceDown small={!isSelf} dealDelay={0} />
+                <PlayingCard key={`${dealKey}-${player.seat}-back-1`} faceDown small={!isSelf} dealDelay={0.08} />
+              </>
+            ) : showCards ? (
+              <>
+                <PlayingCard
+                  key={`${dealKey}-${player.seat}-${showCards[0]}`}
+                  code={showCards[0]}
+                  small={!isSelf}
+                  dealDelay={0}
+                  highlight={!!winningCards?.has(showCards[0]!)}
+                  dimmed={!!winningCards && !winningCards.has(showCards[0]!)}
+                />
+                <PlayingCard
+                  key={`${dealKey}-${player.seat}-${showCards[1]}`}
+                  code={showCards[1]}
+                  small={!isSelf}
+                  dealDelay={0.08}
+                  highlight={!!winningCards?.has(showCards[1]!)}
+                  dimmed={!!winningCards && !winningCards.has(showCards[1]!)}
+                />
+              </>
+            ) : null}
           </div>
-        )}
 
-        <div
-          className={`relative flex items-center justify-center ${
-            isToAct ? 'animate-hud-pulse' : ''
-          }`}
-          style={{ width: ringBox, height: ringBox }}
-        >
-          <SeatTurnRing
-            endsAt={turnEndsAt}
-            totalMs={turnTotalMs ?? 20000}
-            active={!!isToAct}
-            size={ringBox}
-          />
-          <PlayerAvatar
-            avatarId={player.avatarId}
-            userId={player.userId}
-            size={avatarSize}
-            className={
-              isWinner
-                ? 'ring-2 ring-gold shadow-glow'
-                : isSelf
-                  ? 'ring-2 ring-gold/55'
-                  : ''
-            }
-          />
-          {isDealer && (
-            <span className="absolute -left-0.5 -top-0.5 z-[1] flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-b from-cream to-[#c4b89a] text-[10px] font-display font-bold text-ink shadow-md ring-1 ring-black/20">
-              D
-            </span>
+          {handName && (
+            <div
+              className={`relative z-[1] mb-1 rounded px-2 py-0.5 text-[9px] font-bold tracking-wide ${
+                isWinner ? 'bg-[#e0b43a] text-black' : 'bg-black/70 text-white/90'
+              }`}
+            >
+              {handName}
+            </div>
           )}
-          {isBot && !isWinner && (
-            <span className="absolute -right-0.5 -bottom-0.5 z-[1] rounded bg-cyan/25 px-1 text-[7px] font-display uppercase tracking-wide text-cyan">
-              bot
-            </span>
+
+          {/* Classic freepoker-style stack banner + name tab */}
+          <div className="relative z-[1] flex items-end gap-1">
+            <PlayerAvatar
+              avatarId={player.avatarId}
+              userId={player.userId}
+              size={isSelf ? 28 : 24}
+              className="mb-0.5 shadow-md ring-1 ring-black/30"
+            />
+            <div className="flex items-stretch shadow-[0_3px_8px_rgba(0,0,0,0.45)]">
+              <div className="flex flex-col justify-end">
+                {isSelf && (
+                  <span className="rounded-t-sm bg-[#f5c518] px-1.5 py-[1px] text-center text-[8px] font-extrabold uppercase leading-tight tracking-wide text-black">
+                    You
+                  </span>
+                )}
+                <span
+                  className={`max-w-[3.6rem] truncate px-1.5 py-1 text-[10px] font-bold leading-none ${
+                    isSelf
+                      ? 'rounded-b-sm bg-white text-black'
+                      : 'rounded-sm bg-white text-black'
+                  }`}
+                >
+                  {(player.name ?? 'Seat').slice(0, 10)}
+                </span>
+              </div>
+              <div
+                className={`flex min-w-[3.75rem] items-center justify-center px-2.5 py-1.5 text-[13px] font-extrabold tabular-nums tracking-tight text-white ${
+                  isWinner ? 'bg-[#c9a227]' : 'bg-[#c62828]'
+                }`}
+              >
+                {money(player.stack)}
+              </div>
+            </div>
+
+            {isDealer && (
+              <span className="mb-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#c62828] text-[10px] font-black text-white shadow ring-1 ring-white/80">
+                D
+              </span>
+            )}
+          </div>
+
+          {player.status === 'allin' && (
+            <div className="relative z-[1] mt-0.5 text-[8px] font-bold uppercase tracking-[0.16em] text-[#2aff9a]">
+              All-in
+            </div>
           )}
-          {player.status === 'folded' && (
-            <div className="absolute inset-[6px] rounded-full bg-black/70 flex items-center justify-center text-[9px] font-display uppercase tracking-widest text-cream/80">
+          {folded && (
+            <div className="relative z-[1] mt-0.5 text-[8px] font-bold uppercase tracking-[0.16em] text-white/70">
               Fold
             </div>
           )}
         </div>
 
-        <div
-          className={`min-w-[5.5rem] rounded-xl px-2.5 py-1 text-center shadow-md ${
-            isWinner
-              ? 'bg-gold text-ink'
-              : isToAct
-                ? 'bg-gold/90 text-ink'
-                : isSelf
-                  ? 'bg-ink/85 text-cream border border-gold/40'
-                  : 'bg-ink/80 text-cream border border-white/10'
-          }`}
-        >
-          <div className="text-[12px] font-display font-semibold truncate max-w-[7rem] tracking-wide leading-tight">
-            {player.name}
-            {isSelf ? ' · you' : ''}
-          </div>
-          <div className="mt-0.5 flex justify-center">
-            <ChipStack amount={player.stack} size="sm" compact />
-          </div>
-          {player.status === 'allin' && (
-            <div className="text-[8px] font-display uppercase tracking-[0.16em] text-felt-neon">
-              All-in
-            </div>
-          )}
-        </div>
-
         {isWinner && winAmount != null && winAmount > 0 && (
-          <div className="text-[12px] font-display font-bold text-gold-light drop-shadow">
-            +{formatChips(winAmount)}
+          <div className="mt-0.5 text-center text-[12px] font-extrabold text-[#ffe29a] drop-shadow">
+            +{money(winAmount)}
           </div>
         )}
         {isBot && canManageBots && onRemoveBot && (
           <button
             type="button"
             onClick={onRemoveBot}
-            className="text-[10px] text-cream/40 hover:text-red-300"
+            className="mt-0.5 text-[10px] text-white/40 hover:text-red-300"
           >
             Remove
           </button>

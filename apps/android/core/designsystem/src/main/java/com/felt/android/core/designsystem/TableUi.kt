@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -28,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -192,207 +194,199 @@ private fun SeatChip(
         val faceDown = myCards.isNullOrEmpty() && player.hasCards
         val dealKey = handId.ifBlank { "idle" }
         val highlightMode = winningCards.isNotEmpty()
-        val isBot = player.userId?.startsWith("bot:") == true
-
+        val folded = player.status == "folded"
         Column(
             modifier = Modifier
-                .offset(x = x - 52.dp, y = y - 40.dp)
-                .width(104.dp),
+                .offset(x = x - 58.dp, y = y - 48.dp)
+                .width(116.dp)
+                .then(if (folded) Modifier else Modifier),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            when {
-                faceDown -> {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.padding(bottom = 4.dp),
-                    ) {
-                        key("$dealKey-${player.seat}-back-0") {
-                            PlayingCard(
-                                code = null,
-                                faceDown = true,
-                                width = if (isSelf) 42.dp else 34.dp,
-                                height = if (isSelf) 60.dp else 48.dp,
-                                dealDelayMs = 0,
-                            )
-                        }
-                        key("$dealKey-${player.seat}-back-1") {
-                            PlayingCard(
-                                code = null,
-                                faceDown = true,
-                                width = if (isSelf) 42.dp else 34.dp,
-                                height = if (isSelf) 60.dp else 48.dp,
-                                dealDelayMs = 80,
-                            )
-                        }
-                    }
-                }
-                !myCards.isNullOrEmpty() -> {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.padding(bottom = 4.dp),
-                    ) {
-                        myCards.forEachIndexed { index, code ->
-                            key("$dealKey-${player.seat}-$code") {
-                                PlayingCard(
-                                    code = code,
-                                    highlight = highlightMode && code in winningCards,
-                                    dimmed = highlightMode && code !in winningCards,
-                                    width = if (isSelf) 42.dp else 34.dp,
-                                    height = if (isSelf) 60.dp else 48.dp,
-                                    dealDelayMs = index * 80,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (!handName.isNullOrBlank() && (isWinner || myCards != null)) {
-                Text(
-                    text = handName,
-                    color = if (isWinner) FeltColors.Ink else FeltColors.Cream.copy(alpha = 0.85f),
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .padding(bottom = 4.dp)
-                        .clip(RoundedCornerShape(999.dp))
-                        .background(
-                            if (isWinner) FeltColors.Gold
-                            else FeltColors.Ink.copy(alpha = 0.8f),
-                        )
-                        .border(
-                            1.dp,
-                            if (isWinner) FeltColors.Gold else FeltColors.Cream.copy(alpha = 0.2f),
-                            RoundedCornerShape(999.dp),
-                        )
-                        .padding(horizontal = 8.dp, vertical = 2.dp),
-                )
-            }
-
             if (player.status == "empty") {
                 if (canSit) {
                     FeltGhostButton(text = "Sit", onClick = onSit)
                 } else {
                     Text("Empty", fontSize = 11.sp, color = FeltColors.Cream.copy(alpha = 0.4f))
                 }
-            } else {
-                val avatarSize = if (isSelf) 48.dp else 42.dp
-                val ringSize = avatarSize + 12.dp
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.size(ringSize),
-                ) {
-                    if (isToAct) {
-                        SeatTurnRing(
-                            endsAt = turnEndsAt,
-                            totalMs = turnTotalMs,
-                            active = true,
-                            ringSize = ringSize,
-                        )
-                    }
-                    PlayerAvatar(
-                        avatarId = player.avatarId,
-                        userId = player.userId,
-                        size = avatarSize,
-                        selected = isSelf || isWinner,
+                return@Column
+            }
+
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .then(
+                        if (isToAct) {
+                            Modifier
+                                .border(2.dp, Color.White.copy(alpha = 0.75f), RoundedCornerShape(40))
+                                .padding(horizontal = 6.dp, vertical = 4.dp)
+                        } else {
+                            Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                        },
+                    ),
+            ) {
+                if (isToAct) {
+                    SeatTurnRing(
+                        endsAt = turnEndsAt,
+                        totalMs = turnTotalMs,
+                        active = true,
+                        ringSize = 112.dp,
+                        modifier = Modifier.align(Alignment.Center),
                     )
-                    if (isDealer) {
+                }
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.then(if (folded) Modifier else Modifier),
+                ) {
+                    when {
+                        faceDown -> {
+                            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                key("$dealKey-${player.seat}-back-0") {
+                                    PlayingCard(
+                                        code = null,
+                                        faceDown = true,
+                                        width = if (isSelf) 40.dp else 32.dp,
+                                        height = if (isSelf) 56.dp else 46.dp,
+                                        dealDelayMs = 0,
+                                    )
+                                }
+                                key("$dealKey-${player.seat}-back-1") {
+                                    PlayingCard(
+                                        code = null,
+                                        faceDown = true,
+                                        width = if (isSelf) 40.dp else 32.dp,
+                                        height = if (isSelf) 56.dp else 46.dp,
+                                        dealDelayMs = 80,
+                                    )
+                                }
+                            }
+                        }
+                        !myCards.isNullOrEmpty() -> {
+                            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                myCards.forEachIndexed { index, code ->
+                                    key("$dealKey-${player.seat}-$code") {
+                                        PlayingCard(
+                                            code = code,
+                                            highlight = highlightMode && code in winningCards,
+                                            dimmed = highlightMode && code !in winningCards,
+                                            width = if (isSelf) 40.dp else 32.dp,
+                                            height = if (isSelf) 56.dp else 46.dp,
+                                            dealDelayMs = index * 80,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (!handName.isNullOrBlank() && (isWinner || myCards != null)) {
                         Text(
-                            "D",
-                            color = FeltColors.Ink,
+                            text = handName,
+                            color = if (isWinner) FeltColors.Ink else Color.White,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                             modifier = Modifier
-                                .align(Alignment.TopStart)
-                                .clip(RoundedCornerShape(999.dp))
-                                .background(FeltColors.Cream)
-                                .padding(horizontal = 4.dp, vertical = 1.dp),
-                        )
-                    }
-                    if (isBot && !isWinner) {
-                        Text(
-                            "BOT",
-                            color = FeltColors.Cyan,
-                            fontSize = 7.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
+                                .padding(top = 3.dp)
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(FeltColors.Cyan.copy(alpha = 0.2f))
-                                .padding(horizontal = 3.dp, vertical = 1.dp),
+                                .background(if (isWinner) FeltColors.Gold else FeltColors.Ink.copy(alpha = 0.75f))
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
                         )
                     }
-                    if (player.status == "folded") {
-                        Box(
-                            modifier = Modifier
-                                .size(avatarSize)
-                                .clip(RoundedCornerShape(999.dp))
-                                .background(FeltColors.Ink.copy(alpha = 0.72f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
+
+                    if (player.bet > 0) {
+                        CasinoChip(
+                            amount = player.bet,
+                            size = ChipSize.Sm,
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.Bottom,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.padding(top = 4.dp),
+                    ) {
+                        PlayerAvatar(
+                            avatarId = player.avatarId,
+                            userId = player.userId,
+                            size = if (isSelf) 26.dp else 22.dp,
+                            selected = isSelf || isWinner,
+                        )
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Column {
+                                if (isSelf) {
+                                    Text(
+                                        text = "YOU",
+                                        color = FeltColors.Ink,
+                                        fontSize = 8.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
+                                            .background(FeltColors.YouYellow)
+                                            .padding(horizontal = 5.dp, vertical = 1.dp),
+                                    )
+                                }
+                                Text(
+                                    text = (player.name ?: "Seat").take(10),
+                                    color = FeltColors.Ink,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier
+                                        .widthIn(max = 52.dp)
+                                        .clip(
+                                            if (isSelf) RoundedCornerShape(bottomStart = 3.dp, bottomEnd = 3.dp)
+                                            else RoundedCornerShape(3.dp),
+                                        )
+                                        .background(Color.White)
+                                        .padding(horizontal = 5.dp, vertical = 3.dp),
+                                )
+                            }
                             Text(
-                                "FOLD",
-                                color = FeltColors.Cream.copy(alpha = 0.8f),
-                                fontSize = 8.sp,
-                                fontWeight = FontWeight.Bold,
+                                text = formatMoney(player.stack),
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                modifier = Modifier
+                                    .background(if (isWinner) FeltColors.Gold else FeltColors.StackRed)
+                                    .padding(horizontal = 8.dp, vertical = 5.dp),
+                            )
+                        }
+                        if (isDealer) {
+                            Text(
+                                text = "D",
+                                color = Color.White,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Black,
+                                modifier = Modifier
+                                    .padding(bottom = 2.dp)
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .background(FeltColors.StackRed)
+                                    .border(1.dp, Color.White.copy(alpha = 0.85f), RoundedCornerShape(999.dp))
+                                    .padding(horizontal = 5.dp, vertical = 2.dp),
                             )
                         }
                     }
-                }
-                Column(
-                    modifier = Modifier
-                        .padding(top = 4.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(
-                            when {
-                                isWinner -> FeltColors.Gold
-                                isToAct -> FeltColors.Gold.copy(alpha = 0.92f)
-                                isSelf -> FeltColors.Ink.copy(alpha = 0.9f)
-                                else -> FeltColors.Ink.copy(alpha = 0.82f)
-                            },
-                        )
-                        .then(
-                            when {
-                                isWinner || isToAct -> Modifier.border(1.dp, FeltColors.Gold, RoundedCornerShape(10.dp))
-                                isSelf -> Modifier.border(1.dp, FeltColors.Gold.copy(alpha = 0.45f), RoundedCornerShape(10.dp))
-                                else -> Modifier
-                            },
-                        )
-                        .padding(horizontal = 6.dp, vertical = 4.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(
-                        text = buildString {
-                            append(player.name ?: "Seat ${player.seat}")
-                            if (isSelf) append(" · you")
-                        },
-                        color = when {
-                            isWinner || isToAct -> FeltColors.Ink
-                            isSelf -> FeltColors.Cyan
-                            else -> FeltColors.Cream
-                        },
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    CasinoChip(amount = player.stack)
-                    if (player.bet > 0) {
-                        Text(
-                            "Bet ${formatChips(player.bet)}",
-                            fontSize = 9.sp,
-                            color = if (isWinner || isToAct) FeltColors.Ink.copy(0.55f)
-                            else FeltColors.Cream.copy(0.5f),
-                        )
-                    }
+
                     if (player.status == "allin") {
                         Text(
                             "ALL-IN",
                             fontSize = 8.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (isWinner || isToAct) FeltColors.Ink else FeltColors.Neon,
+                            color = FeltColors.Neon,
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
+                    }
+                    if (folded) {
+                        Text(
+                            "FOLD",
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White.copy(alpha = 0.7f),
+                            modifier = Modifier.padding(top = 2.dp),
                         )
                     }
                 }
@@ -400,7 +394,7 @@ private fun SeatChip(
 
             if (isWinner && winAmount != null && winAmount > 0) {
                 Text(
-                    text = "+${formatChips(winAmount)}",
+                    text = "+${formatMoney(winAmount)}",
                     color = FeltColors.Gold,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,

@@ -395,8 +395,8 @@ export function OfflineTableView({
         </div>
 
         <div className="relative min-h-0 flex-1">
-          <div className="absolute inset-0 felt-surface rounded-[36%] border-[10px] table-rim shadow-felt overflow-hidden sm:rounded-[42%] sm:border-[12px]">
-          <div className="pointer-events-none absolute inset-6 rounded-[40%] border border-felt-neon/10 z-[1]" />
+          <div className="absolute inset-0 felt-surface rounded-[28%] border-[8px] table-rim shadow-felt overflow-hidden max-sm:rounded-[22%] max-sm:border-[7px] sm:rounded-[42%] sm:border-[12px]">
+          <div className="pointer-events-none absolute inset-3 max-sm:inset-2 sm:inset-6 rounded-[26%] sm:rounded-[40%] border border-white/10 z-[1]" />
 
           <div className="absolute left-1/2 top-[22%] z-20 -translate-x-1/2 -translate-y-1/2">
             <PotBanner amount={Math.max(potTotal, publicTable.pot)} />

@@ -10,11 +10,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className="h-full">
       <body className="min-h-dvh flex flex-col">
-        <header className="shrink-0 px-4 sm:px-8 py-4 flex items-baseline justify-between border-b border-cream/10">
-          <a href="/" className="font-display text-2xl tracking-tight text-gold">
-            Felt
-          </a>
-          <span className="text-xs uppercase tracking-[0.2em] text-cream/40">No-Limit Hold&apos;em</span>
+        <header className="shrink-0 relative border-b border-cyan/15 bg-ink-panel/80 backdrop-blur-md">
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent" />
+          <div className="px-4 sm:px-8 py-3.5 flex items-center justify-between gap-4">
+            <a href="/" className="group flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded border border-gold/40 bg-ink-raised font-display text-lg font-bold text-gold shadow-glow">
+                F
+              </span>
+              <span className="font-display text-2xl font-bold tracking-[0.08em] text-gold uppercase group-hover:text-gold-light transition">
+                Felt
+              </span>
+            </a>
+            <div className="flex items-center gap-3">
+              <span className="hidden sm:inline status-chip border-felt-neon/30 bg-felt-neon/10 text-felt-neon">
+                <span className="h-1.5 w-1.5 rounded-full bg-felt-neon animate-live-blink" />
+                Live tables
+              </span>
+              <span className="text-[11px] font-display uppercase tracking-[0.22em] text-cream/40">
+                No-Limit Hold&apos;em
+              </span>
+            </div>
+          </div>
         </header>
         <main className="flex-1 min-h-0 px-4 sm:px-8 py-4">{children}</main>
       </body>

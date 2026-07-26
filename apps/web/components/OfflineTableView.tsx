@@ -344,10 +344,10 @@ export function OfflineTableView({
       <div className="flex flex-1 flex-col min-h-0">
         <div className="flex items-center justify-between mb-2 text-sm text-cream/60">
           <div className="flex items-center gap-2">
-            <span className="rounded-full bg-emerald-900/50 border border-emerald-500/30 px-2.5 py-0.5 text-emerald-300 tracking-wide text-xs">
+            <span className="status-chip border-felt-neon/30 bg-felt-neon/10 text-felt-neon">
               Offline
             </span>
-            <span className="rounded-full bg-cream/10 px-2.5 py-0.5 text-cream capitalize tracking-wide">
+            <span className="status-chip border-cyan/25 bg-cyan/10 text-cyan capitalize">
               {publicTable.street}
             </span>
             <span className="text-xs text-cream/40">
@@ -359,12 +359,12 @@ export function OfflineTableView({
           </a>
         </div>
 
-        <div className="relative flex-1 felt-surface rounded-[42%] border-[12px] border-[#3a2814] shadow-felt min-h-[340px] overflow-hidden">
-          <div className="pointer-events-none absolute inset-6 rounded-[40%] border border-white/5 z-[1]" />
+        <div className="relative flex-1 felt-surface rounded-[42%] border-[12px] table-rim shadow-felt min-h-[340px] overflow-hidden">
+          <div className="pointer-events-none absolute inset-6 rounded-[40%] border border-felt-neon/10 z-[1]" />
 
           <div className="absolute left-1/2 top-[40%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-3 z-10">
-            <div className="flex flex-col items-center gap-1 rounded-2xl bg-ink/35 px-4 py-2 border border-cream/10 backdrop-blur-sm">
-              <div className="text-[10px] uppercase tracking-[0.2em] text-cream/50">Pot</div>
+            <div className="flex flex-col items-center gap-1 rounded-lg border border-gold/25 bg-ink-panel/70 px-4 py-2 backdrop-blur-md shadow-hud">
+              <div className="text-[10px] font-display uppercase tracking-[0.22em] text-gold/80">Pot</div>
               <ChipStack amount={Math.max(potTotal, publicTable.pot)} size="lg" />
             </div>
             <div className="flex gap-1.5 min-h-[5.25rem] items-center">
@@ -379,8 +379,10 @@ export function OfflineTableView({
 
           {publicTable.street === 'payout' && publicTable.winners.length > 0 && (
             <div className="absolute left-1/2 top-[12%] -translate-x-1/2 z-30 w-[min(92%,22rem)]">
-              <div className="rounded-2xl border border-gold/40 bg-ink/90 px-4 py-3 text-center shadow-xl backdrop-blur-md">
-                <div className="text-[10px] uppercase tracking-[0.25em] text-gold/80 mb-1">Winner</div>
+              <div className="rounded-lg border border-gold/40 bg-ink-panel/95 px-4 py-3 text-center shadow-glow backdrop-blur-md">
+                <div className="text-[10px] font-display uppercase tracking-[0.25em] text-gold/80 mb-1">
+                  Winner
+                </div>
                 {publicTable.winners.map((w, i) => {
                   const name = publicTable.players[w.seat]?.name ?? `Seat ${w.seat}`;
                   return (
@@ -427,7 +429,7 @@ export function OfflineTableView({
               <button
                 type="button"
                 onClick={start}
-                className="rounded-lg border border-gold/40 px-4 py-2 text-sm text-gold hover:bg-gold/10"
+                className="btn-ghost text-sm py-2"
               >
                 {publicTable.street === 'waiting' ? 'Start hand' : 'Next hand'}
               </button>

@@ -47,7 +47,7 @@ export function SeatView({
         <button
           type="button"
           onClick={onSit}
-          className="rounded-full border border-dashed border-cream/30 bg-ink/40 px-2.5 py-1.5 text-[11px] text-cream/60 hover:border-gold hover:text-gold transition backdrop-blur-sm"
+          className="rounded border border-dashed border-cyan/30 bg-ink-panel/70 px-2.5 py-1.5 text-[10px] font-display font-semibold uppercase tracking-wider text-cream/60 hover:border-gold hover:text-gold transition backdrop-blur-sm"
         >
           Sit
         </button>
@@ -55,7 +55,7 @@ export function SeatView({
           <button
             type="button"
             onClick={onAddBot}
-            className="rounded-full border border-dashed border-cream/30 bg-ink/40 px-2.5 py-1.5 text-[11px] text-cream/60 hover:border-gold hover:text-gold transition backdrop-blur-sm"
+            className="rounded border border-dashed border-cyan/30 bg-ink-panel/70 px-2.5 py-1.5 text-[10px] font-display font-semibold uppercase tracking-wider text-cream/60 hover:border-gold hover:text-gold transition backdrop-blur-sm"
           >
             Bot
           </button>
@@ -88,8 +88,10 @@ export function SeatView({
 
       {handName && (
         <div
-          className={`rounded-md px-2 py-0.5 text-[10px] font-semibold tracking-wide ${
-            isWinner ? 'bg-gold text-ink' : 'bg-ink/70 text-cream/80 border border-cream/15'
+          className={`rounded border px-2 py-0.5 text-[10px] font-display font-bold uppercase tracking-wide ${
+            isWinner
+              ? 'border-gold bg-gold text-ink shadow-glow'
+              : 'border-cyan/25 bg-ink-panel/90 text-cyan'
           }`}
         >
           {handName}
@@ -97,25 +99,29 @@ export function SeatView({
       )}
 
       <div
-        className={`relative min-w-[7.5rem] rounded-xl px-3 py-2 text-center backdrop-blur-sm transition ${
+        className={`relative min-w-[7.5rem] rounded-lg px-3 py-2 text-center backdrop-blur-sm transition ${
           isWinner
-            ? 'bg-gold text-ink ring-2 ring-gold-light shadow-lg shadow-gold/30'
+            ? 'bg-gold text-ink ring-2 ring-gold-light shadow-glow'
             : isToAct
-              ? 'bg-gold text-ink ring-2 ring-gold-light animate-pulse'
-              : 'bg-ink/85 text-cream border border-cream/15'
+              ? 'bg-gold text-ink ring-2 ring-gold-light animate-hud-pulse'
+              : isSelf
+                ? 'bg-ink-panel/95 text-cream border border-gold/35 shadow-hud'
+                : 'bg-ink-panel/90 text-cream border border-cyan/15'
         }`}
       >
         {isDealer && (
-          <span className="absolute -left-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-cream text-[10px] font-bold text-ink shadow">
+          <span className="absolute -left-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full border border-gold/50 bg-ink text-[10px] font-display font-bold text-gold shadow-glow">
             D
           </span>
         )}
         {isBot && !isWinner && (
-          <span className="absolute -right-2 -top-2 rounded bg-cream/20 px-1 text-[9px] uppercase tracking-wide">
+          <span className="absolute -right-2 -top-2 rounded border border-cyan/30 bg-ink px-1 text-[9px] font-display uppercase tracking-wide text-cyan">
             bot
           </span>
         )}
-        <div className="text-sm font-semibold truncate max-w-[8rem]">{player.name}</div>
+        <div className="text-sm font-display font-semibold truncate max-w-[8rem] tracking-wide">
+          {player.name}
+        </div>
         <div className="mt-1 flex justify-center text-inherit">
           <ChipStack amount={player.stack} size="sm" />
         </div>
@@ -125,12 +131,12 @@ export function SeatView({
           </div>
         )}
         {player.status === 'folded' && (
-          <div className="absolute inset-0 rounded-xl bg-black/55 flex items-center justify-center text-[10px] uppercase tracking-wide text-cream">
+          <div className="absolute inset-0 rounded-lg bg-black/65 flex items-center justify-center text-[10px] font-display uppercase tracking-wide text-cream/80">
             Fold
           </div>
         )}
         {player.status === 'allin' && (
-          <div className="mt-0.5 text-[9px] uppercase tracking-wider opacity-80">All-in</div>
+          <div className="mt-0.5 text-[9px] font-display uppercase tracking-wider text-felt-neon">All-in</div>
         )}
       </div>
       {isWinner && winAmount != null && winAmount > 0 && (

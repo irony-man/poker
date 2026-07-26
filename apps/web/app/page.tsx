@@ -8,9 +8,7 @@ import { useSession } from '@/lib/store';
 export default function HomePage() {
   const router = useRouter();
   const setSession = useSession((s) => s.setSession);
-  const userId = useSession((s) => s.userId);
   const sessionName = useSession((s) => s.name);
-  const ticket = useSession((s) => s.ticket);
   const [name, setName] = useState(sessionName ?? '');
   const [invite, setInvite] = useState('');
   const [maxSeats, setMaxSeats] = useState(6);
@@ -45,8 +43,6 @@ export default function HomePage() {
   }, [offlineSeats, offlineBots]);
 
   async function ensureSession(displayName: string) {
-    // Always hit the API so returning users get a fresh ticket after
-    // expiry or a Render free-tier cold start (in-memory auth resets).
     const s = await register(displayName.trim() || 'Player');
     setSession(s);
     localStorage.setItem('felt-session', JSON.stringify(s));
@@ -104,28 +100,40 @@ export default function HomePage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl pt-8 sm:pt-16">
-      <h1 className="font-display text-4xl sm:text-5xl text-gold leading-tight">Felt</h1>
-      <p className="mt-3 max-w-md text-cream/70 text-lg">
-        Private No-Limit Texas Hold&apos;em for home games. Authoritative server, invite links, real-time
-        table sync — or practice offline vs bots.
-      </p>
+    <div className="relative mx-auto max-w-4xl pt-6 sm:pt-12 pb-10">
+      <div className="pointer-events-none absolute -top-8 left-1/2 h-48 w-[28rem] -translate-x-1/2 rounded-full bg-gold/10 blur-3xl" />
 
-      <div className="mt-10 grid gap-6 sm:grid-cols-2">
-        <form onSubmit={onCreate} className="space-y-4 rounded-2xl border border-cream/10 bg-ink/40 p-5">
-          <h2 className="font-display text-xl">Host a table</h2>
-          <label className="block text-sm text-cream/60">
-            Your name
+      <div className="relative text-center sm:text-left">
+        <p className="status-chip border-gold/30 bg-gold/10 text-gold mx-auto sm:mx-0 w-fit mb-4">
+          Casino night · private tables
+        </p>
+        <h1 className="font-display text-5xl sm:text-7xl font-extrabold tracking-[0.06em] text-transparent bg-clip-text bg-gradient-to-br from-gold-light via-gold to-gold-dim uppercase leading-none">
+          Felt
+        </h1>
+        <p className="mt-4 max-w-lg text-cream/65 text-lg sm:text-xl font-medium tracking-wide mx-auto sm:mx-0">
+          Drop into No-Limit Texas Hold&apos;em. Host a private table, join with a code, or grind offline
+          vs bots.
+        </p>
+      </div>
+
+      <div className="mt-10 grid gap-5 sm:grid-cols-2">
+        <form onSubmit={onCreate} className="hud-panel space-y-4 p-5">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-display text-xl font-bold uppercase tracking-wider text-gold">Host</h2>
+            <span className="text-[10px] font-display uppercase tracking-[0.2em] text-cyan/70">Online</span>
+          </div>
+          <label>
+            <span className="hud-label">Callsign</span>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="mt-1 w-full rounded-md bg-cream/5 border border-cream/15 px-3 py-2 text-cream"
+              className="hud-input"
               required
               maxLength={32}
             />
           </label>
-          <label className="block text-sm text-cream/60">
-            Seats at table
+          <label>
+            <span className="hud-label">Seats</span>
             <select
               value={maxSeats}
               onChange={(e) => setMaxSeats(Number(e.target.value))}
@@ -138,8 +146,8 @@ export default function HomePage() {
               ))}
             </select>
           </label>
-          <label className="block text-sm text-cream/60">
-            Starting bots
+          <label>
+            <span className="hud-label">Starting bots</span>
             <select
               value={botCount}
               onChange={(e) => setBotCount(Number(e.target.value))}
@@ -152,69 +160,66 @@ export default function HomePage() {
               ))}
             </select>
           </label>
-          <button
-            disabled={busy}
-            type="submit"
-            className="w-full rounded-lg bg-gold py-2.5 font-semibold text-ink hover:bg-gold-light disabled:opacity-50"
-          >
+          <button disabled={busy} type="submit" className="btn-primary w-full">
             Create private table
           </button>
         </form>
 
-        <form onSubmit={onJoin} className="space-y-4 rounded-2xl border border-cream/10 bg-ink/40 p-5">
-          <h2 className="font-display text-xl">Join with invite</h2>
-          <label className="block text-sm text-cream/60">
-            Your name
+        <form onSubmit={onJoin} className="hud-panel space-y-4 p-5">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-display text-xl font-bold uppercase tracking-wider text-gold">Join</h2>
+            <span className="text-[10px] font-display uppercase tracking-[0.2em] text-cyan/70">Invite</span>
+          </div>
+          <label>
+            <span className="hud-label">Callsign</span>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="mt-1 w-full rounded-md bg-cream/5 border border-cream/15 px-3 py-2 text-cream"
+              className="hud-input"
               required
               maxLength={32}
             />
           </label>
-          <label className="block text-sm text-cream/60">
-            Invite code
+          <label>
+            <span className="hud-label">Invite code</span>
             <input
               value={invite}
               onChange={(e) => setInvite(e.target.value)}
-              className="mt-1 w-full rounded-md bg-cream/5 border border-cream/15 px-3 py-2 text-cream"
+              className="hud-input font-mono tracking-widest uppercase"
               required
             />
           </label>
-          <button
-            disabled={busy}
-            type="submit"
-            className="w-full rounded-lg border border-gold/50 py-2.5 font-semibold text-gold hover:bg-gold/10 disabled:opacity-50"
-          >
-            Join table
+          <button disabled={busy} type="submit" className="btn-ghost w-full">
+            Enter table
           </button>
         </form>
       </div>
 
-      <form
-        onSubmit={onOffline}
-        className="mt-6 space-y-4 rounded-2xl border border-cream/10 bg-ink/40 p-5"
-      >
-        <div>
-          <h2 className="font-display text-xl">Play offline vs bots</h2>
-          <p className="mt-1 text-sm text-cream/50">
-            No server needed — same rules engine runs in your browser.
-          </p>
+      <form onSubmit={onOffline} className="hud-panel mt-5 space-y-4 p-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="font-display text-xl font-bold uppercase tracking-wider text-gold">
+              Offline arena
+            </h2>
+            <p className="mt-1 text-sm text-cream/45 font-medium">
+              Local bots · no server · same engine
+            </p>
+          </div>
+          <span className="status-chip border-felt-neon/30 bg-felt-neon/10 text-felt-neon">Solo mode</span>
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
-          <label className="block text-sm text-cream/60">
-            Your name
+          <label>
+            <span className="hud-label">Callsign</span>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="mt-1 w-full rounded-md bg-cream/5 border border-cream/15 px-3 py-2 text-cream"
+              className="hud-input"
               required
               maxLength={32}
             />
           </label>
-          <label className="block text-sm text-cream/60">
-            Seats
+          <label>
+            <span className="hud-label">Seats</span>
             <select
               value={offlineSeats}
               onChange={(e) => setOfflineSeats(Number(e.target.value))}
@@ -227,8 +232,8 @@ export default function HomePage() {
               ))}
             </select>
           </label>
-          <label className="block text-sm text-cream/60">
-            Bots
+          <label>
+            <span className="hud-label">Bots</span>
             <select
               value={offlineBots}
               onChange={(e) => setOfflineBots(Number(e.target.value))}
@@ -242,15 +247,14 @@ export default function HomePage() {
             </select>
           </label>
         </div>
-        <button
-          type="submit"
-          className="w-full sm:w-auto rounded-lg border border-cream/25 px-5 py-2.5 font-semibold text-cream hover:bg-cream/10"
-        >
-          Start offline game
+        <button type="submit" className="btn-ghost">
+          Launch offline game
         </button>
       </form>
 
-      {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
+      {error && (
+        <p className="mt-4 status-chip border-red-500/40 bg-red-950/50 text-red-300">{error}</p>
+      )}
     </div>
   );
 }

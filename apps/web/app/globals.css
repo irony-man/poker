@@ -1,16 +1,18 @@
-@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Source+Sans+3:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Oxanium:wght@500;600;700;800&family=Rajdhani:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --felt: #1a5c3a;
-  --felt-deep: #0f3d28;
-  --rim: #1a1208;
-  --gold: #c9a227;
-  --ink: #0c0a08;
-  --cream: #f3efe6;
+  --felt: #146b42;
+  --felt-deep: #0a2f1d;
+  --rim: #1c140a;
+  --gold: #e0b43a;
+  --ink: #07090d;
+  --cream: #e8eef5;
+  --cyan: #3de0ff;
+  --neon: #2aff9a;
 }
 
 html {
@@ -23,36 +25,109 @@ body {
   @apply bg-ink text-cream font-body antialiased;
   background-color: var(--ink);
   background-image:
-    radial-gradient(ellipse at 20% 0%, rgba(201, 162, 39, 0.08), transparent 50%),
-    radial-gradient(ellipse at 80% 100%, rgba(26, 92, 58, 0.25), transparent 45%),
-    linear-gradient(160deg, #12100e 0%, #0c0a08 100%);
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(224, 180, 58, 0.12), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 80%, rgba(42, 255, 154, 0.08), transparent 50%),
+    radial-gradient(ellipse 50% 35% at 0% 60%, rgba(61, 224, 255, 0.06), transparent 45%),
+    linear-gradient(165deg, #0a0e14 0%, #07090d 45%, #050708 100%);
   background-attachment: fixed;
   background-repeat: no-repeat;
 }
 
+body::before {
+  content: '';
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.035;
+  background-image:
+    linear-gradient(rgba(232, 238, 245, 0.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(232, 238, 245, 0.5) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at center, black 20%, transparent 75%);
+}
+
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
 @layer components {
   .field-select {
-    @apply w-full rounded-md border border-cream/25 bg-[#1c1814] px-3 py-2 text-cream outline-none;
+    @apply w-full rounded border border-cyan/20 bg-ink-raised px-3 py-2 text-cream outline-none font-medium tracking-wide;
     color-scheme: dark;
   }
 
   .field-select:focus {
-    @apply border-gold/60;
+    @apply border-gold/70 shadow-glow;
   }
 
   .field-select option {
-    background-color: #f3efe6;
-    color: #0c0a08;
+    background-color: #141b24;
+    color: #e8eef5;
+  }
+
+  .hud-panel {
+    @apply relative overflow-hidden rounded-lg border border-cyan/15 bg-ink-panel/90 shadow-hud backdrop-blur-md;
+  }
+
+  .hud-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(224, 180, 58, 0.55), transparent);
+  }
+
+  .hud-input {
+    @apply mt-1 w-full rounded border border-cream/15 bg-ink/80 px-3 py-2 text-cream outline-none transition;
+  }
+
+  .hud-input:focus {
+    @apply border-gold/60 shadow-glow;
+  }
+
+  .hud-label {
+    @apply block text-xs uppercase tracking-[0.16em] text-cream/50 font-semibold;
+  }
+
+  .btn-primary {
+    @apply rounded border border-gold/40 bg-gradient-to-b from-gold-light to-gold px-4 py-2.5 font-display font-bold uppercase tracking-wider text-ink shadow-glow transition hover:brightness-110 disabled:opacity-50;
+  }
+
+  .btn-ghost {
+    @apply rounded border border-cyan/30 bg-ink-raised/80 px-4 py-2.5 font-display font-semibold uppercase tracking-wider text-cyan transition hover:border-cyan hover:bg-cyan/10 disabled:opacity-50;
+  }
+
+  .btn-danger {
+    @apply rounded border border-red-500/40 bg-gradient-to-b from-red-700 to-red-950 py-3 font-display font-bold uppercase tracking-wider text-cream transition hover:brightness-110;
+  }
+
+  .btn-secondary {
+    @apply rounded border border-cream/20 bg-ink-raised py-3 font-display font-bold uppercase tracking-wider text-cream transition hover:border-cream/40 hover:bg-cream/10;
+  }
+
+  .status-chip {
+    @apply inline-flex items-center gap-1.5 rounded border px-2.5 py-0.5 text-[11px] font-display font-semibold uppercase tracking-[0.14em];
   }
 }
 
 @layer utilities {
   .felt-surface {
     background:
-      radial-gradient(ellipse at 30% 20%, rgba(255, 255, 255, 0.06), transparent 40%),
-      radial-gradient(ellipse at center, #227a4c 0%, var(--felt) 45%, var(--felt-deep) 100%);
+      radial-gradient(ellipse at 50% 35%, rgba(42, 255, 154, 0.08), transparent 42%),
+      radial-gradient(ellipse at 30% 20%, rgba(255, 255, 255, 0.05), transparent 40%),
+      radial-gradient(ellipse at center, #1a8a54 0%, var(--felt) 42%, var(--felt-deep) 100%);
     box-shadow:
-      inset 0 0 100px rgba(0, 0, 0, 0.5),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+      inset 0 0 120px rgba(0, 0, 0, 0.55),
+      inset 0 0 0 1px rgba(42, 255, 154, 0.08),
+      0 0 60px rgba(20, 107, 66, 0.2);
+  }
+
+  .table-rim {
+    border-color: #3a2814;
+    box-shadow:
+      0 0 0 2px rgba(224, 180, 58, 0.15),
+      0 20px 50px rgba(0, 0, 0, 0.55);
   }
 }

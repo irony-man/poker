@@ -30,7 +30,7 @@ export function ActionControls({
 
   if (!isTurn || !legal || legal.types.length === 0) {
     return (
-      <div className="rounded-xl bg-ink/70 border border-cream/10 px-4 py-3 text-sm text-cream/60 text-center">
+      <div className="hud-panel px-4 py-3 text-center text-sm font-medium tracking-wide text-cream/55">
         {table?.street === 'waiting'
           ? 'Waiting for players…'
           : table?.toAct !== mySeat
@@ -46,12 +46,17 @@ export function ActionControls({
   const potBet = snap(Math.min(max, Math.max(min, pot + (table?.currentBet ?? 0))));
 
   return (
-    <div className="w-full max-w-xl mx-auto space-y-3">
+    <div className="hud-panel w-full max-w-xl mx-auto space-y-3 p-4">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-display uppercase tracking-[0.2em] text-felt-neon">Your move</span>
+        <span className="h-2 w-2 rounded-full bg-felt-neon animate-live-blink shadow-glow-neon" />
+      </div>
+
       {(legal.types.includes('bet') || legal.types.includes('raise')) && (
         <div className="space-y-2">
-          <div className="flex justify-between text-xs text-cream/70">
+          <div className="flex justify-between text-xs font-semibold uppercase tracking-wider text-cream/70">
             <span>Raise to {raiseTo}</span>
-            <span>
+            <span className="text-cream/40">
               {min} – {max}
             </span>
           </div>
@@ -75,7 +80,7 @@ export function ActionControls({
                 key={label as string}
                 type="button"
                 onClick={() => setRaiseTo(val as number)}
-                className="rounded-md bg-cream/10 py-1.5 text-xs hover:bg-cream/20"
+                className="rounded border border-cream/15 bg-ink-raised py-1.5 text-[11px] font-display font-semibold uppercase tracking-wide hover:border-gold/50 hover:text-gold"
               >
                 {label}
               </button>
@@ -86,29 +91,17 @@ export function ActionControls({
 
       <div className="grid grid-cols-3 gap-2">
         {legal.types.includes('fold') && (
-          <button
-            type="button"
-            onClick={() => onAction('fold')}
-            className="rounded-lg bg-red-900/80 py-3 font-semibold hover:bg-red-800"
-          >
+          <button type="button" onClick={() => onAction('fold')} className="btn-danger">
             Fold
           </button>
         )}
         {legal.types.includes('check') && (
-          <button
-            type="button"
-            onClick={() => onAction('check')}
-            className="rounded-lg bg-cream/15 py-3 font-semibold hover:bg-cream/25"
-          >
+          <button type="button" onClick={() => onAction('check')} className="btn-secondary">
             Check
           </button>
         )}
         {legal.types.includes('call') && (
-          <button
-            type="button"
-            onClick={() => onAction('call')}
-            className="rounded-lg bg-cream/15 py-3 font-semibold hover:bg-cream/25"
-          >
+          <button type="button" onClick={() => onAction('call')} className="btn-secondary">
             Call {callAmount}
           </button>
         )}
@@ -116,7 +109,7 @@ export function ActionControls({
           <button
             type="button"
             onClick={() => onAction(legal.types.includes('bet') ? 'bet' : 'raise', raiseTo)}
-            className="rounded-lg bg-gold text-ink py-3 font-semibold hover:bg-gold-light col-span-1"
+            className="btn-primary col-span-1"
           >
             {legal.types.includes('bet') ? 'Bet' : 'Raise'} {raiseTo}
           </button>

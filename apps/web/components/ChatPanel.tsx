@@ -21,28 +21,33 @@ export function ChatPanel({
   }, [chat.length]);
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col bg-[#100e0c]">
-      <div className="shrink-0 px-4 py-3 text-xs uppercase tracking-[0.18em] text-cream/45 border-b border-cream/10">
-        Table chat
+    <div className="relative flex h-full min-h-0 flex-col bg-ink-panel">
+      <div className="shrink-0 flex items-center justify-between gap-2 border-b border-cyan/15 px-4 py-3">
+        <span className="text-[11px] font-display font-semibold uppercase tracking-[0.2em] text-cyan">
+          Comms
+        </span>
+        <span className="h-1.5 w-1.5 rounded-full bg-felt-neon animate-live-blink" />
       </div>
-      <div ref={scroller} className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-2 text-sm">
+      <div ref={scroller} className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-2.5 text-sm">
         {chat.length === 0 && (
-          <p className="text-cream/35 text-xs">No messages yet.</p>
+          <p className="text-cream/35 text-xs font-medium tracking-wide">Channel quiet…</p>
         )}
         {chat.map((m, i) => {
           const isSystem = m.userId === 'system';
           return (
             <div
               key={`${m.at}-${i}`}
-              className={isSystem ? 'text-cream/65 italic' : undefined}
+              className={isSystem ? 'text-cream/60 italic border-l-2 border-cyan/20 pl-2' : ''}
             >
               <span
-                className={`font-semibold ${isSystem ? 'text-cream/45 not-italic' : 'text-gold-light'}`}
+                className={`font-display font-semibold tracking-wide ${
+                  isSystem ? 'text-cyan/70 not-italic' : 'text-gold'
+                }`}
               >
                 {m.name}
               </span>
-              <span className="text-cream/35"> · </span>
-              <span className="break-words">{m.text}</span>
+              <span className="text-cream/30"> · </span>
+              <span className="break-words font-medium">{m.text}</span>
             </div>
           );
         })}
@@ -52,20 +57,20 @@ export function ChatPanel({
           {emojiBurst.emoji}
         </div>
       )}
-      <div className="shrink-0 flex gap-1 px-3 py-2 border-t border-cream/10">
+      <div className="shrink-0 flex gap-1 px-3 py-2 border-t border-cyan/10">
         {['🔥', '😂', '👏', '😮'].map((e) => (
           <button
             key={e}
             type="button"
             onClick={() => onEmoji(e)}
-            className="rounded-md px-2 py-1 hover:bg-cream/10 text-lg"
+            className="rounded border border-transparent px-2 py-1 hover:border-cyan/30 hover:bg-cyan/10 text-lg"
           >
             {e}
           </button>
         ))}
       </div>
       <form
-        className="shrink-0 flex gap-2 p-3 border-t border-cream/10"
+        className="shrink-0 flex gap-2 p-3 border-t border-cyan/15"
         onSubmit={(e) => {
           e.preventDefault();
           const fd = new FormData(e.currentTarget);
@@ -77,10 +82,10 @@ export function ChatPanel({
         <input
           name="text"
           maxLength={280}
-          placeholder="Say something…"
-          className="flex-1 rounded-md bg-cream/5 border border-cream/10 px-2 py-1.5 text-sm outline-none focus:border-gold/50"
+          placeholder="Transmit…"
+          className="flex-1 rounded border border-cream/10 bg-ink px-2 py-1.5 text-sm outline-none focus:border-gold/50"
         />
-        <button type="submit" className="rounded-md bg-gold/90 text-ink px-3 text-sm font-semibold">
+        <button type="submit" className="rounded border border-gold/40 bg-gold/90 px-3 text-xs font-display font-bold uppercase tracking-wider text-ink">
           Send
         </button>
       </form>

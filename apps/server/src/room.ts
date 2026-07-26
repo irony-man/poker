@@ -419,12 +419,14 @@ export class Room {
         if (e.winners.length === 1) {
           const w = e.winners[0]!;
           const name = this.state.players[w.seat]?.name ?? `Seat ${w.seat}`;
-          const hand = w.handName ? ` with ${w.handName}` : '';
+          const hand =
+            w.handName && w.handName !== 'Uncontested' ? ` with ${w.handName}` : '';
           this.systemChat('Dealer', `${name} wins ${w.amount}${hand}`);
         } else if (e.winners.length > 1) {
           const parts = e.winners.map((w) => {
             const name = this.state.players[w.seat]?.name ?? `Seat ${w.seat}`;
-            const hand = w.handName ? ` (${w.handName})` : '';
+            const hand =
+              w.handName && w.handName !== 'Uncontested' ? ` (${w.handName})` : '';
             return `${name} ${w.amount}${hand}`;
           });
           this.systemChat('Dealer', `Split pot — ${parts.join(', ')}`);

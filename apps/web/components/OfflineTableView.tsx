@@ -84,7 +84,8 @@ function announceEvents(
       if (e.winners.length === 1) {
         const w = e.winners[0]!;
         const name = state.players[w.seat]?.name ?? `Seat ${w.seat}`;
-        const hand = w.handName ? ` with ${w.handName}` : '';
+        const hand =
+          w.handName && w.handName !== 'Uncontested' ? ` with ${w.handName}` : '';
         push({
           userId: 'system',
           name: 'Dealer',
@@ -94,7 +95,9 @@ function announceEvents(
       } else if (e.winners.length > 1) {
         const parts = e.winners.map((w) => {
           const name = state.players[w.seat]?.name ?? `Seat ${w.seat}`;
-          return `${name} ${w.amount}${w.handName ? ` (${w.handName})` : ''}`;
+          const hand =
+            w.handName && w.handName !== 'Uncontested' ? ` (${w.handName})` : '';
+          return `${name} ${w.amount}${hand}`;
         });
         push({
           userId: 'system',
@@ -303,9 +306,11 @@ export function OfflineTableView({
     const map = new Map<number, { amount: number; handName?: string }>();
     for (const w of publicTable?.winners ?? []) {
       const prev = map.get(w.seat);
+      const handName =
+        w.handName && w.handName !== 'Uncontested' ? w.handName : prev?.handName;
       map.set(w.seat, {
         amount: (prev?.amount ?? 0) + w.amount,
-        handName: w.handName ?? prev?.handName,
+        handName,
       });
     }
     return map;
@@ -389,7 +394,9 @@ export function OfflineTableView({
                     <div key={`${w.seat}-${i}`} className="py-1">
                       <div className="font-display text-lg text-gold">{name}</div>
                       <div className="text-sm text-cream/80">
-                        {w.handName ?? 'Win'} · +{formatChips(w.amount)}
+                        {w.handName && w.handName !== 'Uncontested'
+                          ? `${w.handName} · +${formatChips(w.amount)}`
+                          : `+${formatChips(w.amount)}`}
                       </div>
                     </div>
                   );

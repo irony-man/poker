@@ -444,7 +444,7 @@ function goToShowdown(state: HandState, events: EngineEvent[]): ApplyResult {
   if (living.length === 1) {
     // Award without reveal
     const winner = living[0]!;
-    state.winners = [{ seat: winner.seat, amount: state.pot, handName: 'Uncontested' }];
+    state.winners = [{ seat: winner.seat, amount: state.pot }];
     state.showdownHands = [];
     winner.stack += state.pot;
     state.pot = 0;

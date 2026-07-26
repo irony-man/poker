@@ -73,6 +73,7 @@ describe('hand lifecycle', () => {
     expect(state.players[other]!.stack).toBe(before + pot);
     expect(state.players[other]!.revealed).toBe(false);
     expect(state.players[actor]!.revealed).toBe(false);
+    expect(state.winners[0]?.handName).toBeUndefined();
   });
 
   it('rejects action when not to act', () => {

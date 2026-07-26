@@ -48,9 +48,11 @@ export function TableView({ tableId }: { tableId: string }) {
     const map = new Map<number, { amount: number; handName?: string }>();
     for (const w of table?.winners ?? []) {
       const prev = map.get(w.seat);
+      const handName =
+        w.handName && w.handName !== 'Uncontested' ? w.handName : prev?.handName;
       map.set(w.seat, {
         amount: (prev?.amount ?? 0) + w.amount,
-        handName: w.handName ?? prev?.handName,
+        handName,
       });
     }
     return map;
@@ -169,7 +171,9 @@ export function TableView({ tableId }: { tableId: string }) {
                     <div key={`${w.seat}-${i}`} className="py-1">
                       <div className="font-display text-lg text-gold">{name}</div>
                       <div className="text-sm text-cream/80">
-                        {w.handName ?? 'Win'} · +{formatChips(w.amount)}
+                        {w.handName && w.handName !== 'Uncontested'
+                          ? `${w.handName} · +${formatChips(w.amount)}`
+                          : `+${formatChips(w.amount)}`}
                       </div>
                     </div>
                   );

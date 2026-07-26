@@ -8,6 +8,7 @@ Private No-Limit Texas Hold'em for casual home games.
 - **Protocol** (`packages/protocol`) — Zod WebSocket/REST schemas
 - **Server** (`apps/server`) — Express + native `ws`, Redis-optional KV, file/Postgres hand history
 - **Web** (`apps/web`) — Next.js 15, React 19, Tailwind, Framer Motion
+- **Android** (`apps/android`) — Jetpack Compose client (lobby, online WS table, offline engine)
 
 ## Prerequisites
 
@@ -64,6 +65,17 @@ For a public URL (Vercel/Railway/Fly), you’ll need accounts + `NEXT_PUBLIC_API
 | `NEXT_PUBLIC_WS_URL` | `ws://localhost:4000/ws` | Browser → WebSocket |
 
 Without Redis/Postgres the server uses in-memory KV and JSONL history under `data/`.
+
+## Android
+
+Open `apps/android` in Android Studio (JDK 17, SDK 35). Defaults point at production Render:
+
+```bash
+cd apps/android
+./gradlew :app:assembleDebug
+```
+
+See [apps/android/README.md](apps/android/README.md).
 
 ## Architecture notes
 

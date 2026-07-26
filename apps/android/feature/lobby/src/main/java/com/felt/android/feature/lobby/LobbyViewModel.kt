@@ -1,0 +1,117 @@
+package com.felt.android.feature.lobby
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.felt.android.core.datastore.SessionPreferences
+import com.felt.android.core.model.CreateTableRequest
+import com.felt.android.core.model.RegisterRequest
+import com.felt.android.core.model.SessionDto
+import com.felt.android.core.model.TicketRequest
+import com.felt.android.core.network.FeltApi
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+data class LobbyUiState(
+    val name: String = "",
+    val maxSeats: Int = 6,
+    val botCount: Int = 2,
+    val inviteCode: String = "",
+    val offlineSeats: Int = 6,
+    val offlineBots: Int = 3,
+    val busy: Boolean = false,
+    val error: String? = null,
+)
+
+@HiltViewModel
+class LobbyViewModel @Inject constructor(
+    private val feltApi: FeltApi,
+    private val sessionPreferences: SessionPreferences,
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(LobbyUiState())
+    val uiState: StateFlow<LobbyUiState> = _uiState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            sessionPreferences.getSession()?.name?.let { saved ->
+                _uiState.update { it.copy(name = saved) }
+            }
+        }
+    }
+
+    fun onNameChange(value: String) = _uiState.update { it.copy(name = value) }
+    fun onMaxSeatsChange(value: Int) = _uiState.update { it.copy(maxSeats = value) }
+    fun onBotCountChange(value: Int) = _uiState.update { it.copy(botCount = value) }
+    fun onInviteChange(value: String) = _uiState.update { it.copy(inviteCode = value) }
+    fun onOfflineSeatsChange(value: Int) = _uiState.update { it.copy(offlineSeats = value) }
+    fun onOfflineBotsChange(value: Int) = _uiState.update { it.copy(offlineBots = value) }
+    fun clearError() = _uiState.update { it.copy(error = null) }
+
+    fun host(onSuccess: (tableId: String, invite: String) -> Unit) {
+        val state = _uiState.value
+        viewModelScope.launch {
+            _uiState.update { it.copy(busy = true, error = null) }
+            runCatching {
+                val session = ensureSession(state.name.trim().ifBlank { "Player" })
+                val table = feltApi.createTable(
+                    CreateTableRequest(
+                        userId = session.userId,
+                        name = "${session.name}'s Table",
+                        maxSeats = state.maxSeats,
+                        botCount = state.botCount.coerceAtMost(state.maxSeats - 1),
+                        isPrivate = true,
+                    ),
+                )
+                table.tableId to table.inviteCode
+            }.onSuccess { (tableId, invite) ->
+                _uiState.update { it.copy(busy = false) }
+                onSuccess(tableId, invite)
+            }.onFailure { err ->
+                _uiState.update { it.copy(busy = false, error = err.message ?: "Host failed") }
+            }
+        }
+    }
+
+    fun join(onSuccess: (tableId: String, invite: String) -> Unit) {
+        val state = _uiState.value
+        viewModelScope.launch {
+            _uiState.update { it.copy(busy = true, error = null) }
+            runCatching {
+                ensureSession(state.name.trim().ifBlank { "Player" })
+                val resolved = feltApi.resolveInvite(state.inviteCode.trim())
+                resolved.tableId to resolved.inviteCode
+            }.onSuccess { (tableId, invite) ->
+                _uiState.update { it.copy(busy = false) }
+                onSuccess(tableId, invite)
+            }.onFailure { err ->
+                _uiState.update { it.copy(busy = false, error = err.message ?: "Join failed") }
+            }
+        }
+    }
+
+    fun offline(onNavigate: (seats: Int, bots: Int, name: String) -> Unit) {
+        val state = _uiState.value
+        onNavigate(
+            state.offlineSeats,
+            state.offlineBots.coerceIn(1, state.offlineSeats - 1),
+            state.name.trim().ifBlank { "Player" },
+        )
+    }
+
+    private suspend fun ensureSession(displayName: String): SessionDto {
+        val saved = sessionPreferences.getSession()
+        val session = if (saved != null) {
+            runCatching { feltApi.refreshTicket(TicketRequest(saved.userId)) }
+                .getOrElse { feltApi.register(RegisterRequest(displayName)) }
+        } else {
+            feltApi.register(RegisterRequest(displayName))
+        }
+        sessionPreferences.saveSession(session)
+        return session
+    }
+}

@@ -11,3 +11,8 @@ coverage/
 data/
 docker-compose.override.yml
 bin/cloudflared
+
+# Android (apps/android)
+apps/android/.gradle/
+apps/android/**/build/
+apps/android/local.properties

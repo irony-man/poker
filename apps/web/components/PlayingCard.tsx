@@ -49,7 +49,7 @@ export function PlayingCard({
   faceDown?: boolean;
   small?: boolean;
 }) {
-  const w = small ? 'w-11 h-[4.1rem]' : 'w-16 h-24';
+  const w = small ? 'w-14 h-[5.25rem] sm:w-16 sm:h-24' : 'w-[4.75rem] h-[7rem] sm:w-20 sm:h-[7.5rem]';
   const radius = small ? 'rounded-lg' : 'rounded-xl';
   const shell = `${w} ${radius} relative overflow-hidden shadow-[0_6px_16px_rgba(0,0,0,0.5)] ring-1 ring-black/25 bg-[#f7f2e8]`;
 

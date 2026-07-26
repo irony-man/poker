@@ -88,16 +88,16 @@ export function SeatView({
         style={{ left: `${x}%`, top: `${y}%` }}
         className={`absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 ${isToAct || isWinner ? 'z-20' : 'z-10'}`}
       >
-        <div className="flex gap-0.5 drop-shadow-lg">
+        <div className="flex gap-1 drop-shadow-lg">
           {faceDown ? (
             <>
-              <PlayingCard faceDown small />
-              <PlayingCard faceDown small />
+              <PlayingCard faceDown small={!isSelf} />
+              <PlayingCard faceDown small={!isSelf} />
             </>
           ) : showCards ? (
             <>
-              <PlayingCard code={showCards[0]} small />
-              <PlayingCard code={showCards[1]} small />
+              <PlayingCard code={showCards[0]} small={!isSelf} />
+              <PlayingCard code={showCards[1]} small={!isSelf} />
             </>
           ) : null}
         </div>

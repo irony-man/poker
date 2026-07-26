@@ -165,10 +165,11 @@ private fun SeatChip(
             }
             myCards?.let { cards ->
                 Text(
-                    text = cards.joinToString(" "),
+                    text = cards.joinToString("  "),
                     fontFamily = FontFamily.Monospace,
                     color = FeltColors.Gold,
-                    fontSize = 12.sp,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
                 )
             }
         }

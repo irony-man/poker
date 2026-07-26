@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionControls } from './ActionControls';
 import { ChatPanel } from './ChatPanel';
@@ -9,6 +10,11 @@ import { SeatView } from './SeatView';
 import { playTick } from '@/lib/audio';
 import { usePokerSocket } from '@/lib/ws';
 import { useSession } from '@/lib/store';
+
+const TableAtmosphere = dynamic(
+  () => import('./three/TableAtmosphere').then((m) => m.TableAtmosphere),
+  { ssr: false },
+);
 
 function seatAngles(maxSeats: number): number[] {
   const start = 90;
@@ -123,7 +129,11 @@ export function TableView({ tableId }: { tableId: string }) {
         )}
 
         <div className="relative flex-1 felt-surface rounded-[42%] border-[12px] border-[#3a2814] shadow-felt min-h-[340px] overflow-hidden">
-          <div className="pointer-events-none absolute inset-6 rounded-[40%] border border-white/5" />
+          <TableAtmosphere
+            celebrate={table?.street === 'payout'}
+            dealKey={table?.community?.length ?? 0}
+          />
+          <div className="pointer-events-none absolute inset-6 rounded-[40%] border border-white/5 z-[1]" />
 
           <div className="absolute left-1/2 top-[40%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-3 z-10">
             <div className="flex flex-col items-center gap-1 rounded-2xl bg-ink/35 px-4 py-2 border border-cream/10 backdrop-blur-sm">

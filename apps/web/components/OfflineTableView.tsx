@@ -20,8 +20,8 @@ import {
   type TableConfig,
 } from '@poker/engine';
 import { ActionControls } from './ActionControls';
-import { ChipStack, formatChips } from './ChipStack';
 import { PlayingCard } from './PlayingCard';
+import { PotBanner } from './PotBanner';
 import { SeatView } from './SeatView';
 import { TableShell } from './TableShell';
 import { TurnTimerBar } from './TurnTimer';
@@ -262,24 +262,6 @@ export function OfflineTableView({
     prevVersion.current = publicTable.version;
   }, [publicTable]);
 
-  // After payout, return to waiting then auto-start next hand
-  useEffect(() => {
-    if (state.street !== 'payout') return;
-    const t = setTimeout(() => {
-      setState((curr) => {
-        if (curr.street !== 'payout') return curr;
-        let next = returnToWaiting(curr);
-        const start = startHand(next, config, `off-${Date.now()}`, randomBytes);
-        if (start.ok) {
-          syncChat(start.state, start.events);
-          return start.state;
-        }
-        return next;
-      });
-    }, 2800);
-    return () => clearTimeout(t);
-  }, [state.street, config, syncChat]);
-
   const onAction = (action: string, amount?: number) => {
     if (mySeat === undefined || state.toAct !== mySeat) return;
     const result = applyAction(
@@ -401,12 +383,12 @@ export function OfflineTableView({
         <div className="relative flex-1 felt-surface rounded-[42%] border-[12px] table-rim shadow-felt min-h-[340px] overflow-hidden">
           <div className="pointer-events-none absolute inset-6 rounded-[40%] border border-felt-neon/10 z-[1]" />
 
-          <div className="absolute left-1/2 top-[40%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-3 z-10">
-            <div className="flex flex-col items-center gap-1.5 rounded-2xl border border-gold/30 bg-ink/75 px-5 py-2.5 backdrop-blur-md shadow-[0_8px_28px_rgba(0,0,0,0.45)]">
-              <div className="text-[10px] font-display uppercase tracking-[0.22em] text-gold/75">Pot</div>
-              <ChipStack amount={Math.max(potTotal, publicTable.pot)} size="lg" />
-            </div>
-            <div className="flex gap-1.5 min-h-[5.25rem] items-center">
+          <div className="absolute left-1/2 top-[22%] z-20 -translate-x-1/2 -translate-y-1/2">
+            <PotBanner amount={Math.max(potTotal, publicTable.pot)} />
+          </div>
+
+          <div className="absolute left-1/2 top-[48%] z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2">
+            <div className="flex min-h-[5.25rem] items-center gap-1.5">
               {publicTable.community.map((c, i) => (
                 <PlayingCard
                   key={`${publicTable.handId}-${c}`}
@@ -451,12 +433,13 @@ export function OfflineTableView({
         </div>
 
         <div className="mt-4 pb-[env(safe-area-inset-bottom)]">
-          {turnEndsAt && publicTable.toAct !== null && (
+          {turnEndsAt &&
+            publicTable.toAct !== null &&
+            publicTable.toAct !== mySeat && (
             <div className="mb-2">
               <TurnTimerBar
                 endsAt={turnEndsAt}
                 totalMs={config.turnTimeMs}
-                isMyTurn={publicTable.toAct === mySeat}
               />
             </div>
           )}

@@ -167,6 +167,17 @@ private fun canAct(p: PlayerState): Boolean =
 fun livingPlayers(state: HandState): List<PlayerState> =
     state.players.filter { it.status == PlayerStatus.Active || it.status == PlayerStatus.AllIn }
 
+private fun onlyBotsRemainAfterHumanFold(
+    state: MutableHandState,
+    living: List<PlayerState>,
+): Boolean {
+    if (living.isEmpty()) return false
+    if (!living.all { isBotUserId(it.userId) }) return false
+    return state.players.any { p ->
+        p.status == PlayerStatus.Folded && p.userId != null && !isBotUserId(p.userId)
+    }
+}
+
 private class MutableHandState(initial: HandState) {
     var handId: String = initial.handId
     var street: Street = initial.street
@@ -589,6 +600,11 @@ private fun afterAction(state: MutableHandState, events: MutableList<EngineEvent
     val living = livingPlayers(state.toImmutable())
     if (living.size == 1) {
         return goToShowdown(state, events)
+    }
+
+    // Human folded — don't continue a bots-only betting war
+    if (onlyBotsRemainAfterHumanFold(state, living)) {
+        return runoutToShowdown(state, events)
     }
 
     if (!bettingContinues(state) || streetComplete(state)) {

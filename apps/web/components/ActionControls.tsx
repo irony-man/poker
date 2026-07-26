@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { MoveTimerStrip, useMoveTimerLabel } from './TurnTimer';
 import { useSession } from '@/lib/store';
 
 export function ActionControls({
@@ -23,6 +24,9 @@ export function ActionControls({
   const callAmount = legal?.callAmount ?? 0;
   const bb = table?.config.bigBlind ?? 10;
   const pot = table?.pot ?? 0;
+  const turnEndsAt = table?.turnEndsAt;
+  const turnTimeMs = table?.config.turnTimeMs ?? 20_000;
+  const { label: timerLabel, urgent } = useMoveTimerLabel(isTurn ? turnEndsAt : null);
 
   const [raiseTo, setRaiseTo] = useState(min);
 
@@ -50,74 +54,90 @@ export function ActionControls({
   const potBet = snap(Math.min(max, Math.max(min, pot + (table?.currentBet ?? 0))));
 
   return (
-    <div className="hud-panel w-full max-w-xl mx-auto space-y-3 p-4">
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] font-display uppercase tracking-[0.2em] text-felt-neon">Your move</span>
-        <span className="h-2 w-2 rounded-full bg-felt-neon animate-live-blink shadow-glow-neon" />
-      </div>
-
-      {(legal.types.includes('bet') || legal.types.includes('raise')) && (
-        <div className="space-y-2">
-          <div className="flex justify-between text-xs font-semibold uppercase tracking-wider text-cream/70">
-            <span>Raise to {raiseTo}</span>
-            <span className="text-cream/40">
-              {min} – {max}
-            </span>
-          </div>
-          <input
-            type="range"
-            min={min}
-            max={max}
-            step={bb}
-            value={Math.min(max, Math.max(min, raiseTo))}
-            onChange={(e) => setRaiseTo(Number(e.target.value))}
-            className="w-full accent-gold"
-          />
-          <div className="grid grid-cols-4 gap-2">
-            {[
-              ['Min', min],
-              ['½ Pot', halfPot],
-              ['Pot', potBet],
-              ['Max', max],
-            ].map(([label, val]) => (
-              <button
-                key={label as string}
-                type="button"
-                onClick={() => setRaiseTo(val as number)}
-                className="rounded border border-cream/15 bg-ink-raised py-1.5 text-[11px] font-display font-semibold uppercase tracking-wide hover:border-gold/50 hover:text-gold"
+    <div className="hud-panel mx-auto w-full max-w-xl overflow-hidden p-0">
+      <MoveTimerStrip endsAt={turnEndsAt} totalMs={turnTimeMs} />
+      <div className="space-y-3 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[10px] font-display uppercase tracking-[0.2em] text-felt-neon">
+            Your move
+          </span>
+          <div className="flex items-center gap-2">
+            {timerLabel && (
+              <span
+                className={`font-mono text-sm font-bold tabular-nums ${
+                  urgent ? 'text-red-300' : 'text-cream/75'
+                }`}
               >
-                {label}
-              </button>
-            ))}
+                {timerLabel}
+              </span>
+            )}
+            <span className="h-2 w-2 rounded-full bg-felt-neon animate-live-blink shadow-glow-neon" />
           </div>
         </div>
-      )}
 
-      <div className="grid grid-cols-3 gap-2">
-        {legal.types.includes('fold') && (
-          <button type="button" onClick={() => onAction('fold')} className="btn-danger">
-            Fold
-          </button>
-        )}
-        {legal.types.includes('check') && (
-          <button type="button" onClick={() => onAction('check')} className="btn-secondary">
-            Check
-          </button>
-        )}
-        {legal.types.includes('call') && (
-          <button type="button" onClick={() => onAction('call')} className="btn-secondary">
-            Call {callAmount}
-          </button>
-        )}
         {(legal.types.includes('bet') || legal.types.includes('raise')) && (
-          <button
-            type="button"
-            onClick={() => onAction(legal.types.includes('bet') ? 'bet' : 'raise', raiseTo)}
-            className="btn-primary col-span-1"
-          >
-            {legal.types.includes('bet') ? 'Bet' : 'Raise'} {raiseTo}
-          </button>
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs font-semibold uppercase tracking-wider text-cream/70">
+              <span>Raise to {raiseTo}</span>
+              <span className="text-cream/40">
+                {min} – {max}
+              </span>
+            </div>
+            <input
+              type="range"
+              min={min}
+              max={max}
+              step={bb}
+              value={Math.min(max, Math.max(min, raiseTo))}
+              onChange={(e) => setRaiseTo(Number(e.target.value))}
+              className="w-full accent-gold"
+            />
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                ['Min', min],
+                ['½ Pot', halfPot],
+                ['Pot', potBet],
+                ['Max', max],
+              ].map(([label, val]) => (
+                <button
+                  key={label as string}
+                  type="button"
+                  onClick={() => setRaiseTo(val as number)}
+                  className="rounded border border-cream/15 bg-ink-raised py-1.5 text-[11px] font-display font-semibold uppercase tracking-wide hover:border-gold/50 hover:text-gold"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
+
+        <div className="grid grid-cols-3 gap-2">
+          {legal.types.includes('fold') && (
+            <button type="button" onClick={() => onAction('fold')} className="btn-danger">
+              Fold
+            </button>
+          )}
+          {legal.types.includes('check') && (
+            <button type="button" onClick={() => onAction('check')} className="btn-secondary">
+              Check
+            </button>
+          )}
+          {legal.types.includes('call') && (
+            <button type="button" onClick={() => onAction('call')} className="btn-secondary">
+              Call {callAmount}
+            </button>
+          )}
+          {(legal.types.includes('bet') || legal.types.includes('raise')) && (
+            <button
+              type="button"
+              onClick={() => onAction(legal.types.includes('bet') ? 'bet' : 'raise', raiseTo)}
+              className="btn-primary col-span-1"
+            >
+              {legal.types.includes('bet') ? 'Bet' : 'Raise'} {raiseTo}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

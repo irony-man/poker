@@ -129,4 +129,33 @@ describe('hand lifecycle', () => {
     state = returnToWaiting(state);
     expect(state.street).toBe('waiting');
   });
+
+  it('human fold vs bots ends hand without bot-vs-bot betting', () => {
+    let state = createEmptyTable(config);
+    state = sitDown(state, 0, 'human-1', 'You', 500).state;
+    state = sitDown(state, 1, 'bot:a', 'AceBot', 500).state;
+    state = sitDown(state, 2, 'bot:b', 'RiverRat', 500).state;
+    state = startHand(state, config, 'hand-bots', fixedRng([1, 2, 3, 4, 5, 6, 7, 8, 9])).state;
+
+    let guard = 0;
+    while (state.street !== 'payout' && state.toAct !== null && guard++ < 30) {
+      const seat = state.toAct;
+      const actor = state.players[seat]!;
+      if (actor.userId === 'human-1') {
+        const r = applyAction(state, seat, { type: 'fold', seq: state.actionSeq }, config);
+        expect(r.ok).toBe(true);
+        state = r.state;
+        break;
+      }
+      const toCall = state.currentBet - actor.bet;
+      const type = toCall > 0 ? 'call' : 'check';
+      const r = applyAction(state, seat, { type, seq: state.actionSeq }, config);
+      expect(r.ok).toBe(true);
+      state = r.state;
+    }
+
+    expect(state.street).toBe('payout');
+    expect(state.players.find((p) => p.userId === 'human-1')!.status).toBe('folded');
+    expect(state.toAct).toBeNull();
+  });
 });

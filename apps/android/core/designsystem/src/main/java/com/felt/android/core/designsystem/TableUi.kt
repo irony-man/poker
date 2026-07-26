@@ -26,6 +26,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -92,15 +94,23 @@ fun FeltTableLayout(
             Box(Modifier.fillMaxSize()) {
                 Box(
                     modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .padding(top = 18.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    PotDisplay(amount = table.pot.coerceAtLeast(0))
+                }
+
+                Box(
+                    modifier = Modifier
                         .align(Alignment.Center)
-                        .offset(y = (-8).dp),
+                        .offset(y = 10.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        PotDisplay(amount = table.pot.coerceAtLeast(0))
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(5.dp),
-                            modifier = Modifier.padding(top = 8.dp),
                         ) {
                             val highlightMode = table.winningCards.isNotEmpty()
                             table.community.forEachIndexed { index, card ->
@@ -397,9 +407,47 @@ fun TableActionControls(
         return
     }
 
-    HudPanel(modifier = modifier.fillMaxWidth().padding(top = 4.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            StatusChip(text = "Your move", accent = FeltColors.Neon)
+    val (timerLabel, timerUrgent) = turnSecondsLabel(
+        if (table.toAct == mySeat) table.turnEndsAt else null,
+    )
+
+    Column(modifier = modifier.fillMaxWidth().padding(top = 4.dp)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(
+                    Brush.verticalGradient(
+                        listOf(FeltColors.InkPanel, FeltColors.InkRaised),
+                    ),
+                )
+                .border(1.dp, FeltColors.Gold.copy(alpha = 0.25f), RoundedCornerShape(16.dp)),
+        ) {
+            Column {
+                MoveTimerStrip(
+                    endsAt = table.turnEndsAt,
+                    totalMs = table.turnTimeMs,
+                )
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        StatusChip(text = "Your move", accent = FeltColors.Neon)
+                        if (timerLabel != null) {
+                            Text(
+                                text = timerLabel,
+                                color = if (timerUrgent) FeltColors.Danger else FeltColors.Cream.copy(alpha = 0.75f),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                            )
+                        }
+                    }
             if ("bet" in legal.types || "raise" in legal.types) {
                 Text("Raise to $raiseTo ($min – $max)", fontSize = 12.sp, color = FeltColors.Cream.copy(0.7f))
                 Slider(
@@ -453,6 +501,8 @@ fun TableActionControls(
                         onClick = { onAction("allin", null) },
                         modifier = Modifier.weight(1f),
                     )
+                }
+            }
                 }
             }
         }

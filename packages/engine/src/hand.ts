@@ -164,6 +164,18 @@ function livingPlayers(state: HandState): PlayerState[] {
   return state.players.filter((p) => p.status === 'active' || p.status === 'allin');
 }
 
+/** Bot user ids are prefixed `bot:` (see bot.ts). Kept local to avoid import cycles. */
+function isBotPlayer(p: PlayerState): boolean {
+  return !!p.userId && p.userId.startsWith('bot:');
+}
+
+/** True when a human has folded and only bots remain in the hand. */
+function onlyBotsRemainAfterHumanFold(state: HandState, living: PlayerState[]): boolean {
+  if (living.length === 0) return false;
+  if (!living.every(isBotPlayer)) return false;
+  return state.players.some((p) => p.status === 'folded' && p.userId && !isBotPlayer(p));
+}
+
 function commitChips(state: HandState, seat: number, amount: number): number {
   const p = state.players[seat]!;
   const pay = Math.min(amount, p.stack);
@@ -513,6 +525,11 @@ function afterAction(state: HandState, events: EngineEvent[]): ApplyResult {
   const living = livingPlayers(state);
   if (living.length === 1) {
     return goToShowdown(state, events);
+  }
+
+  // Human folded — don't continue a bots-only betting war
+  if (onlyBotsRemainAfterHumanFold(state, living)) {
+    return runoutToShowdown(state, events);
   }
 
   if (!bettingContinues(state) || streetComplete(state)) {

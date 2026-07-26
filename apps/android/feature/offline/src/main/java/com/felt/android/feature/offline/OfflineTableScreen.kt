@@ -105,12 +105,14 @@ fun OfflineTableScreen(
                     .padding(top = 8.dp),
             )
 
-            if (tableUi.turnEndsAt != null && tableUi.toAct != null) {
+            val mySeat = table.players.find { it.userId == HUMAN_USER_ID }?.seat
+            if (tableUi.turnEndsAt != null &&
+                tableUi.toAct != null &&
+                tableUi.toAct != mySeat
+            ) {
                 TurnTimerBar(
                     endsAt = tableUi.turnEndsAt,
                     totalMs = tableUi.turnTimeMs,
-                    isMyTurn = tableUi.toAct ==
-                        table.players.find { it.userId == HUMAN_USER_ID }?.seat,
                     modifier = Modifier.padding(top = 6.dp),
                 )
             }

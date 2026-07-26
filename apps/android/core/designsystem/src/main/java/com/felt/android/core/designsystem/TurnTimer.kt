@@ -45,13 +45,49 @@ fun rememberTurnRemainingMs(endsAt: Long?): Long {
     return remaining
 }
 
+/** Thin progress strip for the top of the Your move panel. */
+@Composable
+fun MoveTimerStrip(
+    endsAt: Long?,
+    totalMs: Long,
+    modifier: Modifier = Modifier,
+) {
+    val remaining = rememberTurnRemainingMs(endsAt)
+    if (endsAt == null || remaining <= 0L || totalMs <= 0L) return
+
+    val pct = (remaining.toFloat() / totalMs.toFloat()).coerceIn(0f, 1f)
+    val urgent = remaining <= 5_000L
+    val accent = if (urgent) FeltColors.Danger else FeltColors.Neon
+
+    Canvas(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(6.dp),
+    ) {
+        drawRect(color = FeltColors.Cream.copy(alpha = 0.12f), size = size)
+        drawRect(
+            color = accent,
+            size = Size(size.width * pct, size.height),
+        )
+    }
+}
+
+@Composable
+fun turnSecondsLabel(endsAt: Long?): Pair<String?, Boolean> {
+    val remaining = rememberTurnRemainingMs(endsAt)
+    if (endsAt == null || remaining <= 0L) return null to false
+    return "${ceil(remaining / 1000.0).toInt()}s" to (remaining <= 5_000L)
+}
+
+/** Opponent turn clock — not used on your move. */
 @Composable
 fun TurnTimerBar(
     endsAt: Long?,
     totalMs: Long,
-    isMyTurn: Boolean,
+    isMyTurn: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
+    if (isMyTurn) return
     val remaining = rememberTurnRemainingMs(endsAt)
     if (endsAt == null || remaining <= 0L || totalMs <= 0L) return
 
@@ -67,7 +103,7 @@ fun TurnTimerBar(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = if (isMyTurn) "YOUR CLOCK" else "TURN CLOCK",
+                    text = "TURN CLOCK",
                     color = accent,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
@@ -94,13 +130,6 @@ fun TurnTimerBar(
                     color = accent,
                     size = Size(size.width * pct, size.height),
                     cornerRadius = CornerRadius(999f, 999f),
-                )
-            }
-            if (isMyTurn) {
-                Text(
-                    text = "Time out → fold",
-                    color = FeltColors.Cream.copy(alpha = 0.4f),
-                    fontSize = 10.sp,
                 )
             }
         }

@@ -302,16 +302,7 @@ export class Room {
           })),
         },
       });
-      // Brief pause then waiting
-      setTimeout(() => {
-        if (this.state.street === 'payout') {
-          this.state = returnToWaiting(this.state);
-          this.broadcast();
-          void this.persist();
-          // Auto-start next hand if enough players
-          this.maybeAutoStart();
-        }
-      }, 2500);
+      // Stay on payout until a seated player confirms Next Hand (start_hand).
     }
     this.armTurnTimer();
     this.broadcast();

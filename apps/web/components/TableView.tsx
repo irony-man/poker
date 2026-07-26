@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionControls } from './ActionControls';
-import { ChipStack, formatChips } from './ChipStack';
 import { PlayingCard } from './PlayingCard';
+import { PotBanner } from './PotBanner';
 import { SeatView } from './SeatView';
 import { TableShell } from './TableShell';
 import { TurnTimerBar } from './TurnTimer';
@@ -175,17 +175,16 @@ export function TableView({
         <div className="relative flex-1 felt-surface rounded-[42%] border-[12px] table-rim shadow-felt min-h-[340px] overflow-hidden">
           <div className="pointer-events-none absolute inset-6 rounded-[40%] border border-felt-neon/10 z-[1]" />
 
-          <div className="absolute left-1/2 top-[40%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-3 z-10">
-            <div className="flex flex-col items-center gap-1.5 rounded-2xl border border-gold/30 bg-ink/75 px-5 py-2.5 backdrop-blur-md shadow-[0_8px_28px_rgba(0,0,0,0.45)]">
-              <div className="text-[10px] font-display uppercase tracking-[0.22em] text-gold/75">Pot</div>
-              <ChipStack amount={Math.max(potTotal, table?.pot ?? 0)} size="lg" />
-              {(table?.sidePots?.length ?? 0) > 1 && (
-                <div className="text-[10px] text-cream/45 font-display uppercase tracking-wider">
-                  {table!.sidePots.length} pots
-                </div>
-              )}
-            </div>
-            <div className="flex gap-1.5 min-h-[5.25rem] items-center">
+          {/* Pot sits above the board so community cards never cover it */}
+          <div className="absolute left-1/2 top-[22%] z-20 -translate-x-1/2 -translate-y-1/2">
+            <PotBanner
+              amount={Math.max(potTotal, table?.pot ?? 0)}
+              sidePotCount={table?.sidePots?.length ?? 0}
+            />
+          </div>
+
+          <div className="absolute left-1/2 top-[48%] z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2">
+            <div className="flex min-h-[5.25rem] items-center gap-1.5">
               {(table?.community ?? []).map((c, i) => (
                 <PlayingCard
                   key={`${table?.handId ?? 'board'}-${c}`}
@@ -243,12 +242,13 @@ export function TableView({
         </div>
 
         <div className="mt-4 pb-[env(safe-area-inset-bottom)]">
-          {table?.turnEndsAt && table.toAct !== null && (
+          {table?.turnEndsAt &&
+            table.toAct !== null &&
+            table.toAct !== mySeat && (
             <div className="mb-2">
               <TurnTimerBar
                 endsAt={table.turnEndsAt}
                 totalMs={table.config.turnTimeMs}
-                isMyTurn={table.toAct === mySeat}
               />
             </div>
           )}

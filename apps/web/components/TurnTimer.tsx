@@ -2,14 +2,13 @@
 
 import { formatTurnSeconds, useTurnRemainingMs } from '@/lib/tableLayout';
 
-export function TurnTimerBar({
+/** Compact progress strip for the top of the action panel. */
+export function MoveTimerStrip({
   endsAt,
   totalMs,
-  isMyTurn,
 }: {
   endsAt: number | null | undefined;
   totalMs: number;
-  isMyTurn: boolean;
 }) {
   const remaining = useTurnRemainingMs(endsAt);
   if (!endsAt || remaining <= 0 || totalMs <= 0) return null;
@@ -18,18 +17,56 @@ export function TurnTimerBar({
   const urgent = remaining <= 5000;
 
   return (
-    <div
-      className={`hud-panel w-full max-w-xl mx-auto px-4 py-2.5 ${
-        isMyTurn ? '' : 'opacity-70'
-      }`}
-    >
-      <div className="flex items-center justify-between gap-3 mb-1.5">
+    <div className="w-full" aria-label={`Time left ${formatTurnSeconds(remaining)} seconds`}>
+      <div className="h-1.5 w-full overflow-hidden bg-cream/10">
+        <div
+          className={`h-full transition-[width] duration-100 ease-linear ${
+            urgent ? 'bg-red-400' : 'bg-gradient-to-r from-felt-neon to-gold'
+          }`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+export function useMoveTimerLabel(endsAt: number | null | undefined): {
+  label: string | null;
+  urgent: boolean;
+} {
+  const remaining = useTurnRemainingMs(endsAt);
+  if (!endsAt || remaining <= 0) return { label: null, urgent: false };
+  return {
+    label: `${formatTurnSeconds(remaining)}s`,
+    urgent: remaining <= 5000,
+  };
+}
+
+/** Opponent / non-action turn clock (not shown on your move). */
+export function TurnTimerBar({
+  endsAt,
+  totalMs,
+}: {
+  endsAt: number | null | undefined;
+  totalMs: number;
+  /** @deprecated ignored — bar is only for others' turns */
+  isMyTurn?: boolean;
+}) {
+  const remaining = useTurnRemainingMs(endsAt);
+  if (!endsAt || remaining <= 0 || totalMs <= 0) return null;
+
+  const pct = Math.min(100, Math.max(0, (remaining / totalMs) * 100));
+  const urgent = remaining <= 5000;
+
+  return (
+    <div className="hud-panel mx-auto w-full max-w-xl px-4 py-2.5 opacity-70">
+      <div className="mb-1.5 flex items-center justify-between gap-3">
         <span
           className={`text-[10px] font-display uppercase tracking-[0.2em] ${
-            urgent ? 'text-red-300' : isMyTurn ? 'text-felt-neon' : 'text-cream/50'
+            urgent ? 'text-red-300' : 'text-cream/50'
           }`}
         >
-          {isMyTurn ? 'Your clock' : 'Turn clock'}
+          Turn clock
         </span>
         <span
           className={`font-mono text-sm font-bold tabular-nums ${
@@ -47,11 +84,6 @@ export function TurnTimerBar({
           style={{ width: `${pct}%` }}
         />
       </div>
-      {isMyTurn && (
-        <p className="mt-1.5 text-[10px] text-cream/40">
-          Time out → fold
-        </p>
-      )}
     </div>
   );
 }
@@ -75,7 +107,7 @@ export function SeatTurnRing({
 
   return (
     <svg
-      className="pointer-events-none absolute -inset-2 w-[calc(100%+1rem)] h-[calc(100%+1rem)]"
+      className="pointer-events-none absolute -inset-2 h-[calc(100%+1rem)] w-[calc(100%+1rem)]"
       viewBox="0 0 56 56"
       aria-hidden
     >

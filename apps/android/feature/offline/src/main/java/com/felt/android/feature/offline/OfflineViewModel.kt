@@ -166,7 +166,11 @@ class OfflineViewModel @Inject constructor(
         announceEvents(next, events)
         syncState(next)
         scheduleBotLoop(next)
-        schedulePayoutReturn(next)
+        // Stay on payout until the player taps Next Hand (startHandManual).
+        if (next.street == Street.Payout) {
+            payoutJob?.cancel()
+            payoutJob = null
+        }
     }
 
     private fun syncState(state: HandState) {
@@ -236,22 +240,6 @@ class OfflineViewModel @Inject constructor(
                 pushSystem("Dealer", "Time — folded")
                 applyEngineResult(result.state, result.events)
             }
-        }
-    }
-
-    private fun schedulePayoutReturn(state: HandState) {
-        if (state.street != Street.Payout) return
-        payoutJob?.cancel()
-        payoutJob = viewModelScope.launch {
-            delay(2800)
-            val current = _uiState.value.handState ?: return@launch
-            if (current.street != Street.Payout) return@launch
-            var next = returnToWaiting(current)
-            val start = startHand(next, config, "off-${System.currentTimeMillis()}") { n ->
-                ByteArray(n).also { random.nextBytes(it) }
-            }
-            if (start.ok) applyEngineResult(start.state, start.events)
-            else syncState(next)
         }
     }
 

@@ -12,7 +12,6 @@ function money(n: number): string {
 
 export function SeatView({
   player,
-  isDealer,
   isToAct,
   isSelf,
   isWinner,
@@ -31,7 +30,6 @@ export function SeatView({
   angle,
 }: {
   player: PublicPlayer;
-  isDealer: boolean;
   isToAct: boolean;
   isSelf: boolean;
   isWinner?: boolean;
@@ -205,11 +203,6 @@ export function SeatView({
               </div>
             </div>
 
-            {isDealer && (
-              <span className="mb-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#c62828] text-[10px] font-black text-white shadow ring-1 ring-white/80">
-                D
-              </span>
-            )}
           </div>
 
           {player.status === 'allin' && (

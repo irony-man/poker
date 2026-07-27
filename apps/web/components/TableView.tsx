@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ActionControls } from './ActionControls';
 import { FloatingActionDock } from './FloatingActionDock';
 import { PlayingCard } from './PlayingCard';
-import { PotBanner } from './PotBanner';
+import { DealerPotZone } from './DealerPotZone';
 import { SeatView } from './SeatView';
 import { TableShell } from './TableShell';
 import { TurnTimerBar } from './TurnTimer';
@@ -129,6 +129,9 @@ export function TableView({
   const potTotal =
     (table?.pot ?? 0) ||
     (table?.sidePots?.reduce((s, p) => s + p.amount, 0) ?? 0);
+  const dealerPlayer =
+    table?.dealerButton != null ? table.players[table.dealerButton] : undefined;
+  const showDealerZone = table?.street !== 'waiting' && table?.dealerButton != null;
 
   return (
     <TableShell
@@ -192,11 +195,13 @@ export function TableView({
           <div className="absolute inset-0 felt-surface rounded-[28%] border-[8px] table-rim shadow-felt overflow-hidden max-sm:rounded-[22%] max-sm:border-[7px] sm:rounded-[42%] sm:border-[12px]">
           <div className="pointer-events-none absolute inset-3 max-sm:inset-2 sm:inset-6 rounded-[26%] sm:rounded-[40%] border border-white/10 z-[1]" />
 
-          {/* Pot sits above the board so community cards never cover it */}
-          <div className="absolute left-1/2 top-[22%] z-20 -translate-x-1/2 -translate-y-1/2">
-            <PotBanner
+          {/* Dealer button + pot reserved at top of table */}
+          <div className="absolute left-1/2 top-[12%] z-20 -translate-x-1/2 -translate-y-1/2">
+            <DealerPotZone
               amount={Math.max(potTotal, table?.pot ?? 0)}
               sidePotCount={table?.sidePots?.length ?? 0}
+              dealerName={dealerPlayer?.name}
+              showDealer={showDealerZone}
             />
           </div>
 
@@ -224,7 +229,6 @@ export function TableView({
                 key={p.seat}
                 player={p}
                 angle={angles[p.seat] ?? 90}
-                isDealer={table.dealerButton === p.seat && table.street !== 'waiting'}
                 isToAct={table.toAct === p.seat}
                 isSelf={p.userId === userId}
                 isWinner={table.street === 'payout' && !!win}

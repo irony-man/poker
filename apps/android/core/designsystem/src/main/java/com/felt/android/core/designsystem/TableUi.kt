@@ -100,10 +100,14 @@ fun FeltTableLayout(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .fillMaxWidth()
-                        .padding(top = 18.dp),
+                        .padding(top = 10.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    PotDisplay(amount = table.pot.coerceAtLeast(0))
+                    DealerPotZone(
+                        amount = table.pot.coerceAtLeast(0),
+                        dealerName = table.players.find { it.seat == table.dealerButton }?.name,
+                        showDealer = table.street != "waiting",
+                    )
                 }
 
                 Box(
@@ -144,7 +148,6 @@ fun FeltTableLayout(
                             table.players.find { it.userId == uid }?.seat
                         }),
                         isSelf = player.userId == userId,
-                        isDealer = table.dealerButton == player.seat && table.street != "waiting",
                         isToAct = table.toAct == player.seat,
                         isWinner = table.winAmountBySeat.containsKey(player.seat) &&
                             (table.street == "payout" || table.street == "showdown"),
@@ -174,7 +177,6 @@ private fun SeatChip(
     handId: String,
     angleDeg: Double,
     isSelf: Boolean,
-    isDealer: Boolean,
     isToAct: Boolean,
     isWinner: Boolean,
     winAmount: Int?,
@@ -353,20 +355,6 @@ private fun SeatChip(
                                 modifier = Modifier
                                     .background(if (isWinner) FeltColors.Gold else FeltColors.StackRed)
                                     .padding(horizontal = 8.dp, vertical = 5.dp),
-                            )
-                        }
-                        if (isDealer) {
-                            Text(
-                                text = "D",
-                                color = Color.White,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Black,
-                                modifier = Modifier
-                                    .padding(bottom = 2.dp)
-                                    .clip(RoundedCornerShape(999.dp))
-                                    .background(FeltColors.StackRed)
-                                    .border(1.dp, Color.White.copy(alpha = 0.85f), RoundedCornerShape(999.dp))
-                                    .padding(horizontal = 5.dp, vertical = 2.dp),
                             )
                         }
                     }

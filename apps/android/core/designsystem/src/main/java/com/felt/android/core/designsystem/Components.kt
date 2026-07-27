@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -263,5 +264,49 @@ fun PotDisplay(
             fontWeight = FontWeight.ExtraBold,
             fontFamily = FontFamily.Serif,
         )
+    }
+}
+
+@Composable
+fun DealerPotZone(
+    amount: Int,
+    dealerName: String? = null,
+    showDealer: Boolean = false,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        if (showDealer) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = "D",
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(FeltColors.StackRed)
+                        .border(2.dp, Color.White.copy(alpha = 0.85f), RoundedCornerShape(999.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+                if (!dealerName.isNullOrBlank()) {
+                    Text(
+                        text = dealerName.take(12),
+                        color = FeltColors.Cream.copy(alpha = 0.75f),
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+        PotDisplay(amount = amount)
     }
 }

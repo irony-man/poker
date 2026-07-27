@@ -22,7 +22,7 @@ import {
 import { ActionControls } from './ActionControls';
 import { FloatingActionDock } from './FloatingActionDock';
 import { PlayingCard } from './PlayingCard';
-import { PotBanner } from './PotBanner';
+import { DealerPotZone } from './DealerPotZone';
 import { SeatView } from './SeatView';
 import { TableShell } from './TableShell';
 import { TurnTimerBar } from './TurnTimer';
@@ -363,6 +363,8 @@ export function OfflineTableView({
   const potTotal =
     (publicTable.pot || 0) ||
     (publicTable.sidePots?.reduce((s, p) => s + p.amount, 0) ?? 0);
+  const dealerPlayer = publicTable.players[publicTable.dealerButton];
+  const showDealerZone = publicTable.street !== 'waiting';
 
   return (
     <TableShell
@@ -398,8 +400,13 @@ export function OfflineTableView({
           <div className="absolute inset-0 felt-surface rounded-[28%] border-[8px] table-rim shadow-felt overflow-hidden max-sm:rounded-[22%] max-sm:border-[7px] sm:rounded-[42%] sm:border-[12px]">
           <div className="pointer-events-none absolute inset-3 max-sm:inset-2 sm:inset-6 rounded-[26%] sm:rounded-[40%] border border-white/10 z-[1]" />
 
-          <div className="absolute left-1/2 top-[22%] z-20 -translate-x-1/2 -translate-y-1/2">
-            <PotBanner amount={Math.max(potTotal, publicTable.pot)} />
+          <div className="absolute left-1/2 top-[12%] z-20 -translate-x-1/2 -translate-y-1/2">
+            <DealerPotZone
+              amount={Math.max(potTotal, publicTable.pot)}
+              sidePotCount={publicTable.sidePots?.length ?? 0}
+              dealerName={dealerPlayer?.name}
+              showDealer={showDealerZone}
+            />
           </div>
 
           <div className="absolute left-1/2 top-[48%] z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2">
@@ -426,7 +433,6 @@ export function OfflineTableView({
                 key={p.seat}
                 player={p}
                 angle={angles[p.seat] ?? 90}
-                isDealer={publicTable.dealerButton === p.seat && publicTable.street !== 'waiting'}
                 isToAct={publicTable.toAct === p.seat}
                 isSelf={p.userId === HUMAN_ID}
                 isWinner={publicTable.street === 'payout' && !!win}

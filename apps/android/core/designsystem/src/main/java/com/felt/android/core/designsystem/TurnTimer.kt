@@ -177,7 +177,23 @@ fun SeatTurnRing(
 
 fun seatAngleForHero(seat: Int, maxSeats: Int, heroSeat: Int?): Double {
     val hero = heroSeat ?: 0
-    val step = 360.0 / maxSeats
+    val gapHalf = 40.0
+    val arcStart = 270.0 + gapHalf
+    val arcEnd = 270.0 - gapHalf + 360.0
+    val arcSpan = arcEnd - arcStart
+
+    fun normalize(deg: Double) = ((deg % 360.0) + 360.0) % 360.0
+
+    val positions = (0 until maxSeats).map { i ->
+        val frac = if (maxSeats <= 1) 0.5 else i.toDouble() / (maxSeats - 1)
+        normalize(arcStart + frac * arcSpan)
+    }
+
+    val bottomIdx = positions.indices.minByOrNull { idx ->
+        kotlin.math.abs(normalize(positions[idx]) - 90.0)
+    } ?: 0
+
     val offset = ((seat - hero) % maxSeats + maxSeats) % maxSeats
-    return 90.0 + offset * step
+    val posIdx = (bottomIdx + offset) % maxSeats
+    return positions[posIdx]
 }

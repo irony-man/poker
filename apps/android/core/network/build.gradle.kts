@@ -39,4 +39,6 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+    // Override Hilt's older kotlin-metadata-jvm so KSP can read Kotlin 2.4 metadata.
+    ksp(libs.kotlin.metadata.jvm)
 }

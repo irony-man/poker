@@ -15,6 +15,7 @@ import { clerkAuthRequired, requireClerkIdentity } from './clerkAuth.js';
 import { FriendsStore } from './friends.js';
 import { createHistoryStore, writeSchemaDoc } from './history.js';
 import { createKv } from './kv.js';
+import { ensurePublicTables } from './publicTables.js';
 import { RoomManager } from './room.js';
 import path from 'node:path';
 
@@ -42,6 +43,7 @@ async function main() {
   await writeSchemaDoc(dataDir);
   const rooms = new RoomManager(kv, history);
   const friends = new FriendsStore(dataDir);
+  ensurePublicTables(rooms);
 
   async function requireUserId(req: express.Request, res: express.Response): Promise<string | null> {
     if (clerkAuthRequired()) {
@@ -194,7 +196,7 @@ async function main() {
   });
 
   app.get('/api/tables', (_req, res) => {
-    res.json({ tables: rooms.listPublic() });
+    res.json({ tables: rooms.listPublicLobby() });
   });
 
   app.get('/api/tables/invite/:code', (req, res) => {

@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { AvatarPicker } from '@/components/PlayerAvatar';
 import { FriendsPanel } from '@/components/FriendsPanel';
+import { PublicTablesPanel } from '@/components/PublicTablesPanel';
 import { createTable, register, resolveInvite } from '@/lib/api';
 import { loadSavedAvatarId, saveAvatarId } from '@/lib/avatars';
 import { useSession } from '@/lib/store';
+import { DEFAULT_STAKE_ID, STAKE_PRESETS, stakeById } from '@poker/protocol';
 
 function clerkDisplayName(user: {
   fullName?: string | null;
@@ -36,6 +38,7 @@ export default function HomePage() {
   const [invite, setInvite] = useState('');
   const [maxSeats, setMaxSeats] = useState(6);
   const [botCount, setBotCount] = useState(2);
+  const [hostStakeId, setHostStakeId] = useState(DEFAULT_STAKE_ID);
   const [offlineSeats, setOfflineSeats] = useState(6);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -123,14 +126,15 @@ export default function HomePage() {
     try {
       const session = await ensureSession(name.trim() || clerkDisplayName(user));
       const clerkToken = await getToken();
+      const stake = stakeById(hostStakeId) ?? STAKE_PRESETS[1]!;
       const table = await createTable(
         {
           userId: session.userId,
           name: `${session.name}'s Table`,
-          smallBlind: 5,
-          bigBlind: 10,
-          minBuyIn: 200,
-          maxBuyIn: 1000,
+          smallBlind: stake.smallBlind,
+          bigBlind: stake.bigBlind,
+          minBuyIn: stake.minBuyIn,
+          maxBuyIn: stake.maxBuyIn,
           turnTimeMs: 20000,
           maxSeats,
           botCount,
@@ -173,6 +177,23 @@ export default function HomePage() {
   async function onSpectate(e: React.FormEvent) {
     e.preventDefault();
     await enterInvite('spectate');
+  }
+
+  async function joinPublicTable(tableId: string, inviteCode: string) {
+    if (!isSignedIn) {
+      setError('Sign in to join a public table');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await ensureSession(name.trim() || clerkDisplayName(user));
+      router.push(`/table/${tableId}?invite=${inviteCode}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed');
+    } finally {
+      setBusy(false);
+    }
   }
 
   const maxBots = Math.max(0, maxSeats - 1);
@@ -245,6 +266,21 @@ export default function HomePage() {
               maxLength={32}
               disabled={onlineLocked}
             />
+          </label>
+          <label className="block">
+            <span className="hud-label">Stakes</span>
+            <select
+              value={hostStakeId}
+              onChange={(e) => setHostStakeId(e.target.value)}
+              className="field-select mt-1"
+              disabled={onlineLocked}
+            >
+              {STAKE_PRESETS.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.label} · ${s.minBuyIn}–${s.maxBuyIn} ({s.smallBlind}/{s.bigBlind})
+                </option>
+              ))}
+            </select>
           </label>
           <label className="block">
             <span className="hud-label">Seats</span>
@@ -321,6 +357,8 @@ export default function HomePage() {
             </button>
           </div>
         </form>
+
+        <PublicTablesPanel disabled={onlineLocked || busy} onJoin={joinPublicTable} />
 
         {isSignedIn && sessionUserId && (
           <FriendsPanel

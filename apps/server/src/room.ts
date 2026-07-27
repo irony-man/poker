@@ -28,6 +28,8 @@ export interface TableMeta {
   name: string;
   hostUserId: string;
   isPrivate: boolean;
+  /** Links public ring tables to a stake preset id. */
+  stakeId?: string;
   config: TableConfig;
   createdAt: number;
 }
@@ -66,6 +68,11 @@ export class Room {
 
   get config(): TableConfig {
     return this.meta.config;
+  }
+
+  /** Players currently seated (humans or bots). */
+  seatedCount(): number {
+    return this.state.players.filter((p) => p.status !== 'empty').length;
   }
 
   attach(conn: ConnectionContext): void {
@@ -552,6 +559,7 @@ export class RoomManager {
     hostUserId: string;
     config: TableConfig;
     isPrivate: boolean;
+    stakeId?: string;
   }): TableMeta {
     const id = nanoid(10);
     const inviteCode = nanoid(8);
@@ -561,6 +569,7 @@ export class RoomManager {
       name: opts.name,
       hostUserId: opts.hostUserId,
       isPrivate: opts.isPrivate,
+      stakeId: opts.stakeId,
       config: opts.config,
       createdAt: Date.now(),
     };
@@ -584,5 +593,34 @@ export class RoomManager {
     return [...this.rooms.values()]
       .filter((r) => !r.meta.isPrivate)
       .map((r) => r.meta);
+  }
+
+  findPublicByStake(stakeId: string): Room | undefined {
+    return [...this.rooms.values()].find(
+      (r) => !r.meta.isPrivate && r.meta.stakeId === stakeId,
+    );
+  }
+
+  listPublicLobby(): {
+    tableId: string;
+    inviteCode: string;
+    name: string;
+    stakeId: string;
+    seatedCount: number;
+    maxSeats: number;
+    config: TableConfig;
+  }[] {
+    return [...this.rooms.values()]
+      .filter((r) => !r.meta.isPrivate && r.meta.stakeId)
+      .sort((a, b) => (a.meta.stakeId ?? '').localeCompare(b.meta.stakeId ?? ''))
+      .map((r) => ({
+        tableId: r.meta.id,
+        inviteCode: r.meta.inviteCode,
+        name: r.meta.name,
+        stakeId: r.meta.stakeId!,
+        seatedCount: r.seatedCount(),
+        maxSeats: r.meta.config.maxSeats,
+        config: r.meta.config,
+      }));
   }
 }

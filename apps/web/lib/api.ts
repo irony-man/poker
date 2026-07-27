@@ -68,6 +68,29 @@ export async function createTable(
   }>;
 }
 
+export interface PublicTableSummary {
+  tableId: string;
+  inviteCode: string;
+  name: string;
+  stakeId: string;
+  seatedCount: number;
+  maxSeats: number;
+  config: {
+    maxSeats: number;
+    smallBlind: number;
+    bigBlind: number;
+    minBuyIn: number;
+    maxBuyIn: number;
+    turnTimeMs: number;
+  };
+}
+
+export async function listPublicTables() {
+  const res = await fetch(`${API_URL}/api/tables`);
+  if (!res.ok) throw new Error('Failed to load tables');
+  return res.json() as Promise<{ tables: PublicTableSummary[] }>;
+}
+
 export async function resolveInvite(code: string) {
   const res = await fetch(`${API_URL}/api/tables/invite/${code}`);
   if (!res.ok) throw new Error('Invite not found');

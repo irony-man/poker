@@ -2,9 +2,17 @@ import http from 'node:http';
 import express from 'express';
 import cors from 'cors';
 import { WebSocketServer, WebSocket } from 'ws';
-import { ClientMessageSchema, CreateTableBodySchema, RegisterBodySchema } from '@poker/protocol';
+import {
+  ChallengeFriendBodySchema,
+  ClientMessageSchema,
+  CreateTableBodySchema,
+  FriendRequestBodySchema,
+  FriendRespondBodySchema,
+  RegisterBodySchema,
+} from '@poker/protocol';
 import { AuthStore } from './auth.js';
 import { clerkAuthRequired, requireClerkIdentity } from './clerkAuth.js';
+import { FriendsStore } from './friends.js';
 import { createHistoryStore, writeSchemaDoc } from './history.js';
 import { createKv } from './kv.js';
 import { RoomManager } from './room.js';
@@ -27,11 +35,30 @@ function isAllowedOrigin(origin: string | undefined): boolean {
 }
 
 async function main() {
+  const dataDir = process.env.DATA_DIR ?? path.join(process.cwd(), 'data');
   const auth = new AuthStore();
   const kv = await createKv();
   const history = await createHistoryStore();
-  await writeSchemaDoc(process.env.DATA_DIR ?? path.join(process.cwd(), 'data'));
+  await writeSchemaDoc(dataDir);
   const rooms = new RoomManager(kv, history);
+  const friends = new FriendsStore(dataDir);
+
+  async function requireUserId(req: express.Request, res: express.Response): Promise<string | null> {
+    if (clerkAuthRequired()) {
+      const identity = await requireClerkIdentity(req);
+      if (!identity) {
+        res.status(401).json({ error: 'Sign in required' });
+        return null;
+      }
+      return identity.userId;
+    }
+    const userId = String(req.body?.userId ?? req.query?.userId ?? '');
+    if (!userId || !auth.getUser(userId)) {
+      res.status(401).json({ error: 'Register first' });
+      return null;
+    }
+    return userId;
+  }
 
   const app = express();
   app.use(
@@ -187,6 +214,120 @@ async function main() {
   app.get('/api/tables/:id/history', async (req, res) => {
     const hands = await history.listHands(req.params.id!, 50);
     res.json({ hands });
+  });
+
+  app.get('/api/friends', async (req, res) => {
+    const userId = await requireUserId(req, res);
+    if (!userId) return;
+    try {
+      const [friendList, incoming, pendingChallenges] = await Promise.all([
+        friends.listFriends(auth, userId),
+        friends.listIncomingRequests(auth, userId),
+        friends.listPendingChallenges(auth, userId),
+      ]);
+      res.json({ friends: friendList, incoming, pendingChallenges });
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : 'Failed' });
+    }
+  });
+
+  app.get('/api/friends/search', async (req, res) => {
+    const userId = await requireUserId(req, res);
+    if (!userId) return;
+    const q = String(req.query.q ?? '');
+    const users = friends.searchUsers(auth, q, userId).map((u) => ({
+      userId: u.id,
+      name: u.name,
+      avatarId: u.avatarId,
+    }));
+    res.json({ users });
+  });
+
+  app.post('/api/friends/requests', async (req, res) => {
+    const userId = await requireUserId(req, res);
+    if (!userId) return;
+    const parsed = FriendRequestBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    if (!auth.getUser(parsed.data.targetUserId)) {
+      res.status(404).json({ error: 'Player not found' });
+      return;
+    }
+    try {
+      const request = await friends.sendRequest(userId, parsed.data.targetUserId);
+      res.json({ request });
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : 'Failed' });
+    }
+  });
+
+  app.post('/api/friends/requests/:id/respond', async (req, res) => {
+    const userId = await requireUserId(req, res);
+    if (!userId) return;
+    const parsed = FriendRespondBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const result = await friends.respondRequest(userId, req.params.id!, parsed.data.accept);
+    if (!result.ok) {
+      res.status(404).json({ error: result.error });
+      return;
+    }
+    res.json({ ok: true });
+  });
+
+  app.post('/api/friends/challenge', async (req, res) => {
+    const userId = await requireUserId(req, res);
+    if (!userId) return;
+    const parsed = ChallengeFriendBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const challenger = auth.getUser(userId);
+    const opponent = auth.getUser(parsed.data.friendUserId);
+    if (!challenger || !opponent) {
+      res.status(404).json({ error: 'Player not found' });
+      return;
+    }
+    try {
+      const meta = rooms.create({
+        name: `${challenger.name} vs ${opponent.name}`,
+        hostUserId: challenger.id,
+        isPrivate: true,
+        config: {
+          maxSeats: 2,
+          smallBlind: 5,
+          bigBlind: 10,
+          minBuyIn: 200,
+          maxBuyIn: 1000,
+          turnTimeMs: 20000,
+        },
+      });
+      const challenge = await friends.createChallenge(
+        userId,
+        parsed.data.friendUserId,
+        meta.id,
+        meta.inviteCode,
+      );
+      res.json({
+        tableId: meta.id,
+        inviteCode: meta.inviteCode,
+        challengeId: challenge.id,
+      });
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : 'Challenge failed' });
+    }
+  });
+
+  app.post('/api/friends/challenges/:id/join', async (req, res) => {
+    const userId = await requireUserId(req, res);
+    if (!userId) return;
+    await friends.markChallengeJoined(req.params.id!, userId);
+    res.json({ ok: true });
   });
 
   const server = http.createServer(app);

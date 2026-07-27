@@ -139,6 +139,18 @@ export const CreateTableBodySchema = z.object({
 
 export type CreateTableBody = z.infer<typeof CreateTableBodySchema>;
 
+export const FriendRequestBodySchema = z.object({
+  targetUserId: z.string().min(1).max(128),
+});
+
+export const FriendRespondBodySchema = z.object({
+  accept: z.boolean(),
+});
+
+export const ChallengeFriendBodySchema = z.object({
+  friendUserId: z.string().min(1).max(128),
+});
+
 export const RegisterBodySchema = z.object({
   name: z.string().min(1).max(32),
   /** Preset profile picture index (0–7). */

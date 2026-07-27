@@ -4,6 +4,7 @@ import { SignInButton, SignUpButton, useAuth, useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { AvatarPicker } from '@/components/PlayerAvatar';
+import { FriendsPanel } from '@/components/FriendsPanel';
 import { createTable, register, resolveInvite } from '@/lib/api';
 import { loadSavedAvatarId, saveAvatarId } from '@/lib/avatars';
 import { useSession } from '@/lib/store';
@@ -28,6 +29,7 @@ export default function HomePage() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const { user } = useUser();
   const setSession = useSession((s) => s.setSession);
+  const sessionUserId = useSession((s) => s.userId);
   const sessionName = useSession((s) => s.name);
   const [name, setName] = useState(sessionName ?? '');
   const [avatarId, setAvatarId] = useState(0);
@@ -66,6 +68,25 @@ export default function HomePage() {
     if (!isLoaded || !isSignedIn || !user) return;
     setName((prev) => prev.trim() || clerkDisplayName(user));
   }, [isLoaded, isSignedIn, user]);
+
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || sessionUserId) return;
+    const display = name.trim() || clerkDisplayName(user);
+    void (async () => {
+      try {
+        const clerkToken = await getToken();
+        if (!clerkToken) return;
+        const s = await register(display || clerkDisplayName(user), avatarId, { clerkToken });
+        const session = { ...s, avatarId: s.avatarId ?? avatarId };
+        setSession(session);
+        localStorage.setItem('felt-session', JSON.stringify(session));
+        saveAvatarId(session.avatarId);
+      } catch {
+        /* friends panel stays hidden until register succeeds */
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- register once when signed in
+  }, [isLoaded, isSignedIn, sessionUserId, user]);
 
   useEffect(() => {
     const maxBots = Math.max(0, maxSeats - 1);
@@ -300,6 +321,15 @@ export default function HomePage() {
             </button>
           </div>
         </form>
+
+        {isSignedIn && sessionUserId && (
+          <FriendsPanel
+            disabled={onlineLocked}
+            onNavigateTable={(tableId, inviteCode) => {
+              router.push(`/table/${tableId}?invite=${inviteCode}`);
+            }}
+          />
+        )}
 
         <form
           onSubmit={onOffline}

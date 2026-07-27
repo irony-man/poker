@@ -60,6 +60,11 @@ export class AuthStore {
     return this.users.get(id);
   }
 
+  /** All registered users (for friend search). */
+  listUsers(): User[] {
+    return [...this.users.values()];
+  }
+
   /** Short-lived WS ticket (refresh on every page load / register). */
   issueTicket(userId: string, ttlMs = 7 * 24 * 60 * 60 * 1000): string {
     const ticket = randomBytes(24).toString('hex');

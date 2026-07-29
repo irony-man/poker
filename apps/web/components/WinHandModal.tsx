@@ -2,6 +2,7 @@
 
 import { formatChips } from './ChipStack';
 import { PlayingCard } from './PlayingCard';
+import { useIsNarrow } from '@/lib/tableLayout';
 
 export type WinLine = {
   seat: number;
@@ -37,6 +38,7 @@ export function WinHandModal({
   onSitIn?: () => void;
   onDismiss: () => void;
 }) {
+  const narrow = useIsNarrow();
   const primary = winners[0];
   const winType =
     primary?.handName && primary.handName !== 'Uncontested'
@@ -44,32 +46,31 @@ export function WinHandModal({
       : winners.length > 1
         ? 'Split pot'
         : 'Won the pot';
-  const showBetweenHandOptions = canTopUp || canSitOut || canSitIn;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/75 p-3 backdrop-blur-sm sm:items-center sm:p-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="win-hand-title"
-        className="w-full max-w-lg overflow-hidden rounded-2xl border border-gold/45 bg-gradient-to-b from-[#1c1810] to-[#0b0906] shadow-[0_0_56px_rgba(224,180,58,0.3)]"
+        className="flex max-h-[min(92dvh,40rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-gold/45 bg-gradient-to-b from-[#1c1810] to-[#0b0906] shadow-[0_0_56px_rgba(224,180,58,0.3)]"
       >
-        <div className="border-b border-gold/25 bg-gold/10 px-5 py-5 text-center">
-          <p className="text-[10px] font-display uppercase tracking-[0.28em] text-gold/70">
+        <div className="shrink-0 border-b border-gold/25 bg-gold/10 px-4 py-3 text-center sm:px-5 sm:py-5">
+          <p className="text-[9px] font-display uppercase tracking-[0.28em] text-gold/70 sm:text-[10px]">
             Hand complete
           </p>
           <h2
             id="win-hand-title"
-            className="mt-1 font-display text-3xl font-extrabold uppercase tracking-wider text-gold"
+            className="mt-0.5 font-display text-2xl font-extrabold uppercase tracking-wider text-gold sm:mt-1 sm:text-3xl"
           >
             {youWon ? 'You won' : 'Winner'}
           </h2>
-          <p className="mt-2 inline-block rounded-full border border-gold/40 bg-ink/60 px-3 py-1 text-sm font-display font-semibold tracking-wide text-gold-light">
+          <p className="mt-1.5 inline-block rounded-full border border-gold/40 bg-ink/60 px-2.5 py-0.5 text-xs font-display font-semibold tracking-wide text-gold-light sm:mt-2 sm:px-3 sm:py-1 sm:text-sm">
             {winType}
           </p>
         </div>
 
-        <div className="max-h-[55vh] space-y-4 overflow-y-auto px-5 py-5">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-3 py-3 sm:space-y-4 sm:px-5 sm:py-5">
           {winners.map((w, i) => {
             const cards = w.cards?.length ? w.cards : [];
             const type =
@@ -77,43 +78,70 @@ export function WinHandModal({
             return (
               <div
                 key={`${w.seat}-${i}`}
-                className={`rounded-xl border px-4 py-4 ${
+                className={`rounded-xl border px-3 py-3 sm:px-4 sm:py-4 ${
                   w.isSelf
                     ? 'border-gold/55 bg-gold/15 shadow-[0_0_24px_rgba(224,180,58,0.15)]'
                     : 'border-cream/10 bg-ink/55'
                 }`}
               >
-                <div className="flex items-baseline justify-between gap-3">
+                <div className="flex items-baseline justify-between gap-2">
                   <span
-                    className={`font-display text-lg font-bold ${
+                    className={`truncate font-display text-base font-bold sm:text-lg ${
                       w.isSelf ? 'text-gold' : 'text-cream'
                     }`}
                   >
                     {w.name}
                     {w.isSelf ? ' · you' : ''}
                   </span>
-                  <span className="font-mono text-base font-semibold text-felt-neon">
+                  <span className="shrink-0 font-mono text-sm font-semibold text-felt-neon sm:text-base">
                     +{formatChips(w.amount)}
                   </span>
                 </div>
 
                 {type && (
-                  <p className="mt-1.5 text-sm font-display font-semibold uppercase tracking-wider text-gold/85">
+                  <p className="mt-1 text-[11px] font-display font-semibold uppercase tracking-wider text-gold/85 sm:mt-1.5 sm:text-sm">
                     {type}
                   </p>
                 )}
 
                 {cards.length > 0 ? (
-                  <div className="mt-3 flex flex-wrap justify-center gap-1.5">
-                    {cards.map((code) => (
-                      <PlayingCard
-                        key={`${w.seat}-${code}`}
-                        code={code}
-                        highlight
-                        small
-                      />
-                    ))}
-                  </div>
+                  narrow ? (
+                    <div className="mt-2.5 flex flex-col items-center gap-1">
+                      <div className="flex justify-center gap-1">
+                        {cards.slice(0, 3).map((code) => (
+                          <PlayingCard
+                            key={`${w.seat}-${code}`}
+                            code={code}
+                            highlight
+                            size="board"
+                          />
+                        ))}
+                      </div>
+                      {cards.length > 3 && (
+                        <div className="flex justify-center gap-1">
+                          {cards.slice(3).map((code) => (
+                            <PlayingCard
+                              key={`${w.seat}-${code}`}
+                              code={code}
+                              highlight
+                              size="board"
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+                      {cards.map((code) => (
+                        <PlayingCard
+                          key={`${w.seat}-${code}`}
+                          code={code}
+                          highlight
+                          size="sm"
+                        />
+                      ))}
+                    </div>
+                  )
                 ) : (
                   <p className="mt-2 text-center text-xs text-cream/40">
                     Won without showdown
@@ -124,50 +152,54 @@ export function WinHandModal({
           })}
         </div>
 
-        <div className="space-y-2 border-t border-cream/10 px-5 py-4">
-          {showBetweenHandOptions && (
-            <div className="flex flex-wrap gap-2">
-              {canTopUp && onTopUp && (
-                <button
-                  type="button"
-                  onClick={onTopUp}
-                  className="flex-1 min-w-[7rem] rounded-lg border border-gold/40 bg-gold/15 px-3 py-2.5 text-sm font-display font-semibold text-gold hover:bg-gold/25"
-                >
-                  Top up
-                </button>
-              )}
-              {canSitOut && onSitOut && (
-                <button
-                  type="button"
-                  onClick={onSitOut}
-                  className="flex-1 min-w-[7rem] rounded-lg border border-amber-400/35 bg-amber-400/10 px-3 py-2.5 text-sm font-display font-semibold text-amber-200 hover:bg-amber-400/20"
-                >
-                  Sit out
-                </button>
-              )}
-              {canSitIn && onSitIn && (
-                <button
-                  type="button"
-                  onClick={onSitIn}
-                  className="flex-1 min-w-[7rem] rounded-lg border border-felt-neon/35 bg-felt-neon/10 px-3 py-2.5 text-sm font-display font-semibold text-felt-neon hover:bg-felt-neon/20"
-                >
-                  Sit in
-                </button>
-              )}
-            </div>
-          )}
-          {canStartNext ? (
-            <button type="button" onClick={onNextHand} className="btn-primary w-full py-3 text-base">
-              Next Hand
+        <div className="shrink-0 border-t border-cream/10 px-3 py-2.5 sm:px-5 sm:py-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {canTopUp && onTopUp && (
+              <button
+                type="button"
+                onClick={onTopUp}
+                className="rounded-md border border-gold/40 bg-gold/15 px-2.5 py-1.5 text-[11px] font-display font-semibold text-gold hover:bg-gold/25"
+              >
+                Top up
+              </button>
+            )}
+            {canSitOut && onSitOut && (
+              <button
+                type="button"
+                onClick={onSitOut}
+                className="rounded-md border border-amber-400/35 bg-amber-400/10 px-2.5 py-1.5 text-[11px] font-display font-semibold text-amber-200 hover:bg-amber-400/20"
+              >
+                Sit out
+              </button>
+            )}
+            {canSitIn && onSitIn && (
+              <button
+                type="button"
+                onClick={onSitIn}
+                className="rounded-md border border-felt-neon/35 bg-felt-neon/10 px-2.5 py-1.5 text-[11px] font-display font-semibold text-felt-neon hover:bg-felt-neon/20"
+              >
+                Sit in
+              </button>
+            )}
+            {canStartNext ? (
+              <button
+                type="button"
+                onClick={onNextHand}
+                className="btn-primary min-h-9 flex-1 px-3 py-2 text-xs font-display font-bold uppercase tracking-wide"
+              >
+                Next hand
+              </button>
+            ) : (
+              <p className="flex-1 text-center text-[10px] text-cream/45">Waiting…</p>
+            )}
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="rounded-md border border-cream/20 px-2.5 py-1.5 text-[11px] font-display font-semibold text-cream/70 hover:bg-cream/10 hover:text-cream"
+            >
+              Close
             </button>
-          ) : (
-            <p className="py-2 text-center text-xs text-cream/45">
-              Waiting for the next hand…
-            </p>
-          )}
-          <button type="button" onClick={onDismiss} className="btn-ghost w-full">
-            Close
-          </button>
+          </div>
         </div>
       </div>
     </div>

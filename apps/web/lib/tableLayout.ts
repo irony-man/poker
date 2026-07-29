@@ -2,8 +2,13 @@
 
 import { useEffect, useState } from 'react';
 
-/** True below Tailwind `sm` (640px) — portrait phone layout. */
-export function useIsNarrow(query = '(max-width: 639px)'): boolean {
+/**
+ * True for phone layouts: portrait (<640px wide) OR short/wide phone/tablet
+ * landscape. Tailwind `sm` alone misses rotated phones (e.g. 844×390).
+ */
+export function useIsNarrow(
+  query = '(max-width: 639px), (max-height: 560px) and (max-width: 1100px)',
+): boolean {
   const [narrow, setNarrow] = useState(false);
 
   useEffect(() => {
@@ -15,6 +20,23 @@ export function useIsNarrow(query = '(max-width: 639px)'): boolean {
   }, [query]);
 
   return narrow;
+}
+
+/** Short landscape — single-row action bar instead of stacked dock. */
+export function useIsLandscapePhone(
+  query = '(orientation: landscape) and (max-height: 500px)',
+): boolean {
+  const [short, setShort] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const sync = () => setShort(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, [query]);
+
+  return short;
 }
 
 /** Remaining ms until `endsAt` (epoch). Updates ~10×/sec. */
@@ -36,12 +58,12 @@ export function useTurnRemainingMs(endsAt: number | null | undefined): number {
 }
 
 export function formatTurnSeconds(ms: number): string {
-  return (Math.ceil(ms / 1000)).toString();
+  return Math.ceil(ms / 1000).toString();
 }
 
 const BOTTOM_CENTER = 90;
 /** Degrees reserved at the top for dealer button + pot (centered at 270°). */
-const TOP_GAP_DEG = 80;
+const TOP_GAP_DEG = 88;
 
 function normalizeAngle(deg: number): number {
   return ((deg % 360) + 360) % 360;

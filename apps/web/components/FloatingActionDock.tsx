@@ -8,7 +8,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
-import { useIsNarrow } from '@/lib/tableLayout';
+import { useIsLandscapePhone, useIsNarrow } from '@/lib/tableLayout';
 
 const POS_KEY = 'felt-action-dock-pos';
 
@@ -35,7 +35,8 @@ function savePos(p: Pos) {
 }
 
 /**
- * Mobile: static bottom panel (always visible, fixed height).
+ * Mobile portrait: dual-height dock.
+ * Mobile landscape: slim single-row strip.
  * Desktop: undocked floating / draggable popup.
  */
 export function FloatingActionDock({
@@ -49,6 +50,7 @@ export function FloatingActionDock({
   label?: string;
 }) {
   const narrow = useIsNarrow();
+  const landscape = useIsLandscapePhone();
   const [pos, setPos] = useState<Pos | null>(null);
   const [open, setOpen] = useState(true);
   const dragging = useRef(false);
@@ -106,24 +108,32 @@ export function FloatingActionDock({
     });
   }, []);
 
-  /* —— Mobile: docked, fixed-size bar —— */
+  /* —— Phone (portrait or landscape): docked —— */
   if (narrow) {
+    const height = landscape
+      ? expanded
+        ? 'h-[3.5rem]'
+        : 'h-[2.5rem]'
+      : expanded
+        ? 'h-[9.5rem]'
+        : 'h-[3.75rem]';
+
     return (
       <div
-        className={`relative z-40 shrink-0 border-t px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 ${
+        className={`relative z-40 shrink-0 border-t px-1.5 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1 ${
           expanded
-            ? 'border-felt-neon/35 bg-ink/98 shadow-[0_-8px_28px_rgba(0,0,0,0.4)]'
+            ? 'border-felt-neon/35 bg-ink/98 shadow-[0_-6px_20px_rgba(0,0,0,0.35)]'
             : 'border-cream/10 bg-ink/95'
         }`}
       >
         <div
-          className={`mx-auto flex h-[11.5rem] w-full max-w-xl flex-col overflow-hidden rounded-xl border ${
+          className={`mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded-xl border transition-[height] duration-200 ${height} ${
             expanded
               ? 'border-gold/40 bg-ink-panel/95 ring-1 ring-felt-neon/20'
               : 'border-cream/15 bg-ink-panel/80'
           }`}
         >
-          <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+          <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
         </div>
       </div>
     );

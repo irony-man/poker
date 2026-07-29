@@ -8,16 +8,18 @@ import { FloatingActionDock } from './FloatingActionDock';
 import { DealerPotZone } from './DealerPotZone';
 import { SeatView } from './SeatView';
 import { ShareTableLink } from './ShareTableLink';
+import { TableOverflowMenu, type OverflowItem } from './TableOverflowMenu';
 import { TableShell } from './TableShell';
 import { TopUpModal } from './TopUpModal';
 import { VoiceCallBar } from './VoiceCallBar';
 import { VideoCallStrip } from './VideoCallStrip';
 import { WinHandModal } from './WinHandModal';
 import { playTick } from '@/lib/audio';
+import { buildTableJoinLink, buildTableJoinShareText } from '@/lib/tableLink';
 import { usePokerSocket } from '@/lib/ws';
 import { useSession } from '@/lib/store';
 import { useVoiceCall } from '@/hooks/useVoiceCall';
-import { seatAnglesForHero, useIsNarrow } from '@/lib/tableLayout';
+import { seatAnglesForHero, useIsLandscapePhone, useIsNarrow } from '@/lib/tableLayout';
 
 export function TableView({
   tableId,
@@ -40,10 +42,12 @@ export function TableView({
   const voice = useVoiceCall(tableId, userId, send);
   const router = useRouter();
   const narrow = useIsNarrow();
+  const landscape = useIsLandscapePhone();
   const [topUpOpen, setTopUpOpen] = useState(false);
-  const [botAddCount, setBotAddCount] = useState(3);
+  const botAddCount = 3;
   const [spectating, setSpectating] = useState(initialSpectate);
   const [dismissedWinHandId, setDismissedWinHandId] = useState<string | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
   const prevVersion = useRef<number | null>(null);
   const autoSitSent = useRef(false);
 
@@ -56,6 +60,11 @@ export function TableView({
     }
     prevVersion.current = table.version;
   }, [table]);
+
+  /** Mobile: voice only — drop camera if still on from a desktop session. */
+  useEffect(() => {
+    if (narrow && voice.cameraOn) void voice.toggleCamera();
+  }, [narrow, voice.cameraOn, voice.toggleCamera]);
 
   const mySeat = table?.players.find((p) => p.userId === userId)?.seat;
   const myPlayer = mySeat !== undefined ? table?.players[mySeat] : undefined;
@@ -171,17 +180,41 @@ export function TableView({
 
   const emptySeats = table?.players.filter((p) => p.status === 'empty').length ?? 0;
   const botSeats = table?.players.filter((p) => p.userId?.startsWith('bot:')).length ?? 0;
-  const showTableControls =
-    isSpectating ||
-    canSitOut ||
-    canSitIn ||
-    canTopUp ||
-    (!isSpectating && emptySeats > 0) ||
-    (!isSpectating && botSeats > 0) ||
-    (betweenHands &&
-      mySeat !== undefined &&
-      myPlayer?.status !== 'sittingOut' &&
-      playersInHand >= 2);
+  const canStartHand =
+    betweenHands &&
+    mySeat !== undefined &&
+    myPlayer?.status !== 'sittingOut' &&
+    playersInHand >= 2;
+  /** Desktop keeps the full pill row; mobile only shows a Start CTA between hands. */
+  const showDesktopTools =
+    !narrow &&
+    (isSpectating ||
+      canSitOut ||
+      canSitIn ||
+      canTopUp ||
+      (!isSpectating && emptySeats > 0) ||
+      (!isSpectating && botSeats > 0) ||
+      canStartHand);
+  const showMobileStartCta = narrow && (canStartHand || isSpectating);
+
+  const shareInvite = async () => {
+    if (!inviteCode) return;
+    const link = buildTableJoinLink(tableId, inviteCode);
+    const text = buildTableJoinShareText(tableId, inviteCode);
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title: 'Join my poker table', text, url: link });
+        return;
+      } catch {
+        /* cancelled */
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      /* ignore */
+    }
+  };
 
   const onAction = (action: string, amount?: number) => {
     if (!table) return;
@@ -218,12 +251,118 @@ export function TableView({
     );
   }
 
+  const mobileOverflowItems: OverflowItem[] = [];
+  if (narrow) {
+    if (inviteCode) {
+      mobileOverflowItems.push({
+        id: 'invite',
+        label: 'Invite / share',
+        onClick: () => void shareInvite(),
+        tone: 'gold',
+      });
+    }
+    if (!voice.inVoice) {
+      mobileOverflowItems.push({
+        id: 'voice',
+        label: voice.state === 'joining' ? 'Joining voice…' : 'Join voice',
+        onClick: () => void voice.joinVoice(),
+        disabled: voice.state === 'joining',
+      });
+    } else {
+      mobileOverflowItems.push(
+        {
+          id: 'mute',
+          label: voice.muted ? 'Unmute mic' : 'Mute mic',
+          onClick: () => voice.toggleMute(),
+        },
+        {
+          id: 'leave-av',
+          label: 'Leave call',
+          onClick: () => voice.leaveVoice(),
+          tone: 'danger',
+        },
+      );
+    }
+    mobileOverflowItems.push({
+      id: 'chat',
+      label: 'Chat',
+      onClick: () => setChatOpen(true),
+      tone: 'accent',
+    });
+    if (!isSpectating && emptySeats > 0) {
+      mobileOverflowItems.push(
+        {
+          id: 'add-bot',
+          label: '+ Bot',
+          onClick: () =>
+            send({
+              type: 'add_bot',
+              tableId,
+              buyIn: table!.config.buyIn,
+              count: Math.min(Math.max(1, botAddCount), emptySeats),
+            }),
+        },
+        {
+          id: 'fill',
+          label: 'Fill empty seats',
+          onClick: () =>
+            send({
+              type: 'add_bot',
+              tableId,
+              buyIn: table!.config.buyIn,
+              count: emptySeats,
+            }),
+        },
+      );
+    }
+    if (!isSpectating && botSeats > 0) {
+      mobileOverflowItems.push({
+        id: 'remove-bots',
+        label: 'Remove bots',
+        onClick: () => send({ type: 'remove_all_bots', tableId }),
+        tone: 'danger',
+      });
+    }
+    if (canSitOut) {
+      mobileOverflowItems.push({
+        id: 'sit-out',
+        label: 'Sit out',
+        onClick: () => send({ type: 'sit_out', tableId, seat: mySeat! }),
+      });
+    }
+    if (canSitIn) {
+      mobileOverflowItems.push({
+        id: 'sit-in',
+        label: 'Sit in',
+        onClick: () => send({ type: 'sit_in', tableId, seat: mySeat! }),
+        tone: 'accent',
+      });
+    }
+    if (canTopUp) {
+      mobileOverflowItems.push({
+        id: 'top-up',
+        label: 'Top up',
+        onClick: () => setTopUpOpen(true),
+        tone: 'gold',
+      });
+    }
+    mobileOverflowItems.push({
+      id: 'leave',
+      label: 'Leave table',
+      onClick: leaveRoom,
+      tone: 'danger',
+    });
+  }
+
   return (
     <TableShell
       onSend={(text) => send({ type: 'chat', tableId, text })}
       onEmoji={(emoji) => send({ type: 'emoji', tableId, emoji })}
+      chatOpen={chatOpen}
+      onChatOpenChange={setChatOpen}
     >
       <div className="flex flex-1 flex-col min-h-0">
+        {/* Mobile: street · blinds · overflow | Desktop: full chrome */}
         <div className="mb-1 flex shrink-0 items-center justify-between gap-2 text-sm text-cream/60 sm:mb-2">
           <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
             <span className="status-chip shrink-0 border-cyan/25 bg-cyan/10 text-cyan capitalize max-sm:px-1.5 max-sm:py-0.5 max-sm:text-[10px]">
@@ -243,52 +382,68 @@ export function TableView({
               <span className="hidden font-mono text-[10px] opacity-50 sm:inline">#{table.handId}</span>
             ) : null}
           </div>
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1 sm:gap-2">
-            {inviteCode && <ShareTableLink tableId={tableId} inviteCode={inviteCode} compact={narrow} />}
-            <VoiceCallBar
-              compact={narrow}
-              inVoice={voice.inVoice}
-              state={voice.state}
-              muted={voice.muted}
-              cameraOn={voice.cameraOn}
-              wantsVideo={voice.wantsVideo}
-              peers={voice.peers}
-              error={voice.error}
-              onJoinVoice={voice.joinVoice}
-              onJoinVideo={voice.joinVideo}
-              onLeave={voice.leaveVoice}
-              onToggleMute={voice.toggleMute}
-              onToggleCamera={voice.toggleCamera}
-            />
-            <div
-              className={
-                connection === 'open'
-                  ? 'status-chip border-felt-neon/30 bg-felt-neon/10 text-felt-neon max-sm:px-1.5 max-sm:py-0.5'
-                  : connection === 'connecting'
-                    ? 'status-chip border-amber-400/30 bg-amber-400/10 text-amber-300 max-sm:px-1.5 max-sm:py-0.5'
-                    : 'status-chip border-red-500/40 bg-red-950/50 text-red-300 max-sm:px-1.5 max-sm:py-0.5'
+
+          {narrow ? (
+            <TableOverflowMenu
+              items={mobileOverflowItems}
+              footer={
+                <div className="flex items-center gap-2 text-[10px] text-cream/45">
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      connection === 'open'
+                        ? 'bg-felt-neon animate-live-blink'
+                        : connection === 'connecting'
+                          ? 'bg-amber-300 animate-live-blink'
+                          : 'bg-red-400'
+                    }`}
+                  />
+                  {connection}
+                </div>
               }
-              title={connection}
-            >
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${
-                  connection === 'open'
-                    ? 'bg-felt-neon animate-live-blink'
-                    : connection === 'connecting'
-                      ? 'bg-amber-300 animate-live-blink'
-                      : 'bg-red-400'
-                }`}
+            />
+          ) : (
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1 sm:gap-2">
+              {inviteCode && <ShareTableLink tableId={tableId} inviteCode={inviteCode} />}
+              <VoiceCallBar
+                inVoice={voice.inVoice}
+                state={voice.state}
+                muted={voice.muted}
+                cameraOn={voice.cameraOn}
+                wantsVideo={voice.wantsVideo}
+                peers={voice.peers}
+                error={voice.error}
+                onJoinVoice={voice.joinVoice}
+                onJoinVideo={voice.joinVideo}
+                onLeave={voice.leaveVoice}
+                onToggleMute={voice.toggleMute}
+                onToggleCamera={voice.toggleCamera}
               />
-              <span className="hidden sm:inline">{connection}</span>
+              <div
+                className={
+                  connection === 'open'
+                    ? 'status-chip border-felt-neon/30 bg-felt-neon/10 text-felt-neon'
+                    : connection === 'connecting'
+                      ? 'status-chip border-amber-400/30 bg-amber-400/10 text-amber-300'
+                      : 'status-chip border-red-500/40 bg-red-950/50 text-red-300'
+                }
+                title={connection}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    connection === 'open'
+                      ? 'bg-felt-neon animate-live-blink'
+                      : connection === 'connecting'
+                        ? 'bg-amber-300 animate-live-blink'
+                        : 'bg-red-400'
+                  }`}
+                />
+                <span>{connection}</span>
+              </div>
+              <button type="button" onClick={leaveRoom} className="btn-ghost text-xs py-1.5 px-3">
+                Leave
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={leaveRoom}
-              className="btn-ghost text-xs py-1 px-2 sm:py-1.5 sm:px-3"
-            >
-              Leave
-            </button>
-          </div>
+          )}
         </div>
 
         {lastError && (
@@ -301,7 +456,7 @@ export function TableView({
           </button>
         )}
 
-        {voice.inVoice && (
+        {voice.inVoice && !narrow && (
           <VideoCallStrip
             localStream={voice.localStream}
             localName={sessionName ?? 'You'}
@@ -312,12 +467,31 @@ export function TableView({
         )}
 
         <div className="relative flex min-h-0 flex-1 flex-col">
-          <div className="relative min-h-0 flex-1">
-          <div className="absolute inset-0 felt-surface rounded-[28%] border-[8px] table-rim shadow-felt overflow-hidden max-sm:rounded-[18%] max-sm:border-[5px] sm:rounded-[42%] sm:border-[12px]">
-          <div className="pointer-events-none absolute inset-3 max-sm:inset-1.5 sm:inset-6 rounded-[26%] sm:rounded-[40%] border border-white/10 z-[1]" />
+          <div className="relative min-h-0 min-w-0 flex-1">
+          <div
+            className={`absolute inset-0 felt-surface table-rim shadow-felt overflow-hidden ${
+              landscape
+                ? 'rounded-[28%] border-[6px]'
+                : narrow
+                  ? 'rounded-[18%] border-[5px]'
+                  : 'rounded-[42%] border-[12px]'
+            }`}
+          >
+          <div
+            className={`pointer-events-none absolute z-[1] border border-white/10 ${
+              landscape
+                ? 'inset-2 rounded-[24%]'
+                : narrow
+                  ? 'inset-1.5 rounded-[16%]'
+                  : 'inset-6 rounded-[40%]'
+            }`}
+          />
 
-          {/* Dealer button + pot reserved at top of table */}
-          <div className="absolute left-1/2 top-[10%] z-20 -translate-x-1/2 -translate-y-1/2 max-sm:top-[8%] max-sm:scale-90">
+          <div
+            className={`absolute left-1/2 z-20 -translate-x-1/2 -translate-y-1/2 ${
+              landscape ? 'top-[12%] scale-90' : narrow ? 'top-[7%] scale-90' : 'top-[10%]'
+            }`}
+          >
             <DealerPotZone
               amount={Math.max(potTotal, table?.pot ?? 0)}
               sidePotCount={table?.sidePots?.length ?? 0}
@@ -326,11 +500,16 @@ export function TableView({
             />
           </div>
 
-          <div className="absolute left-1/2 top-[42%] z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center max-sm:top-[40%]">
+          <div
+            className={`absolute left-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center ${
+              landscape ? 'top-[44%]' : narrow ? 'top-[38%]' : 'top-[42%]'
+            }`}
+          >
             <CommunityBoard
               cards={table?.community ?? []}
               handId={table?.handId}
               cardSize={narrow ? 'sm' : 'md'}
+              compact={narrow}
               highlightMode={highlightMode}
               winningCards={winningCards}
               dealing={!!table && table.street !== 'waiting'}
@@ -361,6 +540,7 @@ export function TableView({
                 canManageBots={!isSpectating}
                 spectating={isSpectating}
                 compact={narrow}
+                landscape={landscape}
                 onSit={() => {
                   if (!table || isSpectating) return;
                   send({
@@ -385,9 +565,35 @@ export function TableView({
           </div>
           </div>
 
-          {showTableControls && (
-          <div className="relative z-30 flex shrink-0 justify-center px-1 pb-0.5 pt-1 sm:px-2 sm:pb-1 sm:pt-2">
-            <div className="flex max-w-full flex-wrap items-center justify-center gap-1 rounded-full border border-cream/15 bg-ink/85 px-1.5 py-1 shadow-lg backdrop-blur-md sm:gap-1.5 sm:px-2 sm:py-1.5">
+          {showMobileStartCta && (
+            <div className="relative z-30 flex shrink-0 justify-center px-1 pb-0.5 pt-1">
+              {isSpectating ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSpectating(false);
+                    if (!sitAtFirstOpenSeat()) autoSitSent.current = false;
+                    else autoSitSent.current = true;
+                  }}
+                  className="btn-ghost min-h-10 px-4 text-[11px] font-display font-bold uppercase tracking-wide"
+                >
+                  Sit & play
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => send({ type: 'start_hand', tableId })}
+                  className="btn-primary min-h-10 px-5 text-[11px] font-display font-bold uppercase tracking-wide"
+                >
+                  Start hand
+                </button>
+              )}
+            </div>
+          )}
+
+          {showDesktopTools && (
+          <div className="relative z-30 flex shrink-0 justify-center px-2 pb-1 pt-2">
+            <div className="flex max-w-full flex-wrap items-center justify-center gap-1.5 rounded-full border border-cream/15 bg-ink/85 px-2 py-1.5 shadow-lg backdrop-blur-md">
               {isSpectating && (
                 <button
                   type="button"
@@ -401,10 +607,7 @@ export function TableView({
                   Sit and play
                 </button>
               )}
-              {(table?.street === 'waiting' || table?.street === 'payout') &&
-                mySeat !== undefined &&
-                myPlayer?.status !== 'sittingOut' &&
-                playersInHand >= 2 && (
+              {canStartHand && (
                 <button
                   type="button"
                   onClick={() => send({ type: 'start_hand', tableId })}

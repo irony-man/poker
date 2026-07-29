@@ -27,13 +27,14 @@ import { CommunityBoard } from './CommunityBoard';
 import { FloatingActionDock } from './FloatingActionDock';
 import { DealerPotZone } from './DealerPotZone';
 import { SeatView } from './SeatView';
+import { TableOverflowMenu, type OverflowItem } from './TableOverflowMenu';
 import { TableShell } from './TableShell';
 import { TopUpModal } from './TopUpModal';
 import { WinHandModal } from './WinHandModal';
 import { playTick } from '@/lib/audio';
 import { avatarIdFromUserId, loadSavedAvatarId } from '@/lib/avatars';
 import { useSession, type ChatMessage, type PrivateView, type PublicTable } from '@/lib/store';
-import { seatAnglesForHero, useIsNarrow } from '@/lib/tableLayout';
+import { seatAnglesForHero, useIsLandscapePhone, useIsNarrow } from '@/lib/tableLayout';
 
 const HUMAN_ID = 'offline-human';
 
@@ -132,12 +133,14 @@ export function OfflineTableView({
   const setSession = useSession((s) => s.setSession);
   const setEmoji = useSession((s) => s.setEmoji);
   const narrow = useIsNarrow();
+  const landscape = useIsLandscapePhone();
 
   const [state, setState] = useState<HandState>(() => createEmptyTable(config));
   const [bootstrapped, setBootstrapped] = useState(false);
   const [turnEndsAt, setTurnEndsAt] = useState<number | null>(null);
   const [dismissedWinHandId, setDismissedWinHandId] = useState<string | null>(null);
   const [topUpOpen, setTopUpOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevVersion = useRef<number | null>(null);
 
@@ -404,6 +407,50 @@ export function OfflineTableView({
     (publicTable.sidePots?.reduce((s, p) => s + p.amount, 0) ?? 0);
   const dealerPlayer = publicTable.players[publicTable.dealerButton];
   const showDealerZone = publicTable.street !== 'waiting';
+  const betweenHands = publicTable.street === 'waiting' || publicTable.street === 'payout';
+  const showMobileStartCta = narrow && betweenHands;
+  const showDesktopTools = !narrow;
+
+  const offlineOverflow: OverflowItem[] = [];
+  if (narrow) {
+    offlineOverflow.push({
+      id: 'chat',
+      label: 'Chat',
+      onClick: () => setChatOpen(true),
+      tone: 'accent',
+    });
+    if (canSitOut) {
+      offlineOverflow.push({
+        id: 'sit-out',
+        label: 'Sit out',
+        onClick: doSitOut,
+      });
+    }
+    if (canSitIn) {
+      offlineOverflow.push({
+        id: 'sit-in',
+        label: 'Sit in',
+        onClick: doSitIn,
+        tone: 'accent',
+      });
+    }
+    if (canTopUp) {
+      offlineOverflow.push({
+        id: 'top-up',
+        label: 'Top up',
+        onClick: () => setTopUpOpen(true),
+        tone: 'gold',
+      });
+    }
+    offlineOverflow.push({
+      id: 'lobby',
+      label: 'Back to lobby',
+      onClick: () => {
+        window.location.href = '/';
+      },
+      tone: 'danger',
+    });
+  }
 
   return (
     <TableShell
@@ -416,6 +463,8 @@ export function OfflineTableView({
         pushChat({ userId: HUMAN_ID, name: playerName, text: emoji, at });
         window.setTimeout(() => setEmoji(null), 1800);
       }}
+      chatOpen={chatOpen}
+      onChatOpenChange={setChatOpen}
     >
       <div className="flex flex-1 flex-col min-h-0">
         <div className="mb-1 flex shrink-0 items-center justify-between gap-2 text-sm text-cream/60 sm:mb-2">
@@ -430,17 +479,35 @@ export function OfflineTableView({
               {config.smallBlind}/{config.bigBlind}
             </span>
           </div>
-          <a href="/" className="text-[10px] text-gold/80 hover:text-gold sm:text-xs">
-            ← Lobby
-          </a>
+          {narrow ? (
+            <TableOverflowMenu items={offlineOverflow} />
+          ) : (
+            <a href="/" className="text-[10px] text-gold/80 hover:text-gold sm:text-xs">
+              ← Lobby
+            </a>
+          )}
         </div>
 
         <div className="relative flex min-h-0 flex-1 flex-col">
           <div className="relative min-h-0 flex-1">
-          <div className="absolute inset-0 felt-surface rounded-[28%] border-[8px] table-rim shadow-felt overflow-hidden max-sm:rounded-[18%] max-sm:border-[5px] sm:rounded-[42%] sm:border-[12px]">
-          <div className="pointer-events-none absolute inset-3 max-sm:inset-1.5 sm:inset-6 rounded-[26%] sm:rounded-[40%] border border-white/10 z-[1]" />
+          <div
+            className={`absolute inset-0 felt-surface table-rim shadow-felt overflow-hidden ${
+              narrow
+                ? 'rounded-[18%] border-[5px]'
+                : 'rounded-[42%] border-[12px]'
+            }`}
+          >
+          <div
+            className={`pointer-events-none absolute z-[1] border border-white/10 ${
+              narrow ? 'inset-1.5 rounded-[16%]' : 'inset-6 rounded-[40%]'
+            }`}
+          />
 
-          <div className="absolute left-1/2 top-[10%] z-20 -translate-x-1/2 -translate-y-1/2 max-sm:top-[8%] max-sm:scale-90">
+          <div
+            className={`absolute left-1/2 z-20 -translate-x-1/2 -translate-y-1/2 ${
+              narrow ? 'top-[7%] scale-90' : 'top-[10%]'
+            }`}
+          >
             <DealerPotZone
               amount={Math.max(potTotal, publicTable.pot)}
               sidePotCount={publicTable.sidePots?.length ?? 0}
@@ -449,11 +516,16 @@ export function OfflineTableView({
             />
           </div>
 
-          <div className="absolute left-1/2 top-[42%] z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center max-sm:top-[40%]">
+          <div
+            className={`absolute left-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center ${
+              narrow ? 'top-[38%]' : 'top-[42%]'
+            }`}
+          >
             <CommunityBoard
               cards={publicTable.community}
               handId={publicTable.handId}
               cardSize={narrow ? 'sm' : 'md'}
+              compact={narrow}
               highlightMode={highlightMode}
               winningCards={winningCards}
               dealing={publicTable.street !== 'waiting'}
@@ -483,15 +555,29 @@ export function OfflineTableView({
                 turnTotalMs={config.turnTimeMs}
                 canManageBots={false}
                 compact={narrow}
+                landscape={landscape}
               />
             );
           })}
           </div>
           </div>
 
-          <div className="relative z-30 flex shrink-0 justify-center px-1 pb-0.5 pt-1 sm:px-2 sm:pb-1 sm:pt-2">
-            <div className="flex max-w-full flex-wrap items-center justify-center gap-1 rounded-full border border-cream/15 bg-ink/85 px-1.5 py-1 backdrop-blur-md sm:gap-1.5 sm:px-2 sm:py-1.5">
-              {(publicTable.street === 'waiting' || publicTable.street === 'payout') && (
+          {showMobileStartCta && (
+            <div className="relative z-30 flex shrink-0 justify-center px-1 pb-0.5 pt-1">
+              <button
+                type="button"
+                onClick={start}
+                className="btn-primary min-h-10 px-5 text-[11px] font-display font-bold uppercase tracking-wide"
+              >
+                {publicTable.street === 'waiting' ? 'Start hand' : 'Next hand'}
+              </button>
+            </div>
+          )}
+
+          {showDesktopTools && (
+          <div className="relative z-30 flex shrink-0 justify-center px-2 pb-1 pt-2">
+            <div className="flex max-w-full flex-wrap items-center justify-center gap-1.5 rounded-full border border-cream/15 bg-ink/85 px-2 py-1.5 backdrop-blur-md">
+              {betweenHands && (
                 <button type="button" onClick={start} className="btn-ghost text-xs py-1.5">
                   {publicTable.street === 'waiting' ? 'Start hand' : 'Next hand'}
                 </button>
@@ -525,6 +611,7 @@ export function OfflineTableView({
               )}
             </div>
           </div>
+          )}
         </div>
 
         <FloatingActionDock expanded={!!isMyTurn} label="Actions">

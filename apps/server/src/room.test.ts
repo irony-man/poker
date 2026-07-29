@@ -84,7 +84,7 @@ describe('RoomManager', () => {
     room.scheduleDisconnect('u1');
     expect(room.state.players[0]?.userId).toBe('u1');
 
-    vi.advanceTimersByTime(45_000);
+    vi.advanceTimersByTime(120_000);
     expect(room.state.players[0]?.status).toBe('empty');
 
     vi.useRealTimers();
@@ -117,7 +117,7 @@ describe('RoomManager', () => {
     room.scheduleDisconnect('u1');
     room.attach({ userId: 'u1', name: 'A', avatarId: 0, send: noop });
 
-    vi.advanceTimersByTime(45_000);
+    vi.advanceTimersByTime(120_000);
     expect(room.state.players[0]?.userId).toBe('u1');
 
     vi.useRealTimers();

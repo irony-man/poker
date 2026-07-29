@@ -44,7 +44,7 @@ export interface ConnectionContext {
 type RateBucket = { count: number; resetAt: number };
 
 /** Keep seated players through brief disconnects; vacate if they don't reconnect in time. */
-const DISCONNECT_GRACE_MS = 45_000;
+const DISCONNECT_GRACE_MS = 120_000;
 
 export class Room {
   meta: TableMeta;

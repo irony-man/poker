@@ -9,6 +9,7 @@ import { DealerPotZone } from './DealerPotZone';
 import { SeatView } from './SeatView';
 import { TableShell } from './TableShell';
 import { TurnTimerBar } from './TurnTimer';
+import { TopUpModal } from './TopUpModal';
 import { WinHandModal } from './WinHandModal';
 import { playTick } from '@/lib/audio';
 import { usePokerSocket } from '@/lib/ws';
@@ -31,11 +32,12 @@ export function TableView({
   const clearTable = useSession((s) => s.clearTable);
   const { send, leaveTable } = usePokerSocket(tableId);
   const router = useRouter();
-  const [buyInOpen, setBuyInOpen] = useState<number | null>(null);
+  const [topUpOpen, setTopUpOpen] = useState(false);
   const [botAddCount, setBotAddCount] = useState(3);
   const [spectating, setSpectating] = useState(initialSpectate);
   const [dismissedWinHandId, setDismissedWinHandId] = useState<string | null>(null);
   const prevVersion = useRef<number | null>(null);
+  const autoSitSent = useRef(false);
 
   useEffect(() => {
     if (!table) return;
@@ -48,7 +50,47 @@ export function TableView({
   }, [table]);
 
   const mySeat = table?.players.find((p) => p.userId === userId)?.seat;
+  const myPlayer = mySeat !== undefined ? table?.players[mySeat] : undefined;
   const isSpectating = spectating && mySeat === undefined;
+  const topUpHeadroom =
+    table && myPlayer
+      ? Math.max(0, table.config.maxBuyIn - myPlayer.stack)
+      : 0;
+  const canTopUp =
+    mySeat !== undefined &&
+    topUpHeadroom > 0 &&
+    (table?.street === 'waiting' || table?.street === 'payout');
+
+  const sitAtFirstOpenSeat = () => {
+    if (!table || isSpectating) return false;
+    const empty = table.players.find((p) => p.status === 'empty');
+    if (!empty) return false;
+    send({
+      type: 'sit',
+      tableId,
+      seat: empty.seat,
+      buyIn: table.config.maxBuyIn,
+    });
+    return true;
+  };
+
+  useEffect(() => {
+    autoSitSent.current = false;
+  }, [tableId]);
+
+  useEffect(() => {
+    if (!table || !userId || isSpectating || connection !== 'open') return;
+    if (mySeat !== undefined || autoSitSent.current) return;
+    const empty = table.players.find((p) => p.status === 'empty');
+    if (!empty) return;
+    autoSitSent.current = true;
+    send({
+      type: 'sit',
+      tableId,
+      seat: empty.seat,
+      buyIn: table.config.maxBuyIn,
+    });
+  }, [table, userId, mySeat, isSpectating, connection, tableId, send]);
 
   const angles = useMemo(
     () => seatAnglesForHero(table?.config.maxSeats ?? 6, mySeat),
@@ -245,7 +287,15 @@ export function TableView({
                 turnTotalMs={table.config.turnTimeMs}
                 canManageBots={!isSpectating}
                 spectating={isSpectating}
-                onSit={() => setBuyInOpen(p.seat)}
+                onSit={() => {
+                  if (!table || isSpectating) return;
+                  send({
+                    type: 'sit',
+                    tableId,
+                    seat: p.seat,
+                    buyIn: table.config.maxBuyIn,
+                  });
+                }}
                 onAddBot={() =>
                   send({
                     type: 'add_bot',
@@ -271,7 +321,15 @@ export function TableView({
           <div className="absolute inset-x-0 bottom-0 z-30 flex justify-center px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
             <div className="flex max-w-full flex-wrap items-center justify-center gap-1.5 rounded-full border border-cream/15 bg-ink/85 px-2 py-1.5 shadow-lg backdrop-blur-md">
               {isSpectating && (
-                <button type="button" onClick={() => setSpectating(false)} className="btn-ghost text-xs py-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSpectating(false);
+                    if (!sitAtFirstOpenSeat()) autoSitSent.current = false;
+                    else autoSitSent.current = true;
+                  }}
+                  className="btn-ghost text-xs py-1.5"
+                >
                   Sit and play
                 </button>
               )}
@@ -327,13 +385,11 @@ export function TableView({
                   − Bots
                 </button>
               )}
-              {mySeat !== undefined && (table?.street === 'waiting' || table?.street === 'payout') && (
+              {canTopUp && (
                 <button
                   type="button"
-                  onClick={() =>
-                    send({ type: 'top_up', tableId, seat: mySeat, amount: table!.config.minBuyIn })
-                  }
-                  className="rounded-full px-2.5 py-1.5 text-[10px] text-cream/50 hover:text-cream"
+                  onClick={() => setTopUpOpen(true)}
+                  className="rounded-full border border-gold/30 bg-gold/10 px-3 py-1.5 text-xs text-gold hover:bg-gold/20"
                 >
                   Top up
                 </button>
@@ -386,45 +442,18 @@ export function TableView({
             />
           )}
 
-          {buyInOpen !== null && table && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-4">
-          <form
-            className="w-full max-w-sm rounded-2xl bg-[#161310] border border-cream/15 p-5 space-y-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const fd = new FormData(e.currentTarget);
-              const buyIn = Number(fd.get('buyIn'));
-              send({ type: 'sit', tableId, seat: buyInOpen, buyIn });
-              setBuyInOpen(null);
-            }}
-          >
-            <h3 className="font-display text-xl">Sit seat {buyInOpen}</h3>
-            <label className="block text-sm text-cream/70">
-              Buy-in ({table.config.minBuyIn}–{table.config.maxBuyIn})
-              <input
-                name="buyIn"
-                type="number"
-                defaultValue={table.config.minBuyIn}
-                min={table.config.minBuyIn}
-                max={table.config.maxBuyIn}
-                className="mt-1 w-full rounded-md bg-cream/5 border border-cream/15 px-3 py-2"
-              />
-            </label>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setBuyInOpen(null)}
-                className="flex-1 rounded-lg py-2 bg-cream/10"
-              >
-                Cancel
-              </button>
-              <button type="submit" className="flex-1 rounded-lg py-2 bg-gold text-ink font-semibold">
-                Sit
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+          {topUpOpen && table && mySeat !== undefined && myPlayer && (
+            <TopUpModal
+              currentStack={myPlayer.stack}
+              minBuyIn={table.config.minBuyIn}
+              maxBuyIn={table.config.maxBuyIn}
+              onDismiss={() => setTopUpOpen(false)}
+              onConfirm={(amount) => {
+                send({ type: 'top_up', tableId, seat: mySeat, amount });
+                setTopUpOpen(false);
+              }}
+            />
+          )}
     </TableShell>
   );
 }

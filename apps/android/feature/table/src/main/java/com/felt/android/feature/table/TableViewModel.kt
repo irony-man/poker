@@ -49,6 +49,7 @@ class TableViewModel @Inject constructor(
 
     private var observeJob: Job? = null
     private var emojiClearJob: Job? = null
+    private var autoSitSent = false
 
     init {
         dispatch(TableContract.Intent.Connect)
@@ -56,7 +57,10 @@ class TableViewModel @Inject constructor(
 
     fun dispatch(intent: TableContract.Intent) {
         when (intent) {
-            TableContract.Intent.Connect -> connect()
+            TableContract.Intent.Connect -> {
+                autoSitSent = false
+                connect()
+            }
             is TableContract.Intent.SendAction -> sendAction(intent.action, intent.amount)
             is TableContract.Intent.SendChat ->
                 repository.send(ClientMessage.Chat(tableId, intent.text))
@@ -78,8 +82,10 @@ class TableViewModel @Inject constructor(
                 repository.send(ClientMessage.RemoveAllBots(tableId))
             is TableContract.Intent.TopUp ->
                 repository.send(ClientMessage.TopUp(tableId, intent.seat, intent.amount))
-            TableContract.Intent.EnableSitToPlay ->
+            TableContract.Intent.EnableSitToPlay -> {
                 _uiState.update { it.copy(spectating = false) }
+                maybeAutoSit()
+            }
             TableContract.Intent.LeaveTable -> leaveTable()
         }
     }
@@ -122,6 +128,7 @@ class TableViewModel @Inject constructor(
                                     )
                                 }
                             }
+                            maybeAutoSit()
                         }
                         is ServerMessage.Chat -> {
                             val chatMsg = ChatMessage(msg.userId, msg.name, msg.text, msg.at)
@@ -168,6 +175,17 @@ class TableViewModel @Inject constructor(
                 amount = amount,
             ),
         )
+    }
+
+    private fun maybeAutoSit() {
+        val state = _uiState.value
+        if (state.spectating || state.userId == null || state.connection != ConnectionStatus.Open) return
+        val table = state.table ?: return
+        if (table.players.any { it.userId == state.userId }) return
+        if (autoSitSent) return
+        val empty = table.players.firstOrNull { it.status == "empty" } ?: return
+        autoSitSent = true
+        repository.send(ClientMessage.Sit(tableId, empty.seat, table.config.maxBuyIn))
     }
 
     override fun onCleared() {

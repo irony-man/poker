@@ -59,7 +59,7 @@ fun TableScreen(
 
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var chatInput by remember { mutableStateOf("") }
-    var buyInSeat by remember { mutableIntStateOf(-1) }
+    var topUpOpen by remember { mutableStateOf(false) }
     var dismissedWinHandId by remember { mutableStateOf<String?>(null) }
 
     Box(
@@ -152,7 +152,11 @@ fun TableScreen(
                             table = tableUi,
                             userId = state.userId,
                             holeCards = state.private?.holeCards,
-                            onSit = { buyInSeat = it },
+                            onSit = { seat ->
+                                viewModel.dispatch(
+                                    TableContract.Intent.Sit(seat, table.config.maxBuyIn),
+                                )
+                            },
                             canSit = !state.spectating,
                             modifier = Modifier.fillMaxSize(),
                         )
@@ -219,9 +223,7 @@ fun TableScreen(
                             onStartHand = { viewModel.dispatch(TableContract.Intent.StartHand) },
                             onAddBots = { viewModel.dispatch(TableContract.Intent.AddBots(it)) },
                             onRemoveBots = { viewModel.dispatch(TableContract.Intent.RemoveAllBots) },
-                            onTopUp = { seat, amount ->
-                                viewModel.dispatch(TableContract.Intent.TopUp(seat, amount))
-                            },
+                            onTopUp = { topUpOpen = true },
                         )
                     }
                 }
@@ -248,17 +250,22 @@ fun TableScreen(
             )
         }
 
-        if (buyInSeat >= 0 && state.table != null) {
-            BuyInDialog(
-                seat = buyInSeat,
-                minBuyIn = state.table!!.config.minBuyIn,
-                maxBuyIn = state.table!!.config.maxBuyIn,
-                onDismiss = { buyInSeat = -1 },
-                onConfirm = { buyIn ->
-                    viewModel.dispatch(TableContract.Intent.Sit(buyInSeat, buyIn))
-                    buyInSeat = -1
-                },
-            )
+        val mySeatForTopUp = state.table?.players?.find { it.userId == state.userId }
+        if (topUpOpen && state.table != null && mySeatForTopUp != null) {
+            val table = state.table!!
+            val headroom = (table.config.maxBuyIn - mySeatForTopUp.stack).coerceAtLeast(0)
+            if (headroom > 0) {
+                TopUpDialog(
+                    currentStack = mySeatForTopUp.stack,
+                    minBuyIn = table.config.minBuyIn,
+                    maxBuyIn = table.config.maxBuyIn,
+                    onDismiss = { topUpOpen = false },
+                    onConfirm = { amount ->
+                        viewModel.dispatch(TableContract.Intent.TopUp(mySeatForTopUp.seat, amount))
+                        topUpOpen = false
+                    },
+                )
+            }
         }
 
         val table = state.table
@@ -319,11 +326,16 @@ private fun TableFooterControls(
     onStartHand: () -> Unit,
     onAddBots: (Int) -> Unit,
     onRemoveBots: () -> Unit,
-    onTopUp: (Int, Int) -> Unit,
+    onTopUp: () -> Unit,
 ) {
-    val mySeat = table.players.find { it.userId == userId }?.seat
+    val myPlayer = table.players.find { it.userId == userId }
+    val mySeat = myPlayer?.seat
     val emptySeats = table.players.count { it.status == "empty" }
     val seated = table.players.count { it.userId != null && it.stack > 0 }
+    val topUpHeadroom = myPlayer?.let { (table.config.maxBuyIn - it.stack).coerceAtLeast(0) } ?: 0
+    val canTopUp = mySeat != null &&
+        topUpHeadroom > 0 &&
+        (table.street == "waiting" || table.street == "payout")
     var botCount by remember { mutableIntStateOf(minOf(3, emptySeats.coerceAtLeast(1))) }
 
     Column(
@@ -351,10 +363,10 @@ private fun TableFooterControls(
                 )
             }
         }
-        if (mySeat != null && (table.street == "waiting" || table.street == "payout")) {
+        if (canTopUp) {
             FeltGhostButton(
-                text = "Top up +${table.config.minBuyIn}",
-                onClick = { onTopUp(mySeat, table.config.minBuyIn) },
+                text = "Top up (max +$topUpHeadroom)",
+                onClick = onTopUp,
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -397,30 +409,42 @@ private fun ChatDrawer(
 }
 
 @Composable
-private fun BuyInDialog(
-    seat: Int,
+private fun TopUpDialog(
+    currentStack: Int,
     minBuyIn: Int,
     maxBuyIn: Int,
     onDismiss: () -> Unit,
     onConfirm: (Int) -> Unit,
 ) {
-    var buyIn by remember { mutableIntStateOf(minBuyIn) }
+    val headroom = (maxBuyIn - currentStack).coerceAtLeast(0)
+    val minAmount = minOf(minBuyIn, headroom).coerceAtLeast(1)
+    var amount by remember(headroom) { mutableIntStateOf(headroom) }
     Box(
         modifier = Modifier.fillMaxSize().background(FeltColors.Ink.copy(alpha = 0.7f)),
         contentAlignment = Alignment.Center,
     ) {
         HudPanel(modifier = Modifier.padding(24.dp)) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Sit seat $seat", color = FeltColors.Gold, fontWeight = FontWeight.Bold)
-                Text("Buy-in: $buyIn ($minBuyIn–$maxBuyIn)")
+                Text("Top up", color = FeltColors.Gold, fontWeight = FontWeight.Bold)
+                Text(
+                    "Stack $currentStack · table max $maxBuyIn",
+                    color = FeltColors.Cream.copy(alpha = 0.7f),
+                    fontSize = 12.sp,
+                )
+                Text("Add: $amount (up to $headroom)")
                 Slider(
-                    value = buyIn.toFloat(),
-                    onValueChange = { buyIn = it.toInt() },
-                    valueRange = minBuyIn.toFloat()..maxBuyIn.toFloat(),
+                    value = amount.toFloat(),
+                    onValueChange = { amount = it.toInt().coerceIn(minAmount, headroom) },
+                    valueRange = minAmount.toFloat()..headroom.toFloat(),
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FeltGhostButton(text = "Cancel", onClick = onDismiss)
-                    FeltPrimaryButton(text = "Sit", onClick = { onConfirm(buyIn) })
+                    FeltGhostButton(text = "Fill to max", onClick = { amount = headroom })
+                    FeltGhostButton(text = "Cancel", onClick = onDismiss, modifier = Modifier.weight(1f))
+                    FeltPrimaryButton(
+                        text = "Add $amount",
+                        onClick = { onConfirm(amount) },
+                        modifier = Modifier.weight(1f),
+                    )
                 }
             }
         }

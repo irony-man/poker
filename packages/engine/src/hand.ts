@@ -137,7 +137,9 @@ export function createEmptyTable(config: TableConfig): HandState {
 }
 
 function seatedPlayers(state: HandState): PlayerState[] {
-  return state.players.filter((p) => p.status !== 'empty' && p.userId && p.stack > 0);
+  return state.players.filter(
+    (p) => p.userId && p.stack > 0 && p.status !== 'empty' && p.status !== 'sittingOut',
+  );
 }
 
 function nextOccupiedSeat(state: HandState, from: number, predicate?: (p: PlayerState) => boolean): number {
@@ -285,6 +287,38 @@ export function leaveSeat(state: HandState, seat: number): ApplyResult {
   return standUp(state, seat);
 }
 
+/** Stay at the table but skip hands until sitIn (between hands only). */
+export function sitOut(state: HandState, seat: number): ApplyResult {
+  const s = cloneState(state);
+  const events: EngineEvent[] = [];
+  if (s.street !== 'waiting' && s.street !== 'payout') {
+    const p = s.players[seat];
+    if (p && (p.status === 'active' || p.status === 'allin')) {
+      return { state, events: [], ok: false, error: 'Finish the hand before sitting out' };
+    }
+  }
+  const p = s.players[seat];
+  if (!p || p.status === 'empty') return { state, events: [], ok: false, error: 'Empty seat' };
+  if (p.status === 'sittingOut') return { state, events: [], ok: false, error: 'Already sitting out' };
+  p.status = 'sittingOut';
+  s.version += 1;
+  return { state: s, events, ok: true };
+}
+
+/** Return from sit-out and play the next hand. */
+export function sitIn(state: HandState, seat: number): ApplyResult {
+  const s = cloneState(state);
+  const events: EngineEvent[] = [];
+  const p = s.players[seat];
+  if (!p || p.status !== 'sittingOut') {
+    return { state, events: [], ok: false, error: 'Not sitting out' };
+  }
+  if (p.stack <= 0) return { state, events: [], ok: false, error: 'Need chips to sit in' };
+  p.status = 'seated';
+  s.version += 1;
+  return { state: s, events, ok: true };
+}
+
 export function topUp(state: HandState, seat: number, amount: number, maxBuyIn: number): ApplyResult {
   const s = cloneState(state);
   if (s.street !== 'waiting' && s.street !== 'payout') {
@@ -317,7 +351,7 @@ function resetHandFields(state: HandState, handId: string, config: TableConfig):
     p.holeCards = null;
     p.revealed = false;
     if (p.status !== 'empty' && p.userId && p.stack > 0) {
-      p.status = 'active';
+      if (p.status !== 'sittingOut') p.status = 'active';
     } else if (p.status !== 'empty' && p.stack === 0) {
       p.status = 'sittingOut';
     }
@@ -739,7 +773,9 @@ export function returnToWaiting(state: HandState): HandState {
     p.holeCards = null;
     p.revealed = false;
     if (p.status !== 'empty' && p.userId) {
-      p.status = p.stack > 0 ? 'seated' : 'sittingOut';
+      if (p.status !== 'sittingOut') {
+        p.status = p.stack > 0 ? 'seated' : 'sittingOut';
+      }
     }
   }
   s.version += 1;

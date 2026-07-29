@@ -17,14 +17,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Slider
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -197,11 +202,12 @@ private fun SeatChip(
         val dealKey = handId.ifBlank { "idle" }
         val highlightMode = winningCards.isNotEmpty()
         val folded = player.status == "folded"
+        val sittingOut = player.status == "sittingOut"
         Column(
             modifier = Modifier
                 .offset(x = x - 58.dp, y = y - 48.dp)
                 .width(116.dp)
-                .then(if (folded) Modifier else Modifier),
+                .then(if (folded || sittingOut) Modifier else Modifier),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             if (player.status == "empty") {
@@ -215,30 +221,11 @@ private fun SeatChip(
 
             Box(
                 contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .then(
-                        if (isToAct) {
-                            Modifier
-                                .border(2.dp, Color.White.copy(alpha = 0.75f), RoundedCornerShape(40))
-                                .padding(horizontal = 6.dp, vertical = 4.dp)
-                        } else {
-                            Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                        },
-                    ),
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
             ) {
-                if (isToAct) {
-                    SeatTurnRing(
-                        endsAt = turnEndsAt,
-                        totalMs = turnTotalMs,
-                        active = true,
-                        ringSize = 112.dp,
-                        modifier = Modifier.align(Alignment.Center),
-                    )
-                }
-
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.then(if (folded) Modifier else Modifier),
+                    modifier = Modifier.then(if (folded || sittingOut) Modifier else Modifier),
                 ) {
                     when {
                         faceDown -> {
@@ -310,12 +297,22 @@ private fun SeatChip(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         modifier = Modifier.padding(top = 4.dp),
                     ) {
-                        PlayerAvatar(
-                            avatarId = player.avatarId,
-                            userId = player.userId,
-                            size = if (isSelf) 26.dp else 22.dp,
-                            selected = isSelf || isWinner,
-                        )
+                        Box(contentAlignment = Alignment.Center) {
+                            if (isToAct) {
+                                SeatTurnRing(
+                                    endsAt = turnEndsAt,
+                                    totalMs = turnTotalMs,
+                                    active = true,
+                                    ringSize = if (isSelf) 34.dp else 30.dp,
+                                )
+                            }
+                            PlayerAvatar(
+                                avatarId = player.avatarId,
+                                userId = player.userId,
+                                size = if (isSelf) 26.dp else 22.dp,
+                                selected = isSelf || isWinner,
+                            )
+                        }
                         Row(verticalAlignment = Alignment.Bottom) {
                             Column {
                                 if (isSelf) {
@@ -377,6 +374,15 @@ private fun SeatChip(
                             modifier = Modifier.padding(top = 2.dp),
                         )
                     }
+                    if (sittingOut) {
+                        Text(
+                            "OUT",
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFFFD54F).copy(alpha = 0.85f),
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
+                    }
                 }
             }
 
@@ -407,7 +413,13 @@ fun TableActionControls(
     val bb = table.bigBlind
     val min = legal?.minRaiseTo ?: 0
     val max = legal?.maxRaiseTo ?: 0
-    var raiseTo by remember(min, table.actionSeq) { mutableIntStateOf(min) }
+    var raiseInput by remember(min, table.actionSeq) { mutableStateOf(min.toString()) }
+
+    fun snap(v: Int) = ((v / bb) * bb).coerceIn(min, max)
+    fun parseRaise() = snap(raiseInput.toIntOrNull() ?: min)
+    fun commitRaiseInput() {
+        raiseInput = parseRaise().toString()
+    }
 
     if (!isTurn || legal == null || legal.types.isEmpty()) {
         HudPanel(modifier = modifier.fillMaxWidth().padding(top = 4.dp)) {
@@ -425,9 +437,8 @@ fun TableActionControls(
         return
     }
 
-    val (timerLabel, timerUrgent) = turnSecondsLabel(
-        if (table.toAct == mySeat) table.turnEndsAt else null,
-    )
+    val canBet = "bet" in legal.types || "raise" in legal.types
+    val betLabel = if ("bet" in legal.types) "Bet" else "Raise"
 
     Column(modifier = modifier.fillMaxWidth().padding(top = 4.dp)) {
         Box(
@@ -441,37 +452,27 @@ fun TableActionControls(
                 )
                 .border(1.dp, FeltColors.Gold.copy(alpha = 0.25f), RoundedCornerShape(16.dp)),
         ) {
-            Column {
-                MoveTimerStrip(
-                    endsAt = table.turnEndsAt,
-                    totalMs = table.turnTimeMs,
-                )
-                Column(
-                    modifier = Modifier.padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        StatusChip(text = "Your move", accent = FeltColors.Neon)
-                        if (timerLabel != null) {
-                            Text(
-                                text = timerLabel,
-                                color = if (timerUrgent) FeltColors.Danger else FeltColors.Cream.copy(alpha = 0.75f),
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Monospace,
-                            )
-                        }
-                    }
-            if ("bet" in legal.types || "raise" in legal.types) {
-                Text("Raise to $raiseTo ($min – $max)", fontSize = 12.sp, color = FeltColors.Cream.copy(0.7f))
-                Slider(
-                    value = raiseTo.toFloat().coerceIn(min.toFloat(), max.toFloat()),
-                    onValueChange = { raiseTo = ((it / bb).toInt() * bb).coerceIn(min, max) },
-                    valueRange = min.toFloat()..max.toFloat().coerceAtLeast(min.toFloat()),
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                StatusChip(text = "Your move", accent = FeltColors.Neon)
+            if (canBet) {
+                OutlinedTextField(
+                    value = raiseInput,
+                    onValueChange = { raiseInput = it.filter { ch -> ch.isDigit() } },
+                    label = { Text("$betLabel to") },
+                    supportingText = { Text("$min – $max") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    keyboardActions = KeyboardActions(onDone = { commitRaiseInput() }),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = FeltColors.Cream,
+                        unfocusedTextColor = FeltColors.Cream,
+                        focusedBorderColor = FeltColors.Gold.copy(alpha = 0.5f),
+                        unfocusedBorderColor = FeltColors.Cream.copy(alpha = 0.2f),
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
             Row(
@@ -501,15 +502,21 @@ fun TableActionControls(
                 }
                 if ("bet" in legal.types) {
                     FeltPrimaryButton(
-                        text = "Bet $raiseTo",
-                        onClick = { onAction("bet", raiseTo) },
+                        text = "Bet ${parseRaise()}",
+                        onClick = {
+                            commitRaiseInput()
+                            onAction("bet", parseRaise())
+                        },
                         modifier = Modifier.weight(1f),
                     )
                 }
                 if ("raise" in legal.types) {
                     FeltPrimaryButton(
-                        text = "Raise $raiseTo",
-                        onClick = { onAction("raise", raiseTo) },
+                        text = "Raise ${parseRaise()}",
+                        onClick = {
+                            commitRaiseInput()
+                            onAction("raise", parseRaise())
+                        },
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -521,7 +528,6 @@ fun TableActionControls(
                     )
                 }
             }
-                }
             }
         }
     }

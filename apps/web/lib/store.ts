@@ -95,6 +95,9 @@ export const useSession = create<SessionState>((set) => ({
   setConnection: (connection) => set({ connection }),
   applyStateSync: (table, priv) =>
     set((prev) => {
+      if (prev.table && prev.table.tableId !== table.tableId) {
+        return { table, private: priv, chat: [] };
+      }
       if (prev.table && table.version < prev.table.version) return prev;
       return { table, private: priv };
     }),

@@ -7,6 +7,8 @@ import {
   createEmptyTable,
   returnToWaiting,
   sitDown,
+  sitIn,
+  sitOut,
   standUp,
   leaveSeat,
   startHand,
@@ -57,6 +59,8 @@ export class Room {
   private spectators = new Set<string>();
   private disconnectTimers = new Map<string, NodeJS.Timeout>();
   private rateLimits = new Map<string, RateBucket>();
+  /** Users in the table voice channel (userId → display name). */
+  private voiceParticipants = new Map<string, string>();
   /** Preset avatar index per seated/connected user (incl. bots). */
   private avatarByUser = new Map<string, number>();
   private kv: KvStore;
@@ -88,6 +92,7 @@ export class Room {
   }
 
   detach(userId: string): void {
+    this.leaveVoice(userId);
     this.connections.delete(userId);
     this.spectators.delete(userId);
   }
@@ -380,7 +385,9 @@ export class Room {
     const humans = this.state.players.filter(
       (p) => p.userId && p.stack > 0 && !isBotUserId(p.userId),
     ).length;
-    const ready = this.state.players.filter((p) => p.userId && p.stack > 0).length;
+    const ready = this.state.players.filter(
+      (p) => p.userId && p.stack > 0 && p.status !== 'sittingOut',
+    ).length;
     // Wait for at least one human so bots don't start the hand before the host sits
     if (humans >= 1 && ready >= 2) {
       setTimeout(() => {
@@ -388,7 +395,9 @@ export class Room {
         const human = this.state.players.find(
           (p) => p.userId && p.stack > 0 && !isBotUserId(p.userId),
         );
-        const stillReady = this.state.players.filter((p) => p.userId && p.stack > 0).length;
+        const stillReady = this.state.players.filter(
+          (p) => p.userId && p.stack > 0 && p.status !== 'sittingOut',
+        ).length;
         if (human?.userId && stillReady >= 2) {
           void this.startHand(human.userId);
         }
@@ -400,13 +409,19 @@ export class Room {
     if (this.seatOf(userId) === null) {
       return { ok: false, error: 'Sit down before starting a hand' };
     }
+    const mySeat = this.seatOf(userId)!;
+    if (this.state.players[mySeat]?.status === 'sittingOut') {
+      return { ok: false, error: 'Sit in before starting a hand' };
+    }
     if (this.state.street !== 'waiting' && this.state.street !== 'payout') {
       return { ok: false, error: 'Hand in progress' };
     }
     if (this.state.street === 'payout') {
       this.state = returnToWaiting(this.state);
     }
-    const ready = this.state.players.filter((p) => p.userId && p.stack > 0).length;
+    const ready = this.state.players.filter(
+      (p) => p.userId && p.stack > 0 && p.status !== 'sittingOut',
+    ).length;
     if (ready < 2) {
       return { ok: false, error: 'Need at least 2 players with chips' };
     }
@@ -441,6 +456,24 @@ export class Room {
   stand(userId: string, seat: number): { ok: boolean; error?: string } {
     if (this.seatOf(userId) !== seat) return { ok: false, error: 'Not your seat' };
     const result = standUp(this.state, seat);
+    if (!result.ok) return { ok: false, error: result.error };
+    this.state = result.state;
+    void this.afterStateChange();
+    return { ok: true };
+  }
+
+  doSitOut(userId: string, seat: number): { ok: boolean; error?: string } {
+    if (this.seatOf(userId) !== seat) return { ok: false, error: 'Not your seat' };
+    const result = sitOut(this.state, seat);
+    if (!result.ok) return { ok: false, error: result.error };
+    this.state = result.state;
+    void this.afterStateChange();
+    return { ok: true };
+  }
+
+  doSitIn(userId: string, seat: number): { ok: boolean; error?: string } {
+    if (this.seatOf(userId) !== seat) return { ok: false, error: 'Not your seat' };
+    const result = sitIn(this.state, seat);
     if (!result.ok) return { ok: false, error: result.error };
     this.state = result.state;
     void this.afterStateChange();
@@ -544,6 +577,57 @@ export class Room {
       conn.send(react);
       conn.send(chat);
     }
+  }
+
+  joinVoice(userId: string, name: string): { ok: boolean; error?: string } {
+    if (!this.rateLimit(`${userId}:voice`, 8, 5000)) {
+      return { ok: false, error: 'Rate limited' };
+    }
+    if (!this.connections.has(userId)) {
+      return { ok: false, error: 'Not connected to table' };
+    }
+    this.voiceParticipants.set(userId, name);
+    this.sendVoiceRoster(userId);
+    for (const uid of this.voiceParticipants.keys()) {
+      if (uid === userId) continue;
+      this.connections.get(uid)?.send({ type: 'voice_peer_joined', userId, name });
+    }
+    return { ok: true };
+  }
+
+  leaveVoice(userId: string): void {
+    if (!this.voiceParticipants.delete(userId)) return;
+    for (const uid of this.voiceParticipants.keys()) {
+      this.connections.get(uid)?.send({ type: 'voice_peer_left', userId });
+    }
+  }
+
+  relayVoiceSignal(
+    fromUserId: string,
+    toUserId: string,
+    signal: unknown,
+  ): { ok: boolean; error?: string } {
+    if (!this.rateLimit(`${fromUserId}:voice_signal`, 120, 5000)) {
+      return { ok: false, error: 'Rate limited' };
+    }
+    if (!this.voiceParticipants.has(fromUserId)) {
+      return { ok: false, error: 'Join voice first' };
+    }
+    if (!this.voiceParticipants.has(toUserId)) {
+      return { ok: false, error: 'Peer not in voice' };
+    }
+    const conn = this.connections.get(toUserId);
+    if (!conn) return { ok: false, error: 'Peer offline' };
+    conn.send({ type: 'voice_signal', fromUserId, signal });
+    return { ok: true };
+  }
+
+  private sendVoiceRoster(userId: string): void {
+    const peers = [...this.voiceParticipants.entries()].map(([id, peerName]) => ({
+      userId: id,
+      name: peerName,
+    }));
+    this.connections.get(userId)?.send({ type: 'voice_roster', peers });
   }
 }
 

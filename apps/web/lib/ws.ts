@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef } from 'react';
+import { emitSocketMessage } from './socketMessages';
 import { WS_URL } from './api';
 import { useSession, type PrivateView, type PublicTable } from './store';
 
@@ -38,9 +39,10 @@ export function usePokerSocket(tableId: string | null) {
         ws!.send(JSON.stringify({ type: 'auth', ticket }));
       };
 
-      ws.onmessage = (ev) => {
-        const msg = JSON.parse(String(ev.data));
-        switch (msg.type) {
+    ws.onmessage = (ev) => {
+      const msg = JSON.parse(String(ev.data));
+      emitSocketMessage(msg);
+      switch (msg.type) {
           case 'auth_ok':
             setConnection('open');
             ws!.send(JSON.stringify({ type: 'join_table', tableId }));

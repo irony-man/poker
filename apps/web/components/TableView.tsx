@@ -8,12 +8,13 @@ import { PlayingCard } from './PlayingCard';
 import { DealerPotZone } from './DealerPotZone';
 import { SeatView } from './SeatView';
 import { TableShell } from './TableShell';
-import { TurnTimerBar } from './TurnTimer';
 import { TopUpModal } from './TopUpModal';
+import { VoiceCallBar } from './VoiceCallBar';
 import { WinHandModal } from './WinHandModal';
 import { playTick } from '@/lib/audio';
 import { usePokerSocket } from '@/lib/ws';
 import { useSession } from '@/lib/store';
+import { useVoiceCall } from '@/hooks/useVoiceCall';
 import { seatAnglesForHero } from '@/lib/tableLayout';
 
 export function TableView({
@@ -31,6 +32,7 @@ export function TableView({
   const setError = useSession((s) => s.setError);
   const clearTable = useSession((s) => s.clearTable);
   const { send, leaveTable } = usePokerSocket(tableId);
+  const voice = useVoiceCall(tableId, userId, send);
   const router = useRouter();
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [botAddCount, setBotAddCount] = useState(3);
@@ -144,7 +146,13 @@ export function TableView({
   const canStartNext =
     !isSpectating &&
     mySeat !== undefined &&
-    (table?.players.filter((p) => p.userId && p.stack > 0).length ?? 0) >= 2;
+    myPlayer?.status !== 'sittingOut' &&
+    (table?.players.filter((p) => p.userId && p.stack > 0 && p.status !== 'sittingOut').length ?? 0) >= 2;
+  const betweenHands = table?.street === 'waiting' || table?.street === 'payout';
+  const canSitOut = mySeat !== undefined && myPlayer?.status === 'seated' && betweenHands;
+  const canSitIn = mySeat !== undefined && myPlayer?.status === 'sittingOut' && betweenHands;
+  const playersInHand =
+    table?.players.filter((p) => p.userId && p.stack > 0 && p.status !== 'sittingOut').length ?? 0;
 
   const emptySeats = table?.players.filter((p) => p.status === 'empty').length ?? 0;
   const botSeats = table?.players.filter((p) => p.userId?.startsWith('bot:')).length ?? 0;
@@ -162,6 +170,7 @@ export function TableView({
   };
 
   const leaveRoom = () => {
+    voice.leaveVoice();
     leaveTable();
     clearTable();
     router.push('/');
@@ -174,6 +183,14 @@ export function TableView({
   const dealerPlayer =
     table?.dealerButton != null ? table.players[table.dealerButton] : undefined;
   const showDealerZone = table?.street !== 'waiting' && table?.dealerButton != null;
+
+  if (!table && (connection === 'connecting' || connection === 'open')) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <p className="text-cream/60">Syncing table…</p>
+      </div>
+    );
+  }
 
   return (
     <TableShell
@@ -197,6 +214,16 @@ export function TableView({
             )}
           </div>
           <div className="flex items-center gap-2">
+            <VoiceCallBar
+              inVoice={voice.inVoice}
+              state={voice.state}
+              muted={voice.muted}
+              peers={voice.peers}
+              error={voice.error}
+              onJoin={voice.joinVoice}
+              onLeave={voice.leaveVoice}
+              onToggleMute={voice.toggleMute}
+            />
             <div
               className={
                 connection === 'open'
@@ -310,14 +337,6 @@ export function TableView({
           })}
           </div>
 
-          {table?.turnEndsAt && table.toAct !== null && table.toAct !== mySeat && (
-            <div className="absolute inset-x-0 top-2 z-30 flex justify-center px-3">
-              <div className="w-full max-w-sm">
-                <TurnTimerBar endsAt={table.turnEndsAt} totalMs={table.config.turnTimeMs} />
-              </div>
-            </div>
-          )}
-
           <div className="absolute inset-x-0 bottom-0 z-30 flex justify-center px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
             <div className="flex max-w-full flex-wrap items-center justify-center gap-1.5 rounded-full border border-cream/15 bg-ink/85 px-2 py-1.5 shadow-lg backdrop-blur-md">
               {isSpectating && (
@@ -335,7 +354,8 @@ export function TableView({
               )}
               {(table?.street === 'waiting' || table?.street === 'payout') &&
                 mySeat !== undefined &&
-                table.players.filter((p) => p.userId && p.stack > 0).length >= 2 && (
+                myPlayer?.status !== 'sittingOut' &&
+                playersInHand >= 2 && (
                 <button
                   type="button"
                   onClick={() => send({ type: 'start_hand', tableId })}
@@ -383,6 +403,24 @@ export function TableView({
                   className="rounded-full px-2.5 py-1.5 text-[10px] text-cream/45 hover:text-red-300"
                 >
                   − Bots
+                </button>
+              )}
+              {canSitOut && (
+                <button
+                  type="button"
+                  onClick={() => send({ type: 'sit_out', tableId, seat: mySeat! })}
+                  className="rounded-full border border-amber-400/30 px-3 py-1.5 text-xs text-amber-200 hover:bg-amber-400/10"
+                >
+                  Sit out
+                </button>
+              )}
+              {canSitIn && (
+                <button
+                  type="button"
+                  onClick={() => send({ type: 'sit_in', tableId, seat: mySeat! })}
+                  className="rounded-full border border-felt-neon/30 bg-felt-neon/10 px-3 py-1.5 text-xs text-felt-neon hover:bg-felt-neon/20"
+                >
+                  Sit in
                 </button>
               )}
               {canTopUp && (

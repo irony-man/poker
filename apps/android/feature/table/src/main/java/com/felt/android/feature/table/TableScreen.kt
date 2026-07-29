@@ -43,7 +43,6 @@ import com.felt.android.core.designsystem.LegalActionsUi
 import com.felt.android.core.designsystem.LockPortraitOrientation
 import com.felt.android.core.designsystem.StatusChip
 import com.felt.android.core.designsystem.TableActionControls
-import com.felt.android.core.designsystem.TurnTimerBar
 import com.felt.android.core.designsystem.WinHandDialog
 import com.felt.android.core.designsystem.WinLineUi
 import com.felt.android.core.model.ConnectionStatus
@@ -161,19 +160,6 @@ fun TableScreen(
                             modifier = Modifier.fillMaxSize(),
                         )
 
-                        if (tableUi.turnEndsAt != null &&
-                            tableUi.toAct != null &&
-                            tableUi.toAct != mySeat
-                        ) {
-                            TurnTimerBar(
-                                endsAt = tableUi.turnEndsAt,
-                                totalMs = tableUi.turnTimeMs,
-                                modifier = Modifier
-                                    .align(Alignment.TopCenter)
-                                    .padding(8.dp),
-                            )
-                        }
-
                         FloatingActionPanel(expanded = isMyTurn) {
                             TableActionControls(
                                 table = tableUi,
@@ -224,6 +210,8 @@ fun TableScreen(
                             onAddBots = { viewModel.dispatch(TableContract.Intent.AddBots(it)) },
                             onRemoveBots = { viewModel.dispatch(TableContract.Intent.RemoveAllBots) },
                             onTopUp = { topUpOpen = true },
+                            onSitOut = { viewModel.dispatch(TableContract.Intent.SitOut) },
+                            onSitIn = { viewModel.dispatch(TableContract.Intent.SitIn) },
                         )
                     }
                 }
@@ -327,11 +315,18 @@ private fun TableFooterControls(
     onAddBots: (Int) -> Unit,
     onRemoveBots: () -> Unit,
     onTopUp: () -> Unit,
+    onSitOut: () -> Unit,
+    onSitIn: () -> Unit,
 ) {
     val myPlayer = table.players.find { it.userId == userId }
     val mySeat = myPlayer?.seat
     val emptySeats = table.players.count { it.status == "empty" }
-    val seated = table.players.count { it.userId != null && it.stack > 0 }
+    val playersInHand = table.players.count {
+        it.userId != null && it.stack > 0 && it.status != "sittingOut"
+    }
+    val betweenHands = table.street == "waiting" || table.street == "payout"
+    val canSitOut = myPlayer?.status == "seated" && betweenHands
+    val canSitIn = myPlayer?.status == "sittingOut" && betweenHands
     val topUpHeadroom = myPlayer?.let { (table.config.maxBuyIn - it.stack).coerceAtLeast(0) } ?: 0
     val canTopUp = mySeat != null &&
         topUpHeadroom > 0 &&
@@ -342,7 +337,7 @@ private fun TableFooterControls(
         modifier = Modifier.padding(top = 6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        if (mySeat != null && seated >= 2 && (table.street == "waiting" || table.street == "payout")) {
+        if (mySeat != null && myPlayer.status != "sittingOut" && playersInHand >= 2 && betweenHands) {
             FeltGhostButton(
                 text = "Start hand",
                 onClick = onStartHand,
@@ -362,6 +357,20 @@ private fun TableFooterControls(
                     modifier = Modifier.weight(1f),
                 )
             }
+        }
+        if (canSitOut) {
+            FeltGhostButton(
+                text = "Sit out",
+                onClick = onSitOut,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        if (canSitIn) {
+            FeltGhostButton(
+                text = "Sit in",
+                onClick = onSitIn,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
         if (canTopUp) {
             FeltGhostButton(

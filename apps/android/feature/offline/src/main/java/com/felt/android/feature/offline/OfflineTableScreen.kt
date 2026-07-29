@@ -38,7 +38,6 @@ import com.felt.android.core.designsystem.LegalActionsUi
 import com.felt.android.core.designsystem.LockPortraitOrientation
 import com.felt.android.core.designsystem.StatusChip
 import com.felt.android.core.designsystem.TableActionControls
-import com.felt.android.core.designsystem.TurnTimerBar
 import com.felt.android.core.designsystem.WinHandDialog
 import com.felt.android.core.designsystem.WinLineUi
 
@@ -111,19 +110,6 @@ fun OfflineTableScreen(
                     onSit = {},
                     modifier = Modifier.fillMaxSize(),
                 )
-
-                if (tableUi.turnEndsAt != null &&
-                    tableUi.toAct != null &&
-                    tableUi.toAct != mySeat
-                ) {
-                    TurnTimerBar(
-                        endsAt = tableUi.turnEndsAt,
-                        totalMs = tableUi.turnTimeMs,
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .padding(8.dp),
-                    )
-                }
 
                 FloatingActionPanel(expanded = isMyTurn) {
                     TableActionControls(

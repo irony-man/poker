@@ -25,7 +25,6 @@ import { PlayingCard } from './PlayingCard';
 import { DealerPotZone } from './DealerPotZone';
 import { SeatView } from './SeatView';
 import { TableShell } from './TableShell';
-import { TurnTimerBar } from './TurnTimer';
 import { WinHandModal } from './WinHandModal';
 import { playTick } from '@/lib/audio';
 import { avatarIdFromUserId, loadSavedAvatarId } from '@/lib/avatars';
@@ -452,14 +451,6 @@ export function OfflineTableView({
             );
           })}
           </div>
-
-          {turnEndsAt && publicTable.toAct !== null && publicTable.toAct !== mySeat && (
-            <div className="absolute inset-x-0 top-2 z-30 flex justify-center px-3">
-              <div className="w-full max-w-sm">
-                <TurnTimerBar endsAt={turnEndsAt} totalMs={config.turnTimeMs} />
-              </div>
-            </div>
-          )}
 
           <div className="absolute inset-x-0 bottom-0 z-30 flex justify-center px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
             <div className="flex max-w-full flex-wrap items-center justify-center gap-1.5 rounded-full border border-cream/15 bg-ink/85 px-2 py-1.5 backdrop-blur-md">

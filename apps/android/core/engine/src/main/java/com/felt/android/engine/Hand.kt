@@ -143,7 +143,10 @@ fun createEmptyTable(config: TableConfig): HandState {
 }
 
 private fun seatedPlayers(state: HandState): List<PlayerState> =
-    state.players.filter { it.status != PlayerStatus.Empty && it.userId != null && it.stack > 0 }
+    state.players.filter {
+        it.userId != null && it.stack > 0 && it.status != PlayerStatus.Empty &&
+            it.status != PlayerStatus.SittingOut
+    }
 
 private fun nextOccupiedSeat(
     state: HandState,
@@ -297,6 +300,48 @@ fun standUp(state: HandState, seat: Int): ApplyResult {
     )
 }
 
+fun sitOut(state: HandState, seat: Int): ApplyResult {
+    val s = cloneState(state)
+    if (s.street != Street.Waiting && s.street != Street.Payout) {
+        val p = s.players.getOrNull(seat)
+        if (p != null && (p.status == PlayerStatus.Active || p.status == PlayerStatus.AllIn)) {
+            return ApplyResult(state, ok = false, error = "Finish the hand before sitting out")
+        }
+    }
+    val p = s.players.getOrNull(seat)
+        ?: return ApplyResult(state, ok = false, error = "Empty seat")
+    if (p.status == PlayerStatus.Empty) {
+        return ApplyResult(state, ok = false, error = "Empty seat")
+    }
+    if (p.status == PlayerStatus.SittingOut) {
+        return ApplyResult(state, ok = false, error = "Already sitting out")
+    }
+    val players = s.players.toMutableList()
+    players[seat] = p.copy(status = PlayerStatus.SittingOut)
+    return ApplyResult(
+        state = s.copy(players = players, version = s.version + 1),
+        ok = true,
+    )
+}
+
+fun sitIn(state: HandState, seat: Int): ApplyResult {
+    val s = cloneState(state)
+    val p = s.players.getOrNull(seat)
+        ?: return ApplyResult(state, ok = false, error = "Not sitting out")
+    if (p.status != PlayerStatus.SittingOut) {
+        return ApplyResult(state, ok = false, error = "Not sitting out")
+    }
+    if (p.stack <= 0) {
+        return ApplyResult(state, ok = false, error = "Need chips to sit in")
+    }
+    val players = s.players.toMutableList()
+    players[seat] = p.copy(status = PlayerStatus.Seated)
+    return ApplyResult(
+        state = s.copy(players = players, version = s.version + 1),
+        ok = true,
+    )
+}
+
 fun topUp(state: HandState, seat: Int, amount: Int, maxBuyIn: Int): ApplyResult {
     val s = cloneState(state)
     if (s.street != Street.Waiting && s.street != Street.Payout) {
@@ -338,7 +383,8 @@ private fun resetHandFields(state: MutableHandState, handId: String, config: Tab
     for (i in state.players.indices) {
         val p = state.players[i]
         val newStatus = when {
-            p.status != PlayerStatus.Empty && p.userId != null && p.stack > 0 -> PlayerStatus.Active
+            p.status != PlayerStatus.Empty && p.userId != null && p.stack > 0 && p.status != PlayerStatus.SittingOut ->
+                PlayerStatus.Active
             p.status != PlayerStatus.Empty && p.stack == 0 -> PlayerStatus.SittingOut
             else -> p.status
         }
@@ -748,7 +794,11 @@ fun returnToWaiting(state: HandState): HandState {
                 committed = 0,
                 holeCards = null,
                 revealed = false,
-                status = if (p.stack > 0) PlayerStatus.Seated else PlayerStatus.SittingOut,
+                status = when {
+                    p.status == PlayerStatus.SittingOut -> PlayerStatus.SittingOut
+                    p.stack > 0 -> PlayerStatus.Seated
+                    else -> PlayerStatus.SittingOut
+                },
             )
             else -> p.copy(
                 bet = 0,

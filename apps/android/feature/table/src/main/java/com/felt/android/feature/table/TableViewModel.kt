@@ -82,6 +82,14 @@ class TableViewModel @Inject constructor(
                 repository.send(ClientMessage.RemoveAllBots(tableId))
             is TableContract.Intent.TopUp ->
                 repository.send(ClientMessage.TopUp(tableId, intent.seat, intent.amount))
+            TableContract.Intent.SitOut -> {
+                val seat = _uiState.value.table?.players?.find { it.userId == _uiState.value.userId }?.seat
+                if (seat != null) repository.send(ClientMessage.SitOut(tableId, seat))
+            }
+            TableContract.Intent.SitIn -> {
+                val seat = _uiState.value.table?.players?.find { it.userId == _uiState.value.userId }?.seat
+                if (seat != null) repository.send(ClientMessage.SitIn(tableId, seat))
+            }
             TableContract.Intent.EnableSitToPlay -> {
                 _uiState.update { it.copy(spectating = false) }
                 maybeAutoSit()

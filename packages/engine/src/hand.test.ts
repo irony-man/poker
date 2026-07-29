@@ -4,6 +4,8 @@ import {
   createEmptyTable,
   returnToWaiting,
   sitDown,
+  sitIn,
+  sitOut,
   startHand,
   type TableConfig,
 } from '../src/hand.js';
@@ -157,5 +159,31 @@ describe('hand lifecycle', () => {
     expect(state.street).toBe('payout');
     expect(state.players.find((p) => p.userId === 'human-1')!.status).toBe('folded');
     expect(state.toAct).toBeNull();
+  });
+
+  it('sitting out skips hands but keeps seat and stack', () => {
+    let state = createEmptyTable(config);
+    state = sitDown(state, 0, 'human-1', 'You', 500).state;
+    state = sitDown(state, 1, 'bot:a', 'AceBot', 500).state;
+    state = sitDown(state, 2, 'bot:b', 'RiverRat', 500).state;
+
+    const out = sitOut(state, 0);
+    expect(out.ok).toBe(true);
+    state = out.state;
+    expect(state.players[0]!.status).toBe('sittingOut');
+    expect(state.players[0]!.stack).toBe(500);
+
+    state = startHand(state, config, 'hand-sitout', fixedRng([1, 2, 3, 4, 5, 6, 7, 8, 9])).state;
+    expect(state.players[0]!.status).toBe('sittingOut');
+    expect(state.players[0]!.holeCards).toBeNull();
+    expect(state.players.filter((p) => p.status === 'active').length).toBe(2);
+
+    state = returnToWaiting(state);
+    expect(state.players[0]!.status).toBe('sittingOut');
+
+    const back = sitIn(state, 0);
+    expect(back.ok).toBe(true);
+    state = back.state;
+    expect(state.players[0]!.status).toBe('seated');
   });
 });

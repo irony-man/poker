@@ -28,6 +28,16 @@ export const ClientMessageSchema = z.discriminatedUnion('type', [
     seat: z.number().int().min(0).max(9),
   }),
   z.object({
+    type: z.literal('sit_out'),
+    tableId: z.string().min(1),
+    seat: z.number().int().min(0).max(9),
+  }),
+  z.object({
+    type: z.literal('sit_in'),
+    tableId: z.string().min(1),
+    seat: z.number().int().min(0).max(9),
+  }),
+  z.object({
     type: z.literal('top_up'),
     tableId: z.string().min(1),
     seat: z.number().int().min(0).max(9),
@@ -74,6 +84,31 @@ export const ClientMessageSchema = z.discriminatedUnion('type', [
   }),
   z.object({
     type: z.literal('ping'),
+  }),
+  z.object({
+    type: z.literal('voice_join'),
+    tableId: z.string().min(1),
+  }),
+  z.object({
+    type: z.literal('voice_leave'),
+    tableId: z.string().min(1),
+  }),
+  z.object({
+    type: z.literal('voice_signal'),
+    tableId: z.string().min(1),
+    toUserId: z.string().min(1),
+    signal: z.object({
+      type: z.enum(['offer', 'answer', 'ice']),
+      sdp: z.string().optional(),
+      candidate: z
+        .object({
+          candidate: z.string().optional(),
+          sdpMid: z.string().nullable().optional(),
+          sdpMLineIndex: z.number().nullable().optional(),
+          usernameFragment: z.string().optional(),
+        })
+        .optional(),
+    }),
   }),
 ]);
 

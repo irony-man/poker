@@ -36,6 +36,20 @@ sealed interface ClientMessage {
     ) : ClientMessage
 
     @Serializable
+    @SerialName("sit_out")
+    data class SitOut(
+        val tableId: String,
+        val seat: Int,
+    ) : ClientMessage
+
+    @Serializable
+    @SerialName("sit_in")
+    data class SitIn(
+        val tableId: String,
+        val seat: Int,
+    ) : ClientMessage
+
+    @Serializable
     @SerialName("top_up")
     data class TopUp(
         val tableId: String,

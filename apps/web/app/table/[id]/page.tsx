@@ -1,6 +1,6 @@
 'use client';
 
-import { SignInButton, SignUpButton, useAuth, useUser } from '@clerk/nextjs';
+import { SignInButton, SignUpButton, useAuth } from '@clerk/nextjs';
 import { useParams, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import { TableView } from '@/components/TableView';
@@ -14,13 +14,16 @@ function TablePageInner() {
   const invite = search.get('invite');
   const spectate = search.get('mode') === 'spectate';
   const { isLoaded, isSignedIn, getToken } = useAuth();
-  const { user } = useUser();
   const setSession = useSession((s) => s.setSession);
+  const clearTable = useSession((s) => s.clearTable);
   const sessionUserId = useSession((s) => s.userId);
-  const sessionTicket = useSession((s) => s.ticket);
   const tableId = params.id;
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    clearTable();
+  }, [tableId, clearTable]);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -30,52 +33,26 @@ function TablePageInner() {
       return;
     }
 
-    // Reuse an existing session so we don't issue a new ticket and tear down the socket.
-    if (sessionUserId && sessionTicket) {
-      setReady(true);
-      return;
-    }
-
-    const raw = localStorage.getItem('felt-session');
-    if (raw) {
-      try {
-        const saved = JSON.parse(raw) as {
-          userId?: string;
-          name?: string;
-          ticket?: string;
-          avatarId?: number;
-        };
-        if (saved.userId && saved.ticket && saved.name) {
-          setSession({
-            userId: saved.userId,
-            name: saved.name,
-            ticket: saved.ticket,
-          });
-          setReady(true);
-          return;
-        }
-      } catch {
-        /* ignore */
-      }
-    }
-
     let cancelled = false;
-    async function refreshSession() {
+
+    async function bootSession() {
+      setReady(false);
       setError(null);
-      let displayName =
-        user?.fullName?.trim() ||
-        user?.username?.trim() ||
-        user?.firstName?.trim() ||
-        user?.primaryEmailAddress?.emailAddress?.split('@')[0] ||
-        'Player';
+
+      const raw = localStorage.getItem('felt-session');
+      let displayName = 'Player';
+      if (raw) {
+        try {
+          const prev = JSON.parse(raw) as { name?: string; avatarId?: number };
+          if (prev.name?.trim()) displayName = prev.name.trim();
+        } catch {
+          /* ignore */
+        }
+      }
       let avatarId = loadSavedAvatarId();
       if (raw) {
         try {
-          const prev = JSON.parse(raw) as {
-            name?: string;
-            avatarId?: number;
-          };
-          if (prev.name?.trim()) displayName = prev.name.trim();
+          const prev = JSON.parse(raw) as { avatarId?: number };
           if (typeof prev.avatarId === 'number') avatarId = prev.avatarId;
         } catch {
           /* ignore */
@@ -88,6 +65,7 @@ function TablePageInner() {
         return;
       }
 
+      // Always mint a fresh WS ticket on page load so refresh reconnects cleanly.
       const s = await register(displayName.slice(0, 32), avatarId, { clerkToken });
       if (cancelled) return;
       const session = { ...s, avatarId: s.avatarId ?? avatarId };
@@ -97,7 +75,7 @@ function TablePageInner() {
       setReady(true);
     }
 
-    void refreshSession().catch((err) => {
+    void bootSession().catch((err) => {
       if (!cancelled) {
         setReady(false);
         setError(err instanceof Error ? err.message : 'Failed to connect');
@@ -107,8 +85,7 @@ function TablePageInner() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- register only when no session; user read at call time
-  }, [isLoaded, isSignedIn, sessionUserId, sessionTicket, setSession, getToken]);
+  }, [isLoaded, isSignedIn, tableId, setSession, getToken]);
 
   if (!isLoaded) {
     return <p className="text-cream/60">Loading…</p>;

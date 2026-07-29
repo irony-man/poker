@@ -95,6 +95,7 @@ export function SeatView({
   const faceDown = !showCards && player.hasCards;
   const dealKey = handId ?? 'idle';
   const folded = player.status === 'folded';
+  const sittingOut = player.status === 'sittingOut';
 
   return (
     <>
@@ -109,24 +110,9 @@ export function SeatView({
 
       <div
         style={{ left: `${x}%`, top: `${y}%` }}
-        className={`absolute -translate-x-1/2 -translate-y-1/2 ${isToAct || isWinner ? 'z-20' : 'z-10'} ${folded ? 'opacity-55' : ''}`}
+        className={`absolute -translate-x-1/2 -translate-y-1/2 ${isToAct || isWinner ? 'z-20' : 'z-10'} ${folded || sittingOut ? 'opacity-55' : ''}`}
       >
-        <div
-          className={`relative flex flex-col items-center px-2.5 pb-2 pt-1.5 ${
-            isToAct ? 'rounded-[42%] border-2 border-dashed border-white/75' : ''
-          }`}
-        >
-          {isToAct && (
-            <div className="pointer-events-none absolute left-1/2 top-1/2 h-[118px] w-[118px] -translate-x-1/2 -translate-y-1/2">
-              <SeatTurnRing
-                endsAt={turnEndsAt}
-                totalMs={turnTotalMs ?? 20000}
-                active
-                size={118}
-              />
-            </div>
-          )}
-
+        <div className="relative flex flex-col items-center px-2.5 pb-2 pt-1.5">
           <div
             className={`relative z-[1] mb-1 flex drop-shadow-md ${
               isSelf ? 'scale-110 gap-1 origin-bottom' : 'gap-0.5'
@@ -171,12 +157,24 @@ export function SeatView({
 
           {/* Classic freepoker-style stack banner + name tab */}
           <div className="relative z-[1] flex items-end gap-1">
-            <PlayerAvatar
-              avatarId={player.avatarId}
-              userId={player.userId}
-              size={isSelf ? 28 : 24}
-              className="mb-0.5 shadow-md ring-1 ring-black/30"
-            />
+            <div className="relative mb-0.5 shrink-0">
+              {isToAct && (
+                <div className="pointer-events-none absolute -inset-1">
+                  <SeatTurnRing
+                    endsAt={turnEndsAt}
+                    totalMs={turnTotalMs ?? 20000}
+                    active
+                    size={isSelf ? 36 : 32}
+                  />
+                </div>
+              )}
+              <PlayerAvatar
+                avatarId={player.avatarId}
+                userId={player.userId}
+                size={isSelf ? 28 : 24}
+                className="relative z-[1] shadow-md ring-1 ring-black/30"
+              />
+            </div>
             <div className="flex items-stretch shadow-[0_3px_8px_rgba(0,0,0,0.45)]">
               <div className="flex flex-col justify-end">
                 {isSelf && (
@@ -213,6 +211,11 @@ export function SeatView({
           {folded && (
             <div className="relative z-[1] mt-0.5 text-[8px] font-bold uppercase tracking-[0.16em] text-white/70">
               Fold
+            </div>
+          )}
+          {sittingOut && (
+            <div className="relative z-[1] mt-0.5 text-[8px] font-bold uppercase tracking-[0.16em] text-amber-300/90">
+              Sitting out
             </div>
           )}
         </div>

@@ -427,6 +427,16 @@ async function main() {
           if (!result.ok) send({ type: 'error', message: result.error ?? 'Stand failed' });
           break;
         }
+        case 'sit_out': {
+          const result = r.doSitOut(userId, msg.seat);
+          if (!result.ok) send({ type: 'error', message: result.error ?? 'Sit out failed' });
+          break;
+        }
+        case 'sit_in': {
+          const result = r.doSitIn(userId, msg.seat);
+          if (!result.ok) send({ type: 'error', message: result.error ?? 'Sit in failed' });
+          break;
+        }
         case 'top_up': {
           const result = r.doTopUp(userId, msg.seat, msg.amount);
           if (!result.ok) send({ type: 'error', message: result.error ?? 'Top-up failed' });
@@ -461,6 +471,19 @@ async function main() {
         case 'remove_all_bots': {
           const result = r.removeAllBots();
           if (!result.ok) send({ type: 'error', message: result.error ?? 'Remove bots failed' });
+          break;
+        }
+        case 'voice_join': {
+          const result = r.joinVoice(userId, name);
+          if (!result.ok) send({ type: 'error', message: result.error ?? 'Voice join failed' });
+          break;
+        }
+        case 'voice_leave':
+          r.leaveVoice(userId);
+          break;
+        case 'voice_signal': {
+          const result = r.relayVoiceSignal(userId, msg.toUserId, msg.signal);
+          if (!result.ok) send({ type: 'error', message: result.error ?? 'Voice signal failed' });
           break;
         }
       }

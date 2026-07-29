@@ -58,7 +58,7 @@ export function ChatPanel({
         </div>
       )}
       <div className="shrink-0 flex gap-1 px-3 py-2 border-t border-cyan/10">
-        {['🔥', '😂', '👏', '😮'].map((e) => (
+        {['🔥', '😂', '👏', '😮', '💀', '😎', '👀', '🤖', '🤙', '🤞', '🤠', '🤡', '🤥', '🤦'].map((e) => (
           <button
             key={e}
             type="button"

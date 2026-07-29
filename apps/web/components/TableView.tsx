@@ -29,7 +29,7 @@ export function TableView({
   const lastError = useSession((s) => s.lastError);
   const setError = useSession((s) => s.setError);
   const clearTable = useSession((s) => s.clearTable);
-  const { send } = usePokerSocket(tableId);
+  const { send, leaveTable } = usePokerSocket(tableId);
   const router = useRouter();
   const [buyInOpen, setBuyInOpen] = useState<number | null>(null);
   const [botAddCount, setBotAddCount] = useState(3);
@@ -120,7 +120,7 @@ export function TableView({
   };
 
   const leaveRoom = () => {
-    send({ type: 'leave_table', tableId });
+    leaveTable();
     clearTable();
     router.push('/');
   };

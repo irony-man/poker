@@ -16,7 +16,8 @@ function TablePageInner() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const { user } = useUser();
   const setSession = useSession((s) => s.setSession);
-  const userId = useSession((s) => s.userId);
+  const sessionUserId = useSession((s) => s.userId);
+  const sessionTicket = useSession((s) => s.ticket);
   const tableId = params.id;
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,10 +30,38 @@ function TablePageInner() {
       return;
     }
 
+    // Reuse an existing session so we don't issue a new ticket and tear down the socket.
+    if (sessionUserId && sessionTicket) {
+      setReady(true);
+      return;
+    }
+
+    const raw = localStorage.getItem('felt-session');
+    if (raw) {
+      try {
+        const saved = JSON.parse(raw) as {
+          userId?: string;
+          name?: string;
+          ticket?: string;
+          avatarId?: number;
+        };
+        if (saved.userId && saved.ticket && saved.name) {
+          setSession({
+            userId: saved.userId,
+            name: saved.name,
+            ticket: saved.ticket,
+          });
+          setReady(true);
+          return;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
     let cancelled = false;
     async function refreshSession() {
       setError(null);
-      const raw = localStorage.getItem('felt-session');
       let displayName =
         user?.fullName?.trim() ||
         user?.username?.trim() ||
@@ -78,7 +107,8 @@ function TablePageInner() {
     return () => {
       cancelled = true;
     };
-  }, [isLoaded, isSignedIn, getToken, setSession, user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- register only when no session; user read at call time
+  }, [isLoaded, isSignedIn, sessionUserId, sessionTicket, setSession, getToken]);
 
   if (!isLoaded) {
     return <p className="text-cream/60">Loading…</p>;
@@ -111,7 +141,7 @@ function TablePageInner() {
     return <p className="status-chip border-red-500/40 bg-red-950/50 text-red-300">{error}</p>;
   }
 
-  if (!ready || !userId) {
+  if (!ready || !sessionUserId) {
     return <p className="text-cream/60">Connecting…</p>;
   }
 

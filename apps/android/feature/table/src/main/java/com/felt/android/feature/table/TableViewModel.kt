@@ -86,6 +86,7 @@ class TableViewModel @Inject constructor(
 
     private fun leaveTable() {
         repository.send(ClientMessage.LeaveTable(tableId))
+        repository.disconnect()
     }
 
     private fun connect() {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { AuthStore } from '../src/auth.js';
 import { MemoryKv } from '../src/kv.js';
 import { FileHistoryStore } from '../src/history.js';
@@ -55,5 +55,71 @@ describe('RoomManager', () => {
 
     // Spectator-style: action from non-seated user fails
     expect(room.action('spectator', handId, room.state.actionSeq, 'fold').ok).toBe(false);
+  });
+
+  it('keeps seat during disconnect grace and vacates after timeout', () => {
+    vi.useFakeTimers();
+    const kv = new MemoryKv();
+    const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-test-${Date.now()}`));
+    const rooms = new RoomManager(kv, history);
+    const meta = rooms.create({
+      name: 'Grace',
+      hostUserId: 'host1',
+      isPrivate: true,
+      config: {
+        maxSeats: 6,
+        smallBlind: 5,
+        bigBlind: 10,
+        minBuyIn: 200,
+        maxBuyIn: 1000,
+        turnTimeMs: 30_000,
+      },
+    });
+    const room = rooms.get(meta.id)!;
+    const noop = () => {};
+    room.attach({ userId: 'u1', name: 'A', avatarId: 0, send: noop });
+    expect(room.sit('u1', 'A', 0, 500).ok).toBe(true);
+
+    room.detach('u1');
+    room.scheduleDisconnect('u1');
+    expect(room.state.players[0]?.userId).toBe('u1');
+
+    vi.advanceTimersByTime(45_000);
+    expect(room.state.players[0]?.status).toBe('empty');
+
+    vi.useRealTimers();
+  });
+
+  it('cancels disconnect grace when player reconnects', () => {
+    vi.useFakeTimers();
+    const kv = new MemoryKv();
+    const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-test-${Date.now()}`));
+    const rooms = new RoomManager(kv, history);
+    const meta = rooms.create({
+      name: 'Reconnect',
+      hostUserId: 'host1',
+      isPrivate: true,
+      config: {
+        maxSeats: 6,
+        smallBlind: 5,
+        bigBlind: 10,
+        minBuyIn: 200,
+        maxBuyIn: 1000,
+        turnTimeMs: 30_000,
+      },
+    });
+    const room = rooms.get(meta.id)!;
+    const noop = () => {};
+    room.attach({ userId: 'u1', name: 'A', avatarId: 0, send: noop });
+    expect(room.sit('u1', 'A', 0, 500).ok).toBe(true);
+
+    room.detach('u1');
+    room.scheduleDisconnect('u1');
+    room.attach({ userId: 'u1', name: 'A', avatarId: 0, send: noop });
+
+    vi.advanceTimersByTime(45_000);
+    expect(room.state.players[0]?.userId).toBe('u1');
+
+    vi.useRealTimers();
   });
 });

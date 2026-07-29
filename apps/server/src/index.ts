@@ -468,8 +468,9 @@ async function main() {
 
     ws.on('close', () => {
       if (userId && tableId) {
-        // Unexpected disconnect — fold/vacate so the table isn't stuck with a ghost seat.
-        rooms.get(tableId)?.leave(userId);
+        const room = rooms.get(tableId);
+        room?.detach(userId);
+        room?.scheduleDisconnect(userId);
       }
     });
   });

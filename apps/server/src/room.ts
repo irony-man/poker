@@ -43,6 +43,9 @@ export interface ConnectionContext {
 
 type RateBucket = { count: number; resetAt: number };
 
+/** Keep seated players through brief disconnects; vacate if they don't reconnect in time. */
+const DISCONNECT_GRACE_MS = 45_000;
+
 export class Room {
   meta: TableMeta;
   state: HandState;
@@ -52,6 +55,7 @@ export class Room {
   private turnEndsAt: number | null = null;
   private connections = new Map<string, ConnectionContext>(); // userId -> conn
   private spectators = new Set<string>();
+  private disconnectTimers = new Map<string, NodeJS.Timeout>();
   private rateLimits = new Map<string, RateBucket>();
   /** Preset avatar index per seated/connected user (incl. bots). */
   private avatarByUser = new Map<string, number>();
@@ -76,6 +80,7 @@ export class Room {
   }
 
   attach(conn: ConnectionContext): void {
+    this.cancelDisconnect(conn.userId);
     this.connections.set(conn.userId, conn);
     this.spectators.add(conn.userId);
     this.avatarByUser.set(conn.userId, clampAvatarId(conn.avatarId));
@@ -87,8 +92,29 @@ export class Room {
     this.spectators.delete(userId);
   }
 
+  /** Start grace period after socket drop; seat is vacated if player does not reconnect. */
+  scheduleDisconnect(userId: string): void {
+    this.cancelDisconnect(userId);
+    const timer = setTimeout(() => {
+      this.disconnectTimers.delete(userId);
+      if (!this.connections.has(userId)) {
+        this.leave(userId);
+      }
+    }, DISCONNECT_GRACE_MS);
+    this.disconnectTimers.set(userId, timer);
+  }
+
+  private cancelDisconnect(userId: string): void {
+    const timer = this.disconnectTimers.get(userId);
+    if (timer) {
+      clearTimeout(timer);
+      this.disconnectTimers.delete(userId);
+    }
+  }
+
   /** Fold/stand if seated, then detach the websocket — preferred leave path. */
   leave(userId: string): { ok: boolean; error?: string } {
+    this.cancelDisconnect(userId);
     const seat = this.seatOf(userId);
     if (seat !== null) {
       const name = this.state.players[seat]?.name ?? 'Player';

@@ -78,7 +78,7 @@ export function CommunityBoard({
         )}
       </div>
       {/* sm+: single row */}
-      <div className="hidden items-center gap-1.5 sm:flex sm:min-h-[5.25rem]">
+      <div className="hidden items-center gap-1 sm:flex sm:min-h-[5.25rem]">
         {cards.map((c, i) => card(c, i))}
       </div>
     </>

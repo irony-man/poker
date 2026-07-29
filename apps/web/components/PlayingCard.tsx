@@ -38,24 +38,106 @@ const SUIT_GLYPH: Record<string, string> = {
   s: '♠',
 };
 
-function toAssetCode(code: string): string | null {
-  if (code.length !== 2) return null;
-  const rank = code[0]!.toUpperCase();
-  const suit = code[1]!.toLowerCase();
-  if (!'A23456789TJQK'.includes(rank) || !'hdcs'.includes(suit)) return null;
-  return `${rank}${suit}`;
-}
+/** Standard pip centers as % of the face (x, y). */
+const PIP_LAYOUT: Record<string, Array<[number, number]>> = {
+  A: [[50, 52]],
+  '2': [
+    [50, 22],
+    [50, 78],
+  ],
+  '3': [
+    [50, 22],
+    [50, 50],
+    [50, 78],
+  ],
+  '4': [
+    [32, 24],
+    [68, 24],
+    [32, 76],
+    [68, 76],
+  ],
+  '5': [
+    [32, 24],
+    [68, 24],
+    [50, 50],
+    [32, 76],
+    [68, 76],
+  ],
+  '6': [
+    [32, 24],
+    [68, 24],
+    [32, 50],
+    [68, 50],
+    [32, 76],
+    [68, 76],
+  ],
+  '7': [
+    [32, 22],
+    [68, 22],
+    [50, 36],
+    [32, 50],
+    [68, 50],
+    [32, 78],
+    [68, 78],
+  ],
+  '8': [
+    [32, 20],
+    [68, 20],
+    [50, 34],
+    [32, 50],
+    [68, 50],
+    [50, 66],
+    [32, 80],
+    [68, 80],
+  ],
+  '9': [
+    [32, 18],
+    [68, 18],
+    [32, 36],
+    [68, 36],
+    [50, 50],
+    [32, 64],
+    [68, 64],
+    [32, 82],
+    [68, 82],
+  ],
+  T: [
+    [32, 16],
+    [68, 16],
+    [50, 28],
+    [32, 38],
+    [68, 38],
+    [32, 62],
+    [68, 62],
+    [50, 72],
+    [32, 84],
+    [68, 84],
+  ],
+};
 
-function parseCode(code: string): { rank: string; suit: string; red: boolean } | null {
+function parseCode(
+  code: string,
+): { rankChar: string; rank: string; suit: string; red: boolean } | null {
   if (code.length !== 2) return null;
   const rankChar = code[0]!.toUpperCase();
   const suit = code[1]!.toLowerCase();
   if (!RANK_LABEL[rankChar] || !SUIT_GLYPH[suit]) return null;
   return {
+    rankChar,
     rank: RANK_LABEL[rankChar]!,
     suit: SUIT_GLYPH[suit]!,
     red: suit === 'h' || suit === 'd',
   };
+}
+
+function isTiny(size: CardSize) {
+  return (
+    size === 'peek' ||
+    size === 'xs' ||
+    size === 'board' ||
+    size === 'sm' ||
+    size === 'handSm'
+  );
 }
 
 /** Glossy white face with oversized center suit — in-hand style. */
@@ -71,7 +153,7 @@ function HandFace({
   size: CardSize;
 }) {
   const color = red ? 'text-[#e53935]' : 'text-[#111111]';
-  const tiny = size === 'peek' || size === 'xs' || size === 'board' || size === 'sm' || size === 'handSm';
+  const tiny = isTiny(size);
   return (
     <div
       className="absolute inset-0"
@@ -79,7 +161,6 @@ function HandFace({
         background: 'linear-gradient(160deg, #ffffff 0%, #f7f7f7 55%, #ececec 100%)',
       }}
     >
-      {/* Large suit fills most of the face */}
       <div className={`absolute inset-0 flex items-center justify-center ${color}`}>
         <span
           className={`select-none font-semibold leading-none ${
@@ -90,7 +171,6 @@ function HandFace({
           {suit}
         </span>
       </div>
-      {/* Soft upper gloss band (reference plastic sheen) */}
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-[52%]"
         style={{
@@ -111,8 +191,117 @@ function HandFace({
   );
 }
 
+/** Classic pip / court face for board & opponents. */
+function DeckFace({
+  rankChar,
+  rank,
+  suit,
+  red,
+  size,
+}: {
+  rankChar: string;
+  rank: string;
+  suit: string;
+  red: boolean;
+  size: CardSize;
+}) {
+  const color = red ? 'text-[#c62828]' : 'text-[#1a1a1a]';
+  const tiny = isTiny(size);
+  const pips = PIP_LAYOUT[rankChar];
+  const pipSize = tiny
+    ? rankChar === 'A'
+      ? 'text-[1.15rem]'
+      : 'text-[0.55rem] sm:text-[0.7rem]'
+    : rankChar === 'A'
+      ? 'text-[1.85rem] sm:text-[2.6rem]'
+      : 'text-[0.7rem] sm:text-[1rem]';
+  const cornerRank = tiny ? 'text-[9px] sm:text-[11px]' : 'text-[11px] sm:text-sm';
+  const cornerSuit = tiny ? 'text-[8px] sm:text-[10px]' : 'text-[10px] sm:text-xs';
+
+  return (
+    <div
+      className="absolute inset-0"
+      style={{
+        background: 'linear-gradient(165deg, #fffef9 0%, #f4efe4 55%, #ebe4d6 100%)',
+      }}
+    >
+      <div className={`absolute left-[2px] top-[2px] z-[1] flex flex-col items-center leading-none ${color}`}>
+        <span className={`font-extrabold tracking-tight ${cornerRank}`}>{rank}</span>
+        <span className={`-mt-px ${cornerSuit}`}>{suit}</span>
+      </div>
+      <div
+        className={`absolute bottom-[2px] right-[2px] z-[1] flex rotate-180 flex-col items-center leading-none ${color}`}
+      >
+        <span className={`font-extrabold tracking-tight ${cornerRank}`}>{rank}</span>
+        <span className={`-mt-px ${cornerSuit}`}>{suit}</span>
+      </div>
+
+      {pips ? (
+        <div className={`absolute inset-0 ${color}`}>
+          {pips.map(([x, y], i) => (
+            <span
+              key={i}
+              className={`absolute -translate-x-1/2 -translate-y-1/2 select-none font-semibold leading-none ${pipSize} ${
+                y > 55 ? 'rotate-180' : ''
+              }`}
+              style={{ left: `${x}%`, top: `${y}%` }}
+            >
+              {suit}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <div className={`absolute inset-0 flex flex-col items-center justify-center ${color}`}>
+          <span
+            className={`select-none font-extrabold leading-none ${
+              tiny ? 'text-base' : 'text-xl sm:text-3xl'
+            }`}
+          >
+            {rank}
+          </span>
+          <span
+            className={`select-none leading-none ${tiny ? 'text-sm' : 'text-lg sm:text-2xl'}`}
+          >
+            {suit}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CardBack({ size }: { size: CardSize }) {
+  const tiny = isTiny(size);
+  return (
+    <div
+      className="absolute inset-0"
+      style={{
+        background:
+          'linear-gradient(145deg, #1a3d6e 0%, #0f2748 45%, #0a1a32 100%)',
+      }}
+    >
+      <div
+        className="absolute inset-[3px] rounded-[2px] border border-[#c9a227]/55"
+        style={{
+          backgroundImage:
+            'repeating-linear-gradient(45deg, rgba(201,162,39,0.18) 0 2px, transparent 2px 6px), repeating-linear-gradient(-45deg, rgba(201,162,39,0.12) 0 2px, transparent 2px 6px)',
+        }}
+      />
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span
+          className={`select-none font-display font-bold tracking-wider text-[#e0b43a]/90 ${
+            tiny ? 'text-[8px]' : 'text-[10px] sm:text-xs'
+          }`}
+        >
+          FELT
+        </span>
+      </div>
+    </div>
+  );
+}
+
 /**
- * `deck` — sprite assets for board / opponents.
+ * `deck` — classic CSS faces for board / opponents.
  * `hand` — glossy large-suit faces for the hero’s hole cards.
  */
 export function PlayingCard({
@@ -150,15 +339,15 @@ export function PlayingCard({
     ? 'ring-2 ring-gold shadow-[0_0_18px_rgba(232,185,74,0.55)] scale-105 z-10'
     : variant === 'hand'
       ? 'ring-[1.5px] ring-black/50'
-      : 'ring-1 ring-black/25';
+      : 'ring-1 ring-black/30';
   const dim = dimmed && !highlight ? 'opacity-35 saturate-50' : '';
   const shell = [
     w,
     radius,
-    'relative overflow-hidden',
+    'relative overflow-hidden bg-white',
     variant === 'hand'
       ? 'shadow-[0_6px_16px_rgba(0,0,0,0.55)]'
-      : 'bg-transparent shadow-md',
+      : 'shadow-md',
     winRing,
     dim,
     'transition-[opacity,transform,box-shadow] duration-300',
@@ -174,43 +363,28 @@ export function PlayingCard({
     resolved === 'hand' ||
     resolved === 'handSm';
 
-  /* —— In-hand glossy variant —— */
-  if (variant === 'hand' && !faceDown && code) {
-    const parsed = parseCode(code);
-    if (!parsed) {
-      return (
-        <div className={`${shell} flex items-center justify-center bg-white text-xs`}>
-          {code}
-        </div>
-      );
-    }
+  if (faceDown || !code) {
     return (
       <motion.div
-        initial={{ y: -18, opacity: 0, scale: 0.9 }}
-        animate={{ y: 0, opacity: 1, scale: 1 }}
+        initial={
+          isSmall
+            ? { y: -14, opacity: 0, scale: 0.92, rotateZ: -3 }
+            : { y: -28, opacity: 0, rotateZ: -6 }
+        }
+        animate={{ y: 0, opacity: 1, scale: 1, rotateZ: 0 }}
         transition={{ type: 'spring', stiffness: 360, damping: 24, delay: dealDelay }}
         className={shell}
-        aria-label={code}
+        aria-label="Facedown card"
       >
-        <HandFace rank={parsed.rank} suit={parsed.suit} red={parsed.red} size={resolved} />
-        {highlight ? (
-          <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-transparent via-gold to-transparent" />
-        ) : null}
+        <CardBack size={resolved} />
       </motion.div>
     );
   }
 
-  const asset =
-    faceDown || !code
-      ? '/cards/back.png'
-      : (() => {
-          const key = toAssetCode(code);
-          return key ? `/cards/${key}.png` : null;
-        })();
-
-  if (!asset) {
+  const parsed = parseCode(code);
+  if (!parsed) {
     return (
-      <div className={`${shell} flex items-center justify-center bg-white text-xs text-ink/70`}>
+      <div className={`${shell} flex items-center justify-center text-xs text-ink/70`}>
         {code}
       </div>
     );
@@ -226,15 +400,19 @@ export function PlayingCard({
       animate={{ y: 0, opacity: 1, scale: 1, rotateZ: 0 }}
       transition={{ type: 'spring', stiffness: 360, damping: 24, delay: dealDelay }}
       className={shell}
-      aria-label={faceDown || !code ? 'Facedown card' : code}
+      aria-label={code}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={asset}
-        alt={faceDown || !code ? 'Card back' : code}
-        draggable={false}
-        className="pointer-events-none h-full w-full select-none object-fill"
-      />
+      {variant === 'hand' ? (
+        <HandFace rank={parsed.rank} suit={parsed.suit} red={parsed.red} size={resolved} />
+      ) : (
+        <DeckFace
+          rankChar={parsed.rankChar}
+          rank={parsed.rank}
+          suit={parsed.suit}
+          red={parsed.red}
+          size={resolved}
+        />
+      )}
       {highlight ? (
         <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-transparent via-gold to-transparent" />
       ) : null}

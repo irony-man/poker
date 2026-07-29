@@ -14,8 +14,7 @@ export interface TableRowRow {
   name: string;
   smallBlind: number;
   bigBlind: number;
-  minBuyIn: number;
-  maxBuyIn: number;
+  buyIn: number;
   turnTimeMs: number;
   maxSeats: number;
   isPrivate: boolean;

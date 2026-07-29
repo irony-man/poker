@@ -54,10 +54,10 @@ export function TableShell({
   }
 
   return (
-    <div className="relative flex h-[calc(100dvh-3.5rem)] min-h-0 -mx-4 sm:-mx-8 -my-4">
+    <div className="relative flex h-[calc(100dvh-3rem)] min-h-0 -mx-3 sm:-mx-8 -my-2 sm:-my-4 max-sm:h-[calc(100dvh-2.75rem)]">
       <EmojiOverlay />
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-2 sm:px-4 py-2">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-1.5 sm:px-4 py-1 sm:py-2">
         {children}
       </div>
 
@@ -88,9 +88,9 @@ export function TableShell({
       <button
         type="button"
         onClick={() => setMobileOpen(true)}
-        className="md:hidden fixed bottom-20 right-4 z-40 rounded border border-cyan/40 bg-ink-panel/95 px-4 py-2.5 text-xs font-display font-bold uppercase tracking-wider text-cyan shadow-hud backdrop-blur"
+        className="md:hidden fixed right-2 top-[3.25rem] z-40 rounded border border-cyan/40 bg-ink-panel/95 px-2.5 py-1.5 text-[10px] font-display font-bold uppercase tracking-wider text-cyan shadow-hud backdrop-blur"
       >
-        Comms
+        Chat
       </button>
 
       {mobileOpen && (

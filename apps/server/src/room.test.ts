@@ -29,15 +29,14 @@ describe('RoomManager', () => {
         maxSeats: 6,
         smallBlind: 5,
         bigBlind: 10,
-        minBuyIn: 200,
-        maxBuyIn: 1000,
+        buyIn: 1000,
         turnTimeMs: 30_000,
       },
     });
     const room = rooms.get(meta.id)!;
-    expect(room.sit('u1', 'A', 0, 500).ok).toBe(true);
-    expect(room.sit('u1', 'A', 1, 500).ok).toBe(false); // already seated
-    expect(room.sit('u2', 'B', 1, 500).ok).toBe(true);
+    expect(room.sit('u1', 'A', 0, 1000).ok).toBe(true);
+    expect(room.sit('u1', 'A', 1, 1000).ok).toBe(false); // already seated
+    expect(room.sit('u2', 'B', 1, 1000).ok).toBe(true);
 
     const started = room.startHand('u1');
     expect(started.ok).toBe(true);
@@ -70,15 +69,14 @@ describe('RoomManager', () => {
         maxSeats: 6,
         smallBlind: 5,
         bigBlind: 10,
-        minBuyIn: 200,
-        maxBuyIn: 1000,
+        buyIn: 1000,
         turnTimeMs: 30_000,
       },
     });
     const room = rooms.get(meta.id)!;
     const noop = () => {};
     room.attach({ userId: 'u1', name: 'A', avatarId: 0, send: noop });
-    expect(room.sit('u1', 'A', 0, 500).ok).toBe(true);
+    expect(room.sit('u1', 'A', 0, 1000).ok).toBe(true);
 
     room.detach('u1');
     room.scheduleDisconnect('u1');
@@ -103,15 +101,14 @@ describe('RoomManager', () => {
         maxSeats: 6,
         smallBlind: 5,
         bigBlind: 10,
-        minBuyIn: 200,
-        maxBuyIn: 1000,
+        buyIn: 1000,
         turnTimeMs: 30_000,
       },
     });
     const room = rooms.get(meta.id)!;
     const noop = () => {};
     room.attach({ userId: 'u1', name: 'A', avatarId: 0, send: noop });
-    expect(room.sit('u1', 'A', 0, 500).ok).toBe(true);
+    expect(room.sit('u1', 'A', 0, 1000).ok).toBe(true);
 
     room.detach('u1');
     room.scheduleDisconnect('u1');

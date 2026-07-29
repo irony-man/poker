@@ -18,8 +18,7 @@ const config: TableConfig = {
   maxSeats: 6,
   smallBlind: 5,
   bigBlind: 10,
-  minBuyIn: 200,
-  maxBuyIn: 1000,
+  buyIn: 1000,
   turnTimeMs: 15000,
 };
 
@@ -73,7 +72,7 @@ describe('bots', () => {
       config,
     });
     const room = rooms.get(meta.id)!;
-    expect(room.sit('host', 'Host', 0, 500).ok).toBe(true);
+    expect(room.sit('host', 'Host', 0, 1000).ok).toBe(true);
     expect(room.addBot('host').ok).toBe(true);
     expect(room.state.players.some((p) => isBotUserId(p.userId))).toBe(true);
   });
@@ -89,8 +88,8 @@ describe('bots', () => {
       config,
     });
     const room = rooms.get(meta.id)!;
-    expect(room.sit('host', 'Host', 0, 500).ok).toBe(true);
-    const result = room.addBot('host', undefined, 200, 3);
+    expect(room.sit('host', 'Host', 0, 1000).ok).toBe(true);
+    const result = room.addBot('host', undefined, 1000, 3);
     expect(result.ok).toBe(true);
     expect(result.added).toBe(3);
     expect(room.state.players.filter((p) => isBotUserId(p.userId)).length).toBe(3);

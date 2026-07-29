@@ -8,6 +8,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
+import { useIsNarrow } from '@/lib/tableLayout';
 
 const POS_KEY = 'felt-action-dock-pos';
 
@@ -33,19 +34,23 @@ function savePos(p: Pos) {
   }
 }
 
-/** Draggable floating dock for action CTAs — pops open on your turn. */
+/**
+ * Mobile: static bottom panel (always visible, fixed height).
+ * Desktop: undocked floating / draggable popup.
+ */
 export function FloatingActionDock({
   children,
   expanded,
   label = 'Actions',
 }: {
   children: ReactNode;
-  /** When true, panel is expanded (your turn). */
+  /** When true, it's your turn. */
   expanded: boolean;
   label?: string;
 }) {
+  const narrow = useIsNarrow();
   const [pos, setPos] = useState<Pos | null>(null);
-  const [open, setOpen] = useState(expanded);
+  const [open, setOpen] = useState(true);
   const dragging = useRef(false);
   const origin = useRef({ px: 0, py: 0, x: 0, y: 0 });
   const panelRef = useRef<HTMLDivElement>(null);
@@ -58,20 +63,23 @@ export function FloatingActionDock({
     if (expanded) setOpen(true);
   }, [expanded]);
 
-  const onPointerDown = useCallback((e: ReactPointerEvent) => {
-    if ((e.target as HTMLElement).closest('[data-no-drag]')) return;
-    const el = panelRef.current;
-    if (!el) return;
-    dragging.current = true;
-    el.setPointerCapture(e.pointerId);
-    const rect = el.getBoundingClientRect();
-    origin.current = {
-      px: e.clientX,
-      py: e.clientY,
-      x: pos?.x ?? rect.left,
-      y: pos?.y ?? rect.top,
-    };
-  }, [pos]);
+  const onPointerDown = useCallback(
+    (e: ReactPointerEvent) => {
+      if ((e.target as HTMLElement).closest('[data-no-drag]')) return;
+      const el = panelRef.current;
+      if (!el) return;
+      dragging.current = true;
+      el.setPointerCapture(e.pointerId);
+      const rect = el.getBoundingClientRect();
+      origin.current = {
+        px: e.clientX,
+        py: e.clientY,
+        x: pos?.x ?? rect.left,
+        y: pos?.y ?? rect.top,
+      };
+    },
+    [pos],
+  );
 
   const onPointerMove = useCallback((e: ReactPointerEvent) => {
     if (!dragging.current) return;
@@ -98,6 +106,30 @@ export function FloatingActionDock({
     });
   }, []);
 
+  /* —— Mobile: docked, fixed-size bar —— */
+  if (narrow) {
+    return (
+      <div
+        className={`relative z-40 shrink-0 border-t px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 ${
+          expanded
+            ? 'border-felt-neon/35 bg-ink/98 shadow-[0_-8px_28px_rgba(0,0,0,0.4)]'
+            : 'border-cream/10 bg-ink/95'
+        }`}
+      >
+        <div
+          className={`mx-auto flex h-[11.5rem] w-full max-w-xl flex-col overflow-hidden rounded-xl border ${
+            expanded
+              ? 'border-gold/40 bg-ink-panel/95 ring-1 ring-felt-neon/20'
+              : 'border-cream/15 bg-ink-panel/80'
+          }`}
+        >
+          <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+        </div>
+      </div>
+    );
+  }
+
+  /* —— Desktop: floating undocked popup —— */
   const style =
     pos != null
       ? { left: pos.x, top: pos.y, right: 'auto', bottom: 'auto' as const }
@@ -127,10 +159,18 @@ export function FloatingActionDock({
           {expanded ? 'Your move' : label}
         </button>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-gold/35 bg-ink/95 shadow-[0_12px_40px_rgba(0,0,0,0.55)] backdrop-blur-md animate-in fade-in zoom-in-95 duration-200">
+        <div
+          className={`overflow-hidden rounded-2xl border bg-ink/95 shadow-[0_12px_40px_rgba(0,0,0,0.55)] backdrop-blur-md ${
+            expanded ? 'border-gold/40 ring-1 ring-felt-neon/20' : 'border-gold/35'
+          }`}
+        >
           <div className="flex cursor-grab items-center justify-between gap-3 border-b border-cream/10 bg-ink-panel/80 px-3 py-2 active:cursor-grabbing">
-            <span className="text-[10px] font-display uppercase tracking-[0.22em] text-cream/45">
-              Drag · actions
+            <span
+              className={`text-[10px] font-display uppercase tracking-[0.22em] ${
+                expanded ? 'text-felt-neon' : 'text-cream/45'
+              }`}
+            >
+              Drag · {expanded ? 'your move' : 'actions'}
             </span>
             <button
               type="button"
@@ -141,7 +181,7 @@ export function FloatingActionDock({
               Min
             </button>
           </div>
-          <div data-no-drag className="max-h-[min(55vh,28rem)] overflow-y-auto">
+          <div data-no-drag className="max-h-[min(50vh,24rem)] min-h-[11rem] w-[min(100vw-2rem,28rem)] overflow-y-auto">
             {children}
           </div>
         </div>

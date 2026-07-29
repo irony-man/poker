@@ -34,8 +34,8 @@ export interface TableConfig {
   maxSeats: number;
   smallBlind: number;
   bigBlind: number;
-  minBuyIn: number;
-  maxBuyIn: number;
+  /** Fixed buy-in / stack cap for the table. */
+  buyIn: number;
   turnTimeMs: number;
 }
 
@@ -319,14 +319,15 @@ export function sitIn(state: HandState, seat: number): ApplyResult {
   return { state: s, events, ok: true };
 }
 
-export function topUp(state: HandState, seat: number, amount: number, maxBuyIn: number): ApplyResult {
+export function topUp(state: HandState, seat: number, amount: number, buyIn: number): ApplyResult {
   const s = cloneState(state);
   if (s.street !== 'waiting' && s.street !== 'payout') {
     return { state, events: [], ok: false, error: 'Top-up only between hands' };
   }
   const p = s.players[seat];
   if (!p || p.status === 'empty') return { state, events: [], ok: false, error: 'Empty seat' };
-  if (p.stack + amount > maxBuyIn) return { state, events: [], ok: false, error: 'Exceeds max buy-in' };
+  if (p.stack > 0) return { state, events: [], ok: false, error: 'Top-up only when out of chips' };
+  if (p.stack + amount > buyIn) return { state, events: [], ok: false, error: 'Exceeds table buy-in' };
   p.stack += amount;
   if (p.status === 'sittingOut' && p.stack > 0) p.status = 'seated';
   s.version += 1;

@@ -2,6 +2,21 @@
 
 import { useEffect, useState } from 'react';
 
+/** True below Tailwind `sm` (640px) — portrait phone layout. */
+export function useIsNarrow(query = '(max-width: 639px)'): boolean {
+  const [narrow, setNarrow] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const sync = () => setNarrow(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, [query]);
+
+  return narrow;
+}
+
 /** Remaining ms until `endsAt` (epoch). Updates ~10×/sec. */
 export function useTurnRemainingMs(endsAt: number | null | undefined): number {
   const [remaining, setRemaining] = useState(0);
@@ -33,7 +48,7 @@ function normalizeAngle(deg: number): number {
 }
 
 /**
- * Seat angles with `heroSeat` fixed at the bottom (90°) and the top reserved for dealer/pot.
+ * Seat angles with `heroSeat` fixed at the bottom center (90°) and the top reserved for dealer/pot.
  * Spectators (no hero) keep seat 0 at the bottom.
  */
 export function seatAnglesForHero(maxSeats: number, heroSeat: number | undefined): number[] {
@@ -55,6 +70,7 @@ export function seatAnglesForHero(maxSeats: number, heroSeat: number | undefined
   }, 0);
 
   return Array.from({ length: maxSeats }, (_, seat) => {
+    if (seat === hero) return BOTTOM_CENTER;
     const offset = (seat - hero + maxSeats) % maxSeats;
     const posIdx = (bottomIdx + offset) % maxSeats;
     return positions[posIdx]!;

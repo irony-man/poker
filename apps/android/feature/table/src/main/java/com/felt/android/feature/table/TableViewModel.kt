@@ -73,9 +73,9 @@ class TableViewModel @Inject constructor(
             TableContract.Intent.StartHand ->
                 repository.send(ClientMessage.StartHand(tableId))
             is TableContract.Intent.AddBots -> {
-                val minBuyIn = _uiState.value.table?.config?.minBuyIn ?: 200
+                val buyIn = _uiState.value.table?.config?.buyIn ?: 1000
                 repository.send(
-                    ClientMessage.AddBot(tableId = tableId, buyIn = minBuyIn, count = intent.count),
+                    ClientMessage.AddBot(tableId = tableId, buyIn = buyIn, count = intent.count),
                 )
             }
             TableContract.Intent.RemoveAllBots ->
@@ -159,7 +159,7 @@ class TableViewModel @Inject constructor(
                 }
             }
 
-            runCatching { repository.connect(tableId) }
+            runCatching { repository.connect(tableId, spectate = route.spectate) }
                 .onFailure { err ->
                     _uiState.update {
                         it.copy(
@@ -193,7 +193,7 @@ class TableViewModel @Inject constructor(
         if (autoSitSent) return
         val empty = table.players.firstOrNull { it.status == "empty" } ?: return
         autoSitSent = true
-        repository.send(ClientMessage.Sit(tableId, empty.seat, table.config.maxBuyIn))
+        repository.send(ClientMessage.Sit(tableId, empty.seat, table.config.buyIn))
     }
 
     override fun onCleared() {

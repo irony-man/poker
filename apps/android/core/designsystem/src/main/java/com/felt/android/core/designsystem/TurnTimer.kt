@@ -177,6 +177,7 @@ fun SeatTurnRing(
 
 fun seatAngleForHero(seat: Int, maxSeats: Int, heroSeat: Int?): Double {
     val hero = heroSeat ?: 0
+    if (seat == hero) return 90.0
     val gapHalf = 40.0
     val arcStart = 270.0 + gapHalf
     val arcEnd = 270.0 - gapHalf + 360.0

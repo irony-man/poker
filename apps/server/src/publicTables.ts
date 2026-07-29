@@ -17,8 +17,7 @@ export function ensurePublicTables(rooms: RoomManager): void {
         maxSeats: 6,
         smallBlind: stake.smallBlind,
         bigBlind: stake.bigBlind,
-        minBuyIn: stake.minBuyIn,
-        maxBuyIn: stake.maxBuyIn,
+        buyIn: stake.buyIn,
         turnTimeMs: 20_000,
       },
     });
@@ -26,7 +25,7 @@ export function ensurePublicTables(rooms: RoomManager): void {
     const room = rooms.get(meta.id);
     if (room) {
       // Keep public tables lively when empty.
-      room.addBot(HOUSE_HOST, undefined, stake.minBuyIn, 2);
+      room.addBot(HOUSE_HOST, undefined, stake.buyIn, 2);
     }
   }
 }

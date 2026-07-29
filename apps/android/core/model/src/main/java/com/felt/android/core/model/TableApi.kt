@@ -7,8 +7,7 @@ data class TableConfig(
     val maxSeats: Int,
     val smallBlind: Int,
     val bigBlind: Int,
-    val minBuyIn: Int,
-    val maxBuyIn: Int,
+    val buyIn: Int,
     val turnTimeMs: Int,
 )
 
@@ -18,8 +17,7 @@ data class CreateTableRequest(
     val name: String = "Home Game",
     val smallBlind: Int = 5,
     val bigBlind: Int = 10,
-    val minBuyIn: Int = 200,
-    val maxBuyIn: Int = 1000,
+    val buyIn: Int = 1000,
     val turnTimeMs: Int = 20_000,
     val maxSeats: Int = 6,
     val botCount: Int = 0,

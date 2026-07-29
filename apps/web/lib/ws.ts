@@ -7,7 +7,11 @@ import { useSession, type PrivateView, type PublicTable } from './store';
 
 const RECONNECT_DELAY_MS = 2_000;
 
-export function usePokerSocket(tableId: string | null) {
+export function usePokerSocket(
+  tableId: string | null,
+  opts?: { spectate?: boolean },
+) {
+  const spectate = opts?.spectate ?? false;
   const ticket = useSession((s) => s.ticket);
   const setConnection = useSession((s) => s.setConnection);
   const applyStateSync = useSession((s) => s.applyStateSync);
@@ -17,6 +21,8 @@ export function usePokerSocket(tableId: string | null) {
   const wsRef = useRef<WebSocket | null>(null);
   const intentionalLeaveRef = useRef(false);
   const mountedRef = useRef(false);
+  const spectateRef = useRef(spectate);
+  spectateRef.current = spectate;
 
   useEffect(() => {
     if (!ticket || !tableId) return;
@@ -39,13 +45,19 @@ export function usePokerSocket(tableId: string | null) {
         ws!.send(JSON.stringify({ type: 'auth', ticket }));
       };
 
-    ws.onmessage = (ev) => {
-      const msg = JSON.parse(String(ev.data));
-      emitSocketMessage(msg);
-      switch (msg.type) {
+      ws.onmessage = (ev) => {
+        const msg = JSON.parse(String(ev.data));
+        emitSocketMessage(msg);
+        switch (msg.type) {
           case 'auth_ok':
             setConnection('open');
-            ws!.send(JSON.stringify({ type: 'join_table', tableId }));
+            ws!.send(
+              JSON.stringify({
+                type: 'join_table',
+                tableId,
+                ...(spectateRef.current ? { spectate: true } : {}),
+              }),
+            );
             break;
           case 'state_sync':
             applyStateSync(msg.table as PublicTable, (msg.private as PrivateView) ?? null);
@@ -102,11 +114,13 @@ export function usePokerSocket(tableId: string | null) {
     };
   }, [ticket, tableId, setConnection, applyStateSync, pushChat, setError, setEmoji]);
 
-  const send = useCallback((payload: unknown) => {
+  const send = useCallback((payload: unknown): boolean => {
     const open = wsRef.current;
     if (open && open.readyState === WebSocket.OPEN) {
       open.send(JSON.stringify(payload));
+      return true;
     }
+    return false;
   }, []);
 
   const leaveTable = useCallback(() => {

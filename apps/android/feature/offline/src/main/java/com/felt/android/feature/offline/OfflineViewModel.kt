@@ -49,8 +49,7 @@ data class OfflineUiState(
         maxSeats = 6,
         smallBlind = 5,
         bigBlind = 10,
-        minBuyIn = 200,
-        maxBuyIn = 1000,
+        buyIn = 1000,
         turnTimeMs = 20_000,
     ),
     val handState: HandState? = null,
@@ -77,8 +76,7 @@ class OfflineViewModel @Inject constructor(
         maxSeats = seats,
         smallBlind = 5,
         bigBlind = 10,
-        minBuyIn = 200,
-        maxBuyIn = 1000,
+        buyIn = 1000,
         turnTimeMs = 20_000,
     )
 
@@ -137,7 +135,7 @@ class OfflineViewModel @Inject constructor(
     private fun bootstrap() {
         viewModelScope.launch {
             var state = createEmptyTable(config)
-            val human = sitDown(state, 0, HUMAN_ID, name, config.minBuyIn)
+            val human = sitDown(state, 0, HUMAN_ID, name, config.buyIn)
             if (!human.ok) return@launch
             state = human.state
             val taken = mutableSetOf(name)
@@ -146,7 +144,7 @@ class OfflineViewModel @Inject constructor(
                 val empty = state.players.firstOrNull { it.status == PlayerStatus.Empty } ?: return@repeat
                 val botName = pickBotName(taken)
                 taken.add(botName)
-                val r = sitDown(state, empty.seat, makeBotUserId("off-$i"), botName, config.minBuyIn)
+                val r = sitDown(state, empty.seat, makeBotUserId("off-$i"), botName, config.buyIn)
                 if (r.ok) state = r.state
             }
             pushSystem("Dealer", "Offline table ready — you vs $botCount bot(s)")
@@ -353,8 +351,7 @@ class OfflineViewModel @Inject constructor(
                 maxSeats = view.config.maxSeats,
                 smallBlind = view.config.smallBlind,
                 bigBlind = view.config.bigBlind,
-                minBuyIn = view.config.minBuyIn,
-                maxBuyIn = view.config.maxBuyIn,
+                buyIn = view.config.buyIn,
                 turnTimeMs = view.config.turnTimeMs.toInt(),
             ),
         )

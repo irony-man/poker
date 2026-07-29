@@ -45,10 +45,10 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.hilt.android)
     implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.clerk.android.ui)
     ksp(libs.hilt.compiler)
 
     implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.material3)
 }

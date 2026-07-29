@@ -17,7 +17,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -51,6 +50,7 @@ import com.felt.android.core.model.PublicTable
 @Composable
 fun TableScreen(
     onBack: () -> Unit,
+    webBaseUrl: String = "http://localhost:3000",
     modifier: Modifier = Modifier,
     viewModel: TableViewModel = hiltViewModel(),
 ) {
@@ -104,12 +104,13 @@ fun TableScreen(
                 }
             }
 
-            state.invite?.let { code ->
-                Text(
-                    text = "Invite: $code",
-                    color = FeltColors.Gold,
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 12.sp,
+            val inviteCode = state.invite
+            val tableIdForShare = state.tableId.ifBlank { state.table?.tableId.orEmpty() }
+            if (inviteCode != null && tableIdForShare.isNotBlank()) {
+                TableInviteShare(
+                    tableId = tableIdForShare,
+                    inviteCode = inviteCode,
+                    webBaseUrl = webBaseUrl,
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }
@@ -153,7 +154,7 @@ fun TableScreen(
                             holeCards = state.private?.holeCards,
                             onSit = { seat ->
                                 viewModel.dispatch(
-                                    TableContract.Intent.Sit(seat, table.config.maxBuyIn),
+                                    TableContract.Intent.Sit(seat, table.config.buyIn),
                                 )
                             },
                             canSit = !state.spectating,
@@ -239,21 +240,17 @@ fun TableScreen(
         }
 
         val mySeatForTopUp = state.table?.players?.find { it.userId == state.userId }
-        if (topUpOpen && state.table != null && mySeatForTopUp != null) {
+        if (topUpOpen && state.table != null && mySeatForTopUp != null && mySeatForTopUp.stack == 0) {
             val table = state.table!!
-            val headroom = (table.config.maxBuyIn - mySeatForTopUp.stack).coerceAtLeast(0)
-            if (headroom > 0) {
-                TopUpDialog(
-                    currentStack = mySeatForTopUp.stack,
-                    minBuyIn = table.config.minBuyIn,
-                    maxBuyIn = table.config.maxBuyIn,
-                    onDismiss = { topUpOpen = false },
-                    onConfirm = { amount ->
-                        viewModel.dispatch(TableContract.Intent.TopUp(mySeatForTopUp.seat, amount))
-                        topUpOpen = false
-                    },
-                )
-            }
+            TopUpDialog(
+                currentStack = mySeatForTopUp.stack,
+                buyIn = table.config.buyIn,
+                onDismiss = { topUpOpen = false },
+                onConfirm = { amount ->
+                    viewModel.dispatch(TableContract.Intent.TopUp(mySeatForTopUp.seat, amount))
+                    topUpOpen = false
+                },
+            )
         }
 
         val table = state.table
@@ -325,11 +322,14 @@ private fun TableFooterControls(
         it.userId != null && it.stack > 0 && it.status != "sittingOut"
     }
     val betweenHands = table.street == "waiting" || table.street == "payout"
-    val canSitOut = myPlayer?.status == "seated" && betweenHands
+    val canSitOut =
+        myPlayer != null &&
+        betweenHands &&
+        myPlayer.status != "empty" &&
+        myPlayer.status != "sittingOut"
     val canSitIn = myPlayer?.status == "sittingOut" && betweenHands
-    val topUpHeadroom = myPlayer?.let { (table.config.maxBuyIn - it.stack).coerceAtLeast(0) } ?: 0
     val canTopUp = mySeat != null &&
-        topUpHeadroom > 0 &&
+        myPlayer?.stack == 0 &&
         (table.street == "waiting" || table.street == "payout")
     var botCount by remember { mutableIntStateOf(minOf(3, emptySeats.coerceAtLeast(1))) }
 
@@ -374,7 +374,7 @@ private fun TableFooterControls(
         }
         if (canTopUp) {
             FeltGhostButton(
-                text = "Top up (max +$topUpHeadroom)",
+                text = "Top up",
                 onClick = onTopUp,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -420,14 +420,11 @@ private fun ChatDrawer(
 @Composable
 private fun TopUpDialog(
     currentStack: Int,
-    minBuyIn: Int,
-    maxBuyIn: Int,
+    buyIn: Int,
     onDismiss: () -> Unit,
     onConfirm: (Int) -> Unit,
 ) {
-    val headroom = (maxBuyIn - currentStack).coerceAtLeast(0)
-    val minAmount = minOf(minBuyIn, headroom).coerceAtLeast(1)
-    var amount by remember(headroom) { mutableIntStateOf(headroom) }
+    val amount = (buyIn - currentStack).coerceAtLeast(0)
     Box(
         modifier = Modifier.fillMaxSize().background(FeltColors.Ink.copy(alpha = 0.7f)),
         contentAlignment = Alignment.Center,
@@ -436,21 +433,15 @@ private fun TopUpDialog(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Top up", color = FeltColors.Gold, fontWeight = FontWeight.Bold)
                 Text(
-                    "Stack $currentStack · table max $maxBuyIn",
+                    "Stack $currentStack · table buy-in $buyIn",
                     color = FeltColors.Cream.copy(alpha = 0.7f),
                     fontSize = 12.sp,
                 )
-                Text("Add: $amount (up to $headroom)")
-                Slider(
-                    value = amount.toFloat(),
-                    onValueChange = { amount = it.toInt().coerceIn(minAmount, headroom) },
-                    valueRange = minAmount.toFloat()..headroom.toFloat(),
-                )
+                Text("Add $amount to reach $buyIn")
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FeltGhostButton(text = "Fill to max", onClick = { amount = headroom })
                     FeltGhostButton(text = "Cancel", onClick = onDismiss, modifier = Modifier.weight(1f))
                     FeltPrimaryButton(
-                        text = "Add $amount",
+                        text = "Top up $amount",
                         onClick = { onConfirm(amount) },
                         modifier = Modifier.weight(1f),
                     )

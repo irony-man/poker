@@ -11,7 +11,7 @@ import {
   RegisterBodySchema,
 } from '@poker/protocol';
 import { AuthStore } from './auth.js';
-import { clerkAuthRequired, requireClerkIdentity } from './clerkAuth.js';
+import { optionalClerkIdentity } from './clerkAuth.js';
 import { FriendsStore } from './friends.js';
 import { createHistoryStore, writeSchemaDoc } from './history.js';
 import { createKv } from './kv.js';
@@ -46,14 +46,8 @@ async function main() {
   ensurePublicTables(rooms);
 
   async function requireUserId(req: express.Request, res: express.Response): Promise<string | null> {
-    if (clerkAuthRequired()) {
-      const identity = await requireClerkIdentity(req);
-      if (!identity) {
-        res.status(401).json({ error: 'Sign in required' });
-        return null;
-      }
-      return identity.userId;
-    }
+    const identity = await optionalClerkIdentity(req);
+    if (identity) return identity.userId;
     const userId = String(req.body?.userId ?? req.query?.userId ?? '');
     if (!userId || !auth.getUser(userId)) {
       res.status(401).json({ error: 'Register first' });
@@ -85,15 +79,8 @@ async function main() {
       return;
     }
 
-    let userId = parsed.data.userId;
-    if (clerkAuthRequired()) {
-      const identity = await requireClerkIdentity(req);
-      if (!identity) {
-        res.status(401).json({ error: 'Sign in required' });
-        return;
-      }
-      userId = identity.userId;
-    }
+    const identity = await optionalClerkIdentity(req);
+    const userId = identity?.userId ?? parsed.data.userId;
 
     const user = auth.register(parsed.data.name, parsed.data.avatarId, userId);
     const ticket = auth.issueTicket(user.id);
@@ -106,27 +93,8 @@ async function main() {
   });
 
   app.post('/api/ticket', async (req, res) => {
-    if (clerkAuthRequired()) {
-      const identity = await requireClerkIdentity(req);
-      if (!identity) {
-        res.status(401).json({ error: 'Sign in required' });
-        return;
-      }
-      const existing = auth.getUser(identity.userId);
-      if (!existing) {
-        res.status(401).json({ error: 'Register first' });
-        return;
-      }
-      res.json({
-        ticket: auth.issueTicket(existing.id),
-        userId: existing.id,
-        name: existing.name,
-        avatarId: existing.avatarId,
-      });
-      return;
-    }
-
-    const userId = String(req.body?.userId ?? '');
+    const identity = await optionalClerkIdentity(req);
+    const userId = identity?.userId ?? String(req.body?.userId ?? '');
     const user = auth.getUser(userId);
     if (!user) {
       res.status(401).json({ error: 'Unknown user' });
@@ -147,15 +115,8 @@ async function main() {
       return;
     }
 
-    let userId = String(req.body?.userId ?? '');
-    if (clerkAuthRequired()) {
-      const identity = await requireClerkIdentity(req);
-      if (!identity) {
-        res.status(401).json({ error: 'Sign in required' });
-        return;
-      }
-      userId = identity.userId;
-    }
+    const identity = await optionalClerkIdentity(req);
+    const userId = identity?.userId ?? String(req.body?.userId ?? '');
 
     const user = auth.getUser(userId);
     if (!user) {
@@ -175,8 +136,7 @@ async function main() {
         maxSeats: d.maxSeats,
         smallBlind: d.smallBlind,
         bigBlind: d.bigBlind,
-        minBuyIn: d.minBuyIn,
-        maxBuyIn: d.maxBuyIn,
+        buyIn: d.buyIn,
         turnTimeMs: d.turnTimeMs,
       },
     });
@@ -184,7 +144,7 @@ async function main() {
     const maxBots = Math.max(0, d.maxSeats - 1);
     const bots = Math.min(d.botCount, maxBots);
     if (bots > 0) {
-      room.addBot(user.id, undefined, d.minBuyIn, bots);
+      room.addBot(user.id, undefined, d.buyIn, bots);
     }
     res.json({
       tableId: meta.id,
@@ -304,8 +264,7 @@ async function main() {
           maxSeats: 2,
           smallBlind: 5,
           bigBlind: 10,
-          minBuyIn: 200,
-          maxBuyIn: 1000,
+          buyIn: 1000,
           turnTimeMs: 20000,
         },
       });
@@ -400,6 +359,13 @@ async function main() {
         tableId = msg.tableId;
         const avatarId = auth.getUser(userId)?.avatarId ?? 0;
         room.attach({ userId, name, avatarId, send });
+        // Join means play: seat automatically unless the client asked to spectate.
+        if (!msg.spectate) {
+          const seated = room.autoSit(userId, name);
+          if (!seated.ok && seated.error && seated.error !== 'Table full') {
+            send({ type: 'error', message: seated.error, code: 'sit_failed' });
+          }
+        }
         return;
       }
 

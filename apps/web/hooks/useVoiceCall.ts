@@ -8,8 +8,12 @@ import { VoiceCallSession, type VoiceCallSnapshot } from '@/lib/voiceCall';
 const IDLE: VoiceCallSnapshot = {
   state: 'idle',
   muted: true,
+  cameraOn: false,
+  wantsVideo: false,
   peers: [],
   error: null,
+  localStream: null,
+  remoteStreams: [],
 };
 
 export function useVoiceCall(
@@ -65,18 +69,29 @@ export function useVoiceCall(
     });
   }, []);
 
+  const joinCall = useCallback(
+    async (opts: { video?: boolean } = {}) => {
+      const session = sessionRef.current;
+      if (!session || inVoiceRef.current) return;
+      inVoiceRef.current = true;
+      try {
+        await session.join(opts);
+        send({ type: 'voice_join', tableId });
+      } catch {
+        inVoiceRef.current = false;
+        session.leave();
+      }
+    },
+    [send, tableId],
+  );
+
   const joinVoice = useCallback(async () => {
-    const session = sessionRef.current;
-    if (!session || inVoiceRef.current) return;
-    inVoiceRef.current = true;
-    try {
-      await session.join();
-      send({ type: 'voice_join', tableId });
-    } catch {
-      inVoiceRef.current = false;
-      session.leave();
-    }
-  }, [send, tableId]);
+    await joinCall({ video: false });
+  }, [joinCall]);
+
+  const joinVideo = useCallback(async () => {
+    await joinCall({ video: true });
+  }, [joinCall]);
 
   const leaveVoice = useCallback(() => {
     if (!inVoiceRef.current) return;
@@ -87,6 +102,10 @@ export function useVoiceCall(
 
   const toggleMute = useCallback(() => {
     sessionRef.current?.toggleMuted();
+  }, []);
+
+  const toggleCamera = useCallback(() => {
+    void sessionRef.current?.toggleCamera();
   }, []);
 
   useEffect(() => {
@@ -103,7 +122,9 @@ export function useVoiceCall(
     ...snap,
     inVoice: snap.state === 'connected' || snap.state === 'joining',
     joinVoice,
+    joinVideo,
     leaveVoice,
     toggleMute,
+    toggleCamera,
   };
 }

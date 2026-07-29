@@ -21,14 +21,16 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +43,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.cos
+import kotlin.math.roundToInt
 import kotlin.math.sin
 
 data class TablePlayerUi(
@@ -410,15 +413,20 @@ fun TableActionControls(
 ) {
     val mySeat = table.players.find { it.userId == userId }?.seat
     val isTurn = table.toAct == mySeat && legal != null
-    val bb = table.bigBlind
+    val bb = table.bigBlind.coerceAtLeast(1)
     val min = legal?.minRaiseTo ?: 0
     val max = legal?.maxRaiseTo ?: 0
-    var raiseInput by remember(min, table.actionSeq) { mutableStateOf(min.toString()) }
+    var raiseAmount by remember(min, table.actionSeq) { mutableIntStateOf(min) }
+    val isCompact = LocalConfiguration.current.screenWidthDp < 600
 
-    fun snap(v: Int) = ((v / bb) * bb).coerceIn(min, max)
-    fun parseRaise() = snap(raiseInput.toIntOrNull() ?: min)
-    fun commitRaiseInput() {
-        raiseInput = parseRaise().toString()
+    fun snap(v: Int): Int {
+        if (max <= min) return min
+        val snapped = ((v.toFloat() / bb).roundToInt() * bb)
+        return snapped.coerceIn(min, max)
+    }
+
+    fun setRaise(raw: Int) {
+        raiseAmount = snap(raw)
     }
 
     if (!isTurn || legal == null || legal.types.isEmpty()) {
@@ -439,6 +447,11 @@ fun TableActionControls(
 
     val canBet = "bet" in legal.types || "raise" in legal.types
     val betLabel = if ("bet" in legal.types) "Bet" else "Raise"
+    val amount = snap(raiseAmount)
+    val pot = table.pot
+    val currentBet = table.players.maxOfOrNull { it.bet } ?: 0
+    val halfPot = snap((pot / 2) + currentBet)
+    val potBet = snap(pot + currentBet)
 
     Column(modifier = modifier.fillMaxWidth().padding(top = 4.dp)) {
         Box(
@@ -454,80 +467,141 @@ fun TableActionControls(
         ) {
             Column(
                 modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 StatusChip(text = "Your move", accent = FeltColors.Neon)
-            if (canBet) {
-                OutlinedTextField(
-                    value = raiseInput,
-                    onValueChange = { raiseInput = it.filter { ch -> ch.isDigit() } },
-                    label = { Text("$betLabel to") },
-                    supportingText = { Text("$min – $max") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    keyboardActions = KeyboardActions(onDone = { commitRaiseInput() }),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = FeltColors.Cream,
-                        unfocusedTextColor = FeltColors.Cream,
-                        focusedBorderColor = FeltColors.Gold.copy(alpha = 0.5f),
-                        unfocusedBorderColor = FeltColors.Cream.copy(alpha = 0.2f),
-                    ),
+                if (canBet) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Bottom,
+                    ) {
+                        Text(
+                            text = "$betLabel to",
+                            color = FeltColors.Cream.copy(alpha = 0.5f),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = "$amount",
+                            color = FeltColors.Gold,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                        )
+                    }
+                    Text(
+                        text = "$min – $max",
+                        color = FeltColors.Cream.copy(alpha = 0.4f),
+                        fontSize = 10.sp,
+                    )
+                    Slider(
+                        value = amount.toFloat(),
+                        onValueChange = { setRaise(it.roundToInt()) },
+                        valueRange = min.toFloat()..max.coerceAtLeast(min).toFloat(),
+                        steps = if (max > min && bb > 0) {
+                            (((max - min) / bb) - 1).coerceAtLeast(0)
+                        } else {
+                            0
+                        },
+                        enabled = max > min,
+                        colors = SliderDefaults.colors(
+                            thumbColor = FeltColors.Gold,
+                            activeTrackColor = FeltColors.Gold.copy(alpha = 0.85f),
+                            inactiveTrackColor = FeltColors.Cream.copy(alpha = 0.15f),
+                            disabledThumbColor = FeltColors.Gold.copy(alpha = 0.35f),
+                            disabledActiveTrackColor = FeltColors.Gold.copy(alpha = 0.25f),
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (!isCompact) {
+                        OutlinedTextField(
+                            value = amount.toString(),
+                            onValueChange = { raw ->
+                                val digits = raw.filter { it.isDigit() }
+                                if (digits.isEmpty()) setRaise(min)
+                                else setRaise(digits.toIntOrNull() ?: min)
+                            },
+                            label = { Text("$betLabel to") },
+                            supportingText = { Text("$min – $max") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            keyboardActions = KeyboardActions(onDone = { setRaise(amount) }),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = FeltColors.Cream,
+                                unfocusedTextColor = FeltColors.Cream,
+                                focusedBorderColor = FeltColors.Gold.copy(alpha = 0.5f),
+                                unfocusedBorderColor = FeltColors.Cream.copy(alpha = 0.2f),
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        listOf(
+                            "Min" to min,
+                            "½ Pot" to halfPot,
+                            "Pot" to potBet,
+                            "Max" to max,
+                        ).forEach { (label, value) ->
+                            FeltChoiceChip(
+                                text = label,
+                                selected = amount == value,
+                                onClick = { setRaise(value) },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                }
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                if ("fold" in legal.types) {
-                    FeltGhostButton(
-                        text = "Fold",
-                        onClick = { onAction("fold", null) },
-                        modifier = Modifier.weight(1f),
-                    )
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    if ("fold" in legal.types) {
+                        FeltGhostButton(
+                            text = "Fold",
+                            onClick = { onAction("fold", null) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    if ("check" in legal.types) {
+                        FeltGhostButton(
+                            text = "Check",
+                            onClick = { onAction("check", null) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    if ("call" in legal.types) {
+                        FeltGhostButton(
+                            text = "Call ${legal.callAmount}",
+                            onClick = { onAction("call", null) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    if ("bet" in legal.types) {
+                        FeltPrimaryButton(
+                            text = "Bet $amount",
+                            onClick = { onAction("bet", amount) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    if ("raise" in legal.types) {
+                        FeltPrimaryButton(
+                            text = "Raise $amount",
+                            onClick = { onAction("raise", amount) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    if ("allin" in legal.types) {
+                        FeltPrimaryButton(
+                            text = "All-in",
+                            onClick = { onAction("allin", null) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
-                if ("check" in legal.types) {
-                    FeltGhostButton(
-                        text = "Check",
-                        onClick = { onAction("check", null) },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                if ("call" in legal.types) {
-                    FeltGhostButton(
-                        text = "Call ${legal.callAmount}",
-                        onClick = { onAction("call", null) },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                if ("bet" in legal.types) {
-                    FeltPrimaryButton(
-                        text = "Bet ${parseRaise()}",
-                        onClick = {
-                            commitRaiseInput()
-                            onAction("bet", parseRaise())
-                        },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                if ("raise" in legal.types) {
-                    FeltPrimaryButton(
-                        text = "Raise ${parseRaise()}",
-                        onClick = {
-                            commitRaiseInput()
-                            onAction("raise", parseRaise())
-                        },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                if ("allin" in legal.types) {
-                    FeltPrimaryButton(
-                        text = "All-in",
-                        onClick = { onAction("allin", null) },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-            }
             }
         }
     }

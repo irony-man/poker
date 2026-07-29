@@ -11,6 +11,8 @@ export const ClientMessageSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('join_table'),
     tableId: z.string().min(1),
+    /** When true, join as spectator only (no auto-sit). Default: sit if a seat is free. */
+    spectate: z.boolean().optional(),
   }),
   z.object({
     type: z.literal('leave_table'),
@@ -163,8 +165,7 @@ export const CreateTableBodySchema = z.object({
   name: z.string().min(1).max(64).default('Home Game'),
   smallBlind: z.number().int().positive().default(5),
   bigBlind: z.number().int().positive().default(10),
-  minBuyIn: z.number().int().positive().default(200),
-  maxBuyIn: z.number().int().positive().default(1000),
+  buyIn: z.number().int().positive().default(1000),
   turnTimeMs: z.number().int().positive().default(20000),
   maxSeats: z.number().int().min(2).max(9).default(6),
   /** Seat bots when the table is created (host still needs to sit). */

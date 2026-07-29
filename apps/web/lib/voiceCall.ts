@@ -1,3 +1,5 @@
+'use client';
+
 import type { VoicePeer, VoiceSignalPayload } from '@poker/protocol';
 
 const RTC_CONFIG: RTCConfiguration = {
@@ -9,20 +11,31 @@ export type VoiceCallState = 'idle' | 'joining' | 'connected' | 'error';
 export interface VoiceCallSnapshot {
   state: VoiceCallState;
   muted: boolean;
+  /** Local camera track currently enabled (and present). */
+  cameraOn: boolean;
+  /** True when this session requested video on join or later acquired a camera track. */
+  wantsVideo: boolean;
   peers: VoicePeer[];
   error: string | null;
+  /** Live preview of local AV (audio may be muted). */
+  localStream: MediaStream | null;
+  /** Remote peer media streams (audio + optional video). */
+  remoteStreams: { userId: string; name: string; stream: MediaStream }[];
 }
 
 type Listener = (snap: VoiceCallSnapshot) => void;
 
-/** Mesh WebRTC voice — new joiners offer to everyone already in the roster. */
+/** Mesh WebRTC AV — new joiners offer to everyone already in the roster. */
 export class VoiceCallSession {
   private localStream: MediaStream | null = null;
   private peers = new Map<string, RTCPeerConnection>();
+  private remoteStreams = new Map<string, MediaStream>();
   private remoteAudio = new Map<string, HTMLAudioElement>();
   private roster = new Map<string, VoicePeer>();
   private state: VoiceCallState = 'idle';
   private muted = true;
+  private cameraOn = false;
+  private wantsVideo = false;
   private error: string | null = null;
   private listeners = new Set<Listener>();
 
@@ -41,8 +54,18 @@ export class VoiceCallSession {
     return {
       state: this.state,
       muted: this.muted,
+      cameraOn: this.cameraOn,
+      wantsVideo: this.wantsVideo,
       peers: [...this.roster.values()].filter((p) => p.userId !== this.userId),
       error: this.error,
+      localStream: this.localStream,
+      remoteStreams: [...this.remoteStreams.entries()]
+        .filter(([id]) => id !== this.userId)
+        .map(([userId, stream]) => ({
+          userId,
+          name: this.roster.get(userId)?.name ?? 'Player',
+          stream,
+        })),
     };
   }
 
@@ -51,10 +74,11 @@ export class VoiceCallSession {
     for (const listener of this.listeners) listener(snap);
   }
 
-  async join(): Promise<void> {
+  async join(opts: { video?: boolean } = {}): Promise<void> {
     if (this.state === 'joining' || this.state === 'connected') return;
     this.state = 'joining';
     this.error = null;
+    this.wantsVideo = !!opts.video;
     this.emit();
     try {
       this.localStream = await navigator.mediaDevices.getUserMedia({
@@ -63,16 +87,28 @@ export class VoiceCallSession {
           noiseSuppression: true,
           autoGainControl: true,
         },
-        video: false,
+        video: opts.video
+          ? {
+              facingMode: 'user',
+              width: { ideal: 640 },
+              height: { ideal: 360 },
+            }
+          : false,
       });
       this.setMuted(true);
+      this.cameraOn = this.localStream.getVideoTracks().some((t) => t.enabled);
       this.state = 'connected';
       this.emit();
     } catch (err) {
       this.state = 'error';
-      this.error =
-        err instanceof DOMException && err.name === 'NotAllowedError'
-          ? 'Microphone permission denied'
+      this.wantsVideo = false;
+      const denied = err instanceof DOMException && err.name === 'NotAllowedError';
+      this.error = denied
+        ? opts.video
+          ? 'Camera / mic permission denied'
+          : 'Microphone permission denied'
+        : opts.video
+          ? 'Could not access camera or microphone'
           : 'Could not access microphone';
       this.emit();
       throw err;
@@ -88,6 +124,7 @@ export class VoiceCallSession {
       audio.remove();
     }
     this.remoteAudio.clear();
+    this.remoteStreams.clear();
     if (this.localStream) {
       for (const track of this.localStream.getTracks()) track.stop();
       this.localStream = null;
@@ -96,6 +133,8 @@ export class VoiceCallSession {
     this.state = 'idle';
     this.error = null;
     this.muted = true;
+    this.cameraOn = false;
+    this.wantsVideo = false;
     this.emit();
   }
 
@@ -111,6 +150,56 @@ export class VoiceCallSession {
 
   toggleMuted(): void {
     this.setMuted(!this.muted);
+  }
+
+  async setCameraEnabled(enabled: boolean): Promise<void> {
+    if (this.state !== 'connected' || !this.localStream) return;
+
+    const existing = this.localStream.getVideoTracks()[0];
+    if (existing) {
+      existing.enabled = enabled;
+      this.cameraOn = enabled;
+      this.wantsVideo = this.wantsVideo || enabled;
+      this.emit();
+      return;
+    }
+
+    if (!enabled) {
+      this.cameraOn = false;
+      this.emit();
+      return;
+    }
+
+    try {
+      const cam = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'user',
+          width: { ideal: 640 },
+          height: { ideal: 360 },
+        },
+        audio: false,
+      });
+      const track = cam.getVideoTracks()[0];
+      if (!track) return;
+      this.localStream.addTrack(track);
+      this.cameraOn = true;
+      this.wantsVideo = true;
+      for (const [peerId, pc] of this.peers) {
+        pc.addTrack(track, this.localStream);
+        await this.renegotiate(peerId, pc);
+      }
+      this.emit();
+    } catch (err) {
+      this.error =
+        err instanceof DOMException && err.name === 'NotAllowedError'
+          ? 'Camera permission denied'
+          : 'Could not access camera';
+      this.emit();
+    }
+  }
+
+  async toggleCamera(): Promise<void> {
+    await this.setCameraEnabled(!this.cameraOn);
   }
 
   async applyRoster(peers: VoicePeer[]): Promise<void> {
@@ -134,6 +223,7 @@ export class VoiceCallSession {
     this.roster.delete(peerId);
     this.peers.get(peerId)?.close();
     this.peers.delete(peerId);
+    this.remoteStreams.delete(peerId);
     const audio = this.remoteAudio.get(peerId);
     if (audio) {
       audio.pause();
@@ -167,13 +257,17 @@ export class VoiceCallSession {
     }
   }
 
-  private async createOffer(peerId: string): Promise<void> {
-    const pc = await this.ensurePeer(peerId);
+  private async renegotiate(peerId: string, pc: RTCPeerConnection): Promise<void> {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     if (offer.sdp) {
       this.sendSignal(peerId, { type: 'offer', sdp: offer.sdp });
     }
+  }
+
+  private async createOffer(peerId: string): Promise<void> {
+    const pc = await this.ensurePeer(peerId);
+    await this.renegotiate(peerId, pc);
   }
 
   private async ensurePeer(peerId: string): Promise<RTCPeerConnection> {
@@ -204,18 +298,31 @@ export class VoiceCallSession {
     };
 
     pc.ontrack = (ev) => {
-      let audio = this.remoteAudio.get(peerId);
-      if (!audio) {
-        audio = document.createElement('audio');
-        audio.autoplay = true;
-        audio.setAttribute('playsinline', 'true');
-        audio.style.display = 'none';
-        document.body.appendChild(audio);
-        this.remoteAudio.set(peerId, audio);
+      let stream = this.remoteStreams.get(peerId);
+      if (!stream) {
+        stream = ev.streams[0] ?? new MediaStream();
+        this.remoteStreams.set(peerId, stream);
       }
-      const stream = ev.streams[0] ?? new MediaStream([ev.track]);
-      audio.srcObject = stream;
-      void audio.play().catch(() => {});
+      if (!stream.getTracks().includes(ev.track)) {
+        stream.addTrack(ev.track);
+      }
+
+      // Keep a hidden audio element for reliable autoplay of remote audio.
+      if (ev.track.kind === 'audio') {
+        let audio = this.remoteAudio.get(peerId);
+        if (!audio) {
+          audio = document.createElement('audio');
+          audio.autoplay = true;
+          audio.setAttribute('playsinline', 'true');
+          audio.style.display = 'none';
+          document.body.appendChild(audio);
+          this.remoteAudio.set(peerId, audio);
+        }
+        audio.srcObject = stream;
+        void audio.play().catch(() => {});
+      }
+
+      this.emit();
     };
 
     pc.onconnectionstatechange = () => {

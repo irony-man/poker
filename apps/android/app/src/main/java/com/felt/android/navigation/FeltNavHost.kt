@@ -11,6 +11,7 @@ import com.felt.android.feature.lobby.LobbyScreen
 import com.felt.android.feature.offline.OfflineTableRoute
 import com.felt.android.feature.offline.OfflineTableScreen
 import com.felt.android.feature.table.OnlineTableRoute
+import com.felt.android.BuildConfig
 import com.felt.android.feature.table.TableScreen
 
 @Composable
@@ -39,6 +40,7 @@ fun FeltNavHost(modifier: Modifier = Modifier) {
         }
         composable<OnlineTableRoute> {
             TableScreen(
+                webBaseUrl = BuildConfig.FELT_WEB_URL,
                 onBack = {
                     navController.popBackStack(LobbyRoute, inclusive = false)
                 },

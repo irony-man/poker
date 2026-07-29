@@ -89,7 +89,7 @@ export function PublicTablesPanel({
               <p className="text-sm text-cream/70">
                 Buy-in{' '}
                 <span className="font-medium text-cream">
-                  {formatMoney(stake.minBuyIn)}–{formatMoney(stake.maxBuyIn)}
+                  {formatMoney(stake.buyIn)}
                 </span>
               </p>
               <button

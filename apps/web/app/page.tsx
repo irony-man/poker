@@ -1,37 +1,19 @@
 'use client';
 
-import { SignInButton, SignUpButton, useAuth, useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { ChoiceRow } from '@/components/ChoiceRow';
 import { AvatarPicker } from '@/components/PlayerAvatar';
-import { FriendsPanel } from '@/components/FriendsPanel';
 import { PublicTablesPanel } from '@/components/PublicTablesPanel';
 import { createTable, register, resolveInvite } from '@/lib/api';
 import { loadSavedAvatarId, saveAvatarId } from '@/lib/avatars';
 import { useSession } from '@/lib/store';
 import { DEFAULT_STAKE_ID, STAKE_PRESETS, stakeById } from '@poker/protocol';
 
-function clerkDisplayName(user: {
-  fullName?: string | null;
-  username?: string | null;
-  firstName?: string | null;
-  primaryEmailAddress?: { emailAddress: string } | null;
-} | null | undefined): string {
-  if (!user) return 'Player';
-  const fromProfile =
-    user.fullName?.trim() ||
-    user.username?.trim() ||
-    user.firstName?.trim() ||
-    user.primaryEmailAddress?.emailAddress?.split('@')[0];
-  return (fromProfile || 'Player').slice(0, 32);
-}
-
+const SEAT_OPTIONS = [2, 3, 4, 5, 6, 7, 8, 9] as const;
 export default function HomePage() {
   const router = useRouter();
-  const { isLoaded, isSignedIn, getToken } = useAuth();
-  const { user } = useUser();
   const setSession = useSession((s) => s.setSession);
-  const sessionUserId = useSession((s) => s.userId);
   const sessionName = useSession((s) => s.name);
   const [name, setName] = useState(sessionName ?? '');
   const [avatarId, setAvatarId] = useState(0);
@@ -68,30 +50,6 @@ export default function HomePage() {
   }, [setSession]);
 
   useEffect(() => {
-    if (!isLoaded || !isSignedIn || !user) return;
-    setName((prev) => prev.trim() || clerkDisplayName(user));
-  }, [isLoaded, isSignedIn, user]);
-
-  useEffect(() => {
-    if (!isLoaded || !isSignedIn || sessionUserId) return;
-    const display = name.trim() || clerkDisplayName(user);
-    void (async () => {
-      try {
-        const clerkToken = await getToken();
-        if (!clerkToken) return;
-        const s = await register(display || clerkDisplayName(user), avatarId, { clerkToken });
-        const session = { ...s, avatarId: s.avatarId ?? avatarId };
-        setSession(session);
-        localStorage.setItem('felt-session', JSON.stringify(session));
-        saveAvatarId(session.avatarId);
-      } catch {
-        /* friends panel stays hidden until register succeeds */
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- register once when signed in
-  }, [isLoaded, isSignedIn, sessionUserId, user]);
-
-  useEffect(() => {
     const maxBots = Math.max(0, maxSeats - 1);
     if (botCount > maxBots) setBotCount(maxBots);
   }, [maxSeats, botCount]);
@@ -102,12 +60,18 @@ export default function HomePage() {
   }
 
   async function ensureSession(displayName: string) {
-    if (!isSignedIn) throw new Error('Sign in required for online play');
-    const clerkToken = await getToken();
-    if (!clerkToken) throw new Error('Sign in required for online play');
-    const s = await register(displayName.trim() || clerkDisplayName(user), avatarId, {
-      clerkToken,
-    });
+    const trimmed = displayName.trim() || 'Player';
+    const raw = localStorage.getItem('felt-session');
+    let existingUserId: string | undefined;
+    if (raw) {
+      try {
+        const prev = JSON.parse(raw) as { userId?: string };
+        if (prev.userId) existingUserId = prev.userId;
+      } catch {
+        /* ignore */
+      }
+    }
+    const s = await register(trimmed, avatarId, { userId: existingUserId });
     const session = { ...s, avatarId: s.avatarId ?? avatarId };
     setSession(session);
     localStorage.setItem('felt-session', JSON.stringify(session));
@@ -117,31 +81,26 @@ export default function HomePage() {
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!isSignedIn) {
-      setError('Sign in to host an online table');
+    if (!name.trim()) {
+      setError('Enter a callsign to play');
       return;
     }
     setBusy(true);
     setError(null);
     try {
-      const session = await ensureSession(name.trim() || clerkDisplayName(user));
-      const clerkToken = await getToken();
+      const session = await ensureSession(name);
       const stake = stakeById(hostStakeId) ?? STAKE_PRESETS[1]!;
-      const table = await createTable(
-        {
-          userId: session.userId,
-          name: `${session.name}'s Table`,
-          smallBlind: stake.smallBlind,
-          bigBlind: stake.bigBlind,
-          minBuyIn: stake.minBuyIn,
-          maxBuyIn: stake.maxBuyIn,
-          turnTimeMs: 20000,
-          maxSeats,
-          botCount,
-          isPrivate: true,
-        },
-        { clerkToken },
-      );
+      const table = await createTable({
+        userId: session.userId,
+        name: `${session.name}'s Table`,
+        smallBlind: stake.smallBlind,
+        bigBlind: stake.bigBlind,
+        buyIn: stake.buyIn,
+        turnTimeMs: 20000,
+        maxSeats,
+        botCount,
+        isPrivate: true,
+      });
       router.push(`/table/${table.tableId}?invite=${table.inviteCode}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
@@ -151,14 +110,14 @@ export default function HomePage() {
   }
 
   async function enterInvite(mode: 'play' | 'spectate') {
-    if (!isSignedIn) {
-      setError('Sign in to join an online table');
+    if (!name.trim()) {
+      setError('Enter a callsign to play');
       return;
     }
     setBusy(true);
     setError(null);
     try {
-      await ensureSession(name.trim() || clerkDisplayName(user));
+      await ensureSession(name);
       const t = await resolveInvite(invite.trim());
       const spectate = mode === 'spectate' ? '&mode=spectate' : '';
       router.push(`/table/${t.tableId}?invite=${t.inviteCode}${spectate}`);
@@ -180,14 +139,14 @@ export default function HomePage() {
   }
 
   async function joinPublicTable(tableId: string, inviteCode: string) {
-    if (!isSignedIn) {
-      setError('Sign in to join a public table');
+    if (!name.trim()) {
+      setError('Enter a callsign to play');
       return;
     }
     setBusy(true);
     setError(null);
     try {
-      await ensureSession(name.trim() || clerkDisplayName(user));
+      await ensureSession(name);
       router.push(`/table/${tableId}?invite=${inviteCode}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
@@ -200,11 +159,9 @@ export default function HomePage() {
 
   function onOffline(e: React.FormEvent) {
     e.preventDefault();
-    const display = encodeURIComponent(name.trim() || clerkDisplayName(user) || 'Player');
+    const display = encodeURIComponent(name.trim() || 'Player');
     router.push(`/offline?name=${display}&seats=${offlineSeats}`);
   }
-
-  const onlineLocked = isLoaded && !isSignedIn;
 
   return (
     <div className="relative mx-auto w-full max-w-5xl px-1 sm:px-0 pt-4 sm:pt-8 pb-8">
@@ -218,30 +175,10 @@ export default function HomePage() {
           Felt
         </h1>
         <p className="mt-3 mx-auto max-w-xl text-cream/65 text-base sm:text-lg font-medium tracking-wide leading-relaxed">
-          Drop into No-Limit Texas Hold&apos;em. Host a private table, join or spectate with a code, or
+          Drop into No-Limit Texas Hold&apos;em. Pick a callsign, host a table, join with a code, or
           grind offline vs bots.
         </p>
       </div>
-
-      {onlineLocked && (
-        <div className="mt-6 hud-panel mx-auto max-w-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
-          <p className="text-sm text-cream/70 font-medium">
-            Sign in with Clerk to host or join online tables. Offline play stays open to everyone.
-          </p>
-          <div className="flex gap-2 shrink-0">
-            <SignInButton mode="modal">
-              <button type="button" className="btn-ghost text-xs py-1.5 px-3">
-                Sign in
-              </button>
-            </SignInButton>
-            <SignUpButton mode="modal">
-              <button type="button" className="btn-primary text-xs py-1.5 px-3">
-                Sign up
-              </button>
-            </SignUpButton>
-          </div>
-        </div>
-      )}
 
       <div className="mt-6 hud-panel mx-auto max-w-xl p-4 sm:p-5">
         <AvatarPicker value={avatarId} onChange={pickAvatar} />
@@ -264,55 +201,43 @@ export default function HomePage() {
               className="hud-input"
               required
               maxLength={32}
-              disabled={onlineLocked}
+              placeholder="Your name at the table"
             />
           </label>
-          <label className="block">
-            <span className="hud-label">Stakes</span>
-            <select
-              value={hostStakeId}
-              onChange={(e) => setHostStakeId(e.target.value)}
-              className="field-select mt-1"
-              disabled={onlineLocked}
-            >
-              {STAKE_PRESETS.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.label} · ${s.minBuyIn}–${s.maxBuyIn} ({s.smallBlind}/{s.bigBlind})
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            <span className="hud-label">Seats</span>
-            <select
-              value={maxSeats}
-              onChange={(e) => setMaxSeats(Number(e.target.value))}
-              className="field-select mt-1"
-              disabled={onlineLocked}
-            >
-              {[2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-                <option key={n} value={n}>
-                  {n} seats
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            <span className="hud-label">Starting bots</span>
-            <select
-              value={botCount}
-              onChange={(e) => setBotCount(Number(e.target.value))}
-              className="field-select mt-1"
-              disabled={onlineLocked}
-            >
-              {Array.from({ length: maxBots + 1 }, (_, n) => (
-                <option key={n} value={n}>
-                  {n === 0 ? 'None' : `${n} bot${n === 1 ? '' : 's'}`}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button disabled={busy || onlineLocked} type="submit" className="btn-primary mt-auto w-full">
+          <ChoiceRow
+            label="Stakes"
+            name="host-stakes"
+            selected={hostStakeId}
+            options={STAKE_PRESETS.map((s) => s.id)}
+            onSelect={setHostStakeId}
+            format={(id) => {
+              const s = stakeById(id)!;
+              return (
+                <span className="inline-flex flex-col items-start leading-tight">
+                  <span>{s.label}</span>
+                  <span className="text-[10px] font-medium opacity-70">
+                    ${s.buyIn} · {s.smallBlind}/{s.bigBlind}
+                  </span>
+                </span>
+              );
+            }}
+          />
+          <ChoiceRow
+            label="Seats"
+            name="host-seats"
+            selected={maxSeats}
+            options={SEAT_OPTIONS}
+            onSelect={setMaxSeats}
+          />
+          <ChoiceRow
+            label="Starting bots"
+            name="host-bots"
+            selected={botCount}
+            options={Array.from({ length: maxBots + 1 }, (_, n) => n)}
+            onSelect={setBotCount}
+            format={(n) => (n === 0 ? 'None' : String(n))}
+          />
+          <button disabled={busy} type="submit" className="btn-primary mt-auto w-full">
             Create private table
           </button>
         </form>
@@ -330,7 +255,7 @@ export default function HomePage() {
               className="hud-input"
               required
               maxLength={32}
-              disabled={onlineLocked}
+              placeholder="Your name at the table"
             />
           </label>
           <label className="block">
@@ -340,15 +265,14 @@ export default function HomePage() {
               onChange={(e) => setInvite(e.target.value)}
               className="hud-input font-mono tracking-widest uppercase"
               required
-              disabled={onlineLocked}
             />
           </label>
           <div className="mt-auto grid grid-cols-2 gap-2.5 pt-1">
-            <button disabled={busy || onlineLocked} type="submit" className="btn-ghost w-full">
+            <button disabled={busy} type="submit" className="btn-ghost w-full">
               Enter table
             </button>
             <button
-              disabled={busy || onlineLocked || !invite.trim()}
+              disabled={busy || !invite.trim()}
               type="button"
               onClick={onSpectate}
               className="rounded border border-cyan/35 bg-cyan/10 px-4 py-2.5 text-sm font-display font-semibold uppercase tracking-wider text-cyan transition hover:bg-cyan/20 disabled:opacity-40"
@@ -358,16 +282,7 @@ export default function HomePage() {
           </div>
         </form>
 
-        <PublicTablesPanel disabled={onlineLocked || busy} onJoin={joinPublicTable} />
-
-        {isSignedIn && sessionUserId && (
-          <FriendsPanel
-            disabled={onlineLocked}
-            onNavigateTable={(tableId, inviteCode) => {
-              router.push(`/table/${tableId}?invite=${inviteCode}`);
-            }}
-          />
-        )}
+        <PublicTablesPanel disabled={busy} onJoin={joinPublicTable} />
 
         <form
           onSubmit={onOffline}
@@ -397,20 +312,14 @@ export default function HomePage() {
                 maxLength={32}
               />
             </label>
-            <label className="block min-w-0">
-              <span className="hud-label">Seats</span>
-              <select
-                value={offlineSeats}
-                onChange={(e) => setOfflineSeats(Number(e.target.value))}
-                className="field-select mt-1"
-              >
-                {[2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-                  <option key={n} value={n}>
-                    {n} seats · {n - 1} bots
-                  </option>
-                ))}
-              </select>
-            </label>
+            <ChoiceRow
+              label="Seats"
+              name="offline-seats"
+              selected={offlineSeats}
+              options={SEAT_OPTIONS}
+              onSelect={setOfflineSeats}
+              format={(n) => `${n} · ${n - 1} bots`}
+            />
           </div>
           <button type="submit" className="btn-ghost w-full sm:w-auto sm:self-start">
             Launch offline game

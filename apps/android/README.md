@@ -23,15 +23,19 @@ Multi-module Jetpack Compose client for Felt poker.
 | `FELT_API_URL` | `https://felt-server-hgi4.onrender.com` |
 | `FELT_WS_URL` | `wss://felt-server-hgi4.onrender.com/ws` |
 
-Override in `app/build.gradle.kts` for local server (`http://10.0.2.2:4000` on emulator).
+Override in `local.properties` for a local anonymous server:
 
-## Auth (Clerk)
+```properties
+# Emulator → host machine
+felt.api.url=http://10.0.2.2:4000
+felt.ws.url=ws://10.0.2.2:4000/ws
 
-Online host/join requires a Clerk account (same app as the web client). Offline play does not.
+# Physical device → your machine's LAN IP
+# felt.api.url=http://192.168.x.x:4000
+# felt.ws.url=ws://192.168.x.x:4000/ws
+```
 
-1. In the [Clerk Dashboard](https://dashboard.clerk.com), open **Native applications** and enable the **Native API**.
-2. The publishable key is baked into `BuildConfig.CLERK_PUBLISHABLE_KEY` (override with `clerk.publishable.key=…` in `local.properties`).
-3. The game server must have `CLERK_SECRET_KEY` set so `/api/register` accepts Bearer session JWTs.
+Play uses callsign only — no Clerk sign-in. Production Render may still return **401** until the anonymous-auth server is deployed; use a local server in that case.
 
 ## Modules
 

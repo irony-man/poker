@@ -40,10 +40,24 @@ function CardFace({
   );
 }
 
+const SIZE = {
+  /** Opponents on narrow phones */
+  xs: 'w-7 h-[2.625rem] sm:w-12 sm:h-[4.5rem]',
+  /** Opponents / compact */
+  sm: 'w-9 h-[3.375rem] sm:w-14 sm:h-[5.25rem]',
+  /** Board + hero on mobile; full size on desktop */
+  md: 'w-11 h-[4.125rem] sm:w-20 sm:h-[7.5rem] md:w-24 md:h-36',
+  /** Legacy default (desktop-first) */
+  lg: 'w-14 h-[5.25rem] sm:w-24 sm:h-36',
+} as const;
+
+export type CardSize = keyof typeof SIZE;
+
 export function PlayingCard({
   code,
   faceDown = false,
   small = false,
+  size,
   highlight = false,
   dimmed = false,
   /** Stagger delay for the one-shot deal-in (seconds). */
@@ -51,18 +65,18 @@ export function PlayingCard({
 }: {
   code?: string;
   faceDown?: boolean;
+  /** @deprecated Prefer `size="sm"` */
   small?: boolean;
+  size?: CardSize;
   /** Part of the winning five-card hand at showdown. */
   highlight?: boolean;
   /** Showdown: not used in a winning hand. */
   dimmed?: boolean;
   dealDelay?: number;
 }) {
-  // small = opponents; default = your hole cards / board
-  const w = small
-    ? 'w-12 h-[4.5rem] sm:w-14 sm:h-[5.25rem]'
-    : 'w-20 h-[7.5rem] sm:w-24 sm:h-36';
-  const radius = small ? 'rounded-lg' : 'rounded-xl';
+  const resolved: CardSize = size ?? (small ? 'sm' : 'md');
+  const w = SIZE[resolved];
+  const radius = resolved === 'xs' || resolved === 'sm' ? 'rounded-md' : 'rounded-lg sm:rounded-xl';
   const winRing = highlight
     ? 'ring-2 ring-gold shadow-[0_0_22px_rgba(232,185,74,0.65)] scale-105 z-10'
     : 'ring-1 ring-black/25';
@@ -88,7 +102,6 @@ export function PlayingCard({
   const Face = key ? (deck as Record<string, CardSvg | undefined>)[key] : undefined;
 
   if (!Face) {
-    // Fallback if an unexpected code slips through
     return (
       <div className={`${shell} flex items-center justify-center text-xs text-ink/70`}>
         {code}

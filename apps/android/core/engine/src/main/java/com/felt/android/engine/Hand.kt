@@ -53,8 +53,7 @@ data class TableConfig(
     val maxSeats: Int,
     val smallBlind: Int,
     val bigBlind: Int,
-    val minBuyIn: Int,
-    val maxBuyIn: Int,
+    val buyIn: Int,
     val turnTimeMs: Long,
 )
 
@@ -342,7 +341,7 @@ fun sitIn(state: HandState, seat: Int): ApplyResult {
     )
 }
 
-fun topUp(state: HandState, seat: Int, amount: Int, maxBuyIn: Int): ApplyResult {
+fun topUp(state: HandState, seat: Int, amount: Int, buyIn: Int): ApplyResult {
     val s = cloneState(state)
     if (s.street != Street.Waiting && s.street != Street.Payout) {
         return ApplyResult(state, ok = false, error = "Top-up only between hands")
@@ -352,8 +351,11 @@ fun topUp(state: HandState, seat: Int, amount: Int, maxBuyIn: Int): ApplyResult 
     if (p.status == PlayerStatus.Empty) {
         return ApplyResult(state, ok = false, error = "Empty seat")
     }
-    if (p.stack + amount > maxBuyIn) {
-        return ApplyResult(state, ok = false, error = "Exceeds max buy-in")
+    if (p.stack > 0) {
+        return ApplyResult(state, ok = false, error = "Top-up only when out of chips")
+    }
+    if (p.stack + amount > buyIn) {
+        return ApplyResult(state, ok = false, error = "Exceeds table buy-in")
     }
     val newStatus = if (p.status == PlayerStatus.SittingOut && p.stack + amount > 0) {
         PlayerStatus.Seated

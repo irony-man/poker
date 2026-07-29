@@ -38,8 +38,7 @@ export interface PublicTable {
     maxSeats: number;
     smallBlind: number;
     bigBlind: number;
-    minBuyIn: number;
-    maxBuyIn: number;
+    buyIn: number;
     turnTimeMs: number;
   };
 }

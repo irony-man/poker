@@ -6,8 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -221,7 +219,6 @@ fun PlayerAvatar(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AvatarPicker(
     value: Int,
@@ -230,20 +227,23 @@ fun AvatarPicker(
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         FeltLabel("Profile picture")
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            repeat(AVATAR_PRESET_COUNT) { id ->
-                PlayerAvatar(
-                    avatarId = id,
-                    size = 40.dp,
-                    selected = value == id,
-                    modifier = Modifier
-                        .clickable { onChange(id) }
-                        .padding(1.dp),
-                )
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (rowStart in 0 until AVATAR_PRESET_COUNT step 4) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    for (id in rowStart until minOf(rowStart + 4, AVATAR_PRESET_COUNT)) {
+                        PlayerAvatar(
+                            avatarId = id,
+                            size = 40.dp,
+                            selected = value == id,
+                            modifier = Modifier
+                                .clickable { onChange(id) }
+                                .padding(1.dp),
+                        )
+                    }
+                }
             }
         }
     }

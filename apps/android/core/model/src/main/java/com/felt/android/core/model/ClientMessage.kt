@@ -14,7 +14,10 @@ sealed interface ClientMessage {
 
     @Serializable
     @SerialName("join_table")
-    data class JoinTable(val tableId: String) : ClientMessage
+    data class JoinTable(
+        val tableId: String,
+        val spectate: Boolean? = null,
+    ) : ClientMessage
 
     @Serializable
     @SerialName("leave_table")

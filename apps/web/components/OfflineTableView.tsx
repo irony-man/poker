@@ -12,7 +12,10 @@ import {
   pickBotName,
   returnToWaiting,
   sitDown,
+  sitIn,
+  sitOut,
   startHand,
+  topUp,
   toPrivateView,
   toPublicView,
   type EngineEvent,
@@ -20,16 +23,17 @@ import {
   type TableConfig,
 } from '@poker/engine';
 import { ActionControls } from './ActionControls';
+import { CommunityBoard } from './CommunityBoard';
 import { FloatingActionDock } from './FloatingActionDock';
-import { PlayingCard } from './PlayingCard';
 import { DealerPotZone } from './DealerPotZone';
 import { SeatView } from './SeatView';
 import { TableShell } from './TableShell';
+import { TopUpModal } from './TopUpModal';
 import { WinHandModal } from './WinHandModal';
 import { playTick } from '@/lib/audio';
 import { avatarIdFromUserId, loadSavedAvatarId } from '@/lib/avatars';
 import { useSession, type ChatMessage, type PrivateView, type PublicTable } from '@/lib/store';
-import { seatAnglesForHero } from '@/lib/tableLayout';
+import { seatAnglesForHero, useIsNarrow } from '@/lib/tableLayout';
 
 const HUMAN_ID = 'offline-human';
 
@@ -127,11 +131,13 @@ export function OfflineTableView({
   const pushChat = useSession((s) => s.pushChat);
   const setSession = useSession((s) => s.setSession);
   const setEmoji = useSession((s) => s.setEmoji);
+  const narrow = useIsNarrow();
 
   const [state, setState] = useState<HandState>(() => createEmptyTable(config));
   const [bootstrapped, setBootstrapped] = useState(false);
   const [turnEndsAt, setTurnEndsAt] = useState<number | null>(null);
   const [dismissedWinHandId, setDismissedWinHandId] = useState<string | null>(null);
+  const [topUpOpen, setTopUpOpen] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevVersion = useRef<number | null>(null);
 
@@ -155,7 +161,7 @@ export function OfflineTableView({
     useSession.setState({ chat: [], table: null, private: null, lastError: null });
     setSession({ userId: HUMAN_ID, name: playerName, ticket: 'offline' });
     let s = createEmptyTable(config);
-    const seated = sitDown(s, 0, HUMAN_ID, playerName, config.minBuyIn);
+    const seated = sitDown(s, 0, HUMAN_ID, playerName, config.buyIn);
     if (!seated.ok) return;
     s = seated.state;
     const taken = new Set([playerName]);
@@ -165,7 +171,7 @@ export function OfflineTableView({
       if (!empty) break;
       const botName = pickBotName(taken);
       taken.add(botName);
-      const r = sitDown(s, empty.seat, makeBotUserId(`off-${i}`), botName, config.minBuyIn);
+      const r = sitDown(s, empty.seat, makeBotUserId(`off-${i}`), botName, config.buyIn);
       if (r.ok) s = r.state;
     }
     setState(s);
@@ -205,6 +211,18 @@ export function OfflineTableView({
   }, [bootstrapped, state, config]);
 
   const mySeat = state.players.find((p) => p.userId === HUMAN_ID)?.seat;
+  const myPlayer = mySeat !== undefined ? state.players[mySeat] : undefined;
+  const betweenHands = state.street === 'waiting' || state.street === 'payout';
+  const canTopUp =
+    mySeat !== undefined && !!myPlayer && myPlayer.stack === 0 && betweenHands;
+  const canSitOut =
+    mySeat !== undefined &&
+    betweenHands &&
+    !!myPlayer &&
+    myPlayer.status !== 'empty' &&
+    myPlayer.status !== 'sittingOut';
+  const canSitIn =
+    mySeat !== undefined && myPlayer?.status === 'sittingOut' && betweenHands;
 
   const runBotOrTimeout = useCallback(
     (s: HandState) => {
@@ -300,6 +318,28 @@ export function OfflineTableView({
     setState(result.state);
   };
 
+  const doSitOut = () => {
+    if (mySeat === undefined) return;
+    const result = sitOut(state, mySeat);
+    if (!result.ok) return;
+    setState(result.state);
+  };
+
+  const doSitIn = () => {
+    if (mySeat === undefined) return;
+    const result = sitIn(state, mySeat);
+    if (!result.ok) return;
+    setState(result.state);
+  };
+
+  const doTopUp = (amount: number) => {
+    if (mySeat === undefined) return;
+    const result = topUp(state, mySeat, amount, config.buyIn);
+    if (!result.ok) return;
+    setState(result.state);
+    setTopUpOpen(false);
+  };
+
   const angles = useMemo(
     () => seatAnglesForHero(config.maxSeats, mySeat),
     [config.maxSeats, mySeat],
@@ -378,51 +418,46 @@ export function OfflineTableView({
       }}
     >
       <div className="flex flex-1 flex-col min-h-0">
-        <div className="flex items-center justify-between mb-2 text-sm text-cream/60">
-          <div className="flex items-center gap-2">
-            <span className="status-chip border-felt-neon/30 bg-felt-neon/10 text-felt-neon">
+        <div className="mb-1 flex shrink-0 items-center justify-between gap-2 text-sm text-cream/60 sm:mb-2">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span className="status-chip border-felt-neon/30 bg-felt-neon/10 text-felt-neon max-sm:px-1.5 max-sm:py-0.5 max-sm:text-[10px]">
               Offline
             </span>
-            <span className="status-chip border-cyan/25 bg-cyan/10 text-cyan capitalize">
+            <span className="status-chip border-cyan/25 bg-cyan/10 text-cyan capitalize max-sm:px-1.5 max-sm:py-0.5 max-sm:text-[10px]">
               {publicTable.street}
             </span>
-            <span className="text-xs text-cream/40">
-              blinds {config.smallBlind}/{config.bigBlind}
+            <span className="text-[10px] text-cream/40 sm:text-xs">
+              {config.smallBlind}/{config.bigBlind}
             </span>
           </div>
-          <a href="/" className="text-xs text-gold/80 hover:text-gold">
+          <a href="/" className="text-[10px] text-gold/80 hover:text-gold sm:text-xs">
             ← Lobby
           </a>
         </div>
 
-        <div className="relative min-h-0 flex-1">
-          <div className="absolute inset-0 felt-surface rounded-[28%] border-[8px] table-rim shadow-felt overflow-hidden max-sm:rounded-[22%] max-sm:border-[7px] sm:rounded-[42%] sm:border-[12px]">
-          <div className="pointer-events-none absolute inset-3 max-sm:inset-2 sm:inset-6 rounded-[26%] sm:rounded-[40%] border border-white/10 z-[1]" />
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <div className="relative min-h-0 flex-1">
+          <div className="absolute inset-0 felt-surface rounded-[28%] border-[8px] table-rim shadow-felt overflow-hidden max-sm:rounded-[18%] max-sm:border-[5px] sm:rounded-[42%] sm:border-[12px]">
+          <div className="pointer-events-none absolute inset-3 max-sm:inset-1.5 sm:inset-6 rounded-[26%] sm:rounded-[40%] border border-white/10 z-[1]" />
 
-          <div className="absolute left-1/2 top-[12%] z-20 -translate-x-1/2 -translate-y-1/2">
+          <div className="absolute left-1/2 top-[10%] z-20 -translate-x-1/2 -translate-y-1/2 max-sm:top-[8%] max-sm:scale-90">
             <DealerPotZone
               amount={Math.max(potTotal, publicTable.pot)}
               sidePotCount={publicTable.sidePots?.length ?? 0}
-              dealerName={dealerPlayer?.name}
+              dealerName={narrow ? undefined : dealerPlayer?.name}
               showDealer={showDealerZone}
             />
           </div>
 
-          <div className="absolute left-1/2 top-[48%] z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2">
-            <div className="flex min-h-[5.25rem] items-center gap-1.5">
-              {publicTable.community.map((c, i) => (
-                <PlayingCard
-                  key={`${publicTable.handId}-${c}`}
-                  code={c}
-                  dealDelay={i * 0.07}
-                  highlight={highlightMode && winningCards.has(c)}
-                  dimmed={highlightMode && !winningCards.has(c)}
-                />
-              ))}
-              {publicTable.community.length === 0 && publicTable.street !== 'waiting' && (
-                <span className="text-cream/40 text-xs font-display uppercase tracking-wider">Dealing…</span>
-              )}
-            </div>
+          <div className="absolute left-1/2 top-[42%] z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center max-sm:top-[40%]">
+            <CommunityBoard
+              cards={publicTable.community}
+              handId={publicTable.handId}
+              cardSize={narrow ? 'sm' : 'md'}
+              highlightMode={highlightMode}
+              winningCards={winningCards}
+              dealing={publicTable.street !== 'waiting'}
+            />
           </div>
 
           {publicTable.players.map((p) => {
@@ -447,16 +482,45 @@ export function OfflineTableView({
                 turnEndsAt={publicTable.toAct === p.seat ? turnEndsAt : null}
                 turnTotalMs={config.turnTimeMs}
                 canManageBots={false}
+                compact={narrow}
               />
             );
           })}
           </div>
+          </div>
 
-          <div className="absolute inset-x-0 bottom-0 z-30 flex justify-center px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-            <div className="flex max-w-full flex-wrap items-center justify-center gap-1.5 rounded-full border border-cream/15 bg-ink/85 px-2 py-1.5 backdrop-blur-md">
+          <div className="relative z-30 flex shrink-0 justify-center px-1 pb-0.5 pt-1 sm:px-2 sm:pb-1 sm:pt-2">
+            <div className="flex max-w-full flex-wrap items-center justify-center gap-1 rounded-full border border-cream/15 bg-ink/85 px-1.5 py-1 backdrop-blur-md sm:gap-1.5 sm:px-2 sm:py-1.5">
               {(publicTable.street === 'waiting' || publicTable.street === 'payout') && (
                 <button type="button" onClick={start} className="btn-ghost text-xs py-1.5">
                   {publicTable.street === 'waiting' ? 'Start hand' : 'Next hand'}
+                </button>
+              )}
+              {canSitOut && (
+                <button
+                  type="button"
+                  onClick={doSitOut}
+                  className="rounded-full border border-amber-400/30 px-3 py-1.5 text-xs text-amber-200 hover:bg-amber-400/10"
+                >
+                  Sit out
+                </button>
+              )}
+              {canSitIn && (
+                <button
+                  type="button"
+                  onClick={doSitIn}
+                  className="rounded-full border border-felt-neon/30 bg-felt-neon/10 px-3 py-1.5 text-xs text-felt-neon hover:bg-felt-neon/20"
+                >
+                  Sit in
+                </button>
+              )}
+              {canTopUp && (
+                <button
+                  type="button"
+                  onClick={() => setTopUpOpen(true)}
+                  className="rounded-full border border-gold/30 bg-gold/10 px-3 py-1.5 text-xs text-gold hover:bg-gold/20"
+                >
+                  Top up
                 </button>
               )}
             </div>
@@ -471,7 +535,10 @@ export function OfflineTableView({
       {showWinModal && publicTable && (
         <WinHandModal
           youWon={youWon}
-          canStartNext
+          canStartNext={myPlayer?.status !== 'sittingOut'}
+          canTopUp={canTopUp}
+          canSitOut={canSitOut}
+          canSitIn={canSitIn}
           winners={(() => {
             const bySeat = new Map<
               number,
@@ -504,7 +571,19 @@ export function OfflineTableView({
             setDismissedWinHandId(publicTable.handId);
             start();
           }}
+          onTopUp={() => setTopUpOpen(true)}
+          onSitOut={doSitOut}
+          onSitIn={doSitIn}
           onDismiss={() => setDismissedWinHandId(publicTable.handId)}
+        />
+      )}
+
+      {topUpOpen && myPlayer && myPlayer.stack === 0 && (
+        <TopUpModal
+          currentStack={myPlayer.stack}
+          buyIn={config.buyIn}
+          onDismiss={() => setTopUpOpen(false)}
+          onConfirm={doTopUp}
         />
       )}
     </TableShell>

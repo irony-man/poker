@@ -18,8 +18,7 @@ describe('ensurePublicTables', () => {
     expect(lobby.map((t) => t.stakeId).sort()).toEqual(STAKE_PRESETS.map((s) => s.id).sort());
 
     const low = lobby.find((t) => t.stakeId === 'low')!;
-    expect(low.config.minBuyIn).toBe(200);
-    expect(low.config.maxBuyIn).toBe(1000);
+    expect(low.config.buyIn).toBe(1000);
     expect(low.seatedCount).toBeGreaterThanOrEqual(2);
 
     ensurePublicTables(rooms);

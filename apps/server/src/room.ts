@@ -91,6 +91,17 @@ export class Room {
     this.pushTo(conn.userId);
   }
 
+  /**
+   * Seat a newly joined player at the first empty seat (buy-in = table stake).
+   * No-op if already seated, spectating, or the table is full.
+   */
+  autoSit(userId: string, name: string): { ok: boolean; error?: string } {
+    if (this.seatOf(userId) !== null) return { ok: true };
+    const empty = this.state.players.find((p) => p.status === 'empty');
+    if (!empty) return { ok: false, error: 'Table full' };
+    return this.sit(userId, name, empty.seat, this.config.buyIn);
+  }
+
   detach(userId: string): void {
     this.leaveVoice(userId);
     this.connections.delete(userId);
@@ -232,9 +243,9 @@ export class Room {
       this.state = returnToWaiting(this.state);
     }
 
-    const amount = buyIn ?? this.config.minBuyIn;
-    if (amount < this.config.minBuyIn || amount > this.config.maxBuyIn) {
-      return { ok: false, error: 'Buy-in out of range' };
+    const amount = buyIn ?? this.config.buyIn;
+    if (amount !== this.config.buyIn) {
+      return { ok: false, error: 'Buy-in must match table buy-in' };
     }
 
     // Specific seat → always one bot
@@ -437,8 +448,8 @@ export class Room {
 
   sit(userId: string, name: string, seat: number, buyIn: number): { ok: boolean; error?: string } {
     if (!this.rateLimit(`${userId}:sit`)) return { ok: false, error: 'Rate limited' };
-    if (buyIn < this.config.minBuyIn || buyIn > this.config.maxBuyIn) {
-      return { ok: false, error: 'Buy-in out of range' };
+    if (buyIn !== this.config.buyIn) {
+      return { ok: false, error: 'Buy-in must match table buy-in' };
     }
     const result = sitDown(this.state, seat, userId, name, buyIn);
     if (!result.ok) return { ok: false, error: result.error };
@@ -482,7 +493,7 @@ export class Room {
 
   doTopUp(userId: string, seat: number, amount: number): { ok: boolean; error?: string } {
     if (this.seatOf(userId) !== seat) return { ok: false, error: 'Not your seat' };
-    const result = topUp(this.state, seat, amount, this.config.maxBuyIn);
+    const result = topUp(this.state, seat, amount, this.config.buyIn);
     if (!result.ok) return { ok: false, error: result.error };
     this.state = result.state;
     void this.afterStateChange();

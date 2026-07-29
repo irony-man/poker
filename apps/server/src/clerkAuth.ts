@@ -5,16 +5,12 @@ export type ClerkIdentity = {
   userId: string;
 };
 
-/** True when the poker server should require Clerk JWTs for online play. */
-export function clerkAuthRequired(): boolean {
-  return Boolean(process.env.CLERK_SECRET_KEY?.trim());
-}
-
 /**
- * Verify `Authorization: Bearer <Clerk session JWT>`.
- * Returns the Clerk `sub` (user id) when valid.
+ * Verify `Authorization: Bearer <Clerk session JWT>` when `CLERK_SECRET_KEY` is set.
+ * Returns the Clerk `sub` (user id) when valid; otherwise null.
+ * Online play does not require a Clerk token — callsign registration is enough.
  */
-export async function requireClerkIdentity(req: Request): Promise<ClerkIdentity | null> {
+export async function optionalClerkIdentity(req: Request): Promise<ClerkIdentity | null> {
   const secretKey = process.env.CLERK_SECRET_KEY?.trim();
   if (!secretKey) return null;
 
@@ -30,4 +26,12 @@ export async function requireClerkIdentity(req: Request): Promise<ClerkIdentity 
   } catch {
     return null;
   }
+}
+
+/** @deprecated Prefer optionalClerkIdentity — auth is no longer required for play. */
+export const requireClerkIdentity = optionalClerkIdentity;
+
+/** @deprecated Always false for play; kept so older call sites compile. */
+export function clerkAuthRequired(): boolean {
+  return false;
 }

@@ -91,6 +91,38 @@ body > * {
     @apply block text-xs uppercase tracking-[0.16em] text-cream/50 font-semibold;
   }
 
+  .choice-chip {
+    @apply cursor-pointer select-none rounded-[10px] border border-cream/20 bg-ink/45 px-3 py-2 text-[13px] font-semibold text-cream/80 transition;
+  }
+
+  .choice-chip:hover {
+    @apply border-cream/35 text-cream;
+  }
+
+  .choice-chip-selected {
+    @apply border-gold bg-gold/20 font-bold text-gold;
+  }
+
+  .choice-chip-selected:hover {
+    @apply border-gold text-gold;
+  }
+
+  .bet-slider {
+    @apply h-2 cursor-pointer appearance-none rounded-full bg-ink-raised accent-gold;
+  }
+
+  .bet-slider::-webkit-slider-thumb {
+    @apply h-4 w-4 cursor-pointer appearance-none rounded-full border border-gold/60 bg-gold shadow-glow;
+  }
+
+  .bet-slider::-moz-range-thumb {
+    @apply h-4 w-4 cursor-pointer rounded-full border border-gold/60 bg-gold;
+  }
+
+  .bet-slider:disabled {
+    @apply cursor-not-allowed opacity-40;
+  }
+
   .btn-primary {
     @apply rounded border border-gold/40 bg-gradient-to-b from-gold-light to-gold px-4 py-2.5 font-display font-bold uppercase tracking-wider text-ink shadow-glow transition hover:brightness-110 disabled:opacity-50;
   }

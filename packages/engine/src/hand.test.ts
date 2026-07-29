@@ -14,8 +14,7 @@ const config: TableConfig = {
   maxSeats: 6,
   smallBlind: 5,
   bigBlind: 10,
-  minBuyIn: 200,
-  maxBuyIn: 1000,
+  buyIn: 1000,
   turnTimeMs: 15000,
 };
 

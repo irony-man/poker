@@ -16,13 +16,25 @@ export function WinHandModal({
   winners,
   youWon,
   canStartNext,
+  canTopUp,
+  canSitOut,
+  canSitIn,
   onNextHand,
+  onTopUp,
+  onSitOut,
+  onSitIn,
   onDismiss,
 }: {
   winners: WinLine[];
   youWon: boolean;
   canStartNext: boolean;
+  canTopUp?: boolean;
+  canSitOut?: boolean;
+  canSitIn?: boolean;
   onNextHand: () => void;
+  onTopUp?: () => void;
+  onSitOut?: () => void;
+  onSitIn?: () => void;
   onDismiss: () => void;
 }) {
   const primary = winners[0];
@@ -32,6 +44,7 @@ export function WinHandModal({
       : winners.length > 1
         ? 'Split pot'
         : 'Won the pot';
+  const showBetweenHandOptions = canTopUp || canSitOut || canSitIn;
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
@@ -112,6 +125,37 @@ export function WinHandModal({
         </div>
 
         <div className="space-y-2 border-t border-cream/10 px-5 py-4">
+          {showBetweenHandOptions && (
+            <div className="flex flex-wrap gap-2">
+              {canTopUp && onTopUp && (
+                <button
+                  type="button"
+                  onClick={onTopUp}
+                  className="flex-1 min-w-[7rem] rounded-lg border border-gold/40 bg-gold/15 px-3 py-2.5 text-sm font-display font-semibold text-gold hover:bg-gold/25"
+                >
+                  Top up
+                </button>
+              )}
+              {canSitOut && onSitOut && (
+                <button
+                  type="button"
+                  onClick={onSitOut}
+                  className="flex-1 min-w-[7rem] rounded-lg border border-amber-400/35 bg-amber-400/10 px-3 py-2.5 text-sm font-display font-semibold text-amber-200 hover:bg-amber-400/20"
+                >
+                  Sit out
+                </button>
+              )}
+              {canSitIn && onSitIn && (
+                <button
+                  type="button"
+                  onClick={onSitIn}
+                  className="flex-1 min-w-[7rem] rounded-lg border border-felt-neon/35 bg-felt-neon/10 px-3 py-2.5 text-sm font-display font-semibold text-felt-neon hover:bg-felt-neon/20"
+                >
+                  Sit in
+                </button>
+              )}
+            </div>
+          )}
           {canStartNext ? (
             <button type="button" onClick={onNextHand} className="btn-primary w-full py-3 text-base">
               Next Hand

@@ -10,16 +10,20 @@ async function authHeaders(clerkToken?: string | null): Promise<HeadersInit> {
 export async function register(
   name: string,
   avatarId?: number,
-  options?: { clerkToken?: string | null },
+  options?: { clerkToken?: string | null; userId?: string | null },
 ) {
   const res = await fetch(`${API_URL}/api/register`, {
     method: 'POST',
     headers: await authHeaders(options?.clerkToken),
-    body: JSON.stringify({ name, avatarId }),
+    body: JSON.stringify({
+      name,
+      avatarId,
+      ...(options?.userId ? { userId: options.userId } : {}),
+    }),
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(res.status === 401 ? 'Sign in required' : text);
+    throw new Error(text || 'Register failed');
   }
   return res.json() as Promise<{
     userId: string;
@@ -35,8 +39,7 @@ export async function createTable(
     name: string;
     smallBlind: number;
     bigBlind: number;
-    minBuyIn: number;
-    maxBuyIn: number;
+    buyIn: number;
     turnTimeMs: number;
     maxSeats: number;
     botCount?: number;
@@ -51,7 +54,7 @@ export async function createTable(
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(res.status === 401 ? 'Sign in required' : text);
+    throw new Error(text || 'Failed to create table');
   }
   return res.json() as Promise<{
     tableId: string;
@@ -61,8 +64,7 @@ export async function createTable(
       maxSeats: number;
       smallBlind: number;
       bigBlind: number;
-      minBuyIn: number;
-      maxBuyIn: number;
+      buyIn: number;
       turnTimeMs: number;
     };
   }>;
@@ -79,8 +81,7 @@ export interface PublicTableSummary {
     maxSeats: number;
     smallBlind: number;
     bigBlind: number;
-    minBuyIn: number;
-    maxBuyIn: number;
+    buyIn: number;
     turnTimeMs: number;
   };
 }
@@ -102,8 +103,7 @@ export async function resolveInvite(code: string) {
       maxSeats: number;
       smallBlind: number;
       bigBlind: number;
-      minBuyIn: number;
-      maxBuyIn: number;
+      buyIn: number;
       turnTimeMs: number;
     };
   }>;

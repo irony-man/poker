@@ -407,7 +407,6 @@ export function OfflineTableView({
     (publicTable.sidePots?.reduce((s, p) => s + p.amount, 0) ?? 0);
   const dealerPlayer = publicTable.players[publicTable.dealerButton];
   const showDealerZone = publicTable.street !== 'waiting';
-  const betweenHands = publicTable.street === 'waiting' || publicTable.street === 'payout';
   const showMobileStartCta = narrow && betweenHands;
   const showDesktopTools = !narrow;
 

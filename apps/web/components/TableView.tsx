@@ -12,7 +12,6 @@ import { TableOverflowMenu, type OverflowItem } from './TableOverflowMenu';
 import { TableShell } from './TableShell';
 import { TopUpModal } from './TopUpModal';
 import { VoiceCallBar } from './VoiceCallBar';
-import { VideoCallStrip } from './VideoCallStrip';
 import { WinHandModal } from './WinHandModal';
 import { playTick } from '@/lib/audio';
 import { buildTableJoinLink, buildTableJoinShareText } from '@/lib/tableLink';
@@ -33,9 +32,9 @@ export function TableView({
   const table = useSession((s) => s.table);
   const priv = useSession((s) => s.private);
   const userId = useSession((s) => s.userId);
-  const sessionName = useSession((s) => s.name);
   const connection = useSession((s) => s.connection);
   const lastError = useSession((s) => s.lastError);
+  const lastErrorCode = useSession((s) => s.lastErrorCode);
   const setError = useSession((s) => s.setError);
   const clearTable = useSession((s) => s.clearTable);
   const { send, leaveTable } = usePokerSocket(tableId, { spectate: initialSpectate });
@@ -52,6 +51,15 @@ export function TableView({
   const autoSitSent = useRef(false);
 
   useEffect(() => {
+    if (lastErrorCode !== 'not_found') return;
+    voice.leaveVoice();
+    leaveTable();
+    clearTable();
+    setError(null);
+    router.replace('/');
+  }, [lastErrorCode, voice.leaveVoice, leaveTable, clearTable, setError, router]);
+
+  useEffect(() => {
     if (!table) return;
     if (prevVersion.current !== null && table.version !== prevVersion.current) {
       if (table.street === 'payout') playTick('win');
@@ -60,11 +68,6 @@ export function TableView({
     }
     prevVersion.current = table.version;
   }, [table]);
-
-  /** Mobile: voice only — drop camera if still on from a desktop session. */
-  useEffect(() => {
-    if (narrow && voice.cameraOn) void voice.toggleCamera();
-  }, [narrow, voice.cameraOn, voice.toggleCamera]);
 
   const mySeat = table?.players.find((p) => p.userId === userId)?.seat;
   const myPlayer = mySeat !== undefined ? table?.players[mySeat] : undefined;
@@ -243,6 +246,14 @@ export function TableView({
     table?.dealerButton != null ? table.players[table.dealerButton] : undefined;
   const showDealerZone = table?.street !== 'waiting' && table?.dealerButton != null;
 
+  if (!table && lastErrorCode === 'not_found') {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <p className="text-cream/60">Table not found — returning home…</p>
+      </div>
+    );
+  }
+
   if (!table && (connection === 'connecting' || connection === 'open')) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -408,15 +419,11 @@ export function TableView({
                 inVoice={voice.inVoice}
                 state={voice.state}
                 muted={voice.muted}
-                cameraOn={voice.cameraOn}
-                wantsVideo={voice.wantsVideo}
                 peers={voice.peers}
                 error={voice.error}
                 onJoinVoice={voice.joinVoice}
-                onJoinVideo={voice.joinVideo}
                 onLeave={voice.leaveVoice}
                 onToggleMute={voice.toggleMute}
-                onToggleCamera={voice.toggleCamera}
               />
               <div
                 className={
@@ -454,16 +461,6 @@ export function TableView({
           >
             {lastError} (dismiss)
           </button>
-        )}
-
-        {voice.inVoice && !narrow && (
-          <VideoCallStrip
-            localStream={voice.localStream}
-            localName={sessionName ?? 'You'}
-            cameraOn={voice.cameraOn}
-            wantsVideo={voice.wantsVideo}
-            remotes={voice.remoteStreams}
-          />
         )}
 
         <div className="relative flex min-h-0 flex-1 flex-col">

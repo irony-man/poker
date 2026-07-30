@@ -35,9 +35,10 @@ import com.felt.android.core.designsystem.FeltTableLayout
 import com.felt.android.core.designsystem.FloatingActionPanel
 import com.felt.android.core.designsystem.HudPanel
 import com.felt.android.core.designsystem.LegalActionsUi
-import com.felt.android.core.designsystem.LockPortraitOrientation
 import com.felt.android.core.designsystem.StatusChip
 import com.felt.android.core.designsystem.TableActionControls
+import com.felt.android.core.designsystem.UnlockSensorOrientation
+import com.felt.android.core.designsystem.rememberIsLandscapePhone
 import com.felt.android.core.designsystem.WinHandDialog
 import com.felt.android.core.designsystem.WinLineUi
 
@@ -47,7 +48,8 @@ fun OfflineTableScreen(
     modifier: Modifier = Modifier,
     viewModel: OfflineViewModel = hiltViewModel(),
 ) {
-    LockPortraitOrientation()
+    UnlockSensorOrientation()
+    val landscape = rememberIsLandscapePhone()
 
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var chatInput by remember { mutableStateOf("") }
@@ -73,7 +75,10 @@ fun OfflineTableScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(
+                    horizontal = if (landscape) 8.dp else 12.dp,
+                    vertical = if (landscape) 4.dp else 8.dp,
+                ),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -108,10 +113,13 @@ fun OfflineTableScreen(
                     userId = HUMAN_USER_ID,
                     holeCards = state.holeCards,
                     onSit = {},
-                    modifier = Modifier.fillMaxSize(),
+                    landscape = landscape,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = if (landscape) 64.dp else 0.dp),
                 )
 
-                FloatingActionPanel(expanded = isMyTurn) {
+                FloatingActionPanel(expanded = isMyTurn, landscape = landscape) {
                     TableActionControls(
                         table = tableUi,
                         userId = HUMAN_USER_ID,
@@ -119,17 +127,25 @@ fun OfflineTableScreen(
                             LegalActionsUi(it.types, it.callAmount, it.minRaiseTo, it.maxRaiseTo)
                         },
                         onAction = { action, amount -> viewModel.sendAction(action, amount) },
+                        landscape = landscape,
                     )
                 }
             }
 
-            if (table.street == "waiting" || table.street == "payout") {
+            if ((table.street == "waiting" || table.street == "payout") && !landscape) {
                 FeltGhostButton(
                     text = if (table.street == "waiting") "Start hand" else "Next hand",
                     onClick = viewModel::startHandManual,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 8.dp),
+                )
+            }
+            if ((table.street == "waiting" || table.street == "payout") && landscape) {
+                FeltGhostButton(
+                    text = if (table.street == "waiting") "Start" else "Next",
+                    onClick = viewModel::startHandManual,
+                    modifier = Modifier.padding(top = 2.dp),
                 )
             }
         }

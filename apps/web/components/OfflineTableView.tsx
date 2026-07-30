@@ -161,7 +161,7 @@ export function OfflineTableView({
 
   // Seed human + bots once
   useEffect(() => {
-    useSession.setState({ chat: [], table: null, private: null, lastError: null });
+    useSession.setState({ chat: [], table: null, private: null, lastError: null, lastErrorCode: null });
     setSession({ userId: HUMAN_ID, name: playerName, ticket: 'offline' });
     let s = createEmptyTable(config);
     const seated = sitDown(s, 0, HUMAN_ID, playerName, config.buyIn);

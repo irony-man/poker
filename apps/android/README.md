@@ -7,6 +7,7 @@ Multi-module Jetpack Compose client for Felt poker.
 - **Lobby** — host private table, join by invite, launch offline arena
 - **Online table** — WebSocket auth/join, seats, actions, chat, emoji, bots
 - **Offline table** — Kotlin-ported NLHE engine + bots (no server)
+- **Landscape phone chrome** — slim top bar, seat stack (cards → $ → name), single-row action dock
 
 ## Open in Android Studio
 

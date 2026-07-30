@@ -112,10 +112,10 @@ export function FloatingActionDock({
   if (narrow) {
     const height = landscape
       ? expanded
-        ? 'h-[3.5rem]'
+        ? 'h-[4.25rem]'
         : 'h-[2.5rem]'
       : expanded
-        ? 'h-[9.5rem]'
+        ? 'h-[10.75rem]'
         : 'h-[3.75rem]';
 
     return (

@@ -89,10 +89,6 @@ export function useVoiceCall(
     await joinCall({ video: false });
   }, [joinCall]);
 
-  const joinVideo = useCallback(async () => {
-    await joinCall({ video: true });
-  }, [joinCall]);
-
   const leaveVoice = useCallback(() => {
     if (!inVoiceRef.current) return;
     inVoiceRef.current = false;
@@ -102,10 +98,6 @@ export function useVoiceCall(
 
   const toggleMute = useCallback(() => {
     sessionRef.current?.toggleMuted();
-  }, []);
-
-  const toggleCamera = useCallback(() => {
-    void sessionRef.current?.toggleCamera();
   }, []);
 
   useEffect(() => {
@@ -122,9 +114,7 @@ export function useVoiceCall(
     ...snap,
     inVoice: snap.state === 'connected' || snap.state === 'joining',
     joinVoice,
-    joinVideo,
     leaveVoice,
     toggleMute,
-    toggleCamera,
   };
 }

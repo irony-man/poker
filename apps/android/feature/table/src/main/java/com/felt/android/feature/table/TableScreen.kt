@@ -39,9 +39,10 @@ import com.felt.android.core.designsystem.FeltTableLayout
 import com.felt.android.core.designsystem.FloatingActionPanel
 import com.felt.android.core.designsystem.HudPanel
 import com.felt.android.core.designsystem.LegalActionsUi
-import com.felt.android.core.designsystem.LockPortraitOrientation
 import com.felt.android.core.designsystem.StatusChip
 import com.felt.android.core.designsystem.TableActionControls
+import com.felt.android.core.designsystem.UnlockSensorOrientation
+import com.felt.android.core.designsystem.rememberIsLandscapePhone
 import com.felt.android.core.designsystem.WinHandDialog
 import com.felt.android.core.designsystem.WinLineUi
 import com.felt.android.core.model.ConnectionStatus
@@ -54,7 +55,8 @@ fun TableScreen(
     modifier: Modifier = Modifier,
     viewModel: TableViewModel = hiltViewModel(),
 ) {
-    LockPortraitOrientation()
+    UnlockSensorOrientation()
+    val landscape = rememberIsLandscapePhone()
 
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var chatInput by remember { mutableStateOf("") }
@@ -71,7 +73,10 @@ fun TableScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(
+                    horizontal = if (landscape) 8.dp else 12.dp,
+                    vertical = if (landscape) 4.dp else 8.dp,
+                ),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -106,7 +111,7 @@ fun TableScreen(
 
             val inviteCode = state.invite
             val tableIdForShare = state.tableId.ifBlank { state.table?.tableId.orEmpty() }
-            if (inviteCode != null && tableIdForShare.isNotBlank()) {
+            if (!landscape && inviteCode != null && tableIdForShare.isNotBlank()) {
                 TableInviteShare(
                     tableId = tableIdForShare,
                     inviteCode = inviteCode,
@@ -158,10 +163,13 @@ fun TableScreen(
                                 )
                             },
                             canSit = !state.spectating,
-                            modifier = Modifier.fillMaxSize(),
+                            landscape = landscape,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(bottom = if (landscape) 64.dp else 0.dp),
                         )
 
-                        FloatingActionPanel(expanded = isMyTurn) {
+                        FloatingActionPanel(expanded = isMyTurn, landscape = landscape) {
                             TableActionControls(
                                 table = tableUi,
                                 userId = state.userId,
@@ -176,6 +184,7 @@ fun TableScreen(
                                 } else {
                                     null
                                 },
+                                landscape = landscape,
                             )
                         }
                     }
@@ -203,7 +212,7 @@ fun TableScreen(
                         }
                     }
 
-                    if (!state.spectating) {
+                    if (!state.spectating && !landscape) {
                         TableFooterControls(
                             table = table,
                             userId = state.userId,
@@ -214,6 +223,20 @@ fun TableScreen(
                             onSitOut = { viewModel.dispatch(TableContract.Intent.SitOut) },
                             onSitIn = { viewModel.dispatch(TableContract.Intent.SitIn) },
                         )
+                    }
+                    if (!state.spectating && landscape) {
+                        val betweenHands = table.street == "waiting" || table.street == "payout"
+                        val myPlayer = table.players.find { it.userId == state.userId }
+                        val playersInHand = table.players.count {
+                            it.userId != null && it.stack > 0 && it.status != "sittingOut"
+                        }
+                        if (myPlayer != null && myPlayer.status != "sittingOut" && playersInHand >= 2 && betweenHands) {
+                            FeltGhostButton(
+                                text = "Start",
+                                onClick = { viewModel.dispatch(TableContract.Intent.StartHand) },
+                                modifier = Modifier.padding(top = 2.dp),
+                            )
+                        }
                     }
                 }
             }

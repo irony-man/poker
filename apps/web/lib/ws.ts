@@ -75,7 +75,18 @@ export function usePokerSocket(
             setTimeout(() => setEmoji(null), 1800);
             break;
           case 'error':
-            setError(msg.message);
+            setError(
+              typeof msg.message === 'string' ? msg.message : 'Error',
+              typeof msg.code === 'string' ? msg.code : null,
+            );
+            if (msg.code === 'not_found') {
+              intentionalLeaveRef.current = true;
+              if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+              }
+              ws?.close();
+            }
             break;
           default:
             break;

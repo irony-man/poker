@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { MoveTimerStrip } from './TurnTimer';
 import { useSession } from '@/lib/store';
 import { useIsLandscapePhone, useIsNarrow } from '@/lib/tableLayout';
 
@@ -22,6 +23,8 @@ export function ActionControls({
 
   const mySeat = table?.players.find((p) => p.userId === userId)?.seat;
   const isTurn = table?.toAct === mySeat && priv;
+  const turnEndsAt = isTurn ? table?.turnEndsAt : null;
+  const turnTotalMs = table?.config.turnTimeMs ?? 20_000;
 
   const legal = priv?.legal;
   const min = legal?.minRaiseTo ?? 0;
@@ -84,74 +87,80 @@ export function ActionControls({
   const actionBtn =
     'inline-flex min-h-10 items-center justify-center px-2 text-[11px] font-display font-bold uppercase tracking-wide';
 
+  const timer = (
+    <MoveTimerStrip endsAt={turnEndsAt} totalMs={turnTotalMs} compact={!!(narrow && landscape)} />
+  );
+
+  const presets = (
+    <>
+      {(
+        [
+          ['Min', min],
+          ['½', halfPot],
+          ['Pot', potBet],
+          ['Max', max],
+        ] as const
+      ).map(([label, val]) => (
+        <button key={label} type="button" onClick={() => submitBet(val)} className={chipBtn}>
+          {label}
+        </button>
+      ))}
+    </>
+  );
+
   /* —— Landscape: one horizontal strip with small text —— */
   if (narrow && landscape) {
     return (
-      <div className="flex h-full items-center gap-1 px-1.5">
-        {canBet && (
-          <>
-            <button
-              type="button"
-              onClick={() => submitBet(amount)}
-              className="shrink-0 font-mono text-[11px] font-bold tabular-nums text-gold"
-              title={`Confirm ${betLabel.toLowerCase()}`}
-            >
-              {amount}
-            </button>
-            <input
-              type="range"
-              min={min}
-              max={sliderMax}
-              step={bb}
-              value={amount}
-              disabled={sliderMax <= min}
-              onChange={(e) => setBet(Number(e.target.value))}
-              className="bet-slider min-w-0 flex-1"
-              aria-label={`${betLabel} amount`}
-            />
-            <div className="flex shrink-0 gap-0.5">
-              {(
-                [
-                  ['Min', min],
-                  ['½', halfPot],
-                  ['Pot', potBet],
-                  ['Max', max],
-                ] as const
-              ).map(([label, val]) => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => submitBet(val)}
-                  className={`${chipBtn} min-w-[1.85rem] px-1`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div className="mx-0.5 h-5 w-px shrink-0 bg-cream/15" />
-          </>
-        )}
+      <div className="flex h-full min-h-0 flex-col">
+        {timer}
+        <div className="flex min-h-0 flex-1 items-center gap-1 px-1.5">
+          {canBet && (
+            <>
+              <span className="shrink-0 font-mono text-[11px] font-bold tabular-nums text-gold">{amount}</span>
+              <input
+                type="range"
+                min={min}
+                max={sliderMax}
+                step={bb}
+                value={amount}
+                disabled={sliderMax <= min}
+                onChange={(e) => setBet(Number(e.target.value))}
+                className="bet-slider min-w-0 flex-1"
+                aria-label={`${betLabel} amount`}
+              />
+              <div className="flex shrink-0 gap-0.5">{presets}</div>
+              <button
+                type="button"
+                onClick={() => submitBet(amount)}
+                className={`btn-primary ${actionBtn} shrink-0`}
+              >
+                Custom {amount}
+              </button>
+              <div className="mx-0.5 h-5 w-px shrink-0 bg-cream/15" />
+            </>
+          )}
 
-        {legal.types.includes('fold') && (
-          <button type="button" onClick={() => onAction('fold')} className={`btn-danger ${actionBtn}`}>
-            Fold
-          </button>
-        )}
-        {legal.types.includes('check') && (
-          <button type="button" onClick={() => onAction('check')} className={`btn-secondary ${actionBtn}`}>
-            Check
-          </button>
-        )}
-        {legal.types.includes('call') && (
-          <button type="button" onClick={() => onAction('call')} className={`btn-secondary ${actionBtn}`}>
-            Call {callAmount}
-          </button>
-        )}
-        {legal.types.includes('allin') && (
-          <button type="button" onClick={() => onAction('allin')} className={`btn-primary ${actionBtn}`}>
-            All-in
-          </button>
-        )}
+          {legal.types.includes('fold') && (
+            <button type="button" onClick={() => onAction('fold')} className={`btn-danger ${actionBtn}`}>
+              Fold
+            </button>
+          )}
+          {legal.types.includes('check') && (
+            <button type="button" onClick={() => onAction('check')} className={`btn-secondary ${actionBtn}`}>
+              Check
+            </button>
+          )}
+          {legal.types.includes('call') && (
+            <button type="button" onClick={() => onAction('call')} className={`btn-secondary ${actionBtn}`}>
+              Call {callAmount}
+            </button>
+          )}
+          {legal.types.includes('allin') && (
+            <button type="button" onClick={() => onAction('allin')} className={`btn-primary ${actionBtn}`}>
+              All-in
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -160,6 +169,7 @@ export function ActionControls({
   if (narrow) {
     return (
       <div className={shell}>
+        {timer}
         <div className="space-y-1 p-1.5">
           {canBet && (
             <div className="space-y-1">
@@ -167,17 +177,12 @@ export function ActionControls({
                 <span className="text-[9px] font-semibold uppercase tracking-wider text-cream/50">
                   {betLabel} to
                 </span>
-                <button
-                  type="button"
-                  onClick={() => submitBet(amount)}
-                  className="font-mono text-sm font-bold tabular-nums text-gold"
-                  title={`Confirm ${betLabel.toLowerCase()}`}
-                >
+                <span className="font-mono text-sm font-bold tabular-nums text-gold">
                   {amount}
                   <span className="ml-1.5 text-[9px] font-medium text-cream/40">
                     {min}–{max}
                   </span>
-                </button>
+                </span>
               </div>
               <input
                 type="range"
@@ -190,29 +195,11 @@ export function ActionControls({
                 className="bet-slider w-full"
                 aria-label={`${betLabel} amount`}
               />
-              <div className="grid grid-cols-4 gap-1">
-                {(
-                  [
-                    ['Min', min],
-                    ['½', halfPot],
-                    ['Pot', potBet],
-                    ['Max', max],
-                  ] as const
-                ).map(([label, val]) => (
-                  <button
-                    key={label}
-                    type="button"
-                    onClick={() => submitBet(val)}
-                    className={chipBtn}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
+              <div className="grid grid-cols-4 gap-1">{presets}</div>
             </div>
           )}
 
-          <div className="grid grid-cols-3 gap-1">
+          <div className={`grid gap-1 ${canBet ? 'grid-cols-4' : 'grid-cols-3'}`}>
             {legal.types.includes('fold') && (
               <button
                 type="button"
@@ -240,6 +227,15 @@ export function ActionControls({
                 Call {callAmount}
               </button>
             )}
+            {canBet && (
+              <button
+                type="button"
+                onClick={() => submitBet(amount)}
+                className={`btn-primary ${actionBtn} min-h-11`}
+              >
+                Custom {amount}
+              </button>
+            )}
             {legal.types.includes('allin') && (
               <button
                 type="button"
@@ -258,6 +254,7 @@ export function ActionControls({
   /* —— Desktop: full text —— */
   return (
     <div className={shell}>
+      {timer}
       <div className="space-y-3 p-4">
         {canBet && (
           <div className="space-y-1.5">
@@ -265,17 +262,12 @@ export function ActionControls({
               <span className="text-[9px] font-semibold uppercase tracking-wider text-cream/50">
                 {betLabel} to
               </span>
-              <button
-                type="button"
-                onClick={() => submitBet(amount)}
-                className="font-mono text-sm font-bold tabular-nums text-gold"
-                title={`Confirm ${betLabel.toLowerCase()}`}
-              >
+              <span className="font-mono text-sm font-bold tabular-nums text-gold">
                 {amount}
                 <span className="ml-1.5 text-[9px] font-medium text-cream/40">
                   {min}–{max}
                 </span>
-              </button>
+              </span>
             </div>
             <input
               type="range"
@@ -330,7 +322,7 @@ export function ActionControls({
           </div>
         )}
 
-        <div className="grid grid-cols-3 gap-2">
+        <div className={`grid gap-2 ${canBet ? 'grid-cols-4' : 'grid-cols-3'}`}>
           {legal.types.includes('fold') && (
             <button type="button" onClick={() => onAction('fold')} className="btn-danger py-2.5 text-sm">
               Fold
@@ -344,6 +336,15 @@ export function ActionControls({
           {legal.types.includes('call') && (
             <button type="button" onClick={() => onAction('call')} className="btn-secondary py-2.5 text-sm">
               Call {callAmount}
+            </button>
+          )}
+          {canBet && (
+            <button
+              type="button"
+              onClick={() => submitBet(amount)}
+              className="btn-primary py-2.5 text-sm"
+            >
+              Custom {amount}
             </button>
           )}
           {legal.types.includes('allin') && (

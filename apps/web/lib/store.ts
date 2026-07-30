@@ -70,13 +70,14 @@ interface SessionState {
   private: PrivateView | null;
   chat: ChatMessage[];
   lastError: string | null;
+  lastErrorCode: string | null;
   emojiBurst: { emoji: string; name: string; at: number } | null;
   setSession: (s: { userId: string; name: string; ticket: string }) => void;
   setConnection: (c: SessionState['connection']) => void;
   applyStateSync: (table: PublicTable, priv: PrivateView | null) => void;
   clearTable: () => void;
   pushChat: (m: ChatMessage) => void;
-  setError: (e: string | null) => void;
+  setError: (e: string | null, code?: string | null) => void;
   setEmoji: (e: { emoji: string; name: string; at: number } | null) => void;
 }
 
@@ -89,6 +90,7 @@ export const useSession = create<SessionState>((set) => ({
   private: null,
   chat: [],
   lastError: null,
+  lastErrorCode: null,
   emojiBurst: null,
   setSession: (s) => set(s),
   setConnection: (connection) => set({ connection }),
@@ -100,8 +102,8 @@ export const useSession = create<SessionState>((set) => ({
       if (prev.table && table.version < prev.table.version) return prev;
       return { table, private: priv };
     }),
-  clearTable: () => set({ table: null, private: null, chat: [], lastError: null }),
+  clearTable: () => set({ table: null, private: null, chat: [], lastError: null, lastErrorCode: null }),
   pushChat: (m) => set((s) => ({ chat: [...s.chat.slice(-80), m] })),
-  setError: (lastError) => set({ lastError }),
+  setError: (lastError, code = null) => set({ lastError, lastErrorCode: lastError ? code : null }),
   setEmoji: (emojiBurst) => set({ emojiBurst }),
 }));

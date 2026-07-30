@@ -91,6 +91,7 @@ fun FeltTableLayout(
     onSit: (Int) -> Unit,
     modifier: Modifier = Modifier,
     canSit: Boolean = true,
+    landscape: Boolean = false,
 ) {
     BoxWithConstraints(
         modifier = modifier
@@ -171,6 +172,7 @@ fun FeltTableLayout(
                         turnTotalMs = table.turnTimeMs,
                         onSit = { onSit(player.seat) },
                         canSit = canSit,
+                        landscape = landscape,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -196,20 +198,25 @@ private fun SeatChip(
     onSit: () -> Unit,
     modifier: Modifier = Modifier,
     canSit: Boolean = true,
+    landscape: Boolean = false,
 ) {
     BoxWithConstraints(modifier = modifier) {
         val rad = Math.toRadians(angleDeg)
+        val ry = if (landscape) 0.34f else 0.36f
         val x = maxWidth * (0.5f + cos(rad).toFloat() * 0.40f)
-        val y = maxHeight * (0.5f + sin(rad).toFloat() * 0.36f)
+        val y = maxHeight * (0.5f + sin(rad).toFloat() * ry)
         val faceDown = myCards.isNullOrEmpty() && player.hasCards
         val dealKey = handId.ifBlank { "idle" }
         val highlightMode = winningCards.isNotEmpty()
         val folded = player.status == "folded"
         val sittingOut = player.status == "sittingOut"
+        val seatWidth = if (landscape) 56.dp else 116.dp
+        val offsetX = if (landscape) 28.dp else 58.dp
+        val offsetY = if (landscape) 36.dp else 48.dp
         Column(
             modifier = Modifier
-                .offset(x = x - 58.dp, y = y - 48.dp)
-                .width(116.dp)
+                .offset(x = x - offsetX, y = y - offsetY)
+                .width(seatWidth)
                 .then(if (folded || sittingOut) Modifier else Modifier),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -218,6 +225,33 @@ private fun SeatChip(
                     FeltGhostButton(text = "Sit", onClick = onSit)
                 } else {
                     Text("Empty", fontSize = 11.sp, color = FeltColors.Cream.copy(alpha = 0.4f))
+                }
+                return@Column
+            }
+
+            if (landscape) {
+                LandscapeSeatChrome(
+                    player = player,
+                    dealKey = dealKey,
+                    faceDown = faceDown,
+                    myCards = myCards,
+                    winningCards = winningCards,
+                    highlightMode = highlightMode,
+                    isSelf = isSelf,
+                    isToAct = isToAct,
+                    isWinner = isWinner,
+                    turnEndsAt = turnEndsAt,
+                    turnTotalMs = turnTotalMs,
+                    folded = folded,
+                )
+                if (isWinner && winAmount != null && winAmount > 0) {
+                    Text(
+                        text = "+${formatMoney(winAmount)}",
+                        color = FeltColors.Gold,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
                 }
                 return@Column
             }
@@ -402,6 +436,130 @@ private fun SeatChip(
     }
 }
 
+
+/** Landscape reference stack: cards → $ → name (no avatar). */
+@Composable
+private fun LandscapeSeatChrome(
+    player: TablePlayerUi,
+    dealKey: String,
+    faceDown: Boolean,
+    myCards: List<String>?,
+    winningCards: Set<String>,
+    highlightMode: Boolean,
+    isSelf: Boolean,
+    isToAct: Boolean,
+    isWinner: Boolean,
+    turnEndsAt: Long?,
+    turnTotalMs: Long,
+    folded: Boolean,
+) {
+    val cardW = 28.dp
+    val cardH = 40.dp
+    val displayName = if (isSelf) "You" else (player.name ?: "Seat").take(8)
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        if (faceDown || !myCards.isNullOrEmpty()) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy((-6).dp),
+                verticalAlignment = Alignment.Bottom,
+                modifier = Modifier.padding(bottom = 2.dp),
+            ) {
+                if (faceDown) {
+                    key("$dealKey-${player.seat}-back-0") {
+                        PlayingCard(
+                            code = null,
+                            faceDown = true,
+                            width = cardW,
+                            height = cardH,
+                            dealDelayMs = 0,
+                        )
+                    }
+                    key("$dealKey-${player.seat}-back-1") {
+                        PlayingCard(
+                            code = null,
+                            faceDown = true,
+                            width = cardW,
+                            height = cardH,
+                            dealDelayMs = 80,
+                        )
+                    }
+                } else {
+                    myCards!!.forEachIndexed { index, code ->
+                        key("$dealKey-${player.seat}-$code") {
+                            PlayingCard(
+                                code = code,
+                                highlight = highlightMode && code in winningCards,
+                                dimmed = highlightMode && code !in winningCards,
+                                width = cardW,
+                                height = cardH,
+                                dealDelayMs = index * 80,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Box(contentAlignment = Alignment.Center) {
+            if (isToAct) {
+                SeatTurnRing(
+                    endsAt = turnEndsAt,
+                    totalMs = turnTotalMs,
+                    active = true,
+                    ringSize = 40.dp,
+                )
+            }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(4.dp)),
+            ) {
+                Text(
+                    text = formatMoney(player.stack),
+                    color = Color.White,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(if (isWinner) FeltColors.Gold else FeltColors.StackRed)
+                        .padding(horizontal = 2.dp, vertical = 2.dp),
+                )
+                Text(
+                    text = displayName,
+                    color = FeltColors.Ink,
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(if (isSelf) FeltColors.YouYellow else Color(0xFFD8D8D8))
+                        .padding(horizontal = 2.dp, vertical = 2.dp),
+                )
+            }
+        }
+
+        if (folded) {
+            Text(
+                "FOLD",
+                fontSize = 7.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White.copy(alpha = 0.8f),
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
+        if (player.status == "allin") {
+            Text(
+                "ALL-IN",
+                fontSize = 7.sp,
+                fontWeight = FontWeight.Bold,
+                color = FeltColors.Neon,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
+    }
+}
+
 @Composable
 fun TableActionControls(
     table: TableUiState,
@@ -410,6 +568,7 @@ fun TableActionControls(
     onAction: (String, Int?) -> Unit,
     modifier: Modifier = Modifier,
     waitingLabel: String? = null,
+    landscape: Boolean = false,
 ) {
     val mySeat = table.players.find { it.userId == userId }?.seat
     val isTurn = table.toAct == mySeat && legal != null
@@ -430,28 +589,106 @@ fun TableActionControls(
     }
 
     if (!isTurn || legal == null || legal.types.isEmpty()) {
-        HudPanel(modifier = modifier.fillMaxWidth().padding(top = 4.dp)) {
+        val label = waitingLabel
+            ?: when {
+                table.street == "waiting" -> "Waiting for players…"
+                table.toAct != mySeat -> "Waiting for your turn…"
+                else -> "—"
+            }
+        if (landscape) {
             Text(
-                text = waitingLabel
-                    ?: when {
-                        table.street == "waiting" -> "Waiting for players…"
-                        table.toAct != mySeat -> "Waiting for your turn…"
-                        else -> "—"
-                    },
+                text = label,
                 color = FeltColors.Cream.copy(alpha = 0.55f),
-                modifier = Modifier.fillMaxWidth(),
+                fontSize = 11.sp,
+                modifier = modifier.fillMaxWidth().padding(horizontal = 8.dp),
             )
+        } else {
+            HudPanel(modifier = modifier.fillMaxWidth().padding(top = 4.dp)) {
+                Text(
+                    text = label,
+                    color = FeltColors.Cream.copy(alpha = 0.55f),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
         return
     }
 
     val canBet = "bet" in legal.types || "raise" in legal.types
     val betLabel = if ("bet" in legal.types) "Bet" else "Raise"
+    val betAction = if ("bet" in legal.types) "bet" else "raise"
     val amount = snap(raiseAmount)
     val pot = table.pot
     val currentBet = table.players.maxOfOrNull { it.bet } ?: 0
     val halfPot = snap((pot / 2) + currentBet)
     val potBet = snap(pot + currentBet)
+
+    if (landscape) {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(horizontal = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            if (canBet) {
+                Text(
+                    text = "$amount",
+                    color = FeltColors.Gold,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(FeltColors.Ink.copy(alpha = 0.35f))
+                        .padding(horizontal = 6.dp, vertical = 4.dp),
+                )
+                Slider(
+                    value = amount.toFloat(),
+                    onValueChange = { setRaise(it.roundToInt()) },
+                    valueRange = min.toFloat()..max.coerceAtLeast(min).toFloat(),
+                    steps = if (max > min && bb > 0) {
+                        (((max - min) / bb) - 1).coerceAtLeast(0)
+                    } else {
+                        0
+                    },
+                    enabled = max > min,
+                    colors = SliderDefaults.colors(
+                        thumbColor = FeltColors.Gold,
+                        activeTrackColor = FeltColors.Gold.copy(alpha = 0.85f),
+                        inactiveTrackColor = FeltColors.Cream.copy(alpha = 0.15f),
+                        disabledThumbColor = FeltColors.Gold.copy(alpha = 0.35f),
+                        disabledActiveTrackColor = FeltColors.Gold.copy(alpha = 0.25f),
+                    ),
+                    modifier = Modifier.weight(1f),
+                )
+                listOf("Min" to min, "½" to halfPot, "Pot" to potBet, "Max" to max).forEach { (label, value) ->
+                    FeltChoiceChip(
+                        text = label,
+                        selected = amount == value,
+                        onClick = { onAction(betAction, snap(value)) },
+                    )
+                }
+                FeltPrimaryButton(
+                    text = "Custom $amount",
+                    onClick = { onAction(betAction, amount) },
+                )
+            }
+            if ("fold" in legal.types) {
+                FeltGhostButton(text = "Fold", onClick = { onAction("fold", null) })
+            }
+            if ("check" in legal.types) {
+                FeltGhostButton(text = "Check", onClick = { onAction("check", null) })
+            }
+            if ("call" in legal.types) {
+                FeltGhostButton(text = "Call ${legal.callAmount}", onClick = { onAction("call", null) })
+            }
+            if ("allin" in legal.types) {
+                FeltPrimaryButton(text = "All-in", onClick = { onAction("allin", null) })
+            }
+        }
+        return
+    }
 
     Column(modifier = modifier.fillMaxWidth().padding(top = 4.dp)) {
         Box(
@@ -580,17 +817,10 @@ fun TableActionControls(
                             modifier = Modifier.weight(1f),
                         )
                     }
-                    if ("bet" in legal.types) {
+                    if (canBet) {
                         FeltPrimaryButton(
-                            text = "Bet $amount",
-                            onClick = { onAction("bet", amount) },
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                    if ("raise" in legal.types) {
-                        FeltPrimaryButton(
-                            text = "Raise $amount",
-                            onClick = { onAction("raise", amount) },
+                            text = "Custom $amount",
+                            onClick = { onAction(betAction, amount) },
                             modifier = Modifier.weight(1f),
                         )
                     }

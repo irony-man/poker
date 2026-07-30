@@ -6,19 +6,42 @@ import { formatTurnSeconds, useTurnRemainingMs } from '@/lib/tableLayout';
 export function MoveTimerStrip({
   endsAt,
   totalMs,
+  compact = false,
 }: {
   endsAt: number | null | undefined;
   totalMs: number;
+  /** Tighter padding for landscape action strip. */
+  compact?: boolean;
 }) {
   const remaining = useTurnRemainingMs(endsAt);
   if (!endsAt || remaining <= 0 || totalMs <= 0) return null;
 
   const pct = Math.min(100, Math.max(0, (remaining / totalMs) * 100));
   const urgent = remaining <= 5000;
+  const secs = formatTurnSeconds(remaining);
 
   return (
-    <div className="w-full" aria-label={`Time left ${formatTurnSeconds(remaining)} seconds`}>
-      <div className="h-1.5 w-full overflow-hidden bg-cream/10">
+    <div
+      className={compact ? 'w-full shrink-0 px-1.5 pt-0.5' : 'w-full shrink-0 px-2 pt-1'}
+      aria-label={`Time left ${secs} seconds`}
+    >
+      <div className="mb-0.5 flex items-center justify-between gap-2">
+        <span
+          className={`font-display uppercase tracking-[0.16em] ${
+            compact ? 'text-[8px]' : 'text-[9px]'
+          } ${urgent ? 'text-red-300' : 'text-cream/45'}`}
+        >
+          Your move
+        </span>
+        <span
+          className={`font-mono font-bold tabular-nums ${
+            compact ? 'text-[10px]' : 'text-xs'
+          } ${urgent ? 'text-red-300' : 'text-felt-neon'}`}
+        >
+          {secs}s
+        </span>
+      </div>
+      <div className={`w-full overflow-hidden bg-cream/10 ${compact ? 'h-1' : 'h-1.5'}`}>
         <div
           className={`h-full transition-[width] duration-100 ease-linear ${
             urgent ? 'bg-red-400' : 'bg-gradient-to-r from-felt-neon to-gold'

@@ -24,6 +24,7 @@ export default function HomePage() {
   const [maxSeats, setMaxSeats] = useState(6);
   const [botCount, setBotCount] = useState(2);
   const [hostStakeId, setHostStakeId] = useState(DEFAULT_STAKE_ID);
+  const [customRoomCode, setCustomRoomCode] = useState('');
   const [offlineSeats, setOfflineSeats] = useState(6);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +95,12 @@ export default function HomePage() {
     try {
       const session = await ensureSession(name);
       const stake = stakeById(hostStakeId) ?? STAKE_PRESETS[1]!;
+      const code = customRoomCode.trim();
+      if (code && !/^\d{4,8}$/.test(code)) {
+        setError('Room code must be 4–8 digits');
+        setBusy(false);
+        return;
+      }
       const table = await createTable({
         userId: session.userId,
         name: `${session.name}'s Table`,
@@ -104,6 +111,7 @@ export default function HomePage() {
         maxSeats,
         botCount,
         isPrivate: true,
+        ...(code ? { inviteCode: code } : {}),
       });
       router.push(`/table/${table.tableId}?invite=${table.inviteCode}`);
     } catch (err) {
@@ -235,6 +243,19 @@ export default function HomePage() {
         onSelect={setBotCount}
         format={(n) => (n === 0 ? 'None' : String(n))}
       />
+      <label className="block">
+        <span className="hud-label">Room code (optional)</span>
+        <input
+          value={customRoomCode}
+          onChange={(e) => setCustomRoomCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+          className="hud-input font-mono tracking-[0.2em]"
+          inputMode="numeric"
+          pattern="\d{4,8}"
+          maxLength={8}
+          placeholder="Auto · or 4–8 digits"
+          autoComplete="off"
+        />
+      </label>
       <button disabled={busy} type="submit" className="btn-primary mt-auto min-h-11 w-full">
         Create private table
       </button>
@@ -262,9 +283,13 @@ export default function HomePage() {
         <span className="hud-label">Invite code</span>
         <input
           value={invite}
-          onChange={(e) => setInvite(e.target.value)}
-          className="hud-input font-mono tracking-widest uppercase"
+          onChange={(e) => setInvite(e.target.value.trim())}
+          className="hud-input font-mono tracking-[0.2em]"
+          inputMode="numeric"
+          maxLength={8}
           required
+          placeholder="Room code"
+          autoComplete="off"
         />
       </label>
       <div className="mt-auto grid grid-cols-2 gap-2.5 pt-1">

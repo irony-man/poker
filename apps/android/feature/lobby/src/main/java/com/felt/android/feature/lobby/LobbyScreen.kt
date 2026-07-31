@@ -25,6 +25,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.felt.android.core.designsystem.AvatarPicker
 import com.felt.android.core.designsystem.FeltChoiceChip
@@ -104,6 +107,15 @@ fun LobbyScreen(
                     options = (0..maxBots).toList(),
                     onSelect = viewModel::onBotCountChange,
                 ) { if (it == 0) "None" else "$it" }
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FeltLabel("Room code (optional)")
+                    LobbyTextField(
+                        value = state.customRoomCode,
+                        onValueChange = viewModel::onCustomRoomCodeChange,
+                        placeholder = "Auto · or 4–8 digits",
+                        numeric = true,
+                    )
+                }
                 FeltPrimaryButton(
                     text = "Create private table",
                     onClick = { viewModel.host(onHosted) },
@@ -129,6 +141,8 @@ fun LobbyScreen(
                     LobbyTextField(
                         value = state.inviteCode,
                         onValueChange = viewModel::onInviteChange,
+                        placeholder = "Room code",
+                        numeric = true,
                     )
                 }
                 Row(
@@ -206,12 +220,19 @@ private fun NameField(value: String, onChange: (String) -> Unit) {
 private fun LobbyTextField(
     value: String,
     onValueChange: (String) -> Unit,
+    placeholder: String? = null,
+    numeric: Boolean = false,
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
+        placeholder = placeholder?.let { { Text(it, color = FeltColors.Cream.copy(alpha = 0.35f)) } },
+        keyboardOptions = KeyboardOptions(
+            keyboardType = if (numeric) KeyboardType.Number else KeyboardType.Text,
+            imeAction = ImeAction.Done,
+        ),
         colors = OutlinedTextFieldDefaults.colors(
             focusedTextColor = FeltColors.Cream,
             unfocusedTextColor = FeltColors.Cream,

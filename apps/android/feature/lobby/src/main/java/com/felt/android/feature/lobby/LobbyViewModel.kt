@@ -20,6 +20,7 @@ data class LobbyUiState(
     val avatarId: Int = 0,
     val maxSeats: Int = 6,
     val botCount: Int = 2,
+    val customRoomCode: String = "",
     val inviteCode: String = "",
     val offlineSeats: Int = 6,
     val busy: Boolean = false,
@@ -55,7 +56,10 @@ class LobbyViewModel @Inject constructor(
     }
     fun onMaxSeatsChange(value: Int) = _uiState.update { it.copy(maxSeats = value) }
     fun onBotCountChange(value: Int) = _uiState.update { it.copy(botCount = value) }
-    fun onInviteChange(value: String) = _uiState.update { it.copy(inviteCode = value) }
+    fun onCustomRoomCodeChange(value: String) =
+        _uiState.update { it.copy(customRoomCode = value.filter { ch -> ch.isDigit() }.take(8)) }
+    fun onInviteChange(value: String) =
+        _uiState.update { it.copy(inviteCode = value.trim().take(8)) }
     fun onOfflineSeatsChange(value: Int) = _uiState.update { it.copy(offlineSeats = value) }
     fun clearError() = _uiState.update { it.copy(error = null) }
 
@@ -68,6 +72,10 @@ class LobbyViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(busy = true, error = null) }
             runCatching {
+                val code = state.customRoomCode.trim()
+                if (code.isNotEmpty() && !code.matches(Regex("^\\d{4,8}$"))) {
+                    error("Room code must be 4–8 digits")
+                }
                 val session = ensureSession(state.name.trim())
                 val table = feltApi.createTable(
                     CreateTableRequest(
@@ -76,6 +84,7 @@ class LobbyViewModel @Inject constructor(
                         maxSeats = state.maxSeats,
                         botCount = state.botCount.coerceAtMost(state.maxSeats - 1),
                         isPrivate = true,
+                        inviteCode = code.ifBlank { null },
                     ),
                 )
                 table.tableId to table.inviteCode

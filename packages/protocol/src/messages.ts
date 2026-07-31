@@ -150,6 +150,15 @@ export const ServerMessageSchema = z.discriminatedUnion('type', [
     at: z.number(),
   }),
   z.object({
+    type: z.literal('seat_action'),
+    tableId: z.string(),
+    seat: z.number().int().min(0).max(9),
+    action: ActionTypeSchema,
+    amount: z.number().int().nonnegative(),
+    label: z.string().min(1).max(32),
+    at: z.number(),
+  }),
+  z.object({
     type: z.literal('pong'),
   }),
   z.object({
@@ -171,6 +180,11 @@ export const CreateTableBodySchema = z.object({
   /** Seat bots when the table is created (host still needs to sit). */
   botCount: z.number().int().min(0).max(8).default(0),
   isPrivate: z.boolean().default(true),
+  /** Optional custom numerical invite / room code (4–8 digits). */
+  inviteCode: z
+    .string()
+    .regex(/^\d{4,8}$/, 'Room code must be 4–8 digits')
+    .optional(),
 });
 
 export type CreateTableBody = z.infer<typeof CreateTableBodySchema>;

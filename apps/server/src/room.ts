@@ -526,7 +526,19 @@ export class Room {
       if (e.type === 'action') {
         const p = this.state.players[e.seat];
         const name = p?.name ?? `Seat ${e.seat}`;
-        this.systemChat(name, formatActionLine(e.action, e.amount));
+        const line = formatActionLine(e.action, e.amount);
+        this.systemChat(name, line);
+        const at = Date.now();
+        const seatAction = {
+          type: 'seat_action' as const,
+          tableId: this.meta.id,
+          seat: e.seat,
+          action: e.action,
+          amount: e.amount,
+          label: formatActionPopup(e.action, e.amount),
+          at,
+        };
+        for (const conn of this.connections.values()) conn.send(seatAction);
       } else if (e.type === 'street') {
         const label = e.street.charAt(0).toUpperCase() + e.street.slice(1);
         this.systemChat('Dealer', `${label} — ${e.cards.map(cardToString).join(' ')}`);
@@ -664,6 +676,29 @@ function formatActionLine(
   }
 }
 
+/** Short seat bubble label. */
+function formatActionPopup(
+  action: 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'allin',
+  amount: number,
+): string {
+  switch (action) {
+    case 'fold':
+      return 'Fold';
+    case 'check':
+      return 'Check';
+    case 'call':
+      return `Call ${amount}`;
+    case 'bet':
+      return `Bet ${amount}`;
+    case 'raise':
+      return `Raise ${amount}`;
+    case 'allin':
+      return amount > 0 ? `All-in ${amount}` : 'All-in';
+    default:
+      return action;
+  }
+}
+
 export class RoomManager {
   private rooms = new Map<string, Room>();
   private byInvite = new Map<string, string>();
@@ -681,9 +716,14 @@ export class RoomManager {
     config: TableConfig;
     isPrivate: boolean;
     stakeId?: string;
+    /** Optional custom numerical invite code. */
+    inviteCode?: string;
   }): TableMeta {
+    const inviteCode = opts.inviteCode ?? this.allocateInviteCode();
+    if (this.byInvite.has(inviteCode)) {
+      throw new Error('Room code already in use');
+    }
     const id = nanoid(10);
-    const inviteCode = nanoid(8);
     const meta: TableMeta = {
       id,
       inviteCode,
@@ -699,6 +739,15 @@ export class RoomManager {
     this.byInvite.set(inviteCode, id);
     void this.history.recordTable(meta);
     return meta;
+  }
+
+  /** 6-digit numerical room code, unique among live tables. */
+  private allocateInviteCode(): string {
+    for (let i = 0; i < 32; i++) {
+      const code = String(100_000 + Math.floor(Math.random() * 900_000));
+      if (!this.byInvite.has(code)) return code;
+    }
+    throw new Error('Could not allocate room code');
   }
 
   get(tableId: string): Room | undefined {

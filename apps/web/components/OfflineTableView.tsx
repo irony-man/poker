@@ -66,15 +66,36 @@ function formatAction(
   }
 }
 
+function formatActionPopup(action: string, amount: number): string {
+  switch (action) {
+    case 'fold':
+      return 'Fold';
+    case 'check':
+      return 'Check';
+    case 'call':
+      return `Call ${amount}`;
+    case 'bet':
+      return `Bet ${amount}`;
+    case 'raise':
+      return `Raise ${amount}`;
+    case 'allin':
+      return amount > 0 ? `All-in ${amount}` : 'All-in';
+    default:
+      return action;
+  }
+}
+
 function announceEvents(
   state: HandState,
   events: EngineEvent[],
   push: (m: ChatMessage) => void,
+  onSeatAction?: (seat: number, label: string) => void,
 ) {
   for (const e of events) {
     if (e.type === 'action') {
       const name = state.players[e.seat]?.name ?? `Seat ${e.seat}`;
       push({ userId: 'system', name, text: formatAction(e.action, e.amount), at: Date.now() });
+      onSeatAction?.(e.seat, formatActionPopup(e.action, e.amount));
     } else if (e.type === 'street') {
       const label = e.street.charAt(0).toUpperCase() + e.street.slice(1);
       push({
@@ -132,6 +153,7 @@ export function OfflineTableView({
   const pushChat = useSession((s) => s.pushChat);
   const setSession = useSession((s) => s.setSession);
   const setEmoji = useSession((s) => s.setEmoji);
+  const setActionBurst = useSession((s) => s.setActionBurst);
   const narrow = useIsNarrow();
   const landscape = useIsLandscapePhone();
 
@@ -154,14 +176,24 @@ export function OfflineTableView({
 
   const syncChat = useCallback(
     (next: HandState, events: EngineEvent[]) => {
-      announceEvents(next, events, pushChat);
+      announceEvents(next, events, pushChat, (seat, label) => {
+        setActionBurst({ seat, label, at: Date.now() });
+        window.setTimeout(() => setActionBurst(null), 5000);
+      });
     },
-    [pushChat],
+    [pushChat, setActionBurst],
   );
 
   // Seed human + bots once
   useEffect(() => {
-    useSession.setState({ chat: [], table: null, private: null, lastError: null, lastErrorCode: null });
+    useSession.setState({
+      chat: [],
+      table: null,
+      private: null,
+      lastError: null,
+      lastErrorCode: null,
+      actionBurst: null,
+    });
     setSession({ userId: HUMAN_ID, name: playerName, ticket: 'offline' });
     let s = createEmptyTable(config);
     const seated = sitDown(s, 0, HUMAN_ID, playerName, config.buyIn);

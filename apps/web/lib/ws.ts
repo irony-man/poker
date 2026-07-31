@@ -18,6 +18,7 @@ export function usePokerSocket(
   const pushChat = useSession((s) => s.pushChat);
   const setError = useSession((s) => s.setError);
   const setEmoji = useSession((s) => s.setEmoji);
+  const setActionBurst = useSession((s) => s.setActionBurst);
   const wsRef = useRef<WebSocket | null>(null);
   const intentionalLeaveRef = useRef(false);
   const mountedRef = useRef(false);
@@ -74,6 +75,14 @@ export function usePokerSocket(
             setEmoji({ emoji: msg.emoji, name: msg.name, at: msg.at });
             setTimeout(() => setEmoji(null), 1800);
             break;
+          case 'seat_action':
+            setActionBurst({
+              seat: msg.seat,
+              label: typeof msg.label === 'string' ? msg.label : String(msg.action ?? ''),
+              at: msg.at,
+            });
+            setTimeout(() => setActionBurst(null), 5000);
+            break;
           case 'error':
             setError(
               typeof msg.message === 'string' ? msg.message : 'Error',
@@ -123,7 +132,7 @@ export function usePokerSocket(
       }
       wsRef.current = null;
     };
-  }, [ticket, tableId, setConnection, applyStateSync, pushChat, setError, setEmoji]);
+  }, [ticket, tableId, setConnection, applyStateSync, pushChat, setError, setEmoji, setActionBurst]);
 
   const send = useCallback((payload: unknown): boolean => {
     const open = wsRef.current;

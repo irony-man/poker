@@ -128,18 +128,27 @@ async function main() {
       res.status(400).json({ error: 'bigBlind must be >= smallBlind' });
       return;
     }
-    const meta = rooms.create({
-      name: d.name,
-      hostUserId: user.id,
-      isPrivate: d.isPrivate,
-      config: {
-        maxSeats: d.maxSeats,
-        smallBlind: d.smallBlind,
-        bigBlind: d.bigBlind,
-        buyIn: d.buyIn,
-        turnTimeMs: d.turnTimeMs,
-      },
-    });
+    let meta;
+    try {
+      meta = rooms.create({
+        name: d.name,
+        hostUserId: user.id,
+        isPrivate: d.isPrivate,
+        inviteCode: d.inviteCode,
+        config: {
+          maxSeats: d.maxSeats,
+          smallBlind: d.smallBlind,
+          bigBlind: d.bigBlind,
+          buyIn: d.buyIn,
+          turnTimeMs: d.turnTimeMs,
+        },
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create table';
+      const status = message.includes('already in use') ? 409 : 400;
+      res.status(status).json({ error: message });
+      return;
+    }
     const room = rooms.get(meta.id)!;
     const maxBots = Math.max(0, d.maxSeats - 1);
     const bots = Math.min(d.botCount, maxBots);

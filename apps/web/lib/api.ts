@@ -44,6 +44,7 @@ export async function createTable(
     maxSeats: number;
     botCount?: number;
     isPrivate: boolean;
+    inviteCode?: string;
   },
   options?: { clerkToken?: string | null },
 ) {
@@ -54,7 +55,14 @@ export async function createTable(
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text || 'Failed to create table');
+    let message = text || 'Failed to create table';
+    try {
+      const parsed = JSON.parse(text) as { error?: string };
+      if (typeof parsed.error === 'string' && parsed.error) message = parsed.error;
+    } catch {
+      /* keep raw text */
+    }
+    throw new Error(message);
   }
   return res.json() as Promise<{
     tableId: string;

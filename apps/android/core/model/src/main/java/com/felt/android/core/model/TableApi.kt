@@ -22,6 +22,8 @@ data class CreateTableRequest(
     val maxSeats: Int = 6,
     val botCount: Int = 0,
     val isPrivate: Boolean = true,
+    /** Optional custom numerical invite / room code (4–8 digits). */
+    val inviteCode: String? = null,
 )
 
 @Serializable

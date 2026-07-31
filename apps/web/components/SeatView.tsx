@@ -4,10 +4,23 @@ import { ChipStack, formatChips } from './ChipStack';
 import { HoleCardFan, PlayingCard, type CardSize } from './PlayingCard';
 import { PlayerAvatar } from './PlayerAvatar';
 import { SeatTurnRing } from './TurnTimer';
-import type { PublicPlayer } from '@/lib/store';
+import { useSession, type PublicPlayer } from '@/lib/store';
 
 function money(n: number): string {
   return `$${formatChips(n)}`;
+}
+
+function SeatActionPopup({ label, burstKey }: { label: string; burstKey: number }) {
+  return (
+    <div
+      key={burstKey}
+      className="pointer-events-none absolute left-1/2 top-0 z-30 -translate-x-1/2 -translate-y-[115%]"
+    >
+      <span className="seat-action-popup inline-block whitespace-nowrap rounded-lg border-2 border-gold/60 bg-ink/95 px-3.5 py-1.5 text-sm font-extrabold uppercase tracking-wide text-gold shadow-[0_6px_18px_rgba(0,0,0,0.6)]">
+        {label}
+      </span>
+    </div>
+  );
 }
 
 export function SeatView({
@@ -59,6 +72,8 @@ export function SeatView({
   const x = 50 + Math.cos(rad) * rx;
   const y = 50 + Math.sin(rad) * ry;
   const isBot = !!player.userId?.startsWith('bot:');
+  const actionBurst = useSession((s) => s.actionBurst);
+  const showAction = actionBurst != null && actionBurst.seat === player.seat;
 
   const betX = 50 + Math.cos(rad) * (landscape ? 22 : compact ? 24 : 23);
   const betY = 50 + Math.sin(rad) * (landscape ? 18 : compact ? 20 : 19);
@@ -127,8 +142,12 @@ export function SeatView({
 
       <div
         style={{ left: `${x}%`, top: `${y}%` }}
-        className={`absolute -translate-x-1/2 -translate-y-1/2 ${isToAct || isWinner ? 'z-20' : 'z-10'} ${folded || sittingOut ? 'opacity-55' : ''}`}
+        className={`absolute -translate-x-1/2 -translate-y-1/2 ${isToAct || isWinner || showAction ? 'z-20' : 'z-10'}`}
       >
+        {showAction && actionBurst && (
+          <SeatActionPopup label={actionBurst.label} burstKey={actionBurst.at} />
+        )}
+        <div className={folded || sittingOut ? 'opacity-55' : undefined}>
         {/* —— Landscape reference stack: cards → $ → name —— */}
         {landscape ? (
           <div
@@ -448,6 +467,7 @@ export function SeatView({
             ×
           </button>
         )}
+        </div>
       </div>
     </>
   );

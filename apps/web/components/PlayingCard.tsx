@@ -38,83 +38,6 @@ const SUIT_GLYPH: Record<string, string> = {
   s: '♠',
 };
 
-/** Standard pip centers as % of the face (x, y). */
-const PIP_LAYOUT: Record<string, Array<[number, number]>> = {
-  A: [[50, 52]],
-  '2': [
-    [50, 22],
-    [50, 78],
-  ],
-  '3': [
-    [50, 22],
-    [50, 50],
-    [50, 78],
-  ],
-  '4': [
-    [32, 24],
-    [68, 24],
-    [32, 76],
-    [68, 76],
-  ],
-  '5': [
-    [32, 24],
-    [68, 24],
-    [50, 50],
-    [32, 76],
-    [68, 76],
-  ],
-  '6': [
-    [32, 24],
-    [68, 24],
-    [32, 50],
-    [68, 50],
-    [32, 76],
-    [68, 76],
-  ],
-  '7': [
-    [32, 22],
-    [68, 22],
-    [50, 36],
-    [32, 50],
-    [68, 50],
-    [32, 78],
-    [68, 78],
-  ],
-  '8': [
-    [32, 20],
-    [68, 20],
-    [50, 34],
-    [32, 50],
-    [68, 50],
-    [50, 66],
-    [32, 80],
-    [68, 80],
-  ],
-  '9': [
-    [32, 18],
-    [68, 18],
-    [32, 36],
-    [68, 36],
-    [50, 50],
-    [32, 64],
-    [68, 64],
-    [32, 82],
-    [68, 82],
-  ],
-  T: [
-    [32, 16],
-    [68, 16],
-    [50, 28],
-    [32, 38],
-    [68, 38],
-    [32, 62],
-    [68, 62],
-    [50, 72],
-    [32, 84],
-    [68, 84],
-  ],
-};
-
 function parseCode(
   code: string,
 ): { rankChar: string; rank: string; suit: string; red: boolean } | null {
@@ -140,8 +63,12 @@ function isTiny(size: CardSize) {
   );
 }
 
-/** Glossy white face with oversized center suit — in-hand style. */
-function HandFace({
+/**
+ * Modern glossy face (reference style):
+ * top-left rank + small suit, top-right medium suit, large centered suit,
+ * soft sheen across white stock — no pip grid.
+ */
+function ModernFace({
   rank,
   suit,
   red,
@@ -154,118 +81,67 @@ function HandFace({
 }) {
   const color = red ? 'text-[#e53935]' : 'text-[#111111]';
   const tiny = isTiny(size);
+  const isTen = rank === '10';
+
+  const rankClass = tiny
+    ? isTen
+      ? 'text-[9px] leading-none'
+      : 'text-[11px] leading-none'
+    : isTen
+      ? 'text-[13px] sm:text-[17px] leading-none'
+      : 'text-[15px] sm:text-[20px] leading-none';
+
+  const cornerSuit = tiny ? 'text-[9px] leading-none' : 'text-[12px] sm:text-[15px] leading-none';
+  const topRightSuit = tiny ? 'text-[12px] leading-none' : 'text-[16px] sm:text-[22px] leading-none';
+  const centerSuit = tiny
+    ? 'text-[1.55rem] leading-none'
+    : 'text-[2.15rem] sm:text-[3rem] leading-none';
+
   return (
     <div
       className="absolute inset-0"
       style={{
-        background: 'linear-gradient(160deg, #ffffff 0%, #f7f7f7 55%, #ececec 100%)',
+        background: 'linear-gradient(180deg, #ffffff 0%, #ffffff 48%, #f2f2f2 100%)',
       }}
     >
+      {/* Soft horizontal sheen like polished plastic */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-[55%]"
+        style={{
+          background:
+            'linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.55) 55%, transparent 100%)',
+        }}
+      />
+      <div
+        className="pointer-events-none absolute inset-x-[8%] top-[42%] h-px opacity-40"
+        style={{
+          background:
+            'linear-gradient(90deg, transparent, rgba(0,0,0,0.08), transparent)',
+        }}
+      />
+
+      {/* Top-left: rank + small suit */}
+      <div
+        className={`absolute left-[5%] top-[5%] z-[1] flex flex-col items-center ${color}`}
+      >
+        <span className={`select-none font-extrabold tracking-tight ${rankClass}`}>{rank}</span>
+        <span className={`select-none mt-px ${cornerSuit}`}>{suit}</span>
+      </div>
+
+      {/* Top-right: medium suit */}
+      <div className={`absolute right-[6%] top-[6%] z-[1] ${color}`}>
+        <span className={`select-none font-semibold ${topRightSuit}`}>{suit}</span>
+      </div>
+
+      {/* Large center suit */}
       <div className={`absolute inset-0 flex items-center justify-center ${color}`}>
         <span
-          className={`select-none font-semibold leading-none ${
-            tiny ? 'text-[1.65rem]' : 'text-[2.35rem] sm:text-[3.1rem]'
-          }`}
-          style={{ transform: 'translateY(6%)' }}
+          className={`select-none font-semibold ${centerSuit}`}
+          style={{ transform: 'translateY(8%)' }}
         >
           {suit}
         </span>
       </div>
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-[52%]"
-        style={{
-          background:
-            'linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.18) 70%, transparent 100%)',
-          clipPath: 'ellipse(120% 100% at 50% 0%)',
-        }}
-      />
-      <div className={`absolute left-[3px] top-[3px] z-[1] flex flex-col items-center leading-none ${color}`}>
-        <span
-          className={`font-extrabold tracking-tight ${tiny ? 'text-[10px]' : 'text-[14px] sm:text-[17px]'}`}
-        >
-          {rank}
-        </span>
-        <span className={`-mt-0.5 ${tiny ? 'text-[9px]' : 'text-[12px] sm:text-[14px]'}`}>{suit}</span>
-      </div>
-    </div>
-  );
-}
-
-/** Classic pip / court face for board & opponents. */
-function DeckFace({
-  rankChar,
-  rank,
-  suit,
-  red,
-  size,
-}: {
-  rankChar: string;
-  rank: string;
-  suit: string;
-  red: boolean;
-  size: CardSize;
-}) {
-  const color = red ? 'text-[#c62828]' : 'text-[#1a1a1a]';
-  const tiny = isTiny(size);
-  const pips = PIP_LAYOUT[rankChar];
-  const pipSize = tiny
-    ? rankChar === 'A'
-      ? 'text-[1.15rem]'
-      : 'text-[0.55rem] sm:text-[0.7rem]'
-    : rankChar === 'A'
-      ? 'text-[1.85rem] sm:text-[2.6rem]'
-      : 'text-[0.7rem] sm:text-[1rem]';
-  const cornerRank = tiny ? 'text-[9px] sm:text-[11px]' : 'text-[11px] sm:text-sm';
-  const cornerSuit = tiny ? 'text-[8px] sm:text-[10px]' : 'text-[10px] sm:text-xs';
-
-  return (
-    <div
-      className="absolute inset-0"
-      style={{
-        background: 'linear-gradient(165deg, #fffef9 0%, #f4efe4 55%, #ebe4d6 100%)',
-      }}
-    >
-      <div className={`absolute left-[2px] top-[2px] z-[1] flex flex-col items-center leading-none ${color}`}>
-        <span className={`font-extrabold tracking-tight ${cornerRank}`}>{rank}</span>
-        <span className={`-mt-px ${cornerSuit}`}>{suit}</span>
-      </div>
-      <div
-        className={`absolute bottom-[2px] right-[2px] z-[1] flex rotate-180 flex-col items-center leading-none ${color}`}
-      >
-        <span className={`font-extrabold tracking-tight ${cornerRank}`}>{rank}</span>
-        <span className={`-mt-px ${cornerSuit}`}>{suit}</span>
-      </div>
-
-      {pips ? (
-        <div className={`absolute inset-0 ${color}`}>
-          {pips.map(([x, y], i) => (
-            <span
-              key={i}
-              className={`absolute -translate-x-1/2 -translate-y-1/2 select-none font-semibold leading-none ${pipSize} ${
-                y > 55 ? 'rotate-180' : ''
-              }`}
-              style={{ left: `${x}%`, top: `${y}%` }}
-            >
-              {suit}
-            </span>
-          ))}
-        </div>
-      ) : (
-        <div className={`absolute inset-0 flex flex-col items-center justify-center ${color}`}>
-          <span
-            className={`select-none font-extrabold leading-none ${
-              tiny ? 'text-base' : 'text-xl sm:text-3xl'
-            }`}
-          >
-            {rank}
-          </span>
-          <span
-            className={`select-none leading-none ${tiny ? 'text-sm' : 'text-lg sm:text-2xl'}`}
-          >
-            {suit}
-          </span>
-        </div>
-      )}
     </div>
   );
 }
@@ -276,24 +152,23 @@ function CardBack({ size }: { size: CardSize }) {
     <div
       className="absolute inset-0"
       style={{
-        background:
-          'linear-gradient(145deg, #1a3d6e 0%, #0f2748 45%, #0a1a32 100%)',
+        background: 'linear-gradient(145deg, #2a1f12 0%, #1a140c 45%, #0f0c08 100%)',
       }}
     >
       <div
-        className="absolute inset-[3px] rounded-[2px] border border-[#c9a227]/55"
+        className="absolute inset-[3px] rounded-[3px] border border-[#c9a227]/50"
         style={{
           backgroundImage:
-            'repeating-linear-gradient(45deg, rgba(201,162,39,0.18) 0 2px, transparent 2px 6px), repeating-linear-gradient(-45deg, rgba(201,162,39,0.12) 0 2px, transparent 2px 6px)',
+            'repeating-linear-gradient(45deg, rgba(201,162,39,0.16) 0 2px, transparent 2px 6px), repeating-linear-gradient(-45deg, rgba(201,162,39,0.1) 0 2px, transparent 2px 6px)',
         }}
       />
       <div className="absolute inset-0 flex items-center justify-center">
         <span
-          className={`select-none font-display font-bold tracking-wider text-[#e0b43a]/90 ${
-            tiny ? 'text-[8px]' : 'text-[10px] sm:text-xs'
+          className={`select-none font-serif tracking-wide text-[#e8ce83]/90 ${
+            tiny ? 'text-[9px]' : 'text-[11px] sm:text-sm'
           }`}
         >
-          FELT
+          F
         </span>
       </div>
     </div>
@@ -301,8 +176,8 @@ function CardBack({ size }: { size: CardSize }) {
 }
 
 /**
- * `deck` — classic CSS faces for board / opponents.
- * `hand` — glossy large-suit faces for the hero’s hole cards.
+ * Modern glossy playing cards for board, opponents, and hole cards.
+ * `variant` is kept for call-site compatibility; all faces use the same design.
  */
 export function PlayingCard({
   code,
@@ -328,26 +203,20 @@ export function PlayingCard({
     size ?? (variant === 'hand' ? 'hand' : small ? 'sm' : 'md');
   const w = SIZE[resolved];
   const radius =
-    variant === 'hand'
-      ? resolved === 'handSm' || resolved === 'peek'
-        ? 'rounded-lg'
-        : 'rounded-xl'
-      : resolved === 'xs' || resolved === 'sm' || resolved === 'peek' || resolved === 'board'
-        ? 'rounded-[4px]'
+    resolved === 'xs' || resolved === 'peek' || resolved === 'board' || resolved === 'handSm'
+      ? 'rounded-md'
+      : resolved === 'hand' || resolved === 'md' || resolved === 'lg'
+        ? 'rounded-lg sm:rounded-xl'
         : 'rounded-md sm:rounded-lg';
   const winRing = highlight
-    ? 'ring-2 ring-gold shadow-[0_0_18px_rgba(232,185,74,0.55)] scale-105 z-10'
-    : variant === 'hand'
-      ? 'ring-[1.5px] ring-black/50'
-      : 'ring-1 ring-black/30';
+    ? 'ring-2 ring-brass shadow-[0_0_18px_rgba(201,162,39,0.5)] scale-105 z-10'
+    : 'ring-1 ring-black/20';
   const dim = dimmed && !highlight ? 'opacity-35 saturate-50' : '';
   const shell = [
     w,
     radius,
     'relative overflow-hidden bg-white',
-    variant === 'hand'
-      ? 'shadow-[0_6px_16px_rgba(0,0,0,0.55)]'
-      : 'shadow-md',
+    'shadow-[0_4px_12px_rgba(0,0,0,0.35)]',
     winRing,
     dim,
     'transition-[opacity,transform,box-shadow] duration-300',
@@ -402,19 +271,9 @@ export function PlayingCard({
       className={shell}
       aria-label={code}
     >
-      {variant === 'hand' ? (
-        <HandFace rank={parsed.rank} suit={parsed.suit} red={parsed.red} size={resolved} />
-      ) : (
-        <DeckFace
-          rankChar={parsed.rankChar}
-          rank={parsed.rank}
-          suit={parsed.suit}
-          red={parsed.red}
-          size={resolved}
-        />
-      )}
+      <ModernFace rank={parsed.rank} suit={parsed.suit} red={parsed.red} size={resolved} />
       {highlight ? (
-        <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-transparent via-gold to-transparent" />
+        <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-transparent via-brass to-transparent" />
       ) : null}
     </motion.div>
   );
@@ -436,7 +295,9 @@ export function HoleCardFan({
   return (
     <div
       className={`relative z-[1] flex items-end justify-center ${
-        compact ? 'mb-0.5 h-[3.25rem] w-[3.35rem]' : 'mb-1 h-[4.85rem] w-[4.4rem] sm:h-[6.4rem] sm:w-[5.6rem]'
+        compact
+          ? 'mb-0.5 h-[3.25rem] w-[3.35rem]'
+          : 'mb-1 h-[4.85rem] w-[4.4rem] sm:h-[6.4rem] sm:w-[5.6rem]'
       }`}
     >
       <div

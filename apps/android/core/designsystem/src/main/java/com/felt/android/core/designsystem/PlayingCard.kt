@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,8 +31,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 
-private val CardFace = Color(0xFFF7F2E8)
-private val CardBack = Color(0xFF1A3050)
+/** Modern white stock — matches web PlayingCard glossy face. */
+private val CardFaceTop = Color(0xFFFFFFFF)
+private val CardFaceBottom = Color(0xFFF2F2F2)
+private val SuitRed = Color(0xFFE53935)
+private val SuitBlack = Color(0xFF111111)
 
 data class ParsedCard(
     val rank: String,
@@ -72,7 +76,7 @@ fun PlayingCard(
     dealDelayMs: Int = 0,
     animateDeal: Boolean = true,
 ) {
-    val shape = RoundedCornerShape(6.dp)
+    val shape = RoundedCornerShape(8.dp)
     val faceAlpha = if (dimmed && !highlight) 0.4f else 1f
 
     val progress = remember { Animatable(if (animateDeal) 0f else 1f) }
@@ -110,76 +114,118 @@ fun PlayingCard(
                 scaleY = dealScale
                 cameraDistance = 16f * density
             }
-            .shadow(if (highlight) 10.dp else 4.dp, shape)
+            .shadow(if (highlight) 10.dp else 6.dp, shape)
             .clip(shape)
             .then(
-                if (highlight) Modifier.border(2.dp, FeltColors.Gold, shape)
-                else Modifier.border(1.dp, Color.Black.copy(alpha = 0.2f), shape),
+                if (highlight) Modifier.border(2.dp, FeltColors.Brass, shape)
+                else Modifier.border(1.dp, Color.Black.copy(alpha = 0.18f), shape),
             )
-            .background(if (faceDown || code == null) CardBack else CardFace),
-        contentAlignment = Alignment.Center,
-    ) {
-        Box(modifier = Modifier.fillMaxSize().padding(1.dp), contentAlignment = Alignment.Center) {
-            if (faceDown || code == null) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(4.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(
-                            Brush.linearGradient(
-                                listOf(
-                                    FeltColors.Cyan.copy(alpha = 0.35f),
-                                    FeltColors.Gold.copy(alpha = 0.25f),
-                                    FeltColors.InkRaised,
-                                ),
-                            ),
-                        )
-                        .border(1.dp, FeltColors.Gold.copy(alpha = 0.4f), RoundedCornerShape(4.dp)),
-                )
-            } else {
-                val parsed = parseCardCode(code)
-                if (parsed == null) {
-                    Text(
-                        text = code,
-                        color = FeltColors.Ink.copy(alpha = faceAlpha),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace,
+            .background(
+                if (faceDown || code == null) {
+                    Brush.linearGradient(
+                        listOf(Color(0xFF2A1F12), Color(0xFF0F0C08)),
                     )
                 } else {
-                    val ink = (if (parsed.isRed) Color(0xFFC62828) else Color(0xFF121212)).copy(alpha = faceAlpha)
-                    Column(
+                    Brush.verticalGradient(listOf(CardFaceTop, CardFaceBottom))
+                },
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (faceDown || code == null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(3.dp)
+                    .clip(RoundedCornerShape(5.dp))
+                    .border(1.dp, FeltColors.Brass.copy(alpha = 0.45f), RoundedCornerShape(5.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "F",
+                    color = FeltColors.BrassLight.copy(alpha = 0.9f),
+                    fontSize = 14.sp,
+                    fontFamily = FeltFonts.Serif,
+                )
+            }
+        } else {
+            val parsed = parseCardCode(code)
+            if (parsed == null) {
+                Text(
+                    text = code,
+                    color = FeltColors.Ink.copy(alpha = faceAlpha),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                )
+            } else {
+                val ink = (if (parsed.isRed) SuitRed else SuitBlack).copy(alpha = faceAlpha)
+                val rankSp = if (parsed.rank == "10") 11.sp else 14.sp
+                val cornerSuitSp = 11.sp
+                val topRightSp = 14.sp
+                val centerSp = (height.value * 0.42f).sp
+
+                Box(modifier = Modifier.fillMaxSize()) {
+                    // Soft sheen
+                    Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(horizontal = 4.dp, vertical = 3.dp),
-                        horizontalAlignment = Alignment.Start,
+                            .background(
+                                Brush.verticalGradient(
+                                    0f to Color.White.copy(alpha = 0.55f),
+                                    0.5f to Color.White.copy(alpha = 0.12f),
+                                    1f to Color.Transparent,
+                                ),
+                            ),
+                    )
+
+                    // Top-left rank + small suit
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(start = 4.dp, top = 3.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Text(
                             text = parsed.rank,
                             color = ink,
-                            fontSize = if (parsed.rank == "10") 12.sp else 14.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontSize = rankSp,
+                            fontWeight = FontWeight.ExtraBold,
                             fontFamily = FontFamily.SansSerif,
-                            lineHeight = 14.sp,
+                            lineHeight = rankSp,
                         )
                         Text(
                             text = parsed.suit,
                             color = ink,
-                            fontSize = 14.sp,
-                            lineHeight = 14.sp,
+                            fontSize = cornerSuitSp,
+                            lineHeight = cornerSuitSp,
                         )
-                        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                            Text(
-                                text = parsed.suit,
-                                color = ink.copy(alpha = 0.9f * faceAlpha),
-                                fontSize = 22.sp,
-                            )
-                        }
                     }
+
+                    // Top-right medium suit
+                    Text(
+                        text = parsed.suit,
+                        color = ink,
+                        fontSize = topRightSp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(end = 4.dp, top = 4.dp),
+                    )
+
+                    // Large center suit
+                    Text(
+                        text = parsed.suit,
+                        color = ink,
+                        fontSize = centerSp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .offset(y = height * 0.04f),
+                    )
                 }
             }
         }
+
         if (highlight) {
             Box(
                 modifier = Modifier
@@ -187,7 +233,7 @@ fun PlayingCard(
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            listOf(Color.Transparent, FeltColors.Gold.copy(alpha = 0.28f)),
+                            listOf(Color.Transparent, FeltColors.Brass.copy(alpha = 0.28f)),
                         ),
                     ),
             )

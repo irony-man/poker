@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ChoiceRow } from '@/components/ChoiceRow';
 import { AvatarPicker } from '@/components/PlayerAvatar';
+import { FriendsPanel } from '@/components/FriendsPanel';
 import { PublicTablesPanel } from '@/components/PublicTablesPanel';
 import { createTable, register, resolveInvite } from '@/lib/api';
 import { loadSavedAvatarId, saveAvatarId } from '@/lib/avatars';
@@ -413,6 +414,27 @@ export default function HomePage() {
           <>
             {joinForm}
             <PublicTablesPanel disabled={busy} onJoin={joinPublicTable} />
+            <FriendsPanel
+              disabled={busy}
+              onNavigateTable={(tableId, inviteCode) => {
+                void (async () => {
+                  if (!name.trim()) {
+                    setError('Enter a callsign to play');
+                    return;
+                  }
+                  setBusy(true);
+                  setError(null);
+                  try {
+                    await ensureSession(name);
+                    router.push(`/table/${tableId}?invite=${inviteCode}`);
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : 'Failed');
+                  } finally {
+                    setBusy(false);
+                  }
+                })();
+              }}
+            />
           </>
         )}
         {tab === 'offline' && offlineForm}
@@ -424,10 +446,36 @@ export default function HomePage() {
         {joinForm}
         <PublicTablesPanel disabled={busy} onJoin={joinPublicTable} />
         {offlineForm}
+        <FriendsPanel
+          disabled={busy}
+          onNavigateTable={(tableId, inviteCode) => {
+            void (async () => {
+              if (!name.trim()) {
+                setError('Enter a callsign to play');
+                return;
+              }
+              setBusy(true);
+              setError(null);
+              try {
+                await ensureSession(name);
+                router.push(`/table/${tableId}?invite=${inviteCode}`);
+              } catch (err) {
+                setError(err instanceof Error ? err.message : 'Failed');
+              } finally {
+                setBusy(false);
+              }
+            })();
+          }}
+        />
       </div>
 
       {error && (
-        <p className="mt-4 status-chip border-red-500/40 bg-red-950/50 text-red-300">{error}</p>
+        <p
+          role="alert"
+          className="mt-4 status-chip border-red-500/40 bg-red-950/50 text-red-300"
+        >
+          {error}
+        </p>
       )}
     </div>
   );

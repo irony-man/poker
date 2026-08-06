@@ -221,7 +221,11 @@ export function TableView({
 
   const onAction = (action: string, amount?: number) => {
     if (!table) return;
-    send({
+    if (connection !== 'open') {
+      setError('Disconnected — wait for reconnect, then try again');
+      return;
+    }
+    const ok = send({
       type: 'action',
       tableId,
       handId: table.handId,
@@ -229,6 +233,9 @@ export function TableView({
       action,
       amount,
     });
+    if (!ok) {
+      setError('Could not send action — connection lost');
+    }
   };
 
   const leaveRoom = () => {
@@ -255,6 +262,31 @@ export function TableView({
   }
 
   if (!table && (connection === 'connecting' || connection === 'open')) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <p className="text-cream/60">
+          {connection === 'connecting' ? 'Connecting…' : 'Loading table…'}
+        </p>
+      </div>
+    );
+  }
+
+  if (!table && connection === 'closed') {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
+        <p className="text-cream/80">Can&apos;t reach the table</p>
+        <p className="max-w-sm text-sm text-cream-muted">
+          The connection closed before table data arrived. Check that the server is running, then
+          try again.
+        </p>
+        <button type="button" className="btn-primary" onClick={() => router.push('/')}>
+          Back to lobby
+        </button>
+      </div>
+    );
+  }
+
+  if (!table) {
     return (
       <div className="flex flex-1 items-center justify-center">
         <p className="text-cream/60">Syncing table…</p>
@@ -408,7 +440,11 @@ export function TableView({
                           : 'bg-red-400'
                     }`}
                   />
-                  {connection}
+                  {connection === 'open'
+                    ? 'Live'
+                    : connection === 'connecting'
+                      ? 'Reconnecting'
+                      : 'Offline'}
                 </div>
               }
             />
@@ -444,7 +480,13 @@ export function TableView({
                         : 'bg-red-400'
                   }`}
                 />
-                <span>{connection}</span>
+                <span>
+                  {connection === 'open'
+                    ? 'Live'
+                    : connection === 'connecting'
+                      ? 'Reconnecting'
+                      : 'Offline'}
+                </span>
               </div>
               <button type="button" onClick={leaveRoom} className="btn-ghost text-xs py-1.5 px-3">
                 Leave
@@ -687,7 +729,12 @@ export function TableView({
         </div>
 
         <FloatingActionDock expanded={!!isMyTurn} label="Actions">
-          <ActionControls onAction={onAction} spectating={isSpectating} bare />
+          <ActionControls
+            onAction={onAction}
+            spectating={isSpectating}
+            bare
+            connectionOpen={connection === 'open'}
+          />
         </FloatingActionDock>
       </div>
 

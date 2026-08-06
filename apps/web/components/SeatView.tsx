@@ -119,8 +119,8 @@ export function SeatView({
   }
 
   const showCards = isSelf && myCards ? myCards : player.holeCards;
-  /** Landscape shows opponent backs; portrait compact only shows hero cards. */
-  const renderCards = landscape || !compact || isSelf;
+  /** Landscape shows opponent backs; portrait shows opponent backs so folds stay readable. */
+  const renderCards = true;
   const faceDown = renderCards && !showCards && player.hasCards;
   const dealKey = handId ?? 'idle';
   const folded = player.status === 'folded';

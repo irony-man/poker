@@ -1,45 +1,93 @@
 /** @type {import('tailwindcss').Config} */
+
+/** Every color reads from the canonical CSS vars in app/globals.css so the two cannot drift. */
+const token = (name: string) => `rgb(var(--${name}) / <alpha-value>)`;
+
 export default {
   content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}', './lib/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
-        felt: {
-          DEFAULT: '#146b42',
-          deep: '#0a2f1d',
-          rim: '#1c140a',
-          neon: '#2aff9a',
-        },
-        gold: {
-          DEFAULT: '#e0b43a',
-          light: '#ffe29a',
-          dim: '#8a6a18',
-        },
         ink: {
-          DEFAULT: '#07090d',
-          panel: '#0d1218',
-          raised: '#141b24',
+          DEFAULT: token('ink'),
+          panel: token('ink-panel'),
+          raised: token('ink-raised'),
+          overlay: token('ink-overlay'),
         },
-        cream: '#e8eef5',
+        felt: {
+          DEFAULT: token('felt'),
+          deep: token('felt-deep'),
+          rim: token('felt-rim'),
+          edge: token('felt-rim-edge'),
+          /** Legacy alias — the old neon green now reads as the positive state. */
+          neon: token('positive'),
+        },
+        brass: {
+          DEFAULT: token('brass'),
+          light: token('brass-light'),
+          dim: token('brass-dim'),
+        },
+        /** Legacy alias for `brass`, kept until components migrate. */
+        gold: {
+          DEFAULT: token('brass'),
+          light: token('brass-light'),
+          dim: token('brass-dim'),
+        },
+        cream: {
+          DEFAULT: token('cream'),
+          muted: token('cream-muted'),
+        },
+        patina: {
+          DEFAULT: token('patina'),
+          dim: token('patina-dim'),
+        },
+        /** Legacy alias — the old cyan accent becomes patina. */
         cyan: {
-          DEFAULT: '#3de0ff',
-          dim: '#1a7a8c',
+          DEFAULT: token('patina'),
+          dim: token('patina-dim'),
+        },
+        danger: token('danger'),
+        positive: token('positive'),
+        card: {
+          face: token('card-face'),
+          red: token('card-red'),
+          ink: token('card-ink'),
         },
       },
       fontFamily: {
-        display: ['"Oxanium"', 'Segoe UI', 'sans-serif'],
-        body: ['"Rajdhani"', 'Segoe UI', 'sans-serif'],
+        display: ['var(--font-display)', 'Segoe UI', 'sans-serif'],
+        body: ['var(--font-body)', 'Segoe UI', 'sans-serif'],
+        serif: ['var(--font-serif)', 'Georgia', 'serif'],
+      },
+      borderRadius: {
+        xs: 'var(--radius-xs)',
+        sm: 'var(--radius-sm)',
+        md: 'var(--radius-md)',
+        lg: 'var(--radius-lg)',
+        xl: 'var(--radius-xl)',
       },
       boxShadow: {
-        felt: 'inset 0 0 140px rgba(0,0,0,0.55), 0 0 40px rgba(20,107,66,0.25)',
-        hud: '0 0 0 1px rgba(61,224,255,0.12), 0 12px 40px rgba(0,0,0,0.45)',
-        glow: '0 0 24px rgba(224,180,58,0.35)',
-        'glow-neon': '0 0 18px rgba(42,255,154,0.35)',
+        panel: 'var(--shadow-panel)',
+        raised: 'var(--shadow-raised)',
+        glow: 'var(--shadow-glow)',
+        card: 'var(--shadow-card)',
+        felt: 'inset 0 0 120px rgb(0 0 0 / 0.5), 0 0 48px rgb(30 91 67 / 0.2)',
+        /** Legacy aliases. */
+        hud: 'var(--shadow-panel)',
+        'glow-neon': 'var(--shadow-glow)',
+      },
+      transitionTimingFunction: {
+        out: 'var(--ease-out)',
+      },
+      transitionDuration: {
+        fast: 'var(--dur-fast)',
+        base: 'var(--dur-base)',
+        slow: 'var(--dur-slow)',
       },
       keyframes: {
         'hud-pulse': {
-          '0%, 100%': { boxShadow: '0 0 0 0 rgba(224,180,58,0.55)' },
-          '50%': { boxShadow: '0 0 0 8px rgba(224,180,58,0)' },
+          '0%, 100%': { boxShadow: '0 0 0 0 rgb(var(--brass) / 0.5)' },
+          '50%': { boxShadow: '0 0 0 8px rgb(var(--brass) / 0)' },
         },
         'live-blink': {
           '0%, 100%': { opacity: '1' },
@@ -47,7 +95,7 @@ export default {
         },
       },
       animation: {
-        'hud-pulse': 'hud-pulse 1.6s ease-out infinite',
+        'hud-pulse': 'hud-pulse 1.6s var(--ease-out) infinite',
         'live-blink': 'live-blink 1.4s ease-in-out infinite',
       },
     },

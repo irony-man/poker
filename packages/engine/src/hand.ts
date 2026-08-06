@@ -749,10 +749,14 @@ export function applyAction(
   return afterAction(s, events);
 }
 
-/** Auto-action on timeout: fold (even when a check is available). */
+/** Auto-action on timeout: check when free, otherwise fold. */
 export function applyTimeout(state: HandState, config: TableConfig): ApplyResult {
   if (state.toAct === null) return { state, events: [], ok: false, error: 'No one to act' };
   const seat = state.toAct;
+  const legal = legalActions(state, seat, config);
+  if (legal.types.includes('check')) {
+    return applyAction(state, seat, { type: 'check', seq: state.actionSeq }, config);
+  }
   return applyAction(state, seat, { type: 'fold', seq: state.actionSeq }, config);
 }
 

@@ -161,11 +161,6 @@ export const ServerMessageSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('pong'),
   }),
-  z.object({
-    type: z.literal('table_created'),
-    tableId: z.string(),
-    inviteCode: z.string(),
-  }),
 ]);
 
 export type ServerMessage = z.infer<typeof ServerMessageSchema>;

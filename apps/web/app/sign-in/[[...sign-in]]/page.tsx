@@ -1,9 +1,6 @@
-import { SignIn } from '@clerk/nextjs';
+import { redirect } from 'next/navigation';
 
+/** Play is callsign-only — no Clerk gate. Keep route for old bookmarks. */
 export default function SignInPage() {
-  return (
-    <div className="flex min-h-[70vh] items-center justify-center py-8">
-      <SignIn />
-    </div>
-  );
+  redirect('/');
 }

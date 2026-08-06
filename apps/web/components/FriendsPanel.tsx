@@ -1,6 +1,5 @@
 'use client';
 
-import { useAuth } from '@clerk/nextjs';
 import { useCallback, useEffect, useState } from 'react';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 import {
@@ -16,6 +15,7 @@ import {
 } from '@/lib/api';
 import { useSession } from '@/lib/store';
 
+/** Friends & challenges — works with anonymous callsign sessions (no Clerk). */
 export function FriendsPanel({
   disabled,
   onNavigateTable,
@@ -23,8 +23,7 @@ export function FriendsPanel({
   disabled: boolean;
   onNavigateTable: (tableId: string, inviteCode: string) => void;
 }) {
-  const { getToken } = useAuth();
-  const session = useSession((s) => s);
+  const userId = useSession((s) => s.userId);
   const [friends, setFriends] = useState<FriendProfile[]>([]);
   const [incoming, setIncoming] = useState<PendingRequest[]>([]);
   const [challenges, setChallenges] = useState<PendingChallenge[]>([]);
@@ -32,19 +31,23 @@ export function FriendsPanel({
   const [searchResults, setSearchResults] = useState<FriendProfile[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const auth = () => ({ userId });
 
   const refresh = useCallback(async () => {
-    if (disabled || !session.userId) return;
+    if (disabled || !userId) return;
     try {
-      const clerkToken = await getToken();
-      const data = await listFriends({ clerkToken, userId: session.userId });
+      const data = await listFriends(auth());
       setFriends(data.friends);
       setIncoming(data.incoming);
       setChallenges(data.pendingChallenges);
-    } catch {
-      /* lobby may not be registered yet */
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Could not load friends');
     }
-  }, [disabled, getToken, session.userId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- auth is derived from userId
+  }, [disabled, userId]);
 
   useEffect(() => {
     void refresh();
@@ -53,28 +56,27 @@ export function FriendsPanel({
   }, [refresh]);
 
   useEffect(() => {
-    if (disabled || searchQuery.trim().length < 2 || !session.userId) {
+    if (disabled || searchQuery.trim().length < 2 || !userId) {
       setSearchResults([]);
       return;
     }
     const t = setTimeout(async () => {
       try {
-        const clerkToken = await getToken();
-        const data = await searchUsers(searchQuery, { clerkToken, userId: session.userId });
+        const data = await searchUsers(searchQuery, auth());
         setSearchResults(data.users);
       } catch {
         setSearchResults([]);
       }
     }, 300);
     return () => clearTimeout(t);
-  }, [disabled, getToken, searchQuery, session.userId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [disabled, searchQuery, userId]);
 
   async function onAddFriend(targetUserId: string) {
     setBusy(targetUserId);
     setError(null);
     try {
-      const clerkToken = await getToken();
-      await sendFriendRequest(targetUserId, { clerkToken, userId: session.userId });
+      await sendFriendRequest(targetUserId, auth());
       setSearchQuery('');
       setSearchResults([]);
       await refresh();
@@ -89,8 +91,7 @@ export function FriendsPanel({
     setBusy(requestId);
     setError(null);
     try {
-      const clerkToken = await getToken();
-      await respondFriendRequest(requestId, accept, { clerkToken, userId: session.userId });
+      await respondFriendRequest(requestId, accept, auth());
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
@@ -103,8 +104,7 @@ export function FriendsPanel({
     setBusy(`challenge-${friendUserId}`);
     setError(null);
     try {
-      const clerkToken = await getToken();
-      const result = await challengeFriend(friendUserId, { clerkToken, userId: session.userId });
+      const result = await challengeFriend(friendUserId, auth());
       onNavigateTable(result.tableId, result.inviteCode);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Challenge failed');
@@ -117,8 +117,7 @@ export function FriendsPanel({
     setBusy(`join-${challenge.id}`);
     setError(null);
     try {
-      const clerkToken = await getToken();
-      await joinFriendChallenge(challenge.id, { clerkToken, userId: session.userId });
+      await joinFriendChallenge(challenge.id, auth());
       onNavigateTable(challenge.tableId, challenge.inviteCode);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to join challenge');
@@ -268,8 +267,18 @@ export function FriendsPanel({
         )}
       </div>
 
-      {error && (
-        <p className="status-chip border-red-500/40 bg-red-950/50 text-red-300 text-xs">{error}</p>
+      {(error || loadError) && (
+        <p
+          role="alert"
+          className="status-chip border-red-500/40 bg-red-950/50 text-red-300 text-xs"
+        >
+          {error ?? loadError}
+        </p>
+      )}
+      {!userId && (
+        <p className="text-sm text-cream/45">
+          Enter a callsign above, then host or join once so we can attach your friends list.
+        </p>
       )}
     </div>
   );

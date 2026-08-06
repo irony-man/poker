@@ -1,50 +1,91 @@
-@import url('https://fonts.googleapis.com/css2?family=Oxanium:wght@500;600;700;800&family=Rajdhani:wght@400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Canonical design tokens — "Card Room".
+ * Colors are stored as space-separated RGB channels so Tailwind can apply
+ * opacity modifiers (e.g. `border-brass/40`) via rgb(var(--x) / <alpha-value>).
+ * apps/android/.../Components.kt mirrors these values. See docs/DESIGN_SYSTEM.md.
+ */
 :root {
-  --felt: #146b42;
-  --felt-deep: #0a2f1d;
-  --rim: #1c140a;
-  --gold: #e0b43a;
-  --ink: #07090d;
-  --cream: #e8eef5;
-  --cyan: #3de0ff;
-  --neon: #2aff9a;
+  /* Surfaces */
+  --ink: 18 16 14;
+  --ink-panel: 28 25 22;
+  --ink-raised: 38 33 25;
+  --ink-overlay: 10 9 8;
+
+  /* Table */
+  --felt: 30 91 67;
+  --felt-deep: 18 58 43;
+  --felt-rim: 58 42 28;
+  --felt-rim-edge: 138 107 58;
+
+  /* Accent */
+  --brass: 201 162 39;
+  --brass-light: 232 206 131;
+  --brass-dim: 122 98 24;
+
+  /* Text */
+  --cream: 242 237 228;
+  --cream-muted: 168 161 151;
+
+  /* State */
+  --danger: 192 57 43;
+  --positive: 62 158 106;
+  --patina: 110 156 134;
+  --patina-dim: 63 91 80;
+
+  /* Cards */
+  --card-face: 250 247 240;
+  --card-red: 200 16 46;
+  --card-ink: 26 26 26;
+
+  /* Radius */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  /* Elevation */
+  --shadow-panel: 0 1px 0 0 rgb(var(--brass) / 0.06) inset, 0 16px 40px rgb(0 0 0 / 0.55);
+  --shadow-raised: 0 2px 8px rgb(0 0 0 / 0.45);
+  --shadow-glow: 0 0 20px rgb(var(--brass) / 0.28);
+  --shadow-card: 0 2px 6px rgb(0 0 0 / 0.4);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --dur-slow: 240ms;
 }
 
 html {
   min-height: 100%;
-  background-color: var(--ink);
+  background-color: rgb(var(--ink));
 }
 
 body {
   min-height: 100dvh;
   @apply bg-ink text-cream font-body antialiased;
-  background-color: var(--ink);
+  background-color: rgb(var(--ink));
   background-image:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(224, 180, 58, 0.12), transparent 55%),
-    radial-gradient(ellipse 60% 40% at 100% 80%, rgba(42, 255, 154, 0.08), transparent 50%),
-    radial-gradient(ellipse 50% 35% at 0% 60%, rgba(61, 224, 255, 0.06), transparent 45%),
-    linear-gradient(165deg, #0a0e14 0%, #07090d 45%, #050708 100%);
+    radial-gradient(ellipse 70% 45% at 50% -8%, rgb(var(--brass) / 0.1), transparent 60%),
+    radial-gradient(ellipse 60% 45% at 50% 110%, rgb(var(--felt) / 0.12), transparent 60%),
+    linear-gradient(170deg, #171410 0%, #12100e 50%, #0d0b09 100%);
   background-attachment: fixed;
   background-repeat: no-repeat;
 }
 
+/* Warm vignette instead of the old tech grid. */
 body::before {
   content: '';
   pointer-events: none;
   position: fixed;
   inset: 0;
   z-index: 0;
-  opacity: 0.035;
-  background-image:
-    linear-gradient(rgba(232, 238, 245, 0.5) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(232, 238, 245, 0.5) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: radial-gradient(ellipse at center, black 20%, transparent 75%);
+  background: radial-gradient(ellipse at center, transparent 45%, rgb(0 0 0 / 0.45) 100%);
 }
 
 body > * {
@@ -52,23 +93,31 @@ body > * {
   z-index: 1;
 }
 
+@layer base {
+  /* Numbers are money — never let them wobble. */
+  .tabular,
+  input[type='number'] {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
 @layer components {
   .field-select {
-    @apply w-full rounded border border-cyan/20 bg-ink-raised px-3 py-2 text-cream outline-none font-medium tracking-wide;
+    @apply w-full rounded-md border border-brass/20 bg-ink-raised px-3 py-2 text-cream outline-none font-medium tracking-wide;
     color-scheme: dark;
   }
 
   .field-select:focus {
-    @apply border-gold/70 shadow-glow;
+    @apply border-brass/70 shadow-glow;
   }
 
   .field-select option {
-    background-color: #141b24;
-    color: #e8eef5;
+    background-color: rgb(var(--ink-raised));
+    color: rgb(var(--cream));
   }
 
   .hud-panel {
-    @apply relative overflow-hidden rounded-lg border border-cyan/15 bg-ink-panel/90 shadow-hud backdrop-blur-md;
+    @apply relative overflow-hidden rounded-lg border border-brass/15 bg-ink-panel/90 shadow-panel backdrop-blur-md;
   }
 
   .hud-panel::before {
@@ -76,23 +125,27 @@ body > * {
     position: absolute;
     inset: 0 0 auto 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(224, 180, 58, 0.55), transparent);
+    background: linear-gradient(90deg, transparent, rgb(var(--brass) / 0.45), transparent);
   }
 
   .hud-input {
-    @apply mt-1 w-full rounded border border-cream/15 bg-ink/80 px-3 py-2 text-cream outline-none transition;
+    @apply mt-1 w-full rounded-md border border-cream/15 bg-ink/70 px-3 py-2 text-cream outline-none transition;
+  }
+
+  .hud-input::placeholder {
+    @apply text-cream-muted/60;
   }
 
   .hud-input:focus {
-    @apply border-gold/60 shadow-glow;
+    @apply border-brass/60 shadow-glow;
   }
 
   .hud-label {
-    @apply block text-xs uppercase tracking-[0.16em] text-cream/50 font-semibold;
+    @apply block text-xs uppercase tracking-[0.16em] text-cream-muted font-display font-semibold;
   }
 
   .choice-chip {
-    @apply cursor-pointer select-none rounded-[10px] border border-cream/20 bg-ink/45 px-3 py-2 text-[13px] font-semibold text-cream/80 transition;
+    @apply cursor-pointer select-none rounded-md border border-cream/15 bg-ink/45 px-3 py-2 text-[13px] font-display font-semibold text-cream/80 transition;
   }
 
   .choice-chip:hover {
@@ -100,23 +153,23 @@ body > * {
   }
 
   .choice-chip-selected {
-    @apply border-gold bg-gold/20 font-bold text-gold;
+    @apply border-brass bg-brass/20 font-bold text-brass-light;
   }
 
   .choice-chip-selected:hover {
-    @apply border-gold text-gold;
+    @apply border-brass text-brass-light;
   }
 
   .bet-slider {
-    @apply h-2 cursor-pointer appearance-none rounded-full bg-ink-raised accent-gold;
+    @apply h-2 cursor-pointer appearance-none rounded-full bg-ink-raised accent-brass;
   }
 
   .bet-slider::-webkit-slider-thumb {
-    @apply h-4 w-4 cursor-pointer appearance-none rounded-full border border-gold/60 bg-gold shadow-glow;
+    @apply h-4 w-4 cursor-pointer appearance-none rounded-full border border-brass/60 bg-brass shadow-glow;
   }
 
   .bet-slider::-moz-range-thumb {
-    @apply h-4 w-4 cursor-pointer rounded-full border border-gold/60 bg-gold;
+    @apply h-4 w-4 cursor-pointer rounded-full border border-brass/60 bg-brass;
   }
 
   .bet-slider:disabled {
@@ -124,47 +177,53 @@ body > * {
   }
 
   .btn-primary {
-    @apply rounded border border-gold/40 bg-gradient-to-b from-gold-light to-gold px-4 py-2.5 font-display font-bold uppercase tracking-wider text-ink shadow-glow transition hover:brightness-110 disabled:opacity-50;
+    @apply rounded-md border border-brass-light/30 bg-gradient-to-b from-brass-light to-brass px-4 py-2.5 font-display font-bold uppercase tracking-wider text-ink shadow-glow transition hover:brightness-110 disabled:opacity-50;
   }
 
   .btn-ghost {
-    @apply rounded border border-cyan/30 bg-ink-raised/80 px-4 py-2.5 font-display font-semibold uppercase tracking-wider text-cyan transition hover:border-cyan hover:bg-cyan/10 disabled:opacity-50;
+    @apply rounded-md border border-brass/25 bg-ink-raised/80 px-4 py-2.5 font-display font-semibold uppercase tracking-wider text-cream transition hover:border-brass/60 hover:bg-brass/10 disabled:opacity-50;
   }
 
   .btn-danger {
-    @apply rounded border border-red-500/40 bg-gradient-to-b from-red-700 to-red-950 py-3 font-display font-bold uppercase tracking-wider text-cream transition hover:brightness-110;
+    @apply rounded-md border border-danger/40 bg-gradient-to-b from-danger to-[#7c2119] py-3 font-display font-bold uppercase tracking-wider text-cream transition hover:brightness-110;
   }
 
   .btn-secondary {
-    @apply rounded border border-cream/20 bg-ink-raised py-3 font-display font-bold uppercase tracking-wider text-cream transition hover:border-cream/40 hover:bg-cream/10;
+    @apply rounded-md border border-cream/20 bg-ink-raised py-3 font-display font-bold uppercase tracking-wider text-cream transition hover:border-cream/40 hover:bg-cream/10;
   }
 
   .status-chip {
-    @apply inline-flex items-center gap-1.5 rounded border px-2.5 py-0.5 text-[11px] font-display font-semibold uppercase tracking-[0.14em];
+    @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-display font-semibold uppercase tracking-[0.14em];
   }
 }
 
 @layer utilities {
   .felt-surface {
     background:
-      radial-gradient(ellipse at 50% 35%, rgba(255, 255, 255, 0.08), transparent 42%),
-      radial-gradient(ellipse at center, #1a7a48 0%, #14663c 40%, #0d4a2c 70%, #08301c 100%);
+      radial-gradient(ellipse at 50% 32%, rgb(255 255 255 / 0.06), transparent 45%),
+      radial-gradient(
+        ellipse at center,
+        rgb(var(--felt)) 0%,
+        rgb(var(--felt-deep)) 55%,
+        #0c2a1f 100%
+      );
     box-shadow:
-      inset 0 0 70px rgba(0, 0, 0, 0.4),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+      inset 0 0 80px rgb(0 0 0 / 0.45),
+      inset 0 0 0 1px rgb(255 255 255 / 0.04);
   }
 
+  /* Wood rim with a thin brass edge. */
   .table-rim {
-    border-color: #5a3d22;
+    border-color: rgb(var(--felt-rim));
     background-clip: padding-box;
     box-shadow:
-      inset 0 0 0 2px #2e1d10,
-      0 0 0 1px rgba(0, 0, 0, 0.35),
-      0 14px 36px rgba(0, 0, 0, 0.5);
+      inset 0 0 0 2px rgb(var(--felt-rim-edge) / 0.55),
+      0 0 0 1px rgb(0 0 0 / 0.4),
+      0 18px 44px rgb(0 0 0 / 0.55);
   }
 
   .seat-action-popup {
-    animation: seat-action-pop 5s ease-out both;
+    animation: seat-action-pop 5s var(--ease-out) both;
   }
 }
 
@@ -187,5 +246,15 @@ body > * {
   100% {
     opacity: 0;
     transform: translateY(-12px) scale(0.96);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

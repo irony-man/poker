@@ -22,27 +22,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-object FeltColors {
-    val Gold = Color(0xFFE0B43A)
-    val GoldDim = Color(0xFFB8942A)
-    val Cyan = Color(0xFF3DE0FF)
-    val Neon = Color(0xFF2AFF9A)
-    val Ink = Color(0xFF07090D)
-    val InkPanel = Color(0xFF12161E)
-    val InkRaised = Color(0xFF1A2030)
-    val Cream = Color(0xFFF5F0E6)
-    val FeltGreen = Color(0xFF1A7A48)
-    val FeltGreenDark = Color(0xFF0D4A2C)
-    val Danger = Color(0xFFE05555)
-    val StackRed = Color(0xFFC62828)
-    val YouYellow = Color(0xFFF5C518)
-}
 
 fun formatChips(n: Int): String = when {
     n >= 1_000_000 -> "${n / 1_000_000}M"
@@ -60,13 +43,13 @@ fun HudPanel(
 ) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(FeltRadius.Lg))
             .background(
                 Brush.verticalGradient(
                     listOf(FeltColors.InkPanel, FeltColors.InkRaised),
                 ),
             )
-            .border(1.dp, FeltColors.Gold.copy(alpha = 0.25f), RoundedCornerShape(16.dp))
+            .border(1.dp, FeltColors.Brass.copy(alpha = 0.18f), RoundedCornerShape(FeltRadius.Lg))
             .padding(18.dp),
     ) {
         content()
@@ -86,14 +69,19 @@ fun FeltPrimaryButton(
         enabled = enabled,
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = FeltColors.Gold,
+            containerColor = FeltColors.Brass,
             contentColor = FeltColors.Ink,
-            disabledContainerColor = FeltColors.Gold.copy(alpha = 0.35f),
+            disabledContainerColor = FeltColors.Brass.copy(alpha = 0.35f),
             disabledContentColor = FeltColors.Ink.copy(alpha = 0.5f),
         ),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(FeltRadius.Md),
     ) {
-        Text(text = text, fontWeight = FontWeight.Bold, maxLines = 1)
+        Text(
+            text = text,
+            fontFamily = FeltFonts.Display,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+        )
     }
 }
 
@@ -114,11 +102,21 @@ fun FeltGhostButton(
             disabledContentColor = FeltColors.Cream.copy(alpha = 0.35f),
         ),
         border = ButtonDefaults.outlinedButtonBorder.copy(
-            brush = Brush.linearGradient(listOf(FeltColors.Cyan.copy(alpha = 0.5f), FeltColors.Gold.copy(alpha = 0.3f))),
+            brush = Brush.linearGradient(
+                listOf(
+                    FeltColors.Brass.copy(alpha = 0.45f),
+                    FeltColors.Brass.copy(alpha = 0.2f),
+                ),
+            ),
         ),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(FeltRadius.Md),
     ) {
-        Text(text = text, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Text(
+            text = text,
+            fontFamily = FeltFonts.Display,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+        )
     }
 }
 
@@ -130,18 +128,19 @@ fun FeltChoiceChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val bg = if (selected) FeltColors.Gold.copy(alpha = 0.22f) else FeltColors.Ink.copy(alpha = 0.45f)
-    val border = if (selected) FeltColors.Gold else FeltColors.Cream.copy(alpha = 0.2f)
-    val fg = if (selected) FeltColors.Gold else FeltColors.Cream.copy(alpha = 0.8f)
+    val bg = if (selected) FeltColors.Brass.copy(alpha = 0.2f) else FeltColors.Ink.copy(alpha = 0.45f)
+    val border = if (selected) FeltColors.Brass else FeltColors.Cream.copy(alpha = 0.15f)
+    val fg = if (selected) FeltColors.BrassLight else FeltColors.Cream.copy(alpha = 0.8f)
     Text(
         text = text,
         modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(FeltRadius.Md))
             .background(bg)
-            .border(1.dp, border, RoundedCornerShape(10.dp))
+            .border(1.dp, border, RoundedCornerShape(FeltRadius.Md))
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         color = fg,
+        fontFamily = FeltFonts.Display,
         fontSize = 13.sp,
         fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
         maxLines = 1,
@@ -169,10 +168,10 @@ fun CasinoChip(
             .clip(CircleShape)
             .background(
                 Brush.radialGradient(
-                    listOf(FeltColors.Gold, FeltColors.GoldDim, FeltColors.InkRaised),
+                    listOf(FeltColors.BrassLight, FeltColors.Brass, FeltColors.BrassDim),
                 ),
             )
-            .border(2.dp, FeltColors.Cream.copy(alpha = 0.35f), CircleShape)
+            .border(2.dp, FeltColors.Cream.copy(alpha = 0.3f), CircleShape)
             .padding(dim / 4),
         contentAlignment = Alignment.Center,
     ) {
@@ -196,7 +195,7 @@ fun FeltLabel(text: String) {
     Text(
         text = text.uppercase(),
         style = MaterialTheme.typography.labelSmall,
-        color = FeltColors.Cream.copy(alpha = 0.55f),
+        color = FeltColors.CreamMuted,
         letterSpacing = 2.sp,
     )
 }
@@ -230,17 +229,18 @@ fun FeltTableSurface(
             .clip(RoundedCornerShape(28))
             .background(
                 Brush.radialGradient(
-                    listOf(Color(0xFF1A7A48), FeltColors.FeltGreenDark, FeltColors.Ink),
+                    listOf(FeltColors.FeltGreen, FeltColors.FeltGreenDark, Color(0xFF0C2A1F)),
                 ),
             )
-            .border(8.dp, Color(0xFF5A3D22), RoundedCornerShape(28))
+            .border(8.dp, FeltColors.FeltRim, RoundedCornerShape(28))
             .padding(6.dp),
     ) {
+        // Thin brass edge where the rim meets the felt.
         Box(
             modifier = Modifier
                 .matchParentSize()
                 .clip(RoundedCornerShape(24))
-                .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(24)),
+                .border(1.dp, FeltColors.FeltRimEdge.copy(alpha = 0.55f), RoundedCornerShape(24)),
         )
         content()
     }
@@ -259,10 +259,9 @@ fun PotDisplay(
         CasinoChip(amount = amount.coerceAtLeast(1), size = ChipSize.Sm)
         Text(
             text = formatMoney(amount),
-            color = Color.White,
+            color = FeltColors.Cream,
             fontSize = 32.sp,
-            fontWeight = FontWeight.ExtraBold,
-            fontFamily = FontFamily.Serif,
+            fontFamily = FeltFonts.Serif,
         )
     }
 }
@@ -286,13 +285,14 @@ fun DealerPotZone(
             ) {
                 Text(
                     text = "D",
-                    color = Color.White,
+                    color = FeltColors.Ink,
+                    fontFamily = FeltFonts.Display,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Black,
                     modifier = Modifier
                         .clip(RoundedCornerShape(999.dp))
-                        .background(FeltColors.StackRed)
-                        .border(2.dp, Color.White.copy(alpha = 0.85f), RoundedCornerShape(999.dp))
+                        .background(FeltColors.Cream)
+                        .border(2.dp, FeltColors.Brass.copy(alpha = 0.8f), RoundedCornerShape(999.dp))
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                 )
                 if (!dealerName.isNullOrBlank()) {

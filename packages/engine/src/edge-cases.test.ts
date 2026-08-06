@@ -4,6 +4,7 @@ import {
   applyAction,
   applyTimeout,
   createEmptyTable,
+  legalActions,
   sitDown,
   startHand,
   type TableConfig,
@@ -43,6 +44,39 @@ describe('QA edge cases', () => {
     const t = applyTimeout(state, config);
     expect(t.ok).toBe(true);
     expect(t.state.players.find((p) => p.seat === state.toAct)!.status).toBe('folded');
+  });
+
+  it('timeout checks when checking is free', () => {
+    let state = createEmptyTable(config);
+    state = sitDown(state, 0, 'a', 'A', 500).state;
+    state = sitDown(state, 1, 'b', 'B', 500).state;
+    state = startHand(state, config, 'h-check', rng()).state;
+
+    // Drive the hand until someone can check for free (postflop or BB option).
+    let guard = 0;
+    while (state.toAct !== null && guard++ < 40) {
+      const seat = state.toAct;
+      const legal = legalActions(state, seat, config);
+      if (legal.types.includes('check') && !legal.types.includes('call')) {
+        const beforeStatus = state.players[seat]!.status;
+        const beforeStack = state.players[seat]!.stack;
+        const t = applyTimeout(state, config);
+        expect(t.ok).toBe(true);
+        expect(t.state.players[seat]!.status).toBe(beforeStatus);
+        expect(t.state.players[seat]!.status).not.toBe('folded');
+        expect(t.state.players[seat]!.stack).toBe(beforeStack);
+        return;
+      }
+      const type = legal.types.includes('call')
+        ? 'call'
+        : legal.types.includes('check')
+          ? 'check'
+          : 'fold';
+      const r = applyAction(state, seat, { type, seq: state.actionSeq }, config);
+      expect(r.ok).toBe(true);
+      state = r.state;
+    }
+    throw new Error('never reached a free-check situation');
   });
 
   it('three-way all-in different stacks produces side pots and awards', () => {

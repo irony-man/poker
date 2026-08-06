@@ -5,15 +5,36 @@ import { MoveTimerStrip } from './TurnTimer';
 import { useSession } from '@/lib/store';
 import { useIsLandscapePhone, useIsNarrow } from '@/lib/tableLayout';
 
+function waitingCopy(opts: {
+  spectating: boolean;
+  street: string | undefined;
+  isTurn: boolean;
+  mySeat: number | undefined;
+  toAct: number | null | undefined;
+  connection?: string;
+}): string {
+  if (opts.connection && opts.connection !== 'open') {
+    return opts.connection === 'connecting' ? 'Reconnecting…' : 'Disconnected — actions paused';
+  }
+  if (opts.spectating) return 'Spectating — you are not seated';
+  if (opts.street === 'waiting') return 'Waiting for players…';
+  if (opts.street === 'payout' || opts.street === 'showdown') return 'Hand complete — start next when ready';
+  if (!opts.isTurn) return 'Waiting for your turn…';
+  return '—';
+}
+
 export function ActionControls({
   onAction,
   spectating = false,
   bare = false,
+  connectionOpen = true,
 }: {
   onAction: (action: string, amount?: number) => void;
   spectating?: boolean;
   /** Skip outer hud-panel chrome (when nested in FloatingActionDock). */
   bare?: boolean;
+  /** When false, block commits and show reconnect copy. */
+  connectionOpen?: boolean;
 }) {
   const table = useSession((s) => s.table);
   const priv = useSession((s) => s.private);
@@ -22,7 +43,8 @@ export function ActionControls({
   const landscape = useIsLandscapePhone();
 
   const mySeat = table?.players.find((p) => p.userId === userId)?.seat;
-  const isTurn = table?.toAct === mySeat && priv;
+  const myStack = table?.players.find((p) => p.userId === userId)?.stack ?? 0;
+  const isTurn = connectionOpen && table?.toAct === mySeat && !!priv;
   const turnEndsAt = isTurn ? table?.turnEndsAt : null;
   const turnTotalMs = table?.config.turnTimeMs ?? 20_000;
 
@@ -34,9 +56,13 @@ export function ActionControls({
   const pot = table?.pot ?? 0;
 
   const [betAmount, setBetAmount] = useState(min);
+  const [confirm, setConfirm] = useState<null | { action: string; amount?: number; label: string }>(
+    null,
+  );
 
   useEffect(() => {
     setBetAmount(min);
+    setConfirm(null);
   }, [min, table?.actionSeq]);
 
   const shell = bare
@@ -52,13 +78,14 @@ export function ActionControls({
             : 'hud-panel px-4 py-3 text-center text-sm font-medium tracking-wide text-cream/55'
         }
       >
-        {spectating
-          ? 'Spectating — you are not seated'
-          : table?.street === 'waiting'
-            ? 'Waiting for players…'
-            : table?.toAct !== mySeat
-              ? 'Waiting for your turn…'
-              : '—'}
+        {waitingCopy({
+          spectating,
+          street: table?.street,
+          isTurn: false,
+          mySeat,
+          toAct: table?.toAct,
+          connection: connectionOpen ? 'open' : 'closed',
+        })}
       </div>
     );
   }
@@ -80,10 +107,68 @@ export function ActionControls({
   const betAction = legal.types.includes('bet') ? 'bet' : 'raise';
   const amount = clampBet(betAmount);
   const sliderMax = Math.max(min, max);
-  const submitBet = (raw: number) => onAction(betAction, clampBet(raw));
+
+  /** Large commitments need an extra confirm tap. */
+  const needsConfirm = (action: string, amt?: number) => {
+    if (action === 'allin') return true;
+    if (action === 'fold' && callAmount > 0 && callAmount >= myStack * 0.4) return true;
+    if ((action === 'bet' || action === 'raise') && amt != null && myStack > 0 && amt >= myStack * 0.5) {
+      return true;
+    }
+    return false;
+  };
+
+  const commit = (action: string, amt?: number, label?: string) => {
+    if (!connectionOpen) return;
+    if (needsConfirm(action, amt)) {
+      setConfirm({
+        action,
+        amount: amt,
+        label: label ?? action,
+      });
+      return;
+    }
+    onAction(action, amt);
+  };
+
+  const submitBet = (raw: number) => {
+    const v = clampBet(raw);
+    commit(betAction, v, `${betLabel} ${v}`);
+  };
+
+  if (confirm) {
+    return (
+      <div className={shell}>
+        <div className="space-y-3 p-3 sm:p-4">
+          <p className="text-center text-sm font-medium text-cream">
+            Confirm <span className="font-bold text-brass-light">{confirm.label}</span>?
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              className="btn-ghost min-h-11"
+              onClick={() => setConfirm(null)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn-primary min-h-11"
+              onClick={() => {
+                onAction(confirm.action, confirm.amount);
+                setConfirm(null);
+              }}
+            >
+              Confirm
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const chipBtn =
-    'inline-flex min-h-8 items-center justify-center rounded border border-cream/15 bg-ink-raised px-1.5 text-[10px] font-display font-semibold uppercase tracking-wide hover:border-gold/50 hover:text-gold';
+    'inline-flex min-h-8 items-center justify-center rounded border border-cream/15 bg-ink-raised px-1.5 text-[10px] font-display font-semibold uppercase tracking-wide hover:border-brass/50 hover:text-brass-light';
   const actionBtn =
     'inline-flex min-h-10 items-center justify-center px-2 text-[11px] font-display font-bold uppercase tracking-wide';
 
@@ -101,7 +186,7 @@ export function ActionControls({
           ['Max', max],
         ] as const
       ).map(([label, val]) => (
-        <button key={label} type="button" onClick={() => submitBet(val)} className={chipBtn}>
+        <button key={label} type="button" onClick={() => setBet(val)} className={chipBtn}>
           {label}
         </button>
       ))}
@@ -116,7 +201,9 @@ export function ActionControls({
         <div className="flex min-h-0 flex-1 items-center gap-1 px-1.5">
           {canBet && (
             <>
-              <span className="shrink-0 font-mono text-[11px] font-bold tabular-nums text-gold">{amount}</span>
+              <span className="shrink-0 font-mono text-[11px] font-bold tabular-nums text-brass">
+                {amount}
+              </span>
               <input
                 type="range"
                 min={min}
@@ -134,29 +221,37 @@ export function ActionControls({
                 onClick={() => submitBet(amount)}
                 className={`btn-primary ${actionBtn} shrink-0`}
               >
-                Custom {amount}
+                {betLabel} {amount}
               </button>
               <div className="mx-0.5 h-5 w-px shrink-0 bg-cream/15" />
             </>
           )}
 
           {legal.types.includes('fold') && (
-            <button type="button" onClick={() => onAction('fold')} className={`btn-danger ${actionBtn}`}>
+            <button
+              type="button"
+              onClick={() => commit('fold', undefined, 'Fold')}
+              className={`btn-danger ${actionBtn}`}
+            >
               Fold
             </button>
           )}
           {legal.types.includes('check') && (
-            <button type="button" onClick={() => onAction('check')} className={`btn-secondary ${actionBtn}`}>
+            <button type="button" onClick={() => commit('check')} className={`btn-secondary ${actionBtn}`}>
               Check
             </button>
           )}
           {legal.types.includes('call') && (
-            <button type="button" onClick={() => onAction('call')} className={`btn-secondary ${actionBtn}`}>
+            <button type="button" onClick={() => commit('call')} className={`btn-secondary ${actionBtn}`}>
               Call {callAmount}
             </button>
           )}
           {legal.types.includes('allin') && (
-            <button type="button" onClick={() => onAction('allin')} className={`btn-primary ${actionBtn}`}>
+            <button
+              type="button"
+              onClick={() => commit('allin', undefined, 'All-in')}
+              className={`btn-primary ${actionBtn}`}
+            >
               All-in
             </button>
           )}
@@ -174,12 +269,12 @@ export function ActionControls({
           {canBet && (
             <div className="space-y-1">
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-[9px] font-semibold uppercase tracking-wider text-cream/50">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-cream-muted">
                   {betLabel} to
                 </span>
-                <span className="font-mono text-sm font-bold tabular-nums text-gold">
+                <span className="font-mono text-sm font-bold tabular-nums text-brass">
                   {amount}
-                  <span className="ml-1.5 text-[9px] font-medium text-cream/40">
+                  <span className="ml-1.5 text-[10px] font-medium text-cream-muted">
                     {min}–{max}
                   </span>
                 </span>
@@ -203,7 +298,7 @@ export function ActionControls({
             {legal.types.includes('fold') && (
               <button
                 type="button"
-                onClick={() => onAction('fold')}
+                onClick={() => commit('fold', undefined, 'Fold')}
                 className={`btn-danger ${actionBtn} min-h-11`}
               >
                 Fold
@@ -212,7 +307,7 @@ export function ActionControls({
             {legal.types.includes('check') && (
               <button
                 type="button"
-                onClick={() => onAction('check')}
+                onClick={() => commit('check')}
                 className={`btn-secondary ${actionBtn} min-h-11`}
               >
                 Check
@@ -221,7 +316,7 @@ export function ActionControls({
             {legal.types.includes('call') && (
               <button
                 type="button"
-                onClick={() => onAction('call')}
+                onClick={() => commit('call')}
                 className={`btn-secondary ${actionBtn} min-h-11`}
               >
                 Call {callAmount}
@@ -233,13 +328,13 @@ export function ActionControls({
                 onClick={() => submitBet(amount)}
                 className={`btn-primary ${actionBtn} min-h-11`}
               >
-                Custom {amount}
+                {betLabel} {amount}
               </button>
             )}
             {legal.types.includes('allin') && (
               <button
                 type="button"
-                onClick={() => onAction('allin')}
+                onClick={() => commit('allin', undefined, 'All-in')}
                 className={`btn-primary ${actionBtn} min-h-11`}
               >
                 All-in
@@ -259,12 +354,12 @@ export function ActionControls({
         {canBet && (
           <div className="space-y-1.5">
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-[9px] font-semibold uppercase tracking-wider text-cream/50">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-cream-muted">
                 {betLabel} to
               </span>
-              <span className="font-mono text-sm font-bold tabular-nums text-gold">
+              <span className="font-mono text-sm font-bold tabular-nums text-brass">
                 {amount}
-                <span className="ml-1.5 text-[9px] font-medium text-cream/40">
+                <span className="ml-1.5 text-[10px] font-medium text-cream-muted">
                   {min}–{max}
                 </span>
               </span>
@@ -297,7 +392,7 @@ export function ActionControls({
                     submitBet(amount);
                   }
                 }}
-                className="w-full rounded border border-cream/20 bg-ink-raised px-3 py-2 font-mono text-base font-bold tabular-nums text-cream outline-none focus:border-gold/50"
+                className="w-full rounded border border-cream/20 bg-ink-raised px-3 py-2 font-mono text-base font-bold tabular-nums text-cream outline-none focus:border-brass/50"
               />
             </label>
             <div className="grid grid-cols-4 gap-1.5">
@@ -312,8 +407,8 @@ export function ActionControls({
                 <button
                   key={label}
                   type="button"
-                  onClick={() => submitBet(val)}
-                  className="rounded border border-cream/15 bg-ink-raised py-1.5 text-[11px] font-display font-semibold uppercase tracking-wide hover:border-gold/50 hover:text-gold"
+                  onClick={() => setBet(val)}
+                  className="rounded border border-cream/15 bg-ink-raised py-1.5 text-[11px] font-display font-semibold uppercase tracking-wide hover:border-brass/50 hover:text-brass-light"
                 >
                   {label}
                 </button>
@@ -324,31 +419,35 @@ export function ActionControls({
 
         <div className={`grid gap-2 ${canBet ? 'grid-cols-4' : 'grid-cols-3'}`}>
           {legal.types.includes('fold') && (
-            <button type="button" onClick={() => onAction('fold')} className="btn-danger py-2.5 text-sm">
+            <button
+              type="button"
+              onClick={() => commit('fold', undefined, 'Fold')}
+              className="btn-danger py-2.5 text-sm"
+            >
               Fold
             </button>
           )}
           {legal.types.includes('check') && (
-            <button type="button" onClick={() => onAction('check')} className="btn-secondary py-2.5 text-sm">
+            <button type="button" onClick={() => commit('check')} className="btn-secondary py-2.5 text-sm">
               Check
             </button>
           )}
           {legal.types.includes('call') && (
-            <button type="button" onClick={() => onAction('call')} className="btn-secondary py-2.5 text-sm">
+            <button type="button" onClick={() => commit('call')} className="btn-secondary py-2.5 text-sm">
               Call {callAmount}
             </button>
           )}
           {canBet && (
-            <button
-              type="button"
-              onClick={() => submitBet(amount)}
-              className="btn-primary py-2.5 text-sm"
-            >
-              Custom {amount}
+            <button type="button" onClick={() => submitBet(amount)} className="btn-primary py-2.5 text-sm">
+              {betLabel} {amount}
             </button>
           )}
           {legal.types.includes('allin') && (
-            <button type="button" onClick={() => onAction('allin')} className="btn-primary py-2.5 text-sm">
+            <button
+              type="button"
+              onClick={() => commit('allin', undefined, 'All-in')}
+              className="btn-primary py-2.5 text-sm"
+            >
               All-in
             </button>
           )}

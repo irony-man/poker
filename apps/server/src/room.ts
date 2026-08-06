@@ -759,12 +759,6 @@ export class RoomManager {
     return id ? this.rooms.get(id) : undefined;
   }
 
-  listPublic(): TableMeta[] {
-    return [...this.rooms.values()]
-      .filter((r) => !r.meta.isPrivate)
-      .map((r) => r.meta);
-  }
-
   findPublicByStake(stakeId: string): Room | undefined {
     return [...this.rooms.values()].find(
       (r) => !r.meta.isPrivate && r.meta.stakeId === stakeId,

@@ -23,10 +23,38 @@ export default function ContestPage() {
   const router = useRouter();
   const userId = useSession((s) => s.userId);
   const ticket = useSession((s) => s.ticket);
+  const sessionToken = useSession((s) => s.sessionToken);
+  const setSession = useSession((s) => s.setSession);
   const [contest, setContest] = useState<ContestView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const navigatedTable = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (sessionToken && ticket) return;
+    const raw = localStorage.getItem('felt-session');
+    if (!raw) return;
+    try {
+      const s = JSON.parse(raw) as {
+        userId: string;
+        name: string;
+        ticket: string;
+        sessionToken?: string;
+        username?: string;
+      };
+      if (s.userId && s.ticket) {
+        setSession({
+          userId: s.userId,
+          name: s.name,
+          ticket: s.ticket,
+          sessionToken: s.sessionToken,
+          username: s.username,
+        });
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [sessionToken, ticket, setSession]);
 
   const load = useCallback(async () => {
     try {
@@ -116,13 +144,13 @@ export default function ContestPage() {
   }, [contest]);
 
   async function onRegister() {
-    if (!userId) {
-      setError('Register a callsign from the lobby first');
+    if (!sessionToken) {
+      setError('Sign in from the lobby first');
       return;
     }
     setBusy(true);
     try {
-      const { contest: c } = await registerContest(contestId, { userId });
+      const { contest: c } = await registerContest(contestId, { sessionToken });
       setContest(c);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
@@ -132,10 +160,10 @@ export default function ContestPage() {
   }
 
   async function onUnregister() {
-    if (!userId) return;
+    if (!sessionToken) return;
     setBusy(true);
     try {
-      const { contest: c } = await unregisterContest(contestId, { userId });
+      const { contest: c } = await unregisterContest(contestId, { sessionToken });
       setContest(c);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
@@ -145,10 +173,10 @@ export default function ContestPage() {
   }
 
   async function onStart() {
-    if (!userId) return;
+    if (!sessionToken) return;
     setBusy(true);
     try {
-      const { contest: c } = await startContest(contestId, { userId });
+      const { contest: c } = await startContest(contestId, { sessionToken });
       setContest(c);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');

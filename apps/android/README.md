@@ -24,7 +24,7 @@ Multi-module Jetpack Compose client for Felt poker.
 | `FELT_API_URL` | `https://felt-server-hgi4.onrender.com` |
 | `FELT_WS_URL` | `wss://felt-server-hgi4.onrender.com/ws` |
 
-Override in `local.properties` for a local anonymous server:
+Override in `local.properties` for a local server:
 
 ```properties
 # Emulator → host machine
@@ -36,7 +36,7 @@ felt.ws.url=ws://10.0.2.2:4000/ws
 # felt.ws.url=ws://192.168.x.x:4000/ws
 ```
 
-Play uses callsign only — no Clerk sign-in. Production Render may still return **401** until the anonymous-auth server is deployed; use a local server in that case.
+Online play uses username + password (signup/login). Session tokens are stored in DataStore and sent as Bearer on API calls.
 
 ## Modules
 

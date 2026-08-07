@@ -7,11 +7,12 @@ import path from 'node:path';
 import os from 'node:os';
 
 describe('AuthStore', () => {
-  it('issues and consumes tickets', () => {
-    const auth = new AuthStore();
-    const user = auth.register('Alice');
-    const ticket = auth.issueTicket(user.id);
-    expect(auth.consumeTicket(ticket)?.name).toBe('Alice');
+  it('issues and consumes tickets after signup', async () => {
+    const dir = path.join(os.tmpdir(), `poker-auth-${Date.now()}`);
+    const auth = new AuthStore(dir);
+    await auth.init();
+    const session = await auth.signup('Alice', 'password1');
+    expect(auth.consumeTicket(session.ticket)?.name).toBe('Alice');
     expect(auth.consumeTicket('bad')).toBeNull();
   });
 });

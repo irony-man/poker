@@ -155,6 +155,8 @@ class TableViewModel @Inject constructor(
                             _uiState.update { it.copy(lastError = msg.message) }
                         }
                         ServerMessage.Pong -> Unit
+                        is ServerMessage.ContestSync,
+                        is ServerMessage.ContestEvent -> Unit
                     }
                 }
             }

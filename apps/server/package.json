@@ -12,10 +12,10 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@clerk/backend": "^3.13.1",
     "@poker/db": "*",
     "@poker/engine": "*",
     "@poker/protocol": "*",
+    "argon2": "^0.45.1",
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "nanoid": "^5.0.9",

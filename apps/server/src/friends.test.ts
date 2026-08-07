@@ -11,10 +11,11 @@ describe('FriendsStore', () => {
 
   beforeEach(async () => {
     await mkdir(dir, { recursive: true });
-    auth = new AuthStore();
-    auth.register('Alice', 0, 'user-alice');
-    auth.register('Bob', 1, 'user-bob');
-    auth.register('Carol', 2, 'user-carol');
+    auth = new AuthStore(path.join(dir, 'auth'));
+    await auth.init();
+    await auth.seedUser('user-alice', 'Alice', 'password1', 0);
+    await auth.seedUser('user-bob', 'Bob', 'password1', 1);
+    await auth.seedUser('user-carol', 'Carol', 'password1', 2);
     friends = new FriendsStore(dir);
   });
 
@@ -61,5 +62,32 @@ describe('FriendsStore', () => {
   it('searches users by name', () => {
     const results = friends.searchUsers(auth, 'ali', 'user-bob');
     expect(results.map((u) => u.id)).toEqual(['user-alice']);
+  });
+
+  it('creates friend groups and group game invites', async () => {
+    const req = await friends.sendRequest('user-alice', 'user-bob');
+    await friends.respondRequest('user-bob', req.id, true);
+    const req2 = await friends.sendRequest('user-alice', 'user-carol');
+    await friends.respondRequest('user-carol', req2.id, true);
+
+    const group = await friends.createGroup(auth, 'user-alice', 'Crew', [
+      'user-bob',
+      'user-carol',
+    ]);
+    expect(group.members.map((m) => m.userId).sort()).toEqual(['user-bob', 'user-carol']);
+
+    const challenges = await friends.createGroupGameInvites(
+      'user-alice',
+      await friends.requireGroup(group.id),
+      ['user-bob', 'user-carol'],
+      'table-group-1',
+      '1234',
+    );
+    expect(challenges).toHaveLength(2);
+
+    const bobPending = await friends.listPendingChallenges(auth, 'user-bob');
+    expect(bobPending).toHaveLength(1);
+    expect(bobPending[0]!.groupName).toBe('Crew');
+    expect(bobPending[0]!.inviteCode).toBe('1234');
   });
 });

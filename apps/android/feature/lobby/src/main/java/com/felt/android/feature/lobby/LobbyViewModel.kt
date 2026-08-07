@@ -5,10 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.felt.android.core.datastore.SessionPreferences
 import com.felt.android.core.model.CreateContestRequest
 import com.felt.android.core.model.CreateTableRequest
-import com.felt.android.core.model.RegisterRequest
+import com.felt.android.core.model.LoginRequest
 import com.felt.android.core.model.SessionDto
-import com.felt.android.core.model.UserIdBody
+import com.felt.android.core.model.SignupRequest
+import com.felt.android.core.network.EmptyBody
 import com.felt.android.core.network.FeltApi
+import com.felt.android.core.network.SessionTokenHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,8 +20,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class LobbyUiState(
+    val signedIn: Boolean = false,
+    val username: String = "",
+    val password: String = "",
     val name: String = "",
     val avatarId: Int = 0,
+    val authMode: String = "login", // login | signup
     val maxSeats: Int = 6,
     val botCount: Int = 2,
     val customRoomCode: String = "",
@@ -37,6 +43,7 @@ data class LobbyUiState(
 class LobbyViewModel @Inject constructor(
     private val feltApi: FeltApi,
     private val sessionPreferences: SessionPreferences,
+    private val tokenHolder: SessionTokenHolder,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LobbyUiState())
@@ -44,17 +51,41 @@ class LobbyViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            sessionPreferences.getSession()?.let { saved ->
-                _uiState.update {
-                    it.copy(name = saved.name, avatarId = saved.avatarId)
+            val saved = sessionPreferences.getSession()
+            if (saved != null && saved.sessionToken.isNotBlank()) {
+                tokenHolder.set(saved.sessionToken)
+                val restored = runCatching {
+                    feltApi.refreshTicket().copy(
+                        sessionToken = saved.sessionToken,
+                        avatarId = saved.avatarId,
+                    )
+                }.getOrNull()
+                if (restored != null) {
+                    sessionPreferences.saveSession(restored)
+                    _uiState.update {
+                        it.copy(
+                            signedIn = true,
+                            name = restored.name,
+                            username = restored.username.ifBlank { restored.name },
+                            avatarId = restored.avatarId,
+                        )
+                    }
+                } else {
+                    tokenHolder.clear()
+                    sessionPreferences.clear()
+                    val avatar = sessionPreferences.getAvatarId()
+                    _uiState.update { it.copy(avatarId = avatar, signedIn = false) }
                 }
-            } ?: run {
+            } else {
                 val avatar = sessionPreferences.getAvatarId()
                 _uiState.update { it.copy(avatarId = avatar) }
             }
         }
     }
 
+    fun onUsernameChange(value: String) = _uiState.update { it.copy(username = value.filter { ch -> ch.isLetterOrDigit() || ch == '_' }.take(24)) }
+    fun onPasswordChange(value: String) = _uiState.update { it.copy(password = value.take(128)) }
+    fun onAuthModeChange(mode: String) = _uiState.update { it.copy(authMode = mode, error = null) }
     fun onNameChange(value: String) = _uiState.update { it.copy(name = value) }
     fun onAvatarChange(value: Int) {
         _uiState.update { it.copy(avatarId = value.coerceIn(0, 7)) }
@@ -89,20 +120,71 @@ class LobbyViewModel @Inject constructor(
         _uiState.update { it.copy(contestInvite = value.filter { ch -> ch.isDigit() }.take(8)) }
     fun clearError() = _uiState.update { it.copy(error = null) }
 
-    fun host(onSuccess: (tableId: String, invite: String) -> Unit) {
+    fun submitAuth() {
         val state = _uiState.value
-        if (state.name.isBlank()) {
-            _uiState.update { it.copy(error = "Enter a callsign to play") }
+        val username = state.username.trim()
+        val password = state.password
+        if (username.length < 3) {
+            _uiState.update { it.copy(error = "Username must be at least 3 characters") }
+            return
+        }
+        if (password.length < 6) {
+            _uiState.update { it.copy(error = "Password must be at least 6 characters") }
             return
         }
         viewModelScope.launch {
             _uiState.update { it.copy(busy = true, error = null) }
             runCatching {
+                val session = if (state.authMode == "signup") {
+                    feltApi.signup(SignupRequest(username, password, state.avatarId))
+                } else {
+                    feltApi.login(LoginRequest(username, password))
+                }.let { it.copy(avatarId = it.avatarId.takeIf { a -> a in 0..7 } ?: state.avatarId) }
+                persistSession(session)
+                session
+            }.onSuccess { session ->
+                _uiState.update {
+                    it.copy(
+                        busy = false,
+                        signedIn = true,
+                        name = session.name,
+                        username = session.username.ifBlank { session.name },
+                        password = "",
+                    )
+                }
+            }.onFailure { err ->
+                _uiState.update { it.copy(busy = false, error = err.message ?: "Auth failed") }
+            }
+        }
+    }
+
+    fun signOut() {
+        viewModelScope.launch {
+            runCatching { feltApi.logout(EmptyBody()) }
+            tokenHolder.clear()
+            sessionPreferences.clear()
+            _uiState.update {
+                it.copy(
+                    signedIn = false,
+                    name = "",
+                    username = "",
+                    password = "",
+                    error = null,
+                )
+            }
+        }
+    }
+
+    fun host(onSuccess: (tableId: String, invite: String) -> Unit) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(busy = true, error = null) }
+            runCatching {
+                val state = _uiState.value
                 val code = state.customRoomCode.trim()
                 if (code.isNotEmpty() && !code.matches(Regex("^\\d{4,8}$"))) {
                     error("Room code must be 4–8 digits")
                 }
-                val session = ensureSession(state.name.trim())
+                val session = requireSession()
                 val table = feltApi.createTable(
                     CreateTableRequest(
                         userId = session.userId,
@@ -124,16 +206,11 @@ class LobbyViewModel @Inject constructor(
     }
 
     fun join(onSuccess: (tableId: String, invite: String) -> Unit) {
-        val state = _uiState.value
-        if (state.name.isBlank()) {
-            _uiState.update { it.copy(error = "Enter a callsign to play") }
-            return
-        }
         viewModelScope.launch {
             _uiState.update { it.copy(busy = true, error = null) }
             runCatching {
-                ensureSession(state.name.trim())
-                val resolved = feltApi.resolveInvite(state.inviteCode.trim())
+                requireSession()
+                val resolved = feltApi.resolveInvite(_uiState.value.inviteCode.trim())
                 resolved.tableId to resolved.inviteCode
             }.onSuccess { (tableId, invite) ->
                 _uiState.update { it.copy(busy = false) }
@@ -155,15 +232,11 @@ class LobbyViewModel @Inject constructor(
     }
 
     fun createContest(onSuccess: (contestId: String) -> Unit) {
-        val state = _uiState.value
-        if (state.name.isBlank()) {
-            _uiState.update { it.copy(error = "Enter a callsign to play") }
-            return
-        }
         viewModelScope.launch {
             _uiState.update { it.copy(busy = true, error = null) }
             runCatching {
-                val session = ensureSession(state.name.trim())
+                val state = _uiState.value
+                val session = requireSession()
                 val mode = state.contestMode
                 val field = state.contestFieldSize
                 feltApi.createContest(
@@ -187,17 +260,12 @@ class LobbyViewModel @Inject constructor(
     }
 
     fun joinContest(onSuccess: (contestId: String) -> Unit) {
-        val state = _uiState.value
-        if (state.name.isBlank()) {
-            _uiState.update { it.copy(error = "Enter a callsign to play") }
-            return
-        }
         viewModelScope.launch {
             _uiState.update { it.copy(busy = true, error = null) }
             runCatching {
-                val session = ensureSession(state.name.trim())
-                val resolved = feltApi.resolveContestInvite(state.contestInvite.trim()).contest
-                feltApi.registerContest(resolved.id, UserIdBody(session.userId))
+                requireSession()
+                val resolved = feltApi.resolveContestInvite(_uiState.value.contestInvite.trim()).contest
+                feltApi.registerContest(resolved.id)
                 resolved.id
             }.onSuccess { id ->
                 _uiState.update { it.copy(busy = false) }
@@ -208,14 +276,22 @@ class LobbyViewModel @Inject constructor(
         }
     }
 
-    private suspend fun ensureSession(displayName: String): SessionDto {
-        val avatarId = _uiState.value.avatarId.coerceIn(0, 7)
-        val existingUserId = sessionPreferences.getSession()?.userId
-        val session = feltApi.register(
-            RegisterRequest(displayName, avatarId, existingUserId),
-        ).copy(avatarId = avatarId)
+    private suspend fun requireSession(): SessionDto {
+        val saved = sessionPreferences.getSession()
+            ?: error("Sign in first")
+        if (saved.sessionToken.isBlank()) error("Sign in first")
+        tokenHolder.set(saved.sessionToken)
+        val refreshed = feltApi.refreshTicket().copy(
+            sessionToken = saved.sessionToken,
+            avatarId = saved.avatarId,
+        )
+        persistSession(refreshed)
+        return refreshed
+    }
+
+    private suspend fun persistSession(session: SessionDto) {
+        tokenHolder.set(session.sessionToken)
         sessionPreferences.saveSession(session)
-        sessionPreferences.saveAvatarId(avatarId)
-        return session
+        sessionPreferences.saveAvatarId(session.avatarId)
     }
 }

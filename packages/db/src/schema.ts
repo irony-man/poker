@@ -5,6 +5,10 @@
 export interface UserRow {
   id: string;
   name: string;
+  username: string | null;
+  usernameLower: string | null;
+  passwordHash: string | null;
+  avatarId: number;
   createdAt: Date;
 }
 
@@ -46,8 +50,16 @@ export const POSTGRES_DDL = `
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
+  username TEXT,
+  username_lower TEXT,
+  password_hash TEXT,
+  avatar_id INT NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS users_username_lower_uidx
+  ON users (username_lower) WHERE username_lower IS NOT NULL;
+
 
 CREATE TABLE IF NOT EXISTS tables (
   id TEXT PRIMARY KEY,

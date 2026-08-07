@@ -119,13 +119,15 @@ fun PlayingCard(
                 if (highlight) Modifier.border(2.dp, FeltColors.Brass, shape)
                 else Modifier.border(1.5.dp, Color.Black, shape),
             )
-            .background(
+            .then(
                 if (faceDown || code == null) {
-                    Brush.linearGradient(
-                        listOf(Color(0xFF2A1F12), Color(0xFF0F0C08)),
+                    Modifier.background(
+                        Brush.linearGradient(
+                            listOf(Color(0xFF2A1F12), Color(0xFF0F0C08)),
+                        ),
                     )
                 } else {
-                    CardFace
+                    Modifier.background(CardFace)
                 },
             ),
         contentAlignment = Alignment.Center,

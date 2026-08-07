@@ -1,14 +1,26 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ChoiceRow } from '@/components/ChoiceRow';
-import { AvatarPicker } from '@/components/PlayerAvatar';
 import { FriendsPanel } from '@/components/FriendsPanel';
 import { PublicTablesPanel } from '@/components/PublicTablesPanel';
 import { ContestsPanel } from '@/components/ContestsPanel';
-import { createTable, register, resolveContestInvite, resolveInvite } from '@/lib/api';
+import {
+  createTable,
+  logout as apiLogout,
+  refreshTicket,
+  resolveContestInvite,
+  resolveInvite,
+} from '@/lib/api';
 import { loadSavedAvatarId, saveAvatarId } from '@/lib/avatars';
+import {
+  clearStoredSession,
+  readStoredSession,
+  writeStoredSession,
+  type StoredSession,
+} from '@/lib/session';
 import { useSession } from '@/lib/store';
 import { DEFAULT_STAKE_ID, STAKE_PRESETS, stakeById } from '@poker/protocol';
 
@@ -19,9 +31,12 @@ type LobbyTab = 'host' | 'join' | 'contests' | 'offline';
 export default function HomePage() {
   const router = useRouter();
   const setSession = useSession((s) => s.setSession);
+  const clearSession = useSession((s) => s.clearSession);
   const sessionName = useSession((s) => s.name);
+  const sessionToken = useSession((s) => s.sessionToken);
+  const [authReady, setAuthReady] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
   const [name, setName] = useState(sessionName ?? '');
-  const [avatarId, setAvatarId] = useState(0);
   const [invite, setInvite] = useState('');
   const [maxSeats, setMaxSeats] = useState(6);
   const [botCount, setBotCount] = useState(2);
@@ -33,69 +48,103 @@ export default function HomePage() {
   const [tab, setTab] = useState<LobbyTab>('host');
 
   useEffect(() => {
-    setAvatarId(loadSavedAvatarId());
-    const raw = localStorage.getItem('felt-session');
-    if (raw) {
-      try {
-        const s = JSON.parse(raw) as {
-          userId: string;
-          name: string;
-          ticket: string;
-          avatarId?: number;
-        };
-        setSession(s);
-        if (!name) setName(s.name);
-        if (typeof s.avatarId === 'number') {
-          setAvatarId(s.avatarId);
-          saveAvatarId(s.avatarId);
+    let cancelled = false;
+    async function hydrate() {
+      const stored = readStoredSession();
+      if (!stored) {
+        if (!cancelled) {
+          setAuthReady(true);
+          setSignedIn(false);
         }
+        return;
+      }
+      try {
+        const refreshed = await refreshTicket(stored.sessionToken);
+        if (cancelled) return;
+        const next: StoredSession = {
+          userId: refreshed.userId,
+          username: refreshed.username ?? stored.username,
+          name: refreshed.name,
+          ticket: refreshed.ticket,
+          sessionToken: stored.sessionToken,
+          avatarId: refreshed.avatarId ?? stored.avatarId ?? loadSavedAvatarId(),
+        };
+        setSession(next);
+        writeStoredSession(next);
+        if (typeof next.avatarId === 'number') saveAvatarId(next.avatarId);
+        setName(next.name);
+        setSignedIn(true);
       } catch {
-        /* ignore */
+        if (cancelled) return;
+        clearStoredSession();
+        clearSession();
+        setSignedIn(false);
+      } finally {
+        if (!cancelled) setAuthReady(true);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate once
-  }, [setSession]);
+    void hydrate();
+    return () => {
+      cancelled = true;
+    };
+  }, [setSession, clearSession]);
 
   useEffect(() => {
     const maxBots = Math.max(0, maxSeats - 1);
     if (botCount > maxBots) setBotCount(maxBots);
   }, [maxSeats, botCount]);
 
-  function pickAvatar(id: number) {
-    setAvatarId(id);
-    saveAvatarId(id);
+  async function ensureSession(): Promise<StoredSession> {
+    const stored = readStoredSession();
+    if (!stored) {
+      router.push('/sign-in');
+      throw new Error('Sign in required');
+    }
+    try {
+      const refreshed = await refreshTicket(stored.sessionToken);
+      const next: StoredSession = {
+        userId: refreshed.userId,
+        username: refreshed.username ?? stored.username,
+        name: refreshed.name,
+        ticket: refreshed.ticket,
+        sessionToken: stored.sessionToken,
+        avatarId: refreshed.avatarId ?? stored.avatarId,
+      };
+      setSession(next);
+      writeStoredSession(next);
+      setName(next.name);
+      setSignedIn(true);
+      return next;
+    } catch {
+      clearStoredSession();
+      clearSession();
+      setSignedIn(false);
+      router.push('/sign-in');
+      throw new Error('Session expired — sign in again');
+    }
   }
 
-  async function ensureSession(displayName: string) {
-    const trimmed = displayName.trim() || 'Player';
-    const raw = localStorage.getItem('felt-session');
-    let existingUserId: string | undefined;
-    if (raw) {
+  async function onLogout() {
+    const token = sessionToken ?? readStoredSession()?.sessionToken;
+    if (token) {
       try {
-        const prev = JSON.parse(raw) as { userId?: string };
-        if (prev.userId) existingUserId = prev.userId;
+        await apiLogout(token);
       } catch {
         /* ignore */
       }
     }
-    const s = await register(trimmed, avatarId, { userId: existingUserId });
-    const session = { ...s, avatarId: s.avatarId ?? avatarId };
-    setSession(session);
-    localStorage.setItem('felt-session', JSON.stringify(session));
-    saveAvatarId(session.avatarId);
-    return session;
+    clearStoredSession();
+    clearSession();
+    setSignedIn(false);
+    setName('');
   }
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) {
-      setError('Enter a callsign to play');
-      return;
-    }
     setBusy(true);
     setError(null);
     try {
-      const session = await ensureSession(name);
+      const session = await ensureSession();
       const stake = stakeById(hostStakeId) ?? STAKE_PRESETS[1]!;
       const code = customRoomCode.trim();
       if (code && !/^\d{4,8}$/.test(code)) {
@@ -103,18 +152,20 @@ export default function HomePage() {
         setBusy(false);
         return;
       }
-      const table = await createTable({
-        userId: session.userId,
-        name: `${session.name}'s Table`,
-        smallBlind: stake.smallBlind,
-        bigBlind: stake.bigBlind,
-        buyIn: stake.buyIn,
-        turnTimeMs: 20000,
-        maxSeats,
-        botCount,
-        isPrivate: true,
-        ...(code ? { inviteCode: code } : {}),
-      });
+      const table = await createTable(
+        {
+          name: `${session.name}'s Table`,
+          smallBlind: stake.smallBlind,
+          bigBlind: stake.bigBlind,
+          buyIn: stake.buyIn,
+          turnTimeMs: 20000,
+          maxSeats,
+          botCount,
+          isPrivate: true,
+          ...(code ? { inviteCode: code } : {}),
+        },
+        session.sessionToken,
+      );
       router.push(`/table/${table.tableId}?invite=${table.inviteCode}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
@@ -124,32 +175,23 @@ export default function HomePage() {
   }
 
   async function enterContestCode(code: string) {
-    if (!name.trim()) {
-      setError('Enter a callsign to play');
-      return;
-    }
-    const session = await ensureSession(name);
+    const session = await ensureSession();
     const { contest } = await resolveContestInvite(code);
     const { registerContest } = await import('@/lib/api');
-    await registerContest(contest.id, { userId: session.userId });
+    await registerContest(contest.id, { sessionToken: session.sessionToken });
     router.push(`/contest/${contest.id}`);
   }
 
   async function enterInvite(mode: 'play' | 'spectate') {
-    if (!name.trim()) {
-      setError('Enter a callsign to play');
-      return;
-    }
     setBusy(true);
     setError(null);
     try {
-      await ensureSession(name);
+      await ensureSession();
       try {
         const t = await resolveInvite(invite.trim());
         const spectate = mode === 'spectate' ? '&mode=spectate' : '';
         router.push(`/table/${t.tableId}?invite=${t.inviteCode}${spectate}`);
       } catch {
-        // Fall through to contest invite codes
         await enterContestCode(invite.trim());
       }
     } catch (err) {
@@ -170,14 +212,10 @@ export default function HomePage() {
   }
 
   async function joinPublicTable(tableId: string, inviteCode: string) {
-    if (!name.trim()) {
-      setError('Enter a callsign to play');
-      return;
-    }
     setBusy(true);
     setError(null);
     try {
-      await ensureSession(name);
+      await ensureSession();
       router.push(`/table/${tableId}?invite=${inviteCode}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
@@ -194,20 +232,49 @@ export default function HomePage() {
     router.push(`/offline?name=${display}&seats=${offlineSeats}`);
   }
 
+  if (!authReady) {
+    return <p className="pt-16 text-center text-cream/60">Loading…</p>;
+  }
+
+  if (!signedIn) {
+    return (
+      <div className="relative mx-auto w-full max-w-lg px-1 pt-10 pb-8 text-center">
+        <div className="pointer-events-none absolute -top-6 left-1/2 h-40 w-[24rem] -translate-x-1/2 rounded-full bg-gold/10 blur-3xl" />
+        <h1 className="font-display text-5xl sm:text-6xl font-extrabold tracking-[0.06em] text-transparent bg-clip-text bg-gradient-to-br from-gold-light via-gold to-gold-dim uppercase leading-none">
+          Felt
+        </h1>
+        <p className="mt-3 text-cream/65 text-sm sm:text-base">
+          Sign in to host private tables, join with a code, or play contests.
+        </p>
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <Link href="/sign-in" className="btn-primary min-h-11 px-8">
+            Sign in
+          </Link>
+          <Link href="/sign-up" className="btn-ghost min-h-11 px-8">
+            Create account
+          </Link>
+        </div>
+        <p className="mt-6 text-sm text-cream/45">
+          Offline vs bots needs no account —{' '}
+          <Link href="/offline?name=Player&seats=6" className="text-gold hover:underline">
+            play offline
+          </Link>
+        </p>
+      </div>
+    );
+  }
+
   const identityBlock = (
-    <div className="hud-panel mx-auto max-w-xl space-y-3 p-3">
-      <label className="block">
-        <span className="hud-label">Callsign</span>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="hud-input"
-          required
-          maxLength={32}
-          placeholder="Your name at the table"
-        />
-      </label>
-      <AvatarPicker value={avatarId} onChange={pickAvatar} />
+    <div className="hud-panel mx-auto max-w-xl space-y-2 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <span className="hud-label">Signed in as</span>
+          <p className="font-display text-lg text-gold">{name}</p>
+        </div>
+        <button type="button" onClick={() => void onLogout()} className="btn-ghost text-xs px-3 py-2">
+          Sign out
+        </button>
+      </div>
     </div>
   );
 
@@ -217,18 +284,6 @@ export default function HomePage() {
         <h2 className="font-display text-xl font-bold uppercase tracking-wider text-gold">Host</h2>
         <span className="text-[10px] font-display uppercase tracking-[0.2em] text-cyan/70">Online</span>
       </div>
-      {/* Desktop still shows callsign in-panel; mobile uses sticky identity */}
-      <label className="hidden sm:block">
-        <span className="hud-label">Callsign</span>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="hud-input"
-          required
-          maxLength={32}
-          placeholder="Your name at the table"
-        />
-      </label>
       <ChoiceRow
         label="Stakes"
         name="host-stakes"
@@ -287,17 +342,6 @@ export default function HomePage() {
         <h2 className="font-display text-xl font-bold uppercase tracking-wider text-gold">Join</h2>
         <span className="text-[10px] font-display uppercase tracking-[0.2em] text-cyan/70">Invite</span>
       </div>
-      <label className="hidden sm:block">
-        <span className="hud-label">Callsign</span>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="hud-input"
-          required
-          maxLength={32}
-          placeholder="Your name at the table"
-        />
-      </label>
       <label className="block">
         <span className="hud-label">Invite code</span>
         <input
@@ -343,13 +387,12 @@ export default function HomePage() {
         </span>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
-        <label className="hidden min-w-0 sm:block">
-          <span className="hud-label">Callsign</span>
+        <label className="min-w-0 block">
+          <span className="hud-label">Display name</span>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="hud-input"
-            required
             maxLength={32}
           />
         </label>
@@ -378,6 +421,7 @@ export default function HomePage() {
   const contestsPanel = (
     <ContestsPanel
       disabled={busy}
+      sessionToken={sessionToken}
       displayName={name}
       onEnsureSession={ensureSession}
       onOpenContest={(id) => router.push(`/contest/${id}`)}
@@ -405,18 +449,16 @@ export default function HomePage() {
           Felt
         </h1>
         <p className="mt-2 sm:mt-3 mx-auto max-w-xl text-cream/65 text-sm sm:text-lg font-medium tracking-wide leading-relaxed">
-          Drop into No-Limit Texas Hold&apos;em. Pick a callsign, host a table, join with a code, or
-          grind offline vs bots.
+          Host a table, join with a code, or grind offline vs bots.
         </p>
       </div>
 
-      {/* Mobile: sticky identity once */}
-      <div className="sticky top-0 z-30 mt-4 bg-ink/90 pb-2 pt-1 backdrop-blur-md sm:hidden">
+      <div className="sticky top-0 z-30 mt-4 bg-ink/90 pb-2 pt-1 backdrop-blur-md sm:static sm:bg-transparent sm:backdrop-blur-none">
         {identityBlock}
         <div
           role="tablist"
           aria-label="Lobby mode"
-          className="mt-2 flex rounded-xl border border-cream/15 bg-ink-panel/90 p-1"
+          className="mt-2 flex rounded-xl border border-cream/15 bg-ink-panel/90 p-1 sm:hidden"
         >
           {tabs.map((t) => (
             <button
@@ -437,14 +479,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Desktop avatar (callsigns stay in each panel) */}
-      <div className="mt-6 hidden sm:block">
-        <div className="hud-panel mx-auto max-w-xl p-4 sm:p-5">
-          <AvatarPicker value={avatarId} onChange={pickAvatar} />
-        </div>
-      </div>
-
-      {/* Mobile: one panel */}
       <div className="mt-3 space-y-3 sm:hidden">
         {tab === 'host' && hostForm}
         {tab === 'join' && (
@@ -455,14 +489,10 @@ export default function HomePage() {
               disabled={busy}
               onNavigateTable={(tableId, inviteCode) => {
                 void (async () => {
-                  if (!name.trim()) {
-                    setError('Enter a callsign to play');
-                    return;
-                  }
                   setBusy(true);
                   setError(null);
                   try {
-                    await ensureSession(name);
+                    await ensureSession();
                     router.push(`/table/${tableId}?invite=${inviteCode}`);
                   } catch (err) {
                     setError(err instanceof Error ? err.message : 'Failed');
@@ -478,7 +508,6 @@ export default function HomePage() {
         {tab === 'offline' && offlineForm}
       </div>
 
-      {/* Desktop: grid */}
       <div className="mt-6 hidden gap-4 sm:grid sm:grid-cols-2 sm:gap-5 sm:items-stretch">
         {hostForm}
         {joinForm}
@@ -489,14 +518,10 @@ export default function HomePage() {
           disabled={busy}
           onNavigateTable={(tableId, inviteCode) => {
             void (async () => {
-              if (!name.trim()) {
-                setError('Enter a callsign to play');
-                return;
-              }
               setBusy(true);
               setError(null);
               try {
-                await ensureSession(name);
+                await ensureSession();
                 router.push(`/table/${tableId}?invite=${inviteCode}`);
               } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed');

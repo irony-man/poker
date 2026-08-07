@@ -29,7 +29,7 @@ npm run dev:server
 npm run dev:web
 ```
 
-Open http://localhost:3000 — register a name, create a table, share the invite code.
+Open http://localhost:3000 — sign up or sign in with a username and password, create a table, share the invite code.
 
 ### Contests (tournaments)
 
@@ -89,6 +89,8 @@ See [apps/android/README.md](apps/android/README.md).
 ## Architecture notes
 
 - Authoritative server: clients send action intents; hole cards are private per seat.
+- Identity: unique username + password (argon2 hash), opaque session Bearer tokens for HTTP, short-lived WS tickets.
+- User accounts persist under `DATA_DIR/users.json` (or Postgres `users` when `DATABASE_URL` is set).
 - Action messages require `handId` + monotonic `actionSeq`.
 - Turn timeouts auto-check or auto-fold.
 - Contests are orchestrated in-memory by `TournamentManager` on top of cash `Room`s (no rebuy; auto-deal between hands).

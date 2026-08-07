@@ -6,43 +6,39 @@ import com.felt.android.core.model.CreateContestRequest
 import com.felt.android.core.model.CreateTableRequest
 import com.felt.android.core.model.CreateTableResponse
 import com.felt.android.core.model.InviteResolveResponse
-import com.felt.android.core.model.RegisterRequest
+import com.felt.android.core.model.LoginRequest
 import com.felt.android.core.model.SessionDto
-import com.felt.android.core.model.TicketRequest
-import com.felt.android.core.model.UserIdBody
+import com.felt.android.core.model.SignupRequest
+import kotlinx.serialization.Serializable
 import retrofit2.http.Body
 import retrofit2.http.GET
-import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.Path
 
+@Serializable
+class EmptyBody
+
 interface FeltApi {
-    @POST("api/register")
-    suspend fun register(
-        @Body body: RegisterRequest,
-        @Header("Authorization") authorization: String? = null,
-    ): SessionDto
+    @POST("api/signup")
+    suspend fun signup(@Body body: SignupRequest): SessionDto
+
+    @POST("api/login")
+    suspend fun login(@Body body: LoginRequest): SessionDto
+
+    @POST("api/logout")
+    suspend fun logout(@Body body: EmptyBody = EmptyBody()): Unit
 
     @POST("api/ticket")
-    suspend fun refreshTicket(
-        @Body body: TicketRequest,
-        @Header("Authorization") authorization: String? = null,
-    ): SessionDto
+    suspend fun refreshTicket(@Body body: EmptyBody = EmptyBody()): SessionDto
 
     @POST("api/tables")
-    suspend fun createTable(
-        @Body body: CreateTableRequest,
-        @Header("Authorization") authorization: String? = null,
-    ): CreateTableResponse
+    suspend fun createTable(@Body body: CreateTableRequest): CreateTableResponse
 
     @GET("api/tables/invite/{code}")
     suspend fun resolveInvite(@Path("code") code: String): InviteResolveResponse
 
     @POST("api/contests")
-    suspend fun createContest(
-        @Body body: CreateContestRequest,
-        @Header("Authorization") authorization: String? = null,
-    ): ContestResponse
+    suspend fun createContest(@Body body: CreateContestRequest): ContestResponse
 
     @GET("api/contests")
     suspend fun listContests(): ContestListResponse
@@ -56,21 +52,18 @@ interface FeltApi {
     @POST("api/contests/{id}/register")
     suspend fun registerContest(
         @Path("id") id: String,
-        @Body body: UserIdBody,
-        @Header("Authorization") authorization: String? = null,
+        @Body body: EmptyBody = EmptyBody(),
     ): ContestResponse
 
     @POST("api/contests/{id}/unregister")
     suspend fun unregisterContest(
         @Path("id") id: String,
-        @Body body: UserIdBody,
-        @Header("Authorization") authorization: String? = null,
+        @Body body: EmptyBody = EmptyBody(),
     ): ContestResponse
 
     @POST("api/contests/{id}/start")
     suspend fun startContest(
         @Path("id") id: String,
-        @Body body: UserIdBody,
-        @Header("Authorization") authorization: String? = null,
+        @Body body: EmptyBody = EmptyBody(),
     ): ContestResponse
 }

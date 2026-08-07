@@ -21,12 +21,25 @@ export interface Challenge {
   inviteCode: string;
   status: 'pending' | 'joined' | 'expired';
   createdAt: number;
+  /** Present when this challenge was created via a group quick-invite. */
+  groupId?: string;
+  groupName?: string;
+}
+
+export interface FriendGroup {
+  id: string;
+  ownerUserId: string;
+  name: string;
+  /** Friend user ids excluding owner. */
+  memberUserIds: string[];
+  createdAt: number;
 }
 
 interface SocialSnapshot {
   requests: FriendRequest[];
   friendships: [string, string][];
   challenges: Challenge[];
+  groups?: FriendGroup[];
 }
 
 export interface FriendProfile {
@@ -47,17 +60,29 @@ export interface PendingChallengeView {
   tableId: string;
   inviteCode: string;
   createdAt: number;
+  groupId?: string;
+  groupName?: string;
+}
+
+export interface FriendGroupView {
+  id: string;
+  name: string;
+  ownerUserId: string;
+  isOwner: boolean;
+  members: FriendProfile[];
+  createdAt: number;
 }
 
 function pairKey(a: string, b: string): [string, string] {
   return a < b ? [a, b] : [b, a];
 }
 
-/** File-backed friend requests, friendships, and challenges. */
+/** File-backed friend requests, friendships, groups, and challenges. */
 export class FriendsStore {
   private requests: FriendRequest[] = [];
   private friendships = new Set<string>();
   private challenges: Challenge[] = [];
+  private groups: FriendGroup[] = [];
   private loaded = false;
   private readonly filePath: string;
 
@@ -76,10 +101,12 @@ export class FriendsStore {
         (snap.friendships ?? []).map(([a, b]) => `${a}:${b}`),
       );
       this.challenges = snap.challenges ?? [];
+      this.groups = snap.groups ?? [];
     } catch {
       this.requests = [];
       this.friendships = new Set();
       this.challenges = [];
+      this.groups = [];
     }
     this.loaded = true;
   }
@@ -92,6 +119,7 @@ export class FriendsStore {
         return [a!, b!] as [string, string];
       }),
       challenges: this.challenges,
+      groups: this.groups,
     };
     await writeFile(this.filePath, JSON.stringify(snap, null, 2), 'utf8');
   }
@@ -193,6 +221,7 @@ export class FriendsStore {
     challengedId: string,
     tableId: string,
     inviteCode: string,
+    extra?: { groupId?: string; groupName?: string },
   ): Promise<Challenge> {
     await this.ensureLoaded();
     if (!this.areFriends(challengerId, challengedId)) {
@@ -206,6 +235,8 @@ export class FriendsStore {
       inviteCode,
       status: 'pending',
       createdAt: Date.now(),
+      groupId: extra?.groupId,
+      groupName: extra?.groupName,
     };
     this.challenges.push(challenge);
     await this.persist();
@@ -217,21 +248,22 @@ export class FriendsStore {
     userId: string,
   ): Promise<PendingChallengeView[]> {
     await this.ensureLoaded();
-    return this.challenges
-      .filter((c) => c.challengedId === userId && c.status === 'pending')
-      .map((c) => {
-        const challenger = this.profile(auth, c.challengerId);
-        if (!challenger) return null;
-        return {
-          id: c.id,
-          challenger,
-          tableId: c.tableId,
-          inviteCode: c.inviteCode,
-          createdAt: c.createdAt,
-        };
-      })
-      .filter((v): v is PendingChallengeView => v !== null)
-      .sort((a, b) => b.createdAt - a.createdAt);
+    const out: PendingChallengeView[] = [];
+    for (const c of this.challenges) {
+      if (c.challengedId !== userId || c.status !== 'pending') continue;
+      const challenger = this.profile(auth, c.challengerId);
+      if (!challenger) continue;
+      out.push({
+        id: c.id,
+        challenger,
+        tableId: c.tableId,
+        inviteCode: c.inviteCode,
+        createdAt: c.createdAt,
+        ...(c.groupId ? { groupId: c.groupId } : {}),
+        ...(c.groupName ? { groupName: c.groupName } : {}),
+      });
+    }
+    return out.sort((a, b) => b.createdAt - a.createdAt);
   }
 
   async markChallengeJoined(challengeId: string, userId: string): Promise<void> {
@@ -240,6 +272,167 @@ export class FriendsStore {
     if (!c || c.challengedId !== userId) return;
     c.status = 'joined';
     await this.persist();
+  }
+
+  private groupView(auth: AuthStore, group: FriendGroup, viewerId: string): FriendGroupView {
+    const members: FriendProfile[] = [];
+    for (const id of group.memberUserIds) {
+      const p = this.profile(auth, id);
+      if (p) members.push(p);
+    }
+    members.sort((a, b) => a.name.localeCompare(b.name));
+    return {
+      id: group.id,
+      name: group.name,
+      ownerUserId: group.ownerUserId,
+      isOwner: group.ownerUserId === viewerId,
+      members,
+      createdAt: group.createdAt,
+    };
+  }
+
+  async listGroups(auth: AuthStore, userId: string): Promise<FriendGroupView[]> {
+    await this.ensureLoaded();
+    return this.groups
+      .filter((g) => g.ownerUserId === userId || g.memberUserIds.includes(userId))
+      .map((g) => this.groupView(auth, g, userId))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async createGroup(
+    auth: AuthStore,
+    ownerUserId: string,
+    name: string,
+    memberUserIds: string[],
+  ): Promise<FriendGroupView> {
+    await this.ensureLoaded();
+    const trimmed = name.trim().slice(0, 40);
+    if (!trimmed) throw new Error('Group name required');
+
+    const unique = [...new Set(memberUserIds.filter((id) => id !== ownerUserId))];
+    if (unique.length > 8) throw new Error('Max 8 friends per group');
+    for (const id of unique) {
+      if (!this.areFriends(ownerUserId, id)) {
+        throw new Error('All members must be friends');
+      }
+      if (!auth.getUser(id)) {
+        throw new Error('Player not found');
+      }
+    }
+
+    const group: FriendGroup = {
+      id: nanoid(10),
+      ownerUserId,
+      name: trimmed,
+      memberUserIds: unique,
+      createdAt: Date.now(),
+    };
+    this.groups.push(group);
+    await this.persist();
+    return this.groupView(auth, group, ownerUserId);
+  }
+
+  async updateGroup(
+    auth: AuthStore,
+    userId: string,
+    groupId: string,
+    patch: { name?: string; memberUserIds?: string[] },
+  ): Promise<FriendGroupView> {
+    await this.ensureLoaded();
+    const group = this.groups.find((g) => g.id === groupId);
+    if (!group) throw new Error('Group not found');
+    if (group.ownerUserId !== userId) throw new Error('Only the owner can edit this group');
+
+    if (patch.name !== undefined) {
+      const trimmed = patch.name.trim().slice(0, 40);
+      if (!trimmed) throw new Error('Group name required');
+      group.name = trimmed;
+    }
+    if (patch.memberUserIds !== undefined) {
+      const unique = [...new Set(patch.memberUserIds.filter((id) => id !== userId))];
+      if (unique.length > 8) throw new Error('Max 8 friends per group');
+      for (const id of unique) {
+        if (!this.areFriends(userId, id)) {
+          throw new Error('All members must be friends');
+        }
+        if (!auth.getUser(id)) {
+          throw new Error('Player not found');
+        }
+      }
+      group.memberUserIds = unique;
+    }
+    await this.persist();
+    return this.groupView(auth, group, userId);
+  }
+
+  async deleteGroup(userId: string, groupId: string): Promise<void> {
+    await this.ensureLoaded();
+    const idx = this.groups.findIndex((g) => g.id === groupId);
+    if (idx < 0) throw new Error('Group not found');
+    if (this.groups[idx]!.ownerUserId !== userId) {
+      throw new Error('Only the owner can delete this group');
+    }
+    this.groups.splice(idx, 1);
+    await this.persist();
+  }
+
+  getGroup(groupId: string): FriendGroup | undefined {
+    return this.groups.find((g) => g.id === groupId);
+  }
+
+  /** Ensure loaded then return group (for invite path without reloading). */
+  async requireGroup(groupId: string): Promise<FriendGroup> {
+    await this.ensureLoaded();
+    const group = this.groups.find((g) => g.id === groupId);
+    if (!group) throw new Error('Group not found');
+    return group;
+  }
+
+  /**
+   * Create a pending challenge invite for each invitee on the same table.
+   * Host must be the group owner or a member.
+   */
+  async createGroupGameInvites(
+    hostUserId: string,
+    group: FriendGroup,
+    inviteeIds: string[],
+    tableId: string,
+    inviteCode: string,
+  ): Promise<Challenge[]> {
+    await this.ensureLoaded();
+    const isInGroup =
+      group.ownerUserId === hostUserId || group.memberUserIds.includes(hostUserId);
+    if (!isInGroup) throw new Error('You are not in this group');
+
+    const targets = [...new Set(inviteeIds)].filter((id) => id !== hostUserId);
+    if (targets.length === 0) throw new Error('Select at least one friend to invite');
+
+    const created: Challenge[] = [];
+    for (const targetId of targets) {
+      if (!this.areFriends(hostUserId, targetId)) {
+        throw new Error('Can only invite friends');
+      }
+      const inGroup =
+        group.ownerUserId === targetId || group.memberUserIds.includes(targetId);
+      if (!inGroup) {
+        throw new Error('Invitees must be group members');
+      }
+      const challenge: Challenge = {
+        id: nanoid(10),
+        challengerId: hostUserId,
+        challengedId: targetId,
+        tableId,
+        inviteCode,
+        status: 'pending',
+        createdAt: Date.now(),
+        groupId: group.id,
+        groupName: group.name,
+      };
+      this.challenges.push(challenge);
+      created.push(challenge);
+    }
+    await this.persist();
+    return created;
   }
 
   searchUsers(auth: AuthStore, query: string, excludeUserId: string, limit = 8): User[] {

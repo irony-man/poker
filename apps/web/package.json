@@ -9,7 +9,6 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@clerk/nextjs": "^7.6.1",
     "@letele/playing-cards": "^0.1.0",
     "@poker/engine": "*",
     "@poker/protocol": "*",

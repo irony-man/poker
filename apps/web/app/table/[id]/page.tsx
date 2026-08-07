@@ -1,10 +1,17 @@
 'use client';
 
+import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { TableView } from '@/components/TableView';
-import { register } from '@/lib/api';
+import { refreshTicket } from '@/lib/api';
 import { loadSavedAvatarId, saveAvatarId } from '@/lib/avatars';
+import {
+  clearStoredSession,
+  readStoredSession,
+  writeStoredSession,
+  type StoredSession,
+} from '@/lib/session';
 import { useSession } from '@/lib/store';
 
 function TablePageInner() {
@@ -13,14 +20,12 @@ function TablePageInner() {
   const invite = search.get('invite');
   const spectate = search.get('mode') === 'spectate';
   const setSession = useSession((s) => s.setSession);
+  const clearSession = useSession((s) => s.clearSession);
   const clearTable = useSession((s) => s.clearTable);
-  const sessionUserId = useSession((s) => s.userId);
   const tableId = params.id;
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [callsign, setCallsign] = useState('');
-  /** null = checking storage; true = show form; false = have name */
-  const [needsCallsign, setNeedsCallsign] = useState<boolean | null>(null);
+  const [needsAuth, setNeedsAuth] = useState<boolean | null>(null);
   const [booting, setBooting] = useState(false);
   const bootedFor = useRef<string | null>(null);
 
@@ -30,24 +35,17 @@ function TablePageInner() {
   }, [tableId, clearTable]);
 
   useEffect(() => {
-    const raw = localStorage.getItem('felt-session');
-    if (raw) {
-      try {
-        const prev = JSON.parse(raw) as { name?: string };
-        if (prev.name?.trim()) {
-          setCallsign(prev.name.trim());
-          setNeedsCallsign(false);
-          return;
-        }
-      } catch {
-        /* ignore */
-      }
-    }
-    setNeedsCallsign(true);
+    const stored = readStoredSession();
+    setNeedsAuth(!stored);
   }, []);
 
-  async function bootWithName(displayName: string) {
-    const key = `${tableId}:${displayName}`;
+  async function bootSession() {
+    const stored = readStoredSession();
+    if (!stored) {
+      setNeedsAuth(true);
+      return;
+    }
+    const key = `${tableId}:${stored.userId}`;
     if (bootedFor.current === key) return;
     bootedFor.current = key;
 
@@ -55,94 +53,71 @@ function TablePageInner() {
     setReady(false);
     setError(null);
     try {
-      const raw = localStorage.getItem('felt-session');
-      let existingUserId: string | undefined;
-      let avatarId = loadSavedAvatarId();
-      if (raw) {
-        try {
-          const prev = JSON.parse(raw) as { userId?: string; avatarId?: number };
-          if (prev.userId) existingUserId = prev.userId;
-          if (typeof prev.avatarId === 'number') avatarId = prev.avatarId;
-        } catch {
-          /* ignore */
-        }
-      }
-
-      const s = await register(displayName.slice(0, 32), avatarId, { userId: existingUserId });
-      const session = { ...s, avatarId: s.avatarId ?? avatarId };
-      setSession(session);
-      localStorage.setItem('felt-session', JSON.stringify(session));
-      saveAvatarId(session.avatarId);
-      setNeedsCallsign(false);
+      const refreshed = await refreshTicket(stored.sessionToken);
+      const next: StoredSession = {
+        userId: refreshed.userId,
+        username: refreshed.username ?? stored.username,
+        name: refreshed.name,
+        ticket: refreshed.ticket,
+        sessionToken: stored.sessionToken,
+        avatarId: refreshed.avatarId ?? stored.avatarId ?? loadSavedAvatarId(),
+      };
+      setSession(next);
+      writeStoredSession(next);
+      if (typeof next.avatarId === 'number') saveAvatarId(next.avatarId);
+      setNeedsAuth(false);
       setReady(true);
     } catch (err) {
       bootedFor.current = null;
+      clearStoredSession();
+      clearSession();
+      setNeedsAuth(true);
       setReady(false);
-      setError(err instanceof Error ? err.message : 'Failed to connect');
+      setError(err instanceof Error ? err.message : 'Session expired');
     } finally {
       setBooting(false);
     }
   }
 
   useEffect(() => {
-    if (needsCallsign !== false) return;
-    const trimmed = callsign.trim();
-    if (!trimmed) {
-      setNeedsCallsign(true);
-      return;
-    }
-    void bootWithName(trimmed);
+    if (needsAuth !== false) return;
+    void bootSession();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tableId, needsCallsign, callsign]);
+  }, [tableId, needsAuth]);
 
-  if (needsCallsign === null) {
+  if (needsAuth === null) {
     return <p className="text-cream/60">Loading…</p>;
   }
 
-  if (needsCallsign) {
+  if (needsAuth) {
+    const next = encodeURIComponent(
+      `/table/${tableId}${invite ? `?invite=${invite}` : ''}${spectate ? `${invite ? '&' : '?'}mode=spectate` : ''}`,
+    );
     return (
-      <form
-        className="hud-panel mx-auto max-w-md space-y-4 p-6"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const trimmed = callsign.trim();
-          if (!trimmed) {
-            setError('Enter a callsign to join');
-            return;
-          }
-          void bootWithName(trimmed);
-        }}
-      >
-        <h2 className="font-display text-xl uppercase tracking-wider text-gold">Join table</h2>
-        <p className="text-sm text-cream/60">Pick a callsign — no account needed.</p>
-        <label className="block">
-          <span className="hud-label">Callsign</span>
-          <input
-            value={callsign}
-            onChange={(e) => setCallsign(e.target.value)}
-            className="hud-input"
-            required
-            maxLength={32}
-            autoFocus
-            placeholder="Your name at the table"
-          />
-        </label>
+      <div className="hud-panel mx-auto max-w-md space-y-4 p-6">
+        <h2 className="font-display text-xl uppercase tracking-wider text-gold">Sign in to join</h2>
+        <p className="text-sm text-cream/60">You need an account to enter this table.</p>
         {error && (
-          <p className="status-chip border-red-500/40 bg-red-950/50 text-red-300">{error}</p>
+          <p role="alert" className="status-chip border-red-500/40 bg-red-950/50 text-red-300">
+            {error}
+          </p>
         )}
-        <button type="submit" disabled={booting} className="btn-primary w-full">
-          {booting ? 'Connecting…' : 'Sit down'}
-        </button>
-      </form>
+        <div className="flex flex-col gap-2">
+          <Link href={`/sign-in?next=${next}`} className="btn-primary min-h-11 text-center">
+            Sign in
+          </Link>
+          <Link href={`/sign-up`} className="btn-ghost min-h-11 text-center">
+            Create account
+          </Link>
+        </div>
+      </div>
     );
   }
 
-  if (error) {
-    return <p className="status-chip border-red-500/40 bg-red-950/50 text-red-300">{error}</p>;
-  }
-
-  if (!ready || !sessionUserId || booting) {
-    return <p className="text-cream/60">Connecting…</p>;
+  if (!ready) {
+    return (
+      <p className="text-cream/60">{booting ? 'Connecting…' : 'Loading table…'}</p>
+    );
   }
 
   return <TableView tableId={tableId} inviteCode={invite} initialSpectate={spectate} />;
@@ -150,7 +125,7 @@ function TablePageInner() {
 
 export default function TablePage() {
   return (
-    <Suspense fallback={<p className="text-cream/60">Loading table…</p>}>
+    <Suspense fallback={<p className="text-cream/60">Loading…</p>}>
       <TablePageInner />
     </Suspense>
   );

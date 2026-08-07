@@ -4,18 +4,22 @@ import { useCallback, useEffect, useState } from 'react';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 import {
   challengeFriend,
+  createFriendGroup,
+  deleteFriendGroup,
+  inviteFriendGroup,
   joinFriendChallenge,
   listFriends,
   respondFriendRequest,
   searchUsers,
   sendFriendRequest,
+  type FriendGroup,
   type FriendProfile,
   type PendingChallenge,
   type PendingRequest,
 } from '@/lib/api';
 import { useSession } from '@/lib/store';
 
-/** Friends & challenges — works with anonymous callsign sessions (no Clerk). */
+/** Friends, groups & challenges — requires logged-in session. */
 export function FriendsPanel({
   disabled,
   onNavigateTable,
@@ -24,7 +28,9 @@ export function FriendsPanel({
   onNavigateTable: (tableId: string, inviteCode: string) => void;
 }) {
   const userId = useSession((s) => s.userId);
+  const sessionToken = useSession((s) => s.sessionToken);
   const [friends, setFriends] = useState<FriendProfile[]>([]);
+  const [groups, setGroups] = useState<FriendGroup[]>([]);
   const [incoming, setIncoming] = useState<PendingRequest[]>([]);
   const [challenges, setChallenges] = useState<PendingChallenge[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -33,21 +39,26 @@ export function FriendsPanel({
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const auth = () => ({ userId });
+  const [newGroupName, setNewGroupName] = useState('');
+  const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+
+  const auth = () => ({ sessionToken: sessionToken! });
 
   const refresh = useCallback(async () => {
-    if (disabled || !userId) return;
+    if (disabled || !userId || !sessionToken) return;
     try {
       const data = await listFriends(auth());
       setFriends(data.friends);
+      setGroups(data.groups ?? []);
       setIncoming(data.incoming);
       setChallenges(data.pendingChallenges);
       setLoadError(null);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Could not load friends');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- auth is derived from userId
-  }, [disabled, userId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- auth is derived from session
+  }, [disabled, userId, sessionToken]);
 
   useEffect(() => {
     void refresh();
@@ -56,7 +67,7 @@ export function FriendsPanel({
   }, [refresh]);
 
   useEffect(() => {
-    if (disabled || searchQuery.trim().length < 2 || !userId) {
+    if (disabled || searchQuery.trim().length < 2 || !userId || !sessionToken) {
       setSearchResults([]);
       return;
     }
@@ -70,7 +81,16 @@ export function FriendsPanel({
     }, 300);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [disabled, searchQuery, userId]);
+  }, [disabled, searchQuery, userId, sessionToken]);
+
+  function toggleMember(id: string) {
+    setSelectedMembers((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else if (next.size < 8) next.add(id);
+      return next;
+    });
+  }
 
   async function onAddFriend(targetUserId: string) {
     setBusy(targetUserId);
@@ -126,13 +146,66 @@ export function FriendsPanel({
     }
   }
 
+  async function onCreateGroup(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newGroupName.trim()) {
+      setError('Enter a group name');
+      return;
+    }
+    setBusy('create-group');
+    setError(null);
+    try {
+      await createFriendGroup(
+        {
+          name: newGroupName.trim(),
+          memberUserIds: [...selectedMembers],
+        },
+        auth(),
+      );
+      setNewGroupName('');
+      setSelectedMembers(new Set());
+      setShowCreateGroup(false);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create group');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function onInviteGroup(groupId: string) {
+    setBusy(`invite-${groupId}`);
+    setError(null);
+    try {
+      const result = await inviteFriendGroup(groupId, auth());
+      onNavigateTable(result.tableId, result.inviteCode);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Group invite failed');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function onDeleteGroup(groupId: string) {
+    setBusy(`delete-${groupId}`);
+    setError(null);
+    try {
+      await deleteFriendGroup(groupId, auth());
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete group');
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <div className="hud-panel flex flex-col gap-4 p-5 sm:col-span-2 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="font-display text-xl font-bold uppercase tracking-wider text-gold">Friends</h2>
           <p className="mt-1 text-sm text-cream/45 font-medium">
-            Search players · accept requests · quick heads-up challenge
+            Groups · quick table invite · heads-up challenge
           </p>
         </div>
         <span className="status-chip border-gold/30 bg-gold/10 text-gold shrink-0">Social</span>
@@ -144,7 +217,7 @@ export function FriendsPanel({
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="hud-input"
-          placeholder="Search by callsign…"
+          placeholder="Search by username…"
           maxLength={32}
           disabled={disabled}
         />
@@ -209,7 +282,7 @@ export function FriendsPanel({
 
       {challenges.length > 0 && (
         <div>
-          <span className="hud-label">Challenges waiting</span>
+          <span className="hud-label">Game invites waiting</span>
           <ul className="mt-2 space-y-2">
             {challenges.map((c) => (
               <li
@@ -224,7 +297,14 @@ export function FriendsPanel({
                 />
                 <span className="min-w-0 flex-1 truncate text-sm">
                   <span className="font-medium text-felt-neon">{c.challenger.name}</span>
-                  <span className="text-cream/50"> challenged you</span>
+                  {c.groupName ? (
+                    <span className="text-cream/50">
+                      {' '}
+                      invited you · <span className="text-gold/80">{c.groupName}</span>
+                    </span>
+                  ) : (
+                    <span className="text-cream/50"> challenged you</span>
+                  )}
                 </span>
                 <button
                   type="button"
@@ -239,6 +319,148 @@ export function FriendsPanel({
           </ul>
         </div>
       )}
+
+      {/* Groups */}
+      <div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="hud-label">Groups ({groups.length})</span>
+          <button
+            type="button"
+            disabled={disabled || friends.length === 0}
+            onClick={() => setShowCreateGroup((v) => !v)}
+            className="btn-ghost py-1 px-2.5 text-xs disabled:opacity-40"
+          >
+            {showCreateGroup ? 'Cancel' : 'New group'}
+          </button>
+        </div>
+
+        {showCreateGroup && (
+          <form
+            onSubmit={(e) => void onCreateGroup(e)}
+            className="mt-2 space-y-3 rounded border border-gold/20 bg-ink-raised/40 p-3"
+          >
+            <label className="block">
+              <span className="hud-label">Group name</span>
+              <input
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                className="hud-input"
+                placeholder="e.g. Home game crew"
+                maxLength={40}
+                required
+              />
+            </label>
+            <div>
+              <span className="hud-label">Add friends ({selectedMembers.size}/8)</span>
+              {friends.length === 0 ? (
+                <p className="mt-1 text-xs text-cream/40">Add friends first, then build a group.</p>
+              ) : (
+                <ul className="mt-2 max-h-40 space-y-1.5 overflow-y-auto">
+                  {friends.map((f) => {
+                    const on = selectedMembers.has(f.userId);
+                    return (
+                      <li key={f.userId}>
+                        <button
+                          type="button"
+                          onClick={() => toggleMember(f.userId)}
+                          className={`flex w-full items-center gap-2 rounded border px-2 py-1.5 text-left text-sm transition ${
+                            on
+                              ? 'border-gold/40 bg-gold/10 text-gold'
+                              : 'border-cyan/10 bg-ink/40 text-cream/80 hover:border-cyan/25'
+                          }`}
+                        >
+                          <PlayerAvatar
+                            userId={f.userId}
+                            avatarId={f.avatarId}
+                            size={28}
+                            title={f.name}
+                          />
+                          <span className="min-w-0 flex-1 truncate">{f.name}</span>
+                          <span className="text-[10px] uppercase tracking-wider opacity-70">
+                            {on ? 'In' : 'Add'}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+            <button
+              type="submit"
+              disabled={disabled || busy === 'create-group' || !newGroupName.trim()}
+              className="btn-primary w-full min-h-10 text-sm"
+            >
+              Create group
+            </button>
+          </form>
+        )}
+
+        {groups.length === 0 && !showCreateGroup ? (
+          <p className="mt-2 text-sm text-cream/40">
+            Create a group of friends for one-tap table invites.
+          </p>
+        ) : (
+          <ul className="mt-2 space-y-2">
+            {groups.map((g) => (
+              <li
+                key={g.id}
+                className="rounded border border-cyan/15 bg-ink-raised/30 px-3 py-3"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-display font-semibold uppercase tracking-wider text-gold truncate">
+                      {g.name}
+                    </p>
+                    <p className="mt-0.5 text-xs text-cream/45">
+                      {g.members.length} member{g.members.length === 1 ? '' : 's'}
+                      {!g.isOwner ? ' · shared' : ''}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      disabled={disabled || busy === `invite-${g.id}` || g.members.length === 0}
+                      onClick={() => void onInviteGroup(g.id)}
+                      className="rounded border border-gold/35 bg-gold/10 px-3 py-1.5 text-xs font-display font-semibold uppercase tracking-wider text-gold transition hover:bg-gold/20 disabled:opacity-40"
+                    >
+                      Invite to game
+                    </button>
+                    {g.isOwner && (
+                      <button
+                        type="button"
+                        disabled={disabled || busy === `delete-${g.id}`}
+                        onClick={() => void onDeleteGroup(g.id)}
+                        className="btn-ghost py-1.5 px-2 text-xs"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {g.members.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {g.members.map((m) => (
+                      <span
+                        key={m.userId}
+                        className="inline-flex items-center gap-1.5 rounded border border-cyan/10 bg-ink/50 px-2 py-1 text-xs text-cream/80"
+                      >
+                        <PlayerAvatar
+                          userId={m.userId}
+                          avatarId={m.avatarId}
+                          size={20}
+                          title={m.name}
+                        />
+                        {m.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       <div>
         <span className="hud-label">Your friends ({friends.length})</span>
@@ -276,9 +498,7 @@ export function FriendsPanel({
         </p>
       )}
       {!userId && (
-        <p className="text-sm text-cream/45">
-          Enter a callsign above, then host or join once so we can attach your friends list.
-        </p>
+        <p className="text-sm text-cream/45">Sign in to use friends and groups.</p>
       )}
     </div>
   );

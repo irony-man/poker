@@ -6,8 +6,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import com.felt.android.core.datastore.SessionPreferences
 import com.felt.android.core.model.ContestView
-import com.felt.android.core.model.UserIdBody
 import com.felt.android.core.network.FeltApi
+import com.felt.android.core.network.SessionTokenHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.delay
@@ -29,6 +29,7 @@ data class ContestUiState(
 class ContestViewModel @Inject constructor(
     private val feltApi: FeltApi,
     private val sessionPreferences: SessionPreferences,
+    private val tokenHolder: SessionTokenHolder,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -40,6 +41,9 @@ class ContestViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             val session = sessionPreferences.getSession()
+            if (session != null) {
+                tokenHolder.set(session.sessionToken)
+            }
             _uiState.update { it.copy(userId = session?.userId) }
             while (isActive) {
                 refresh()
@@ -59,10 +63,10 @@ class ContestViewModel @Inject constructor(
     }
 
     fun register() {
-        val userId = _uiState.value.userId ?: return
+        if (_uiState.value.userId == null) return
         viewModelScope.launch {
             _uiState.update { it.copy(busy = true, error = null) }
-            runCatching { feltApi.registerContest(contestId, UserIdBody(userId)).contest }
+            runCatching { feltApi.registerContest(contestId).contest }
                 .onSuccess { c -> _uiState.update { it.copy(busy = false, contest = c) } }
                 .onFailure { err ->
                     _uiState.update { it.copy(busy = false, error = err.message ?: "Failed") }
@@ -71,10 +75,10 @@ class ContestViewModel @Inject constructor(
     }
 
     fun unregister() {
-        val userId = _uiState.value.userId ?: return
+        if (_uiState.value.userId == null) return
         viewModelScope.launch {
             _uiState.update { it.copy(busy = true, error = null) }
-            runCatching { feltApi.unregisterContest(contestId, UserIdBody(userId)).contest }
+            runCatching { feltApi.unregisterContest(contestId).contest }
                 .onSuccess { c -> _uiState.update { it.copy(busy = false, contest = c) } }
                 .onFailure { err ->
                     _uiState.update { it.copy(busy = false, error = err.message ?: "Failed") }
@@ -83,10 +87,10 @@ class ContestViewModel @Inject constructor(
     }
 
     fun start() {
-        val userId = _uiState.value.userId ?: return
+        if (_uiState.value.userId == null) return
         viewModelScope.launch {
             _uiState.update { it.copy(busy = true, error = null) }
-            runCatching { feltApi.startContest(contestId, UserIdBody(userId)).contest }
+            runCatching { feltApi.startContest(contestId).contest }
                 .onSuccess { c -> _uiState.update { it.copy(busy = false, contest = c) } }
                 .onFailure { err ->
                     _uiState.update { it.copy(busy = false, error = err.message ?: "Failed") }

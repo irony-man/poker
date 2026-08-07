@@ -217,13 +217,69 @@ export const ChallengeFriendBodySchema = z.object({
   friendUserId: z.string().min(1).max(128),
 });
 
-export const RegisterBodySchema = z.object({
-  name: z.string().min(1).max(32),
+export const CreateFriendGroupBodySchema = z.object({
+  name: z.string().min(1).max(40),
+  /** Friend user ids to include (owner is added separately). Max 8 members besides owner. */
+  memberUserIds: z.array(z.string().min(1).max(128)).max(8).default([]),
+});
+
+export const UpdateFriendGroupBodySchema = z.object({
+  name: z.string().min(1).max(40).optional(),
+  memberUserIds: z.array(z.string().min(1).max(128)).max(8).optional(),
+});
+
+/** Quick-invite a whole group to a private cash table. */
+export const InviteFriendGroupBodySchema = z.object({
+  /** If omitted, invites every group member. */
+  memberUserIds: z.array(z.string().min(1).max(128)).max(8).optional(),
+  maxSeats: z.number().int().min(2).max(9).optional(),
+  smallBlind: z.number().int().positive().optional(),
+  bigBlind: z.number().int().positive().optional(),
+  buyIn: z.number().int().positive().optional(),
+});
+
+export type CreateFriendGroupBody = z.infer<typeof CreateFriendGroupBodySchema>;
+export type UpdateFriendGroupBody = z.infer<typeof UpdateFriendGroupBodySchema>;
+export type InviteFriendGroupBody = z.infer<typeof InviteFriendGroupBodySchema>;
+
+/** Unique login + display name: 3–24 alphanumerics/underscore; not bot:… */
+export const UsernameSchema = z
+  .string()
+  .min(3)
+  .max(24)
+  .regex(/^[a-zA-Z0-9_]+$/, 'Username must be letters, numbers, or underscore')
+  .refine((u) => !u.toLowerCase().startsWith('bot'), 'Reserved username prefix');
+
+export const PasswordSchema = z.string().min(6).max(128);
+
+export const SignupBodySchema = z.object({
+  username: UsernameSchema,
+  password: PasswordSchema,
   /** Preset profile picture index (0–7). */
   avatarId: z.number().int().min(0).max(7).optional(),
-  /**
-   * Optional client hint only — ignored when Clerk JWT is present.
-   * Clerk user ids are accepted up to 128 chars.
-   */
+});
+
+export const LoginBodySchema = z.object({
+  username: UsernameSchema,
+  password: PasswordSchema,
+});
+
+export const AuthSessionSchema = z.object({
+  userId: z.string(),
+  username: z.string(),
+  name: z.string(),
+  ticket: z.string(),
+  sessionToken: z.string(),
+  avatarId: z.number().int().min(0).max(7),
+});
+
+export type SignupBody = z.infer<typeof SignupBodySchema>;
+export type LoginBody = z.infer<typeof LoginBodySchema>;
+export type AuthSession = z.infer<typeof AuthSessionSchema>;
+
+/** @deprecated Use SignupBodySchema / LoginBodySchema */
+export const RegisterBodySchema = z.object({
+  name: z.string().min(1).max(32),
+  avatarId: z.number().int().min(0).max(7).optional(),
   userId: z.string().min(1).max(128).optional(),
 });

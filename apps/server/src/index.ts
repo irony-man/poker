@@ -6,13 +6,16 @@ import {
   ChallengeFriendBodySchema,
   ClientMessageSchema,
   CreateContestBodySchema,
+  CreateFriendGroupBodySchema,
   CreateTableBodySchema,
   FriendRequestBodySchema,
   FriendRespondBodySchema,
-  RegisterBodySchema,
+  InviteFriendGroupBodySchema,
+  LoginBodySchema,
+  SignupBodySchema,
+  UpdateFriendGroupBodySchema,
 } from '@poker/protocol';
-import { AuthStore } from './auth.js';
-import { optionalClerkIdentity } from './clerkAuth.js';
+import { AuthError, AuthStore, bearerToken } from './auth.js';
 import { FriendsStore } from './friends.js';
 import { createHistoryStore, writeSchemaDoc } from './history.js';
 import { createKv } from './kv.js';
@@ -37,9 +40,43 @@ function isAllowedOrigin(origin: string | undefined): boolean {
   return false;
 }
 
+/** Simple per-IP rate limit for signup/login. */
+function createRateLimiter(max: number, windowMs: number) {
+  const hits = new Map<string, { count: number; resetAt: number }>();
+  return (ip: string): boolean => {
+    const now = Date.now();
+    const entry = hits.get(ip);
+    if (!entry || now > entry.resetAt) {
+      hits.set(ip, { count: 1, resetAt: now + windowMs });
+      return true;
+    }
+    entry.count += 1;
+    return entry.count <= max;
+  };
+}
+
+async function tryAttachPostgres(auth: AuthStore): Promise<void> {
+  const url = process.env.DATABASE_URL?.trim();
+  if (!url) return;
+  try {
+    const mod = (await import('pg')) as unknown as {
+      default?: { Pool?: new (o: { connectionString: string }) => { query: (s: string, p?: unknown[]) => Promise<unknown> } };
+      Pool?: new (o: { connectionString: string }) => { query: (s: string, p?: unknown[]) => Promise<unknown> };
+    };
+    const Pool = mod.Pool ?? mod.default?.Pool;
+    if (!Pool) return;
+    const pool = new Pool({ connectionString: url });
+    auth.setPool(pool);
+  } catch (err) {
+    console.warn('[poker-server] could not attach Postgres for auth', err);
+  }
+}
+
 async function main() {
   const dataDir = process.env.DATA_DIR ?? path.join(process.cwd(), 'data');
-  const auth = new AuthStore();
+  const auth = new AuthStore(dataDir);
+  await tryAttachPostgres(auth);
+  await auth.init();
   const kv = await createKv();
   const history = await createHistoryStore();
   await writeSchemaDoc(dataDir);
@@ -48,15 +85,25 @@ async function main() {
   const friends = new FriendsStore(dataDir);
   ensurePublicTables(rooms);
 
-  async function requireUserId(req: express.Request, res: express.Response): Promise<string | null> {
-    const identity = await optionalClerkIdentity(req);
-    if (identity) return identity.userId;
-    const userId = String(req.body?.userId ?? req.query?.userId ?? '');
-    if (!userId || !auth.getUser(userId)) {
-      res.status(401).json({ error: 'Register first' });
+  const loginLimit = createRateLimiter(20, 60_000);
+  const signupLimit = createRateLimiter(10, 60_000);
+
+  function clientIp(req: express.Request): string {
+    return req.ip || req.socket.remoteAddress || 'unknown';
+  }
+
+  function requireUserId(req: express.Request, res: express.Response): string | null {
+    const token = bearerToken(req.header('authorization') ?? req.header('Authorization') ?? undefined);
+    if (!token) {
+      res.status(401).json({ error: 'Sign in required' });
       return null;
     }
-    return userId;
+    const user = auth.resolveSession(token);
+    if (!user) {
+      res.status(401).json({ error: 'Session expired or invalid' });
+      return null;
+    }
+    return user.id;
   }
 
   const app = express();
@@ -75,55 +122,97 @@ async function main() {
     res.json({ ok: true });
   });
 
-  app.post('/api/register', async (req, res) => {
-    const parsed = RegisterBodySchema.safeParse(req.body);
+  app.post('/api/signup', async (req, res) => {
+    if (!signupLimit(clientIp(req))) {
+      res.status(429).json({ error: 'Too many signup attempts' });
+      return;
+    }
+    const parsed = SignupBodySchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.message });
       return;
     }
+    try {
+      const session = await auth.signup(
+        parsed.data.username,
+        parsed.data.password,
+        parsed.data.avatarId,
+      );
+      res.status(201).json(session);
+    } catch (err) {
+      if (err instanceof AuthError && err.code === 'username_taken') {
+        res.status(409).json({ error: err.message });
+        return;
+      }
+      res.status(400).json({ error: err instanceof Error ? err.message : 'Signup failed' });
+    }
+  });
 
-    const identity = await optionalClerkIdentity(req);
-    const userId = identity?.userId ?? parsed.data.userId;
+  app.post('/api/login', async (req, res) => {
+    if (!loginLimit(clientIp(req))) {
+      res.status(429).json({ error: 'Too many login attempts' });
+      return;
+    }
+    const parsed = LoginBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    try {
+      const session = await auth.login(parsed.data.username, parsed.data.password);
+      res.json(session);
+    } catch (err) {
+      if (err instanceof AuthError && err.code === 'invalid_credentials') {
+        res.status(401).json({ error: err.message });
+        return;
+      }
+      res.status(400).json({ error: err instanceof Error ? err.message : 'Login failed' });
+    }
+  });
 
-    const user = auth.register(parsed.data.name, parsed.data.avatarId, userId);
-    const ticket = auth.issueTicket(user.id);
-    res.json({
-      userId: user.id,
-      name: user.name,
-      ticket,
-      avatarId: user.avatarId,
+  app.post('/api/logout', async (req, res) => {
+    const token = bearerToken(req.header('authorization') ?? req.header('Authorization') ?? undefined);
+    if (token) await auth.revokeSession(token);
+    res.json({ ok: true });
+  });
+
+  app.post('/api/register', (_req, res) => {
+    res.status(410).json({
+      error: 'Anonymous register removed. Use /api/signup or /api/login.',
     });
   });
 
   app.post('/api/ticket', async (req, res) => {
-    const identity = await optionalClerkIdentity(req);
-    const userId = identity?.userId ?? String(req.body?.userId ?? '');
+    const userId = requireUserId(req, res);
+    if (!userId) return;
     const user = auth.getUser(userId);
     if (!user) {
       res.status(401).json({ error: 'Unknown user' });
       return;
     }
+    const ticket = await auth.issueTicketAndPersist(user.id);
     res.json({
-      ticket: auth.issueTicket(user.id),
+      ticket,
       userId: user.id,
       name: user.name,
+      username: user.username,
       avatarId: user.avatarId,
     });
   });
 
-  app.post('/api/tables', async (req, res) => {
+  app.post('/api/tables', (req, res) => {
     const body = CreateTableBodySchema.safeParse(req.body);
     if (!body.success) {
       res.status(400).json({ error: body.error.message });
       return;
     }
 
-    const identity = await optionalClerkIdentity(req);
-    const userId = identity?.userId ?? String(req.body?.userId ?? '');
+    const userId = requireUserId(req, res);
+    if (!userId) return;
 
     const user = auth.getUser(userId);
     if (!user) {
-      res.status(401).json({ error: 'Register first' });
+      res.status(401).json({ error: 'Sign in required' });
       return;
     }
     const d = body.data;
@@ -191,22 +280,145 @@ async function main() {
   });
 
   app.get('/api/friends', async (req, res) => {
-    const userId = await requireUserId(req, res);
+    const userId = requireUserId(req, res);
     if (!userId) return;
     try {
-      const [friendList, incoming, pendingChallenges] = await Promise.all([
+      const [friendList, incoming, pendingChallenges, groups] = await Promise.all([
         friends.listFriends(auth, userId),
         friends.listIncomingRequests(auth, userId),
         friends.listPendingChallenges(auth, userId),
+        friends.listGroups(auth, userId),
       ]);
-      res.json({ friends: friendList, incoming, pendingChallenges });
+      res.json({ friends: friendList, incoming, pendingChallenges, groups });
     } catch (err) {
       res.status(400).json({ error: err instanceof Error ? err.message : 'Failed' });
     }
   });
 
-  app.get('/api/friends/search', async (req, res) => {
-    const userId = await requireUserId(req, res);
+  app.post('/api/friends/groups', async (req, res) => {
+    const userId = requireUserId(req, res);
+    if (!userId) return;
+    const parsed = CreateFriendGroupBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    try {
+      const group = await friends.createGroup(
+        auth,
+        userId,
+        parsed.data.name,
+        parsed.data.memberUserIds,
+      );
+      res.status(201).json({ group });
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : 'Failed' });
+    }
+  });
+
+  app.patch('/api/friends/groups/:id', async (req, res) => {
+    const userId = requireUserId(req, res);
+    if (!userId) return;
+    const parsed = UpdateFriendGroupBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    try {
+      const group = await friends.updateGroup(auth, userId, req.params.id!, parsed.data);
+      res.json({ group });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed';
+      const status = message === 'Group not found' ? 404 : 400;
+      res.status(status).json({ error: message });
+    }
+  });
+
+  app.delete('/api/friends/groups/:id', async (req, res) => {
+    const userId = requireUserId(req, res);
+    if (!userId) return;
+    try {
+      await friends.deleteGroup(userId, req.params.id!);
+      res.json({ ok: true });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed';
+      const status = message === 'Group not found' ? 404 : 400;
+      res.status(status).json({ error: message });
+    }
+  });
+
+  app.post('/api/friends/groups/:id/invite', async (req, res) => {
+    const userId = requireUserId(req, res);
+    if (!userId) return;
+    const parsed = InviteFriendGroupBodySchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const host = auth.getUser(userId);
+    if (!host) {
+      res.status(401).json({ error: 'Sign in required' });
+      return;
+    }
+    try {
+      const group = await friends.requireGroup(req.params.id!);
+      const isInGroup =
+        group.ownerUserId === userId || group.memberUserIds.includes(userId);
+      if (!isInGroup) {
+        res.status(403).json({ error: 'You are not in this group' });
+        return;
+      }
+
+      const defaultInvitees = [
+        group.ownerUserId,
+        ...group.memberUserIds,
+      ].filter((id) => id !== userId);
+      const inviteeIds = parsed.data.memberUserIds?.length
+        ? parsed.data.memberUserIds
+        : defaultInvitees;
+
+      const seatsNeeded = Math.min(9, Math.max(2, inviteeIds.length + 1));
+      const maxSeats = parsed.data.maxSeats ?? seatsNeeded;
+      const smallBlind = parsed.data.smallBlind ?? 5;
+      const bigBlind = parsed.data.bigBlind ?? 10;
+      const buyIn = parsed.data.buyIn ?? 1000;
+
+      const meta = rooms.create({
+        name: `${group.name}`,
+        hostUserId: host.id,
+        isPrivate: true,
+        config: {
+          maxSeats,
+          smallBlind,
+          bigBlind,
+          buyIn,
+          turnTimeMs: 20000,
+        },
+      });
+
+      const challenges = await friends.createGroupGameInvites(
+        userId,
+        group,
+        inviteeIds,
+        meta.id,
+        meta.inviteCode,
+      );
+
+      res.json({
+        tableId: meta.id,
+        inviteCode: meta.inviteCode,
+        inviteCount: challenges.length,
+        challengeIds: challenges.map((c) => c.id),
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Invite failed';
+      const status = message === 'Group not found' ? 404 : 400;
+      res.status(status).json({ error: message });
+    }
+  });
+
+  app.get('/api/friends/search', (req, res) => {
+    const userId = requireUserId(req, res);
     if (!userId) return;
     const q = String(req.query.q ?? '');
     const users = friends.searchUsers(auth, q, userId).map((u) => ({
@@ -218,7 +430,7 @@ async function main() {
   });
 
   app.post('/api/friends/requests', async (req, res) => {
-    const userId = await requireUserId(req, res);
+    const userId = requireUserId(req, res);
     if (!userId) return;
     const parsed = FriendRequestBodySchema.safeParse(req.body);
     if (!parsed.success) {
@@ -238,7 +450,7 @@ async function main() {
   });
 
   app.post('/api/friends/requests/:id/respond', async (req, res) => {
-    const userId = await requireUserId(req, res);
+    const userId = requireUserId(req, res);
     if (!userId) return;
     const parsed = FriendRespondBodySchema.safeParse(req.body);
     if (!parsed.success) {
@@ -254,7 +466,7 @@ async function main() {
   });
 
   app.post('/api/friends/challenge', async (req, res) => {
-    const userId = await requireUserId(req, res);
+    const userId = requireUserId(req, res);
     if (!userId) return;
     const parsed = ChallengeFriendBodySchema.safeParse(req.body);
     if (!parsed.success) {
@@ -297,23 +509,23 @@ async function main() {
   });
 
   app.post('/api/friends/challenges/:id/join', async (req, res) => {
-    const userId = await requireUserId(req, res);
+    const userId = requireUserId(req, res);
     if (!userId) return;
     await friends.markChallengeJoined(req.params.id!, userId);
     res.json({ ok: true });
   });
 
-  app.post('/api/contests', async (req, res) => {
+  app.post('/api/contests', (req, res) => {
     const body = CreateContestBodySchema.safeParse(req.body);
     if (!body.success) {
       res.status(400).json({ error: body.error.message });
       return;
     }
-    const identity = await optionalClerkIdentity(req);
-    const userId = identity?.userId ?? String(req.body?.userId ?? '');
+    const userId = requireUserId(req, res);
+    if (!userId) return;
     const user = auth.getUser(userId);
     if (!user) {
-      res.status(401).json({ error: 'Register first' });
+      res.status(401).json({ error: 'Sign in required' });
       return;
     }
     try {
@@ -363,12 +575,12 @@ async function main() {
     res.json({ contest });
   });
 
-  app.post('/api/contests/:id/register', async (req, res) => {
-    const userId = await requireUserId(req, res);
+  app.post('/api/contests/:id/register', (req, res) => {
+    const userId = requireUserId(req, res);
     if (!userId) return;
     const user = auth.getUser(userId);
     if (!user) {
-      res.status(401).json({ error: 'Register first' });
+      res.status(401).json({ error: 'Sign in required' });
       return;
     }
     const result = tournaments.register(req.params.id!, user.id, user.name);
@@ -379,8 +591,8 @@ async function main() {
     res.json({ contest: result.contest });
   });
 
-  app.post('/api/contests/:id/unregister', async (req, res) => {
-    const userId = await requireUserId(req, res);
+  app.post('/api/contests/:id/unregister', (req, res) => {
+    const userId = requireUserId(req, res);
     if (!userId) return;
     const result = tournaments.unregister(req.params.id!, userId);
     if (!result.ok) {
@@ -390,8 +602,8 @@ async function main() {
     res.json({ contest: result.contest });
   });
 
-  app.post('/api/contests/:id/start', async (req, res) => {
-    const userId = await requireUserId(req, res);
+  app.post('/api/contests/:id/start', (req, res) => {
+    const userId = requireUserId(req, res);
     if (!userId) return;
     const result = tournaments.start(req.params.id!, userId);
     if (!result.ok) {

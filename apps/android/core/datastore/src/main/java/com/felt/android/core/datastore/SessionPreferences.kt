@@ -20,10 +20,13 @@ class SessionPreferences @Inject constructor(
         val userId = prefs[KEY_USER_ID] ?: return@map null
         val name = prefs[KEY_NAME] ?: return@map null
         val ticket = prefs[KEY_TICKET] ?: return@map null
+        val sessionToken = prefs[KEY_SESSION_TOKEN] ?: return@map null
         SessionDto(
             userId = userId,
+            username = prefs[KEY_USERNAME] ?: name,
             name = name,
             ticket = ticket,
+            sessionToken = sessionToken,
             avatarId = prefs[KEY_AVATAR_ID] ?: 0,
         )
     }
@@ -33,8 +36,10 @@ class SessionPreferences @Inject constructor(
     suspend fun saveSession(session: SessionDto) {
         dataStore.edit { prefs ->
             prefs[KEY_USER_ID] = session.userId
+            prefs[KEY_USERNAME] = session.username.ifBlank { session.name }
             prefs[KEY_NAME] = session.name
             prefs[KEY_TICKET] = session.ticket
+            prefs[KEY_SESSION_TOKEN] = session.sessionToken
             prefs[KEY_AVATAR_ID] = session.avatarId
         }
     }
@@ -53,8 +58,10 @@ class SessionPreferences @Inject constructor(
 
     companion object {
         private val KEY_USER_ID = stringPreferencesKey("user_id")
+        private val KEY_USERNAME = stringPreferencesKey("username")
         private val KEY_NAME = stringPreferencesKey("name")
         private val KEY_TICKET = stringPreferencesKey("ticket")
+        private val KEY_SESSION_TOKEN = stringPreferencesKey("session_token")
         private val KEY_AVATAR_ID = intPreferencesKey("avatar_id")
     }
 }

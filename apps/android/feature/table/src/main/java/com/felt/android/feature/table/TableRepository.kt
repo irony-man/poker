@@ -2,11 +2,10 @@ package com.felt.android.feature.table
 
 import com.felt.android.core.datastore.SessionPreferences
 import com.felt.android.core.model.ClientMessage
-import com.felt.android.core.model.RegisterRequest
 import com.felt.android.core.model.ServerMessage
-import com.felt.android.core.model.TicketRequest
 import com.felt.android.core.network.FeltApi
 import com.felt.android.core.network.PokerWebSocketClient
+import com.felt.android.core.network.SessionTokenHolder
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.SharedFlow
@@ -18,27 +17,19 @@ class TableRepository @Inject constructor(
     private val wsClient: PokerWebSocketClient,
     private val feltApi: FeltApi,
     private val sessionPreferences: SessionPreferences,
+    private val tokenHolder: SessionTokenHolder,
 ) {
     val messages: SharedFlow<ServerMessage> = wsClient.messages
 
     suspend fun connect(tableId: String, spectate: Boolean = false) {
         val saved = sessionPreferences.getSession()
-            ?: error("Enter a callsign in the lobby first")
-        val session = runCatching {
-            feltApi.refreshTicket(TicketRequest(saved.userId))
-        }.getOrElse {
-            feltApi.register(
-                RegisterRequest(saved.name, saved.avatarId, saved.userId),
-            )
-        }.let { it.copy(avatarId = saved.avatarId) }
-            .also { sessionPreferences.saveSession(it) }
-
-        // Refresh name / avatar on the server user record.
-        runCatching {
-            feltApi.register(
-                RegisterRequest(saved.name, saved.avatarId, session.userId),
-            )
-        }
+            ?: error("Sign in from the lobby first")
+        if (saved.sessionToken.isBlank()) error("Sign in from the lobby first")
+        tokenHolder.set(saved.sessionToken)
+        val session = feltApi.refreshTicket().copy(
+            sessionToken = saved.sessionToken,
+            avatarId = saved.avatarId,
+        ).also { sessionPreferences.saveSession(it) }
 
         wsClient.connect()
         wsClient.send(ClientMessage.Auth(session.ticket))

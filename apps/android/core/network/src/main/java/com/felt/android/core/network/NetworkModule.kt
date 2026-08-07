@@ -9,6 +9,7 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Named
 import javax.inject.Singleton
 import kotlinx.serialization.json.Json
+import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -24,11 +25,29 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient {
+    fun provideAuthInterceptor(tokenHolder: SessionTokenHolder): Interceptor {
+        return Interceptor { chain ->
+            val request = chain.request()
+            val token = tokenHolder.get()
+            val next = if (!token.isNullOrBlank()) {
+                request.newBuilder()
+                    .header("Authorization", "Bearer $token")
+                    .build()
+            } else {
+                request
+            }
+            chain.proceed(next)
+        }
+    }
+
+    @Provides
+    @Singleton
+    fun provideOkHttpClient(authInterceptor: Interceptor): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BASIC
         }
         return OkHttpClient.Builder()
+            .addInterceptor(authInterceptor)
             .addInterceptor(logging)
             .pingInterval(20, TimeUnit.SECONDS)
             .connectTimeout(30, TimeUnit.SECONDS)

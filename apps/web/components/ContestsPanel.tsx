@@ -14,14 +14,16 @@ const TABLE_MATCH_SIZES = [2, 3, 4, 5, 6, 7, 8, 9] as const;
 
 export function ContestsPanel({
   disabled,
+  sessionToken,
   displayName,
   onEnsureSession,
   onOpenContest,
   onJoinCode,
 }: {
   disabled?: boolean;
+  sessionToken: string | null;
   displayName: string;
-  onEnsureSession: (name: string) => Promise<{ userId: string; name: string }>;
+  onEnsureSession: () => Promise<{ userId: string; name: string; sessionToken: string }>;
   onOpenContest: (contestId: string) => void;
   onJoinCode: (code: string) => Promise<void>;
 }) {
@@ -66,26 +68,28 @@ export function ContestsPanel({
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!displayName.trim()) {
-      setError('Enter a callsign to play');
+    if (!sessionToken && !displayName.trim()) {
+      setError('Sign in to host a contest');
       return;
     }
     setBusy(true);
     setError(null);
     try {
-      const session = await onEnsureSession(displayName);
-      const { contest } = await createContest({
-        userId: session.userId,
-        name: `${session.name}'s ${mode === 'knockout' ? 'Knockout' : 'Table Match'}`,
-        mode,
-        fieldSize,
-        startingStack: 1000,
-        smallBlind: 5,
-        bigBlind: 10,
-        botCount,
-        isPrivate: true,
-        autoStart: true,
-      });
+      const session = await onEnsureSession();
+      const { contest } = await createContest(
+        {
+          name: `${session.name}'s ${mode === 'knockout' ? 'Knockout' : 'Table Match'}`,
+          mode,
+          fieldSize,
+          startingStack: 1000,
+          smallBlind: 5,
+          bigBlind: 10,
+          botCount,
+          isPrivate: true,
+          autoStart: true,
+        },
+        session.sessionToken,
+      );
       onOpenContest(contest.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');

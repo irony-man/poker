@@ -23,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.KeyboardOptions
@@ -72,192 +73,278 @@ fun LobbyScreen(
             color = FeltColors.Gold,
         )
         Text(
-            text = "Pick a callsign, host a private table, join with a code, or play offline vs bots.",
+            text = if (state.signedIn) {
+                "Host a private table, join with a code, or play offline vs bots."
+            } else {
+                "Sign in with username and password to play online."
+            },
             color = FeltColors.Cream.copy(alpha = 0.72f),
             fontSize = 15.sp,
             lineHeight = 22.sp,
         )
 
-        HudPanel(modifier = Modifier.fillMaxWidth()) {
-            AvatarPicker(
-                value = state.avatarId,
-                onChange = viewModel::onAvatarChange,
-            )
-        }
-
-        HudPanel(modifier = Modifier.fillMaxWidth()) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("HOST", color = FeltColors.Gold, fontWeight = FontWeight.Bold)
-                    StatusChip(text = "Online", accent = FeltColors.Cyan)
-                }
-                NameField(state.name, viewModel::onNameChange)
-                ChoiceRow(
-                    label = "Seats",
-                    selected = state.maxSeats,
-                    options = (2..9).toList(),
-                    onSelect = viewModel::onMaxSeatsChange,
-                )
-                ChoiceRow(
-                    label = "Starting bots",
-                    selected = state.botCount.coerceAtMost(maxBots),
-                    options = (0..maxBots).toList(),
-                    onSelect = viewModel::onBotCountChange,
-                ) { if (it == 0) "None" else "$it" }
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    FeltLabel("Room code (optional)")
-                    LobbyTextField(
-                        value = state.customRoomCode,
-                        onValueChange = viewModel::onCustomRoomCodeChange,
-                        placeholder = "Auto · or 4–8 digits",
-                        numeric = true,
-                    )
-                }
-                FeltPrimaryButton(
-                    text = "Create private table",
-                    onClick = { viewModel.host(onHosted) },
-                    enabled = !state.busy,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
-
-        HudPanel(modifier = Modifier.fillMaxWidth()) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("JOIN", color = FeltColors.Gold, fontWeight = FontWeight.Bold)
-                    StatusChip(text = "Invite", accent = FeltColors.Cyan)
-                }
-                NameField(state.name, viewModel::onNameChange)
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    FeltLabel("Invite code")
-                    LobbyTextField(
-                        value = state.inviteCode,
-                        onValueChange = viewModel::onInviteChange,
-                        placeholder = "Room code",
-                        numeric = true,
-                    )
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    FeltGhostButton(
-                        text = "Enter table",
-                        onClick = { viewModel.join { id, invite -> onJoined(id, invite, false) } },
-                        enabled = !state.busy,
-                        modifier = Modifier.weight(1f),
-                    )
-                    FeltGhostButton(
-                        text = "Spectate",
-                        onClick = { viewModel.join { id, invite -> onJoined(id, invite, true) } },
-                        enabled = !state.busy && state.inviteCode.isNotBlank(),
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-            }
-        }
-
-        HudPanel(modifier = Modifier.fillMaxWidth()) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("CONTESTS", color = FeltColors.Gold, fontWeight = FontWeight.Bold)
-                    StatusChip(text = "Tournament", accent = FeltColors.Cyan)
-                }
-                Text(
-                    "Knockout brackets · table match (chip elimination)",
-                    color = FeltColors.Cream.copy(alpha = 0.5f),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                val contestSizes =
-                    if (state.contestMode == "knockout") listOf(4, 8, 16) else (2..9).toList()
-                val contestMaxBots = (state.contestFieldSize - 1).coerceAtLeast(0)
-                ChoiceRowString(
-                    label = "Mode",
-                    selected = state.contestMode,
-                    options = listOf("table_match", "knockout"),
-                    onSelect = viewModel::onContestModeChange,
-                ) { if (it == "knockout") "Knockout" else "Table match" }
-                ChoiceRow(
-                    label = if (state.contestMode == "knockout") "Field" else "Players",
-                    selected = state.contestFieldSize,
-                    options = contestSizes,
-                    onSelect = viewModel::onContestFieldSizeChange,
-                )
-                ChoiceRow(
-                    label = "Fill bots",
-                    selected = state.contestBotCount.coerceAtMost(contestMaxBots),
-                    options = (0..contestMaxBots).toList(),
-                    onSelect = viewModel::onContestBotCountChange,
-                ) { if (it == 0) "None" else "$it" }
-                FeltPrimaryButton(
-                    text = "Create contest",
-                    onClick = { viewModel.createContest(onContest) },
-                    enabled = !state.busy,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    FeltLabel("Contest code")
-                    LobbyTextField(
-                        value = state.contestInvite,
-                        onValueChange = viewModel::onContestInviteChange,
-                        placeholder = "4–8 digit code",
-                        numeric = true,
-                    )
-                }
-                FeltGhostButton(
-                    text = "Join contest",
-                    onClick = { viewModel.joinContest(onContest) },
-                    enabled = !state.busy && state.contestInvite.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
-
-        HudPanel(modifier = Modifier.fillMaxWidth()) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top,
-                ) {
-                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
-                        Text("OFFLINE ARENA", color = FeltColors.Gold, fontWeight = FontWeight.Bold)
-                        Text(
-                            "Local bots · no server",
-                            color = FeltColors.Cream.copy(alpha = 0.5f),
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = 4.dp),
+        if (!state.signedIn) {
+            HudPanel(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FeltChoiceChip(
+                            text = "Sign in",
+                            selected = state.authMode == "login",
+                            onClick = { viewModel.onAuthModeChange("login") },
+                        )
+                        FeltChoiceChip(
+                            text = "Sign up",
+                            selected = state.authMode == "signup",
+                            onClick = { viewModel.onAuthModeChange("signup") },
                         )
                     }
-                    StatusChip(text = "Solo mode", accent = FeltColors.Neon)
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        FeltLabel("Username")
+                        LobbyTextField(
+                            value = state.username,
+                            onValueChange = viewModel::onUsernameChange,
+                            placeholder = "letters, numbers, _",
+                        )
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        FeltLabel("Password")
+                        LobbyTextField(
+                            value = state.password,
+                            onValueChange = viewModel::onPasswordChange,
+                            placeholder = "min 6 characters",
+                            password = true,
+                        )
+                    }
+                    if (state.authMode == "signup") {
+                        AvatarPicker(
+                            value = state.avatarId,
+                            onChange = viewModel::onAvatarChange,
+                        )
+                    }
+                    FeltPrimaryButton(
+                        text = if (state.authMode == "signup") "Create account" else "Sign in",
+                        onClick = viewModel::submitAuth,
+                        enabled = !state.busy,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
-                NameField(state.name, viewModel::onNameChange)
-                ChoiceRow(
-                    label = "Seats",
-                    selected = state.offlineSeats,
-                    options = (2..9).toList(),
-                    onSelect = viewModel::onOfflineSeatsChange,
-                ) { seats ->
-                    "$seats · ${seats - 1} bots"
+            }
+            HudPanel(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Text("OFFLINE ARENA", color = FeltColors.Gold, fontWeight = FontWeight.Bold)
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        FeltLabel("Display name")
+                        LobbyTextField(value = state.name, onValueChange = viewModel::onNameChange)
+                    }
+                    ChoiceRow(
+                        label = "Seats",
+                        selected = state.offlineSeats,
+                        options = (2..9).toList(),
+                        onSelect = viewModel::onOfflineSeatsChange,
+                    ) { seats ->
+                        "$seats · ${seats - 1} bots"
+                    }
+                    FeltGhostButton(
+                        text = "Launch offline game",
+                        onClick = { viewModel.offline(onOffline) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
-                FeltGhostButton(
-                    text = "Launch offline game",
-                    onClick = { viewModel.offline(onOffline) },
+            }
+        } else {
+            HudPanel(modifier = Modifier.fillMaxWidth()) {
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                )
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        FeltLabel("Signed in as")
+                        Text(
+                            state.name,
+                            color = FeltColors.Gold,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                        )
+                    }
+                    FeltGhostButton(
+                        text = "Sign out",
+                        onClick = viewModel::signOut,
+                    )
+                }
+            }
+
+            HudPanel(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("HOST", color = FeltColors.Gold, fontWeight = FontWeight.Bold)
+                        StatusChip(text = "Online", accent = FeltColors.Cyan)
+                    }
+                    ChoiceRow(
+                        label = "Seats",
+                        selected = state.maxSeats,
+                        options = (2..9).toList(),
+                        onSelect = viewModel::onMaxSeatsChange,
+                    )
+                    ChoiceRow(
+                        label = "Starting bots",
+                        selected = state.botCount.coerceAtMost(maxBots),
+                        options = (0..maxBots).toList(),
+                        onSelect = viewModel::onBotCountChange,
+                    ) { if (it == 0) "None" else "$it" }
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        FeltLabel("Room code (optional)")
+                        LobbyTextField(
+                            value = state.customRoomCode,
+                            onValueChange = viewModel::onCustomRoomCodeChange,
+                            placeholder = "Auto · or 4–8 digits",
+                            numeric = true,
+                        )
+                    }
+                    FeltPrimaryButton(
+                        text = "Create private table",
+                        onClick = { viewModel.host(onHosted) },
+                        enabled = !state.busy,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+
+            HudPanel(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("JOIN", color = FeltColors.Gold, fontWeight = FontWeight.Bold)
+                        StatusChip(text = "Invite", accent = FeltColors.Cyan)
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        FeltLabel("Invite code")
+                        LobbyTextField(
+                            value = state.inviteCode,
+                            onValueChange = viewModel::onInviteChange,
+                            placeholder = "Room code",
+                            numeric = true,
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        FeltGhostButton(
+                            text = "Enter table",
+                            onClick = { viewModel.join { id, invite -> onJoined(id, invite, false) } },
+                            enabled = !state.busy,
+                            modifier = Modifier.weight(1f),
+                        )
+                        FeltGhostButton(
+                            text = "Spectate",
+                            onClick = { viewModel.join { id, invite -> onJoined(id, invite, true) } },
+                            enabled = !state.busy && state.inviteCode.isNotBlank(),
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+            }
+
+            HudPanel(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("CONTESTS", color = FeltColors.Gold, fontWeight = FontWeight.Bold)
+                        StatusChip(text = "Tournament", accent = FeltColors.Cyan)
+                    }
+                    Text(
+                        "Knockout brackets · table match (chip elimination)",
+                        color = FeltColors.Cream.copy(alpha = 0.5f),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    val contestSizes =
+                        if (state.contestMode == "knockout") listOf(4, 8, 16) else (2..9).toList()
+                    val contestMaxBots = (state.contestFieldSize - 1).coerceAtLeast(0)
+                    ChoiceRowString(
+                        label = "Mode",
+                        selected = state.contestMode,
+                        options = listOf("table_match", "knockout"),
+                        onSelect = viewModel::onContestModeChange,
+                    ) { if (it == "knockout") "Knockout" else "Table match" }
+                    ChoiceRow(
+                        label = if (state.contestMode == "knockout") "Field" else "Players",
+                        selected = state.contestFieldSize,
+                        options = contestSizes,
+                        onSelect = viewModel::onContestFieldSizeChange,
+                    )
+                    ChoiceRow(
+                        label = "Fill bots",
+                        selected = state.contestBotCount.coerceAtMost(contestMaxBots),
+                        options = (0..contestMaxBots).toList(),
+                        onSelect = viewModel::onContestBotCountChange,
+                    ) { if (it == 0) "None" else "$it" }
+                    FeltPrimaryButton(
+                        text = "Create contest",
+                        onClick = { viewModel.createContest(onContest) },
+                        enabled = !state.busy,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        FeltLabel("Contest code")
+                        LobbyTextField(
+                            value = state.contestInvite,
+                            onValueChange = viewModel::onContestInviteChange,
+                            placeholder = "4–8 digit code",
+                            numeric = true,
+                        )
+                    }
+                    FeltGhostButton(
+                        text = "Join contest",
+                        onClick = { viewModel.joinContest(onContest) },
+                        enabled = !state.busy && state.contestInvite.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+
+            HudPanel(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                            Text("OFFLINE ARENA", color = FeltColors.Gold, fontWeight = FontWeight.Bold)
+                            Text(
+                                "Local bots · no server",
+                                color = FeltColors.Cream.copy(alpha = 0.5f),
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                        }
+                        StatusChip(text = "Solo mode", accent = FeltColors.Neon)
+                    }
+                    ChoiceRow(
+                        label = "Seats",
+                        selected = state.offlineSeats,
+                        options = (2..9).toList(),
+                        onSelect = viewModel::onOfflineSeatsChange,
+                    ) { seats ->
+                        "$seats · ${seats - 1} bots"
+                    }
+                    FeltGhostButton(
+                        text = "Launch offline game",
+                        onClick = { viewModel.offline(onOffline) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
         }
 
@@ -270,28 +357,26 @@ fun LobbyScreen(
 }
 
 @Composable
-private fun NameField(value: String, onChange: (String) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        FeltLabel("Callsign")
-        LobbyTextField(value = value, onValueChange = onChange)
-    }
-}
-
-@Composable
 private fun LobbyTextField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String? = null,
     numeric: Boolean = false,
+    password: Boolean = false,
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
+        visualTransformation = if (password) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
         placeholder = placeholder?.let { { Text(it, color = FeltColors.Cream.copy(alpha = 0.35f)) } },
         keyboardOptions = KeyboardOptions(
-            keyboardType = if (numeric) KeyboardType.Number else KeyboardType.Text,
+            keyboardType = when {
+                password -> KeyboardType.Password
+                numeric -> KeyboardType.Number
+                else -> KeyboardType.Text
+            },
             imeAction = ImeAction.Done,
         ),
         colors = OutlinedTextFieldDefaults.colors(
@@ -316,7 +401,6 @@ private fun ChoiceRow(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         FeltLabel(label)
-        // Chunk into rows — avoids FlowRow / Compose Foundation version skew.
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             options.chunked(4).forEach { chunk ->
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

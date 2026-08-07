@@ -1,41 +1,85 @@
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 export const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? 'ws://localhost:4000/ws';
 
-async function authHeaders(clerkToken?: string | null): Promise<HeadersInit> {
+export interface AuthSession {
+  userId: string;
+  username: string;
+  name: string;
+  ticket: string;
+  sessionToken: string;
+  avatarId: number;
+}
+
+function sessionHeaders(sessionToken?: string | null): HeadersInit {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (clerkToken) headers.Authorization = `Bearer ${clerkToken}`;
+  if (sessionToken) headers.Authorization = `Bearer ${sessionToken}`;
   return headers;
 }
 
-export async function register(
-  name: string,
-  avatarId?: number,
-  options?: { clerkToken?: string | null; userId?: string | null },
-) {
-  const res = await fetch(`${API_URL}/api/register`, {
-    method: 'POST',
-    headers: await authHeaders(options?.clerkToken),
-    body: JSON.stringify({
-      name,
-      avatarId,
-      ...(options?.userId ? { userId: options.userId } : {}),
-    }),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || 'Register failed');
+async function parseError(res: Response, fallback: string): Promise<string> {
+  try {
+    const data = (await res.json()) as { error?: string };
+    if (data.error) return data.error;
+  } catch {
+    try {
+      const text = await res.text();
+      if (text) return text;
+    } catch {
+      /* keep fallback */
+    }
   }
-  return res.json() as Promise<{
-    userId: string;
-    name: string;
-    ticket: string;
-    avatarId?: number;
-  }>;
+  return fallback;
+}
+
+export async function signup(
+  username: string,
+  password: string,
+  avatarId?: number,
+): Promise<AuthSession> {
+  const res = await fetch(`${API_URL}/api/signup`, {
+    method: 'POST',
+    headers: sessionHeaders(),
+    body: JSON.stringify({ username, password, avatarId }),
+  });
+  if (!res.ok) throw new Error(await parseError(res, 'Signup failed'));
+  return res.json() as Promise<AuthSession>;
+}
+
+export async function login(username: string, password: string): Promise<AuthSession> {
+  const res = await fetch(`${API_URL}/api/login`, {
+    method: 'POST',
+    headers: sessionHeaders(),
+    body: JSON.stringify({ username, password }),
+  });
+  if (!res.ok) throw new Error(await parseError(res, 'Login failed'));
+  return res.json() as Promise<AuthSession>;
+}
+
+export async function logout(sessionToken: string): Promise<void> {
+  await fetch(`${API_URL}/api/logout`, {
+    method: 'POST',
+    headers: sessionHeaders(sessionToken),
+  });
+}
+
+export async function refreshTicket(sessionToken: string): Promise<{
+  ticket: string;
+  userId: string;
+  name: string;
+  username: string;
+  avatarId: number;
+}> {
+  const res = await fetch(`${API_URL}/api/ticket`, {
+    method: 'POST',
+    headers: sessionHeaders(sessionToken),
+    body: JSON.stringify({}),
+  });
+  if (!res.ok) throw new Error(await parseError(res, 'Session expired'));
+  return res.json();
 }
 
 export async function createTable(
   input: {
-    userId: string;
     name: string;
     smallBlind: number;
     bigBlind: number;
@@ -46,23 +90,15 @@ export async function createTable(
     isPrivate: boolean;
     inviteCode?: string;
   },
-  options?: { clerkToken?: string | null },
+  sessionToken: string,
 ) {
   const res = await fetch(`${API_URL}/api/tables`, {
     method: 'POST',
-    headers: await authHeaders(options?.clerkToken),
+    headers: sessionHeaders(sessionToken),
     body: JSON.stringify(input),
   });
   if (!res.ok) {
-    const text = await res.text();
-    let message = text || 'Failed to create table';
-    try {
-      const parsed = JSON.parse(text) as { error?: string };
-      if (typeof parsed.error === 'string' && parsed.error) message = parsed.error;
-    } catch {
-      /* keep raw text */
-    }
-    throw new Error(message);
+    throw new Error(await parseError(res, 'Failed to create table'));
   }
   return res.json() as Promise<{
     tableId: string;
@@ -135,9 +171,20 @@ export interface PendingChallenge {
   tableId: string;
   inviteCode: string;
   createdAt: number;
+  groupId?: string;
+  groupName?: string;
 }
 
-type AuthOptions = { clerkToken?: string | null; userId?: string | null };
+export interface FriendGroup {
+  id: string;
+  name: string;
+  ownerUserId: string;
+  isOwner: boolean;
+  members: FriendProfile[];
+  createdAt: number;
+}
+
+type AuthOptions = { sessionToken: string };
 
 async function authedFetch(
   path: string,
@@ -145,35 +192,28 @@ async function authedFetch(
 ) {
   const res = await fetch(`${API_URL}${path}`, {
     method: options.method ?? 'GET',
-    headers: await authHeaders(options.clerkToken),
+    headers: sessionHeaders(options.sessionToken),
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
   });
   if (!res.ok) {
-    let message = res.status === 401 ? 'Sign in required' : 'Request failed';
-    try {
-      const data = (await res.json()) as { error?: string };
-      if (data.error) message = data.error;
-    } catch {
-      const text = await res.text();
-      if (text) message = text;
-    }
-    throw new Error(message);
+    throw new Error(
+      await parseError(res, res.status === 401 ? 'Sign in required' : 'Request failed'),
+    );
   }
   return res.json();
 }
 
 export async function listFriends(options: AuthOptions) {
-  const q = options.userId ? `?userId=${encodeURIComponent(options.userId)}` : '';
-  return authedFetch(`/api/friends${q}`, options) as Promise<{
+  return authedFetch(`/api/friends`, options) as Promise<{
     friends: FriendProfile[];
     incoming: PendingRequest[];
     pendingChallenges: PendingChallenge[];
+    groups: FriendGroup[];
   }>;
 }
 
 export async function searchUsers(query: string, options: AuthOptions) {
   const params = new URLSearchParams({ q: query });
-  if (options.userId) params.set('userId', options.userId);
   return authedFetch(`/api/friends/search?${params}`, options) as Promise<{
     users: FriendProfile[];
   }>;
@@ -183,7 +223,7 @@ export async function sendFriendRequest(targetUserId: string, options: AuthOptio
   return authedFetch('/api/friends/requests', {
     ...options,
     method: 'POST',
-    body: { targetUserId, userId: options.userId },
+    body: { targetUserId },
   });
 }
 
@@ -195,15 +235,68 @@ export async function respondFriendRequest(
   return authedFetch(`/api/friends/requests/${requestId}/respond`, {
     ...options,
     method: 'POST',
-    body: { accept, userId: options.userId },
+    body: { accept },
   });
+}
+
+export async function createFriendGroup(
+  input: { name: string; memberUserIds: string[] },
+  options: AuthOptions,
+) {
+  return authedFetch('/api/friends/groups', {
+    ...options,
+    method: 'POST',
+    body: input,
+  }) as Promise<{ group: FriendGroup }>;
+}
+
+export async function updateFriendGroup(
+  groupId: string,
+  input: { name?: string; memberUserIds?: string[] },
+  options: AuthOptions,
+) {
+  return authedFetch(`/api/friends/groups/${groupId}`, {
+    ...options,
+    method: 'PATCH',
+    body: input,
+  }) as Promise<{ group: FriendGroup }>;
+}
+
+export async function deleteFriendGroup(groupId: string, options: AuthOptions) {
+  return authedFetch(`/api/friends/groups/${groupId}`, {
+    ...options,
+    method: 'DELETE',
+  }) as Promise<{ ok: boolean }>;
+}
+
+export async function inviteFriendGroup(
+  groupId: string,
+  options: AuthOptions,
+  body?: {
+    memberUserIds?: string[];
+    maxSeats?: number;
+    smallBlind?: number;
+    bigBlind?: number;
+    buyIn?: number;
+  },
+) {
+  return authedFetch(`/api/friends/groups/${groupId}/invite`, {
+    ...options,
+    method: 'POST',
+    body: body ?? {},
+  }) as Promise<{
+    tableId: string;
+    inviteCode: string;
+    inviteCount: number;
+    challengeIds: string[];
+  }>;
 }
 
 export async function challengeFriend(friendUserId: string, options: AuthOptions) {
   return authedFetch('/api/friends/challenge', {
     ...options,
     method: 'POST',
-    body: { friendUserId, userId: options.userId },
+    body: { friendUserId },
   }) as Promise<{ tableId: string; inviteCode: string; challengeId: string }>;
 }
 
@@ -211,7 +304,7 @@ export async function joinFriendChallenge(challengeId: string, options: AuthOpti
   return authedFetch(`/api/friends/challenges/${challengeId}/join`, {
     ...options,
     method: 'POST',
-    body: { userId: options.userId },
+    body: {},
   });
 }
 
@@ -265,7 +358,6 @@ export interface ContestView {
 
 export async function createContest(
   input: {
-    userId: string;
     name?: string;
     mode: ContestMode;
     fieldSize: number;
@@ -278,22 +370,15 @@ export async function createContest(
     inviteCode?: string;
     autoStart?: boolean;
   },
-  options?: { clerkToken?: string | null },
+  sessionToken: string,
 ) {
   const res = await fetch(`${API_URL}/api/contests`, {
     method: 'POST',
-    headers: await authHeaders(options?.clerkToken),
+    headers: sessionHeaders(sessionToken),
     body: JSON.stringify(input),
   });
   if (!res.ok) {
-    let message = 'Failed to create contest';
-    try {
-      const parsed = (await res.json()) as { error?: string };
-      if (parsed.error) message = parsed.error;
-    } catch {
-      /* keep */
-    }
-    throw new Error(message);
+    throw new Error(await parseError(res, 'Failed to create contest'));
   }
   return res.json() as Promise<{ contest: ContestView }>;
 }
@@ -320,7 +405,7 @@ export async function registerContest(contestId: string, options: AuthOptions) {
   return authedFetch(`/api/contests/${contestId}/register`, {
     ...options,
     method: 'POST',
-    body: { userId: options.userId },
+    body: {},
   }) as Promise<{ contest: ContestView }>;
 }
 
@@ -328,7 +413,7 @@ export async function unregisterContest(contestId: string, options: AuthOptions)
   return authedFetch(`/api/contests/${contestId}/unregister`, {
     ...options,
     method: 'POST',
-    body: { userId: options.userId },
+    body: {},
   }) as Promise<{ contest: ContestView }>;
 }
 
@@ -336,6 +421,6 @@ export async function startContest(contestId: string, options: AuthOptions) {
   return authedFetch(`/api/contests/${contestId}/start`, {
     ...options,
     method: 'POST',
-    body: { userId: options.userId },
+    body: {},
   }) as Promise<{ contest: ContestView }>;
 }

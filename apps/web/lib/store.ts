@@ -71,8 +71,10 @@ export interface ChatMessage {
 
 interface SessionState {
   userId: string | null;
+  username: string | null;
   name: string | null;
   ticket: string | null;
+  sessionToken: string | null;
   connection: 'idle' | 'connecting' | 'open' | 'closed';
   table: PublicTable | null;
   private: PrivateView | null;
@@ -82,7 +84,14 @@ interface SessionState {
   emojiBurst: { emoji: string; name: string; at: number } | null;
   /** Last poker action shown as a seat popup. */
   actionBurst: { seat: number; label: string; at: number } | null;
-  setSession: (s: { userId: string; name: string; ticket: string }) => void;
+  setSession: (s: {
+    userId: string;
+    name: string;
+    ticket: string;
+    username?: string;
+    sessionToken?: string;
+  }) => void;
+  clearSession: () => void;
   setConnection: (c: SessionState['connection']) => void;
   applyStateSync: (table: PublicTable, priv: PrivateView | null) => void;
   clearTable: () => void;
@@ -94,8 +103,10 @@ interface SessionState {
 
 export const useSession = create<SessionState>((set) => ({
   userId: null,
+  username: null,
   name: null,
   ticket: null,
+  sessionToken: null,
   connection: 'idle',
   table: null,
   private: null,
@@ -104,7 +115,22 @@ export const useSession = create<SessionState>((set) => ({
   lastErrorCode: null,
   emojiBurst: null,
   actionBurst: null,
-  setSession: (s) => set(s),
+  setSession: (s) =>
+    set({
+      userId: s.userId,
+      name: s.name,
+      ticket: s.ticket,
+      username: s.username ?? s.name,
+      sessionToken: s.sessionToken ?? null,
+    }),
+  clearSession: () =>
+    set({
+      userId: null,
+      username: null,
+      name: null,
+      ticket: null,
+      sessionToken: null,
+    }),
   setConnection: (connection) => set({ connection }),
   applyStateSync: (table, priv) =>
     set((prev) => {

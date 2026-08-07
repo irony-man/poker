@@ -11,38 +11,41 @@
  * apps/android/.../Components.kt mirrors these values. See docs/DESIGN_SYSTEM.md.
  */
 :root {
-  /* Surfaces */
-  --ink: 18 16 14;
-  --ink-panel: 28 25 22;
-  --ink-raised: 38 33 25;
-  --ink-overlay: 10 9 8;
+  /*
+   * Play room surfaces — deep POKR purple (same brand family as the lobby
+   * sidebar), not the old brown “card room” ink.
+   */
+  --ink: 14 6 24;
+  --ink-panel: 29 4 50;
+  --ink-raised: 46 16 72;
+  --ink-overlay: 8 3 14;
 
-  /* Lobby shell (POKR brand) */
+  /* Lobby shell + brand anchors */
   --sidebar: 29 4 50;
   --mushroom: 230 217 215;
   --ink-strong: 29 4 50;
   --ink-strong-muted: 90 70 95;
 
-  /* Table */
-  --felt: 30 91 67;
-  --felt-deep: 18 58 43;
-  --felt-rim: 58 42 28;
-  --felt-rim-edge: 138 107 58;
+  /* Table oval — classic green felt, purple/brass rail for brand */
+  --felt: 34 96 72;
+  --felt-deep: 18 52 42;
+  --felt-rim: 29 4 50;
+  --felt-rim-edge: 196 168 186;
 
-  /* Accent */
-  --brass: 201 162 39;
-  --brass-light: 232 206 131;
-  --brass-dim: 122 98 24;
+  /* Accent — soft champagne that reads on purple panels */
+  --brass: 214 186 128;
+  --brass-light: 236 218 176;
+  --brass-dim: 118 92 48;
 
-  /* Text */
-  --cream: 242 237 228;
-  --cream-muted: 168 161 151;
+  /* Text — mushroom-adjacent cream for play chrome */
+  --cream: 242 234 232;
+  --cream-muted: 168 150 166;
 
   /* State */
   --danger: 192 57 43;
-  --positive: 62 158 106;
-  --patina: 110 156 134;
-  --patina-dim: 63 91 80;
+  --positive: 72 168 122;
+  --patina: 186 162 198;
+  --patina-dim: 88 62 112;
 
   /* Cards */
   --card-face: 250 247 240;
@@ -57,11 +60,10 @@
   --radius-xl: 20px;
 
   /* Elevation */
-  --shadow-panel: 0 1px 0 0 rgb(var(--brass) / 0.06) inset, 0 16px 40px rgb(0 0 0 / 0.55);
+  --shadow-panel: 0 1px 0 0 rgb(var(--mushroom) / 0.06) inset, 0 16px 40px rgb(0 0 0 / 0.55);
   --shadow-raised: 0 2px 8px rgb(0 0 0 / 0.45);
-  --shadow-glow: 0 0 20px rgb(var(--brass) / 0.28);
+  --shadow-glow: 0 0 22px rgb(var(--mushroom) / 0.18);
   --shadow-card: 0 2px 6px rgb(0 0 0 / 0.4);
-
   /* Motion */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --dur-fast: 120ms;
@@ -92,9 +94,9 @@ body {
   @apply bg-ink text-cream font-body antialiased;
   background-color: rgb(var(--ink));
   background-image:
-    radial-gradient(ellipse 70% 45% at 50% -8%, rgb(var(--brass) / 0.1), transparent 60%),
-    radial-gradient(ellipse 60% 45% at 50% 110%, rgb(var(--felt) / 0.12), transparent 60%),
-    linear-gradient(170deg, #171410 0%, #12100e 50%, #0d0b09 100%);
+    radial-gradient(ellipse 70% 50% at 50% -10%, rgb(var(--sidebar) / 0.55), transparent 58%),
+    radial-gradient(ellipse 55% 40% at 50% 110%, rgb(var(--felt) / 0.18), transparent 58%),
+    linear-gradient(168deg, #24103a 0%, #12061f 48%, #0a0412 100%);
   background-attachment: fixed;
   background-repeat: no-repeat;
 }
@@ -170,7 +172,7 @@ body:has(.lobby-shell)::before {
 
 /*
  * Lobby cards: light surfaces + purple brand accents.
- * Play tables keep the dark hud-* rules above (no .lobby-shell).
+ * Play routes (table / offline / contest) keep dark hud-* with brand purple.
  */
 .lobby-shell .hud-panel {
   border-color: rgb(var(--sidebar) / 0.12);
@@ -291,12 +293,12 @@ body:has(.lobby-shell)::before {
 
 @layer components {
   .field-select {
-    @apply w-full rounded-md border border-brass/20 bg-ink-raised px-3 py-2 text-cream outline-none font-medium tracking-wide;
+    @apply w-full rounded-md border border-mushroom/20 bg-ink-raised px-3 py-2 text-cream outline-none font-medium tracking-wide;
     color-scheme: dark;
   }
 
   .field-select:focus {
-    @apply border-brass/70 shadow-glow;
+    @apply border-mushroom/55 shadow-glow;
   }
 
   .field-select option {
@@ -305,7 +307,7 @@ body:has(.lobby-shell)::before {
   }
 
   .hud-panel {
-    @apply relative overflow-hidden rounded-lg border border-brass/15 bg-ink-panel/90 shadow-panel backdrop-blur-md;
+    @apply relative overflow-hidden rounded-lg border border-mushroom/15 bg-ink-panel/95 shadow-panel backdrop-blur-md;
   }
 
   .hud-panel::before {
@@ -313,11 +315,11 @@ body:has(.lobby-shell)::before {
     position: absolute;
     inset: 0 0 auto 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgb(var(--brass) / 0.45), transparent);
+    background: linear-gradient(90deg, transparent, rgb(var(--mushroom) / 0.35), transparent);
   }
 
   .hud-input {
-    @apply mt-1 w-full rounded-md border border-cream/15 bg-ink/70 px-3 py-2 text-cream outline-none transition;
+    @apply mt-1 w-full rounded-md border border-mushroom/15 bg-ink/70 px-3 py-2 text-cream outline-none transition;
   }
 
   .hud-input::placeholder {
@@ -325,7 +327,7 @@ body:has(.lobby-shell)::before {
   }
 
   .hud-input:focus {
-    @apply border-brass/60 shadow-glow;
+    @apply border-mushroom/45 shadow-glow;
   }
 
   .hud-label {
@@ -333,43 +335,44 @@ body:has(.lobby-shell)::before {
   }
 
   .choice-chip {
-    @apply cursor-pointer select-none rounded-md border border-cream/15 bg-ink/45 px-3 py-2 text-[13px] font-display font-semibold text-cream/80 transition;
+    @apply cursor-pointer select-none rounded-md border border-mushroom/15 bg-ink/45 px-3 py-2 text-[13px] font-display font-semibold text-cream/80 transition;
   }
 
   .choice-chip:hover {
-    @apply border-cream/35 text-cream;
+    @apply border-mushroom/35 text-cream;
   }
 
   .choice-chip-selected {
-    @apply border-brass bg-brass/20 font-bold text-brass-light;
+    @apply border-mushroom/55 bg-mushroom/15 font-bold text-mushroom;
   }
 
   .choice-chip-selected:hover {
-    @apply border-brass text-brass-light;
+    @apply border-mushroom text-mushroom;
   }
 
   .bet-slider {
-    @apply h-2 cursor-pointer appearance-none rounded-full bg-ink-raised accent-brass;
+    @apply h-2 cursor-pointer appearance-none rounded-full bg-ink-raised accent-mushroom;
   }
 
   .bet-slider::-webkit-slider-thumb {
-    @apply h-4 w-4 cursor-pointer appearance-none rounded-full border border-brass/60 bg-brass shadow-glow;
+    @apply h-4 w-4 cursor-pointer appearance-none rounded-full border border-mushroom/50 bg-mushroom shadow-glow;
   }
 
   .bet-slider::-moz-range-thumb {
-    @apply h-4 w-4 cursor-pointer rounded-full border border-brass/60 bg-brass;
+    @apply h-4 w-4 cursor-pointer rounded-full border border-mushroom/50 bg-mushroom;
   }
 
   .bet-slider:disabled {
     @apply cursor-not-allowed opacity-40;
   }
 
+  /* Match lobby primary CTAs: purple fill, mushroom type. */
   .btn-primary {
-    @apply rounded-md border border-brass-light/30 bg-gradient-to-b from-brass-light to-brass px-4 py-2.5 font-display font-bold uppercase tracking-wider text-ink shadow-glow transition hover:brightness-110 disabled:opacity-50;
+    @apply rounded-md border border-mushroom/20 bg-gradient-to-b from-[#341252] to-sidebar px-4 py-2.5 font-display font-bold uppercase tracking-wider text-mushroom shadow-glow transition hover:brightness-110 disabled:opacity-50;
   }
 
   .btn-ghost {
-    @apply rounded-md border border-brass/25 bg-ink-raised/80 px-4 py-2.5 font-display font-semibold uppercase tracking-wider text-cream transition hover:border-brass/60 hover:bg-brass/10 disabled:opacity-50;
+    @apply rounded-md border border-mushroom/25 bg-ink-raised/80 px-4 py-2.5 font-display font-semibold uppercase tracking-wider text-cream transition hover:border-mushroom/50 hover:bg-mushroom/10 disabled:opacity-50;
   }
 
   .btn-danger {
@@ -377,7 +380,7 @@ body:has(.lobby-shell)::before {
   }
 
   .btn-secondary {
-    @apply rounded-md border border-cream/20 bg-ink-raised py-3 font-display font-bold uppercase tracking-wider text-cream transition hover:border-cream/40 hover:bg-cream/10;
+    @apply rounded-md border border-mushroom/20 bg-ink-raised py-3 font-display font-bold uppercase tracking-wider text-cream transition hover:border-mushroom/40 hover:bg-mushroom/10;
   }
 
   .status-chip {
@@ -388,26 +391,27 @@ body:has(.lobby-shell)::before {
 @layer utilities {
   .felt-surface {
     background:
-      radial-gradient(ellipse at 50% 32%, rgb(255 255 255 / 0.06), transparent 45%),
+      radial-gradient(ellipse at 50% 28%, rgb(var(--mushroom) / 0.07), transparent 42%),
+      radial-gradient(ellipse at 50% 32%, rgb(255 255 255 / 0.05), transparent 48%),
       radial-gradient(
         ellipse at center,
         rgb(var(--felt)) 0%,
-        rgb(var(--felt-deep)) 55%,
-        #0c2a1f 100%
+        rgb(var(--felt-deep)) 52%,
+        #0a241c 100%
       );
     box-shadow:
-      inset 0 0 80px rgb(0 0 0 / 0.45),
-      inset 0 0 0 1px rgb(255 255 255 / 0.04);
+      inset 0 0 90px rgb(14 6 24 / 0.5),
+      inset 0 0 0 1px rgb(var(--mushroom) / 0.06);
   }
 
-  /* Wood rim with a thin brass edge. */
+  /* Brand purple rail with a soft mushroom edge. */
   .table-rim {
     border-color: rgb(var(--felt-rim));
     background-clip: padding-box;
     box-shadow:
-      inset 0 0 0 2px rgb(var(--felt-rim-edge) / 0.55),
-      0 0 0 1px rgb(0 0 0 / 0.4),
-      0 18px 44px rgb(0 0 0 / 0.55);
+      inset 0 0 0 2px rgb(var(--felt-rim-edge) / 0.45),
+      0 0 0 1px rgb(14 6 24 / 0.55),
+      0 18px 48px rgb(14 6 24 / 0.55);
   }
 
   .seat-action-popup {

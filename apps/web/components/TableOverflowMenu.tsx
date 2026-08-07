@@ -45,7 +45,7 @@ export function TableOverflowMenu({
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}
-        className="flex h-11 w-11 items-center justify-center rounded-full border border-cream/20 bg-ink/80 text-lg font-bold text-cream/80 hover:border-gold/40 hover:text-gold"
+        className="flex h-11 w-11 items-center justify-center rounded-full border border-mushroom/25 bg-ink/80 text-lg font-bold text-cream/80 hover:border-mushroom/50 hover:text-mushroom"
         title="More"
       >
         ⋯
@@ -54,7 +54,7 @@ export function TableOverflowMenu({
         <div
           id={panelId}
           role="menu"
-          className="absolute right-0 top-[calc(100%+0.35rem)] z-50 min-w-[12.5rem] overflow-hidden rounded-xl border border-cream/15 bg-ink-panel/98 py-1 shadow-[0_12px_40px_rgba(0,0,0,0.55)] backdrop-blur-md"
+          className="absolute right-0 top-[calc(100%+0.35rem)] z-50 min-w-[12.5rem] overflow-hidden rounded-xl border border-mushroom/15 bg-ink-panel/95 py-1 shadow-[0_12px_40px_rgba(14,6,24,0.55)] backdrop-blur-md"
         >
           {items.map((item) => (
             <button
@@ -70,16 +70,16 @@ export function TableOverflowMenu({
                 item.tone === 'danger'
                   ? 'text-red-300 hover:bg-red-950/40'
                   : item.tone === 'accent'
-                    ? 'text-cyan hover:bg-cyan/10'
+                    ? 'text-mushroom hover:bg-mushroom/10'
                     : item.tone === 'gold'
-                      ? 'text-gold hover:bg-gold/10'
-                      : 'text-cream/85 hover:bg-cream/10'
+                      ? 'text-brass-light hover:bg-brass/10'
+                      : 'text-cream/85 hover:bg-mushroom/10'
               }`}
             >
               {item.label}
             </button>
           ))}
-          {footer ? <div className="border-t border-cream/10 px-3 py-2">{footer}</div> : null}
+          {footer ? <div className="border-t border-mushroom/12 px-3 py-2">{footer}</div> : null}
         </div>
       )}
     </div>

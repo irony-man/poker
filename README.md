@@ -70,6 +70,7 @@ For a public URL (Vercel/Railway/Fly), you’ll need accounts + `NEXT_PUBLIC_API
 | `DATABASE_URL` | unset → file stores | **Postgres** for users, sessions, social, hand history |
 | `REDIS_URL` | unset | Optional Redis for table snapshots/pubsub |
 | `DATA_DIR` | `./data` | File fallback when Postgres is unset; also schema.sql dump |
+| `NEXT_PUBLIC_SITE_URL` | `https://pokr.site` | Canonical site URL (metadata, sitemap, OG) |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:4000` | Browser → API |
 | `NEXT_PUBLIC_WS_URL` | `ws://localhost:4000/ws` | Browser → WebSocket |
 

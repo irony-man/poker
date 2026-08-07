@@ -1,14 +1,30 @@
-'use client';
-
 import { HomeLanding } from '@/components/HomeLanding';
-import { useLobbySession } from '@/lib/useLobbySession';
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site';
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebApplication',
+  name: 'POKR',
+  alternateName: SITE_NAME,
+  url: SITE_URL,
+  description: SITE_DESCRIPTION,
+  applicationCategory: 'GameApplication',
+  operatingSystem: 'Web',
+  offers: {
+    '@type': 'Offer',
+    price: '0',
+    priceCurrency: 'USD',
+  },
+};
 
 export default function HomePage() {
-  const { authReady, signedIn } = useLobbySession();
-
-  if (!authReady) {
-    return <p className="pt-12 text-center text-ink-strong-muted">Loading…</p>;
-  }
-
-  return <HomeLanding signedIn={signedIn} />;
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <HomeLanding />
+    </>
+  );
 }

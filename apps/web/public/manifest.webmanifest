@@ -1,7 +1,7 @@
 {
   "name": "POKR — Texas Hold'em",
   "short_name": "POKR",
-  "description": "Private No-Limit Texas Hold'em for home games",
+  "description": "Play free No-Limit Texas Hold'em online with friends and family. Host private tables, join contests, or practice offline on pokr.site.",
   "start_url": "/",
   "display": "fullscreen",
   "display_override": ["fullscreen", "standalone", "browser"],

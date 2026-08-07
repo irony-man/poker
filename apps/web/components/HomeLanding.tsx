@@ -1,8 +1,6 @@
-'use client';
-
 import Image from 'next/image';
 import Link from 'next/link';
-import { authHref } from '@/lib/authRedirect';
+import { HomeAuthFooter } from '@/components/HomeAuthFooter';
 
 type Feature = {
   title: string;
@@ -63,33 +61,26 @@ const FEATURES: Feature[] = [
   },
 ];
 
-export function HomeLanding({ signedIn }: { signedIn: boolean }) {
+export function HomeLanding() {
   return (
     <div className="mx-auto w-full max-w-5xl pb-12 pt-4 sm:pb-20 sm:pt-6 lg:pt-8">
+      <header className="lobby-fade-up mb-12 text-center sm:mb-16 lg:mb-20">
+        <h1 className="font-display text-[clamp(2rem,5vw,3.25rem)] font-bold leading-[1.08] tracking-tight text-ink-strong">
+          Play Texas Hold&apos;em online free
+        </h1>
+        <p className="mx-auto mt-3 max-w-xl text-[0.98rem] leading-relaxed text-ink-strong-muted sm:mt-4 sm:text-lg">
+          Private No-Limit Hold&apos;em for home games—host a table, join contests, or practice offline
+          on pokr.site.
+        </p>
+      </header>
+
       <div className="flex flex-col gap-16 sm:gap-20 lg:gap-28">
         {FEATURES.map((feature, i) => (
           <FeatureRow key={feature.title} feature={feature} index={i} />
         ))}
       </div>
 
-      {!signedIn && (
-        <p className="lobby-fade-up lobby-fade-up-delay-3 mt-16 text-center text-sm text-ink-strong-muted sm:mt-20">
-          Ready to play?{' '}
-          <Link
-            href={authHref('sign-in', '/')}
-            className="font-display font-semibold uppercase tracking-wider text-sidebar underline-offset-4 hover:underline"
-          >
-            Sign in
-          </Link>
-          {' · '}
-          <Link
-            href={authHref('sign-up', '/')}
-            className="font-display font-semibold uppercase tracking-wider text-sidebar underline-offset-4 hover:underline"
-          >
-            Create account
-          </Link>
-        </p>
-      )}
+      <HomeAuthFooter />
     </div>
   );
 }

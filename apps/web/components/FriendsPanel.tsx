@@ -114,7 +114,14 @@ export function FriendsPanel({
     }
     setShowCreateGroup(false);
     setEditingGroupId(group.id);
-    setEditMembers(new Set(group.members.map((m) => m.userId)));
+    // Owner is not a selectable invitee — only friends.
+    setEditMembers(
+      new Set(
+        group.members
+          .filter((m) => m.userId !== group.ownerUserId)
+          .map((m) => m.userId),
+      ),
+    );
   }
 
   async function onSaveGroupMembers(groupId: string) {
@@ -449,13 +456,15 @@ export function FriendsPanel({
               {groups.map((g) => {
                 const editing = editingGroupId === g.id;
                 const canAddMore = g.isOwner && friends.length > 0;
+                const otherMembers = g.members.filter((m) => m.userId !== userId);
+                const canInviteTable = otherMembers.length > 0;
                 return (
                 <li
                   key={g.id}
                   className="rounded-lg border border-sidebar/12 bg-mushroom/45 p-3 sm:p-4"
                 >
                   <div className="flex items-start gap-3">
-                    {/* Folder icon with member avatar stack */}
+                    {/* Folder icon with member avatar stack (includes you) */}
                     <div
                       className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-sidebar/15 bg-sidebar/8"
                       aria-hidden
@@ -479,7 +488,7 @@ export function FriendsPanel({
                                 userId={m.userId}
                                 avatarId={m.avatarId}
                                 size={18}
-                                title={m.name}
+                                title={m.userId === userId ? 'You' : m.name}
                               />
                             </span>
                           ))}
@@ -503,7 +512,7 @@ export function FriendsPanel({
                   <div className="mt-2 flex flex-wrap gap-2">
                     <button
                       type="button"
-                      disabled={disabled || busy === `invite-${g.id}` || g.members.length === 0}
+                      disabled={disabled || busy === `invite-${g.id}` || !canInviteTable}
                       onClick={() => void onInviteGroup(g.id)}
                       className="btn-primary py-1.5 px-3 text-xs"
                     >
@@ -532,20 +541,28 @@ export function FriendsPanel({
                   </div>
                   {g.members.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1.5">
-                      {g.members.map((m) => (
-                        <span
-                          key={m.userId}
-                          className="inline-flex items-center gap-1.5 rounded-md border border-sidebar/12 px-2 py-0.5 text-xs text-ink-strong-muted"
-                        >
-                          <PlayerAvatar
-                            userId={m.userId}
-                            avatarId={m.avatarId}
-                            size={18}
-                            title={m.name}
-                          />
-                          {m.name}
-                        </span>
-                      ))}
+                      {g.members.map((m) => {
+                        const isYou = m.userId === userId;
+                        return (
+                          <span
+                            key={m.userId}
+                            className="inline-flex items-center gap-1.5 rounded-md border border-sidebar/12 px-2 py-0.5 text-xs text-ink-strong-muted"
+                          >
+                            <PlayerAvatar
+                              userId={m.userId}
+                              avatarId={m.avatarId}
+                              size={18}
+                              title={isYou ? 'You' : m.name}
+                            />
+                            {isYou ? 'You' : m.name}
+                            {m.userId === g.ownerUserId && !isYou ? (
+                              <span className="text-[9px] uppercase tracking-wide opacity-60">
+                                owner
+                              </span>
+                            ) : null}
+                          </span>
+                        );
+                      })}
                     </div>
                   )}
                   {editing && (

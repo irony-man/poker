@@ -318,18 +318,20 @@ export class FriendsStore {
   }
 
   private groupView(auth: AuthStore, group: FriendGroup, viewerId: string): FriendGroupView {
-    const members: FriendProfile[] = [];
+    const owner = this.profile(auth, group.ownerUserId);
+    const others: FriendProfile[] = [];
     for (const id of group.memberUserIds) {
+      if (id === group.ownerUserId) continue;
       const p = this.profile(auth, id);
-      if (p) members.push(p);
+      if (p) others.push(p);
     }
-    members.sort((a, b) => a.name.localeCompare(b.name));
+    others.sort((a, b) => a.name.localeCompare(b.name));
     return {
       id: group.id,
       name: group.name,
       ownerUserId: group.ownerUserId,
       isOwner: group.ownerUserId === viewerId,
-      members,
+      members: owner ? [owner, ...others] : others,
       createdAt: group.createdAt,
     };
   }

@@ -74,7 +74,11 @@ describe('FriendsStore', () => {
       'user-bob',
       'user-carol',
     ]);
-    expect(group.members.map((m) => m.userId).sort()).toEqual(['user-bob', 'user-carol']);
+    expect(group.members.map((m) => m.userId)).toEqual([
+      'user-alice',
+      'user-bob',
+      'user-carol',
+    ]);
 
     const challenges = await friends.createGroupGameInvites(
       'user-alice',

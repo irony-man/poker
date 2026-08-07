@@ -33,11 +33,11 @@ export function ContestsPanel({
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<ContestView[]>([]);
 
-  const sizes = mode === 'knockout' ? KNOCKOUT_SIZES : TABLE_MATCH_SIZES;
+  const sizes: readonly number[] = mode === 'knockout' ? KNOCKOUT_SIZES : TABLE_MATCH_SIZES;
   const maxBots = Math.max(0, fieldSize - 1);
 
   useEffect(() => {
-    if (!sizes.includes(fieldSize as (typeof sizes)[number])) {
+    if (!sizes.includes(fieldSize)) {
       setFieldSize(sizes[0]!);
     }
   }, [mode, fieldSize, sizes]);

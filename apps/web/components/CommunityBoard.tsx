@@ -11,6 +11,8 @@ export function CommunityBoard({
   winningCards,
   dealing = false,
   compact = false,
+  /** Phone landscape: one centered row of larger faces. */
+  landscape = false,
 }: {
   cards: string[];
   handId?: string | null;
@@ -21,14 +23,15 @@ export function CommunityBoard({
   dealing?: boolean;
   /** Force phone layout (portrait or landscape) — ignore Tailwind sm: breakpoints. */
   compact?: boolean;
+  landscape?: boolean;
 }) {
-  const size: CardSize = compact ? 'board' : cardSize;
+  const size: CardSize = landscape ? 'sm' : compact ? 'board' : cardSize;
 
   if (cards.length === 0) {
     return (
       <div
         className={`flex items-center justify-center ${
-          compact ? 'min-h-[2.75rem]' : 'min-h-[4.25rem] sm:min-h-[5.25rem]'
+          compact || landscape ? 'min-h-[2.75rem]' : 'min-h-[4.25rem] sm:min-h-[5.25rem]'
         }`}
       >
         {dealing ? (
@@ -48,6 +51,14 @@ export function CommunityBoard({
       dimmed={highlightMode && !winningCards?.has(c)}
     />
   );
+
+  if (landscape) {
+    return (
+      <div className="flex items-center justify-center gap-1 drop-shadow-lg">
+        {cards.map((c, i) => card(c, i))}
+      </div>
+    );
+  }
 
   if (compact) {
     return (

@@ -523,33 +523,40 @@ export function OfflineTableView({
           <div className="relative min-h-0 flex-1">
           <div
             className={`absolute inset-0 felt-surface table-rim shadow-felt overflow-hidden ${
-              narrow
-                ? 'rounded-[18%] border-[5px]'
-                : 'rounded-[42%] border-[12px]'
+              landscape
+                ? 'rounded-[42%_/_48%] border-[5px]'
+                : narrow
+                  ? 'rounded-[18%] border-[5px]'
+                  : 'rounded-[42%] border-[12px]'
             }`}
           >
           <div
             className={`pointer-events-none absolute z-[1] border border-white/10 ${
-              narrow ? 'inset-1.5 rounded-[16%]' : 'inset-6 rounded-[40%]'
+              landscape
+                ? 'inset-2 rounded-[40%_/_46%]'
+                : narrow
+                  ? 'inset-1.5 rounded-[16%]'
+                  : 'inset-6 rounded-[40%]'
             }`}
           />
 
           <div
             className={`absolute left-1/2 z-20 -translate-x-1/2 -translate-y-1/2 ${
-              narrow ? 'top-[7%] scale-90' : 'top-[10%]'
+              landscape ? 'top-[14%]' : narrow ? 'top-[7%] scale-90' : 'top-[10%]'
             }`}
           >
             <DealerPotZone
               amount={Math.max(potTotal, publicTable.pot)}
               sidePotCount={publicTable.sidePots?.length ?? 0}
-              dealerName={narrow ? undefined : dealerPlayer?.name}
+              dealerName={narrow || landscape ? undefined : dealerPlayer?.name}
               showDealer={showDealerZone}
+              landscape={landscape}
             />
           </div>
 
           <div
             className={`absolute left-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center ${
-              narrow ? 'top-[38%]' : 'top-[42%]'
+              landscape ? 'top-[40%]' : narrow ? 'top-[38%]' : 'top-[42%]'
             }`}
           >
             <CommunityBoard
@@ -557,6 +564,7 @@ export function OfflineTableView({
               handId={publicTable.handId}
               cardSize={narrow ? 'sm' : 'md'}
               compact={narrow}
+              landscape={landscape}
               highlightMode={highlightMode}
               winningCards={winningCards}
               dealing={publicTable.street !== 'waiting'}
@@ -587,6 +595,7 @@ export function OfflineTableView({
                 canManageBots={false}
                 compact={narrow}
                 landscape={landscape}
+                isDealer={publicTable.dealerButton === p.seat}
               />
             );
           })}

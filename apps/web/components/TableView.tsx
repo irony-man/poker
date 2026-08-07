@@ -510,7 +510,7 @@ export function TableView({
           <div
             className={`absolute inset-0 felt-surface table-rim shadow-felt overflow-hidden ${
               landscape
-                ? 'rounded-[28%] border-[6px]'
+                ? 'rounded-[42%_/_48%] border-[5px]'
                 : narrow
                   ? 'rounded-[18%] border-[5px]'
                   : 'rounded-[42%] border-[12px]'
@@ -519,7 +519,7 @@ export function TableView({
           <div
             className={`pointer-events-none absolute z-[1] border border-white/10 ${
               landscape
-                ? 'inset-2 rounded-[24%]'
+                ? 'inset-2 rounded-[40%_/_46%]'
                 : narrow
                   ? 'inset-1.5 rounded-[16%]'
                   : 'inset-6 rounded-[40%]'
@@ -528,20 +528,21 @@ export function TableView({
 
           <div
             className={`absolute left-1/2 z-20 -translate-x-1/2 -translate-y-1/2 ${
-              landscape ? 'top-[12%] scale-90' : narrow ? 'top-[7%] scale-90' : 'top-[10%]'
+              landscape ? 'top-[14%]' : narrow ? 'top-[7%] scale-90' : 'top-[10%]'
             }`}
           >
             <DealerPotZone
               amount={Math.max(potTotal, table?.pot ?? 0)}
               sidePotCount={table?.sidePots?.length ?? 0}
-              dealerName={narrow ? undefined : dealerPlayer?.name}
+              dealerName={narrow || landscape ? undefined : dealerPlayer?.name}
               showDealer={showDealerZone}
+              landscape={landscape}
             />
           </div>
 
           <div
             className={`absolute left-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center ${
-              landscape ? 'top-[44%]' : narrow ? 'top-[38%]' : 'top-[42%]'
+              landscape ? 'top-[40%]' : narrow ? 'top-[38%]' : 'top-[42%]'
             }`}
           >
             <CommunityBoard
@@ -549,6 +550,7 @@ export function TableView({
               handId={table?.handId}
               cardSize={narrow ? 'sm' : 'md'}
               compact={narrow}
+              landscape={landscape}
               highlightMode={highlightMode}
               winningCards={winningCards}
               dealing={!!table && table.street !== 'waiting'}
@@ -580,6 +582,7 @@ export function TableView({
                 spectating={isSpectating}
                 compact={narrow}
                 landscape={landscape}
+                isDealer={table.dealerButton === p.seat}
                 onSit={() => {
                   if (!table || isSpectating) return;
                   send({

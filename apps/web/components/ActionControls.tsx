@@ -193,67 +193,105 @@ export function ActionControls({
     </>
   );
 
-  /* —— Landscape: one horizontal strip with small text —— */
+  /* —— Landscape: reference strip — size row + three wide black actions —— */
   if (narrow && landscape) {
+    const landBtn =
+      'inline-flex min-h-[2.75rem] flex-1 items-center justify-center rounded-lg border border-white/10 bg-gradient-to-b from-[#2a2a2a] to-black px-2 text-[13px] font-bold tracking-wide text-white shadow-[0_2px_8px_rgba(0,0,0,0.5)] active:from-[#1a1a1a] active:to-[#050505]';
+    const midLabel = legal.types.includes('check')
+      ? 'Check'
+      : legal.types.includes('call')
+        ? `Call ${callAmount}`
+        : null;
+    const thirdIsBet = canBet;
+    const thirdIsAllin = !canBet && legal.types.includes('allin');
+
     return (
       <div className="flex h-full min-h-0 flex-col">
         {timer}
-        <div className="flex min-h-0 flex-1 items-center gap-1 px-1.5">
-          {canBet && (
-            <>
-              <span className="shrink-0 font-mono text-[11px] font-bold tabular-nums text-brass">
-                {amount}
-              </span>
-              <input
-                type="range"
-                min={min}
-                max={sliderMax}
-                step={bb}
-                value={amount}
-                disabled={sliderMax <= min}
-                onChange={(e) => setBet(Number(e.target.value))}
-                className="bet-slider min-w-0 flex-1"
-                aria-label={`${betLabel} amount`}
-              />
-              <div className="flex shrink-0 gap-0.5">{presets}</div>
-              <button
-                type="button"
-                onClick={() => submitBet(amount)}
-                className={`btn-primary ${actionBtn} shrink-0`}
-              >
-                {betLabel} {amount}
-              </button>
-              <div className="mx-0.5 h-5 w-px shrink-0 bg-cream/15" />
-            </>
-          )}
-
-          {legal.types.includes('fold') && (
+        {canBet && (
+          <div className="flex shrink-0 items-center gap-1 border-b border-white/10 px-1.5 py-0.5">
+            <span className="shrink-0 font-serif text-sm font-normal tabular-nums text-white">
+              ${amount}
+            </span>
+            <input
+              type="range"
+              min={min}
+              max={sliderMax}
+              step={bb}
+              value={amount}
+              disabled={sliderMax <= min}
+              onChange={(e) => setBet(Number(e.target.value))}
+              className="bet-slider min-w-0 flex-1"
+              aria-label={`${betLabel} amount`}
+            />
+            <div className="flex shrink-0 gap-0.5">
+              {(
+                [
+                  ['Min', min],
+                  ['½', halfPot],
+                  ['Pot', potBet],
+                  ['Max', max],
+                ] as const
+              ).map(([label, val]) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => setBet(val)}
+                  className="rounded border border-white/15 bg-black/60 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white/80"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="flex min-h-0 flex-1 items-stretch gap-1.5 px-1.5 py-1">
+          {legal.types.includes('fold') ? (
             <button
               type="button"
               onClick={() => commit('fold', undefined, 'Fold')}
-              className={`btn-danger ${actionBtn}`}
+              className={landBtn}
             >
               Fold
             </button>
+          ) : (
+            <div className="flex-1" />
           )}
-          {legal.types.includes('check') && (
-            <button type="button" onClick={() => commit('check')} className={`btn-secondary ${actionBtn}`}>
-              Check
+          {midLabel ? (
+            <button
+              type="button"
+              onClick={() =>
+                legal.types.includes('check') ? commit('check') : commit('call')
+              }
+              className={landBtn}
+            >
+              {midLabel}
             </button>
+          ) : (
+            <div className="flex-1" />
           )}
-          {legal.types.includes('call') && (
-            <button type="button" onClick={() => commit('call')} className={`btn-secondary ${actionBtn}`}>
-              Call {callAmount}
+          {thirdIsBet ? (
+            <button type="button" onClick={() => submitBet(amount)} className={landBtn}>
+              {betLabel}
             </button>
-          )}
-          {legal.types.includes('allin') && (
+          ) : thirdIsAllin ? (
             <button
               type="button"
               onClick={() => commit('allin', undefined, 'All-in')}
-              className={`btn-primary ${actionBtn}`}
+              className={landBtn}
             >
               All-in
             </button>
+          ) : legal.types.includes('allin') ? (
+            <button
+              type="button"
+              onClick={() => commit('allin', undefined, 'All-in')}
+              className={landBtn}
+            >
+              All-in
+            </button>
+          ) : (
+            <div className="flex-1" />
           )}
         </div>
       </div>

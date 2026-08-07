@@ -110,13 +110,20 @@ export function FloatingActionDock({
 
   /* —— Phone (portrait or landscape): docked —— */
   if (narrow) {
-    const height = landscape
-      ? expanded
-        ? 'h-[4.25rem]'
-        : 'h-[2.5rem]'
-      : expanded
-        ? 'h-[10.75rem]'
-        : 'h-[3.75rem]';
+    if (landscape) {
+      const height = expanded ? 'h-[7.25rem]' : 'h-[2.35rem]';
+      return (
+        <div className="relative z-40 shrink-0 border-t border-black/80 bg-black/95 px-1 pb-[max(0.15rem,env(safe-area-inset-bottom))] pt-0.5 shadow-[0_-8px_24px_rgba(0,0,0,0.55)]">
+          <div
+            className={`mx-auto flex w-full max-w-5xl flex-col overflow-hidden transition-[height] duration-200 ${height}`}
+          >
+            <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
+          </div>
+        </div>
+      );
+    }
+
+    const height = expanded ? 'h-[10.75rem]' : 'h-[3.75rem]';
 
     return (
       <div

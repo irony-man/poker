@@ -43,6 +43,7 @@ export function SeatView({
   angle,
   compact = false,
   landscape = false,
+  isDealer = false,
 }: {
   player: PublicPlayer;
   isToAct: boolean;
@@ -65,10 +66,11 @@ export function SeatView({
   compact?: boolean;
   /** Rotated phone — reference-style stacked cards → stack → name. */
   landscape?: boolean;
+  isDealer?: boolean;
 }) {
   const rad = (angle * Math.PI) / 180;
-  const rx = landscape ? 40 : compact ? 42 : 41;
-  const ry = landscape ? 36 : compact ? 40 : 37;
+  const rx = landscape ? 41 : compact ? 42 : 41;
+  const ry = landscape ? 34 : compact ? 40 : 37;
   const x = 50 + Math.cos(rad) * rx;
   const y = 50 + Math.sin(rad) * ry;
   const isBot = !!player.userId?.startsWith('bot:');
@@ -148,59 +150,77 @@ export function SeatView({
           <SeatActionPopup label={actionBurst.label} burstKey={actionBurst.at} />
         )}
         <div className={folded || sittingOut ? 'opacity-55' : undefined}>
-        {/* —— Landscape reference stack: cards → $ → name —— */}
+        {/* —— Landscape reference: cards → red $ → name; D on dealer —— */}
         {landscape ? (
           <div
             className={`relative flex flex-col items-center ${
-              isSelf && showCards ? 'w-[3.5rem]' : 'w-[3.4rem]'
+              isSelf && showCards ? 'w-[4.25rem]' : 'w-[3.6rem]'
             }`}
           >
-            {(faceDown || showCards) && (
+            {isDealer && (
+              <span className="absolute -right-1 top-0 z-20 flex h-4 w-4 items-center justify-center rounded-full bg-white text-[9px] font-black text-black shadow ring-1 ring-black/20">
+                D
+              </span>
+            )}
+
+            {folded && (
+              <div className="mb-0.5 font-serif text-[12px] font-normal tracking-wide text-white drop-shadow">
+                Fold
+              </div>
+            )}
+
+            {(faceDown || showCards) && !folded && (
               isSelf && showCards ? (
-                <HoleCardFan
-                  cards={showCards}
-                  handId={dealKey}
-                  winningCards={winningCards}
-                  compact
-                />
+                <div
+                  className={`relative mb-1 ${
+                    isToAct ? 'rounded-full p-1 ring-1 ring-dashed ring-white/45' : ''
+                  }`}
+                >
+                  <HoleCardFan
+                    cards={showCards}
+                    handId={dealKey}
+                    winningCards={winningCards}
+                    compact
+                  />
+                </div>
               ) : (
-                <div className="relative z-[1] mb-0.5 flex drop-shadow-md">
+                <div className="relative z-[1] mb-1 flex drop-shadow-md">
                   {faceDown ? (
                     <>
-                      <div className="-mr-2 origin-bottom -rotate-[6deg]">
+                      <div className="-mr-2.5 origin-bottom -rotate-[8deg]">
                         <PlayingCard
                           key={`${dealKey}-${player.seat}-back-0`}
                           faceDown
-                          size={cardSize}
+                          size="sm"
                           dealDelay={0}
                         />
                       </div>
-                      <div className="origin-bottom rotate-[6deg]">
+                      <div className="origin-bottom rotate-[8deg]">
                         <PlayingCard
                           key={`${dealKey}-${player.seat}-back-1`}
                           faceDown
-                          size={cardSize}
+                          size="sm"
                           dealDelay={0.08}
                         />
                       </div>
                     </>
                   ) : (
                     <>
-                      <div className="-mr-2 origin-bottom -rotate-[6deg]">
+                      <div className="-mr-2.5 origin-bottom -rotate-[8deg]">
                         <PlayingCard
                           key={`${dealKey}-${player.seat}-${showCards![0]}`}
                           code={showCards![0]}
-                          size={cardSize}
+                          size="sm"
                           dealDelay={0}
                           highlight={!!winningCards?.has(showCards![0]!)}
                           dimmed={!!winningCards && !winningCards.has(showCards![0]!)}
                         />
                       </div>
-                      <div className="origin-bottom rotate-[6deg]">
+                      <div className="origin-bottom rotate-[8deg]">
                         <PlayingCard
                           key={`${dealKey}-${player.seat}-${showCards![1]}`}
                           code={showCards![1]}
-                          size={cardSize}
+                          size="sm"
                           dealDelay={0.08}
                           highlight={!!winningCards?.has(showCards![1]!)}
                           dimmed={!!winningCards && !winningCards.has(showCards![1]!)}
@@ -212,35 +232,30 @@ export function SeatView({
               )
             )}
 
-            <div className="relative z-[1] w-full overflow-hidden rounded shadow-[0_2px_6px_rgba(0,0,0,0.45)]">
+            <div className="relative z-[1] w-full overflow-hidden rounded shadow-[0_3px_10px_rgba(0,0,0,0.5)]">
               {isToAct && (
                 <div className="pointer-events-none absolute -inset-1 z-0">
-                  <SeatTurnRing endsAt={turnEndsAt} totalMs={turnTotalMs ?? 20000} active size={40} />
+                  <SeatTurnRing endsAt={turnEndsAt} totalMs={turnTotalMs ?? 20000} active size={44} />
                 </div>
               )}
               <div
-                className={`relative px-0.5 py-0.5 text-center text-[10px] font-extrabold tabular-nums leading-none text-white ${
+                className={`relative px-1 py-0.5 text-center text-[11px] font-extrabold tabular-nums leading-none text-white ${
                   isWinner ? 'bg-[#c9a227]' : 'bg-[#c62828]'
                 }`}
               >
                 {money(player.stack)}
               </div>
               <div
-                className={`truncate px-0.5 py-0.5 text-center text-[8px] font-bold leading-none ${
-                  isSelf ? 'bg-[#f5c518] text-black' : 'bg-[#d8d8d8] text-black'
+                className={`truncate px-1 py-0.5 text-center text-[10px] font-bold leading-none ${
+                  isSelf ? 'bg-[#f5c518] text-black' : 'bg-[#e4e4e4] text-black'
                 }`}
               >
                 {displayName}
               </div>
             </div>
 
-            {folded && (
-              <div className="mt-0.5 text-[7px] font-bold uppercase tracking-wider text-white/80">
-                Fold
-              </div>
-            )}
-            {player.status === 'allin' && (
-              <div className="mt-0.5 text-[7px] font-bold uppercase tracking-wider text-[#2aff9a]">
+            {player.status === 'allin' && !folded && (
+              <div className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-[#2aff9a] drop-shadow">
                 All-in
               </div>
             )}

@@ -25,3 +25,5 @@ apps/android/.kotlin/
 apps/android/**/build/
 apps/android/local.properties
 apps/android/build-apk.log
+
+/.idea/

@@ -4,14 +4,7 @@ import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { TableView } from '@/components/TableView';
-import { refreshTicket } from '@/lib/api';
-import { loadSavedAvatarId, saveAvatarId } from '@/lib/avatars';
-import {
-  clearStoredSession,
-  readStoredSession,
-  writeStoredSession,
-  type StoredSession,
-} from '@/lib/session';
+import { clearStoredSession, readStoredSession } from '@/lib/session';
 import { useSession } from '@/lib/store';
 
 function TablePageInner() {
@@ -39,7 +32,7 @@ function TablePageInner() {
     setNeedsAuth(!stored);
   }, []);
 
-  async function bootSession() {
+  function bootSession() {
     const stored = readStoredSession();
     if (!stored) {
       setNeedsAuth(true);
@@ -53,18 +46,14 @@ function TablePageInner() {
     setReady(false);
     setError(null);
     try {
-      const refreshed = await refreshTicket(stored.sessionToken);
-      const next: StoredSession = {
-        userId: refreshed.userId,
-        username: refreshed.username ?? stored.username,
-        name: refreshed.name,
-        ticket: refreshed.ticket,
+      // Stored ticket is multi-use with a long TTL — no /api/ticket on every table open.
+      setSession({
+        userId: stored.userId,
+        username: stored.username,
+        name: stored.name,
+        ticket: stored.ticket,
         sessionToken: stored.sessionToken,
-        avatarId: refreshed.avatarId ?? stored.avatarId ?? loadSavedAvatarId(),
-      };
-      setSession(next);
-      writeStoredSession(next);
-      if (typeof next.avatarId === 'number') saveAvatarId(next.avatarId);
+      });
       setNeedsAuth(false);
       setReady(true);
     } catch (err) {
@@ -81,7 +70,7 @@ function TablePageInner() {
 
   useEffect(() => {
     if (needsAuth !== false) return;
-    void bootSession();
+    bootSession();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tableId, needsAuth]);
 

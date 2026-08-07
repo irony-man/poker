@@ -38,7 +38,7 @@ function SignInForm() {
   }
 
   return (
-    <div className="relative mx-auto w-full max-w-md pt-4 pb-8 sm:pt-8">
+    <div className="lobby-fade-up relative mx-auto flex min-h-full w-full max-w-md flex-col justify-center">
       <div className="relative text-center">
         <h1 className="font-serif text-3xl tracking-tight text-ink-strong sm:text-4xl">Sign in</h1>
         <p className="mt-2 text-sm text-ink-strong-muted">Sign in with your username</p>

@@ -8,12 +8,9 @@ import { LobbySidebar } from '@/components/LobbySidebar';
 import {
   clearStoredSession,
   readStoredSession,
-  writeStoredSession,
-  type StoredSession,
 } from '@/lib/session';
 import { useSession } from '@/lib/store';
-import { logout as apiLogout, refreshTicket } from '@/lib/api';
-import { loadSavedAvatarId, saveAvatarId } from '@/lib/avatars';
+import { logout as apiLogout } from '@/lib/api';
 
 /** App shell: lobby sidebar + main, or immersive play with no chrome. */
 export function AppChrome({ children }: { children: ReactNode }) {
@@ -29,50 +26,34 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const clearSession = useSession((s) => s.clearSession);
   const sessionName = useSession((s) => s.name);
   const sessionToken = useSession((s) => s.sessionToken);
-  const [signedIn, setSignedIn] = useState(false);
-  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [signedIn, setSignedIn] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !!readStoredSession();
+  });
+  const [displayName, setDisplayName] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return readStoredSession()?.name ?? null;
+  });
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // Restore session from localStorage once — do not hit /api/ticket on navigation.
   useEffect(() => {
-    let cancelled = false;
-    async function hydrate() {
-      const stored = readStoredSession();
-      if (!stored) {
-        if (!cancelled) {
-          setSignedIn(false);
-          setDisplayName(null);
-        }
-        return;
-      }
-      try {
-        const refreshed = await refreshTicket(stored.sessionToken);
-        if (cancelled) return;
-        const next: StoredSession = {
-          userId: refreshed.userId,
-          username: refreshed.username ?? stored.username,
-          name: refreshed.name,
-          ticket: refreshed.ticket,
-          sessionToken: stored.sessionToken,
-          avatarId: refreshed.avatarId ?? stored.avatarId ?? loadSavedAvatarId(),
-        };
-        setSession(next);
-        writeStoredSession(next);
-        if (typeof next.avatarId === 'number') saveAvatarId(next.avatarId);
-        setSignedIn(true);
-        setDisplayName(next.name);
-      } catch {
-        if (cancelled) return;
-        clearStoredSession();
-        clearSession();
-        setSignedIn(false);
-        setDisplayName(null);
-      }
+    const stored = readStoredSession();
+    if (!stored) {
+      setSignedIn(false);
+      setDisplayName(null);
+      return;
     }
-    void hydrate();
-    return () => {
-      cancelled = true;
-    };
-  }, [setSession, clearSession, pathname]);
+    setSession({
+      userId: stored.userId,
+      username: stored.username,
+      name: stored.name,
+      ticket: stored.ticket,
+      sessionToken: stored.sessionToken,
+    });
+    setSignedIn(true);
+    setDisplayName(stored.name);
+  }, [setSession]);
 
   useEffect(() => {
     if (sessionName && sessionToken) {
@@ -152,7 +133,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
           className={`flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain ${
             isHome
               ? 'px-4 py-4 sm:px-8 sm:py-5 lg:px-12 xl:px-16'
-              : 'px-4 py-5 sm:px-8 sm:py-8 lg:px-12'
+              : 'px-4 py-4 sm:px-8 sm:py-5 lg:px-12'
           }`}
         >
           {children}

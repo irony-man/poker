@@ -20,7 +20,9 @@ export function LobbyPageShell({
 }) {
   return (
     <div
-      className={`mx-auto flex min-h-0 w-full flex-1 flex-col ${wide ? 'max-w-5xl' : 'max-w-2xl'}`}
+      className={`lobby-fade-up mx-auto flex min-h-full w-full flex-col justify-center ${
+        wide ? 'max-w-5xl' : 'max-w-2xl'
+      }`}
     >
       <header className="mb-4 shrink-0 sm:mb-6">
         <h1 className="font-serif text-3xl tracking-tight text-ink-strong sm:text-4xl">{title}</h1>
@@ -47,12 +49,12 @@ export function LobbyPageShell({
       {error && (
         <p
           role="alert"
-          className="mb-4 status-chip border-danger/30 bg-danger/10 text-danger text-xs"
+          className="mb-4 shrink-0 status-chip border-danger/30 bg-danger/10 text-danger text-xs"
         >
           {error}
         </p>
       )}
-      {children}
+      <div className="min-h-0 w-full">{children}</div>
     </div>
   );
 }

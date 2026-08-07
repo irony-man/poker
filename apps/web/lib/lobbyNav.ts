@@ -1,6 +1,13 @@
 /** Lobby routes shown in the sidebar. Offline play starts at /solo; /offline is the game. */
 
-export type LobbyHref = '/' | '/host' | '/join' | '/public' | '/contests' | '/solo';
+export type LobbyHref =
+  | '/'
+  | '/host'
+  | '/join'
+  | '/public'
+  | '/contests'
+  | '/solo'
+  | '/friends';
 
 export const LOBBY_NAV: { href: LobbyHref; label: string }[] = [
   { href: '/', label: 'Home' },
@@ -8,6 +15,7 @@ export const LOBBY_NAV: { href: LobbyHref; label: string }[] = [
   { href: '/join', label: 'Join' },
   { href: '/public', label: 'Public Tables' },
   { href: '/contests', label: 'Contests' },
+  { href: '/friends', label: 'Friends' },
   { href: '/solo', label: 'Offline' },
 ];
 

@@ -2,17 +2,49 @@
 
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { refreshTicket } from '@/lib/api';
-import { loadSavedAvatarId, saveAvatarId } from '@/lib/avatars';
 import {
   clearStoredSession,
   readStoredSession,
-  writeStoredSession,
   type StoredSession,
 } from '@/lib/session';
 import { useSession } from '@/lib/store';
 
-/** Shared session hydrate + ensure for lobby pages. */
+/** Map stored session into the zustand auth slice. */
+function applyStored(setSession: (s: {
+  userId: string;
+  name: string;
+  ticket: string;
+  username?: string;
+  sessionToken?: string;
+}) => void, stored: StoredSession) {
+  setSession({
+    userId: stored.userId,
+    username: stored.username,
+    name: stored.name,
+    ticket: stored.ticket,
+    sessionToken: stored.sessionToken,
+  });
+}
+
+/** Resolve current session from memory or localStorage (no network). */
+function resolveLocalSession(): StoredSession | null {
+  const live = useSession.getState();
+  if (live.userId && live.sessionToken && live.ticket && live.name) {
+    return {
+      userId: live.userId,
+      username: live.username ?? live.name,
+      name: live.name,
+      ticket: live.ticket,
+      sessionToken: live.sessionToken,
+    };
+  }
+  return readStoredSession();
+}
+
+/**
+ * Shared session hydrate for lobby pages.
+ * Restores from memory/localStorage only (no `/api/ticket` network call).
+ */
 export function useLobbySession() {
   const router = useRouter();
   const setSession = useSession((s) => s.setSession);
@@ -24,79 +56,34 @@ export function useLobbySession() {
   const [name, setName] = useState(sessionName ?? '');
 
   useEffect(() => {
-    let cancelled = false;
-    async function hydrate() {
-      const stored = readStoredSession();
-      if (!stored) {
-        if (!cancelled) {
-          setAuthReady(true);
-          setSignedIn(false);
-        }
-        return;
-      }
-      try {
-        const refreshed = await refreshTicket(stored.sessionToken);
-        if (cancelled) return;
-        const next: StoredSession = {
-          userId: refreshed.userId,
-          username: refreshed.username ?? stored.username,
-          name: refreshed.name,
-          ticket: refreshed.ticket,
-          sessionToken: stored.sessionToken,
-          avatarId: refreshed.avatarId ?? stored.avatarId ?? loadSavedAvatarId(),
-        };
-        setSession(next);
-        writeStoredSession(next);
-        if (typeof next.avatarId === 'number') saveAvatarId(next.avatarId);
-        setName(next.name);
-        setSignedIn(true);
-      } catch {
-        if (cancelled) return;
-        clearStoredSession();
-        clearSession();
-        setSignedIn(false);
-      } finally {
-        if (!cancelled) setAuthReady(true);
-      }
+    const stored = resolveLocalSession();
+    if (stored) {
+      applyStored(setSession, stored);
+      setName(stored.name);
+      setSignedIn(true);
+    } else {
+      setSignedIn(false);
     }
-    void hydrate();
-    return () => {
-      cancelled = true;
-    };
-  }, [setSession, clearSession]);
+    setAuthReady(true);
+  }, [setSession]);
 
   useEffect(() => {
     if (sessionName) setName(sessionName);
   }, [sessionName]);
 
   const ensureSession = useCallback(async (): Promise<StoredSession> => {
-    const stored = readStoredSession();
+    const stored = resolveLocalSession();
     if (!stored) {
-      router.push('/sign-in');
-      throw new Error('Sign in required');
-    }
-    try {
-      const refreshed = await refreshTicket(stored.sessionToken);
-      const next: StoredSession = {
-        userId: refreshed.userId,
-        username: refreshed.username ?? stored.username,
-        name: refreshed.name,
-        ticket: refreshed.ticket,
-        sessionToken: stored.sessionToken,
-        avatarId: refreshed.avatarId ?? stored.avatarId,
-      };
-      setSession(next);
-      writeStoredSession(next);
-      setName(next.name);
-      setSignedIn(true);
-      return next;
-    } catch {
       clearStoredSession();
       clearSession();
       setSignedIn(false);
       router.push('/sign-in');
-      throw new Error('Session expired — sign in again');
+      throw new Error('Sign in required');
     }
+    applyStored(setSession, stored);
+    setName(stored.name);
+    setSignedIn(true);
+    return stored;
   }, [router, setSession, clearSession]);
 
   return {

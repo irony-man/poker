@@ -11,16 +11,21 @@ import {
 } from '@/lib/session';
 import { useSession } from '@/lib/store';
 import { logout as apiLogout } from '@/lib/api';
+import { attachPlayFullscreen } from '@/lib/mobileFullscreen';
 
 /** App shell: lobby sidebar + main, or immersive play with no chrome. */
 export function AppChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const playRoute =
-    pathname.startsWith('/table/') ||
-    pathname === '/offline' ||
-    pathname.startsWith('/contest/');
+  const tablePlay = pathname.startsWith('/table/') || pathname === '/offline';
+  const playRoute = tablePlay || pathname.startsWith('/contest/');
   const immersive = playRoute;
   const isHome = pathname === '/';
+
+  // Mobile: enter browser fullscreen on table routes (gesture-retry + clean exit).
+  useEffect(() => {
+    if (!tablePlay) return;
+    return attachPlayFullscreen();
+  }, [tablePlay]);
 
   const setSession = useSession((s) => s.setSession);
   const clearSession = useSession((s) => s.clearSession);

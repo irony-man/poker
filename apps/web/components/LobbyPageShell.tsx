@@ -19,7 +19,9 @@ export function LobbyPageShell({
   return (
     <div className="lobby-fade-up flex w-full flex-col justify-start">
       <header className="mb-4 shrink-0 sm:mb-5">
-        <h1 className="font-serif text-3xl tracking-tight text-ink-strong sm:text-4xl">{title}</h1>
+        <h1 className="font-display text-3xl font-bold tracking-tight text-ink-strong sm:text-4xl">
+          {title}
+        </h1>
         {requireAuth && !signedIn && (
           <p className="mt-2 text-sm text-ink-strong-muted">
             You&apos;ll need an account for this —{' '}

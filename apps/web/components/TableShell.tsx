@@ -2,6 +2,15 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { ChatPanel } from './ChatPanel';
+import {
+  ChatActionDock,
+  FloatingActionDock,
+  loadActionPlacement,
+  saveActionPlacement,
+  type ActionPlacement,
+} from './FloatingActionDock';
+import { MobileQuickReactions } from './MobileQuickReactions';
+import { TableActionToast } from './TableActionToast';
 import { useSession } from '@/lib/store';
 import { useIsNarrow } from '@/lib/tableLayout';
 
@@ -29,6 +38,8 @@ export function TableShell({
   onEmoji,
   chatOpen,
   onChatOpenChange,
+  actions,
+  actionsExpanded = false,
 }: {
   children: ReactNode;
   onSend: (text: string) => void;
@@ -36,10 +47,14 @@ export function TableShell({
   /** Controlled mobile chat drawer (optional). */
   chatOpen?: boolean;
   onChatOpenChange?: (open: boolean) => void;
+  /** Action controls (ActionControls). Placed bottom on mobile; float or chat on laptop. */
+  actions?: ReactNode;
+  actionsExpanded?: boolean;
 }) {
   const narrow = useIsNarrow();
   const [internalMobileOpen, setInternalMobileOpen] = useState(false);
   const [desktopOpen, setDesktopOpen] = useState(true);
+  const [actionPlacement, setActionPlacement] = useState<ActionPlacement>('float');
   const mobileOpen = chatOpen ?? internalMobileOpen;
   const setMobileOpen = onChatOpenChange ?? setInternalMobileOpen;
 
@@ -51,6 +66,7 @@ export function TableShell({
     } catch {
       /* ignore */
     }
+    setActionPlacement(loadActionPlacement());
   }, []);
 
   function setChatVisible(visible: boolean) {
@@ -60,28 +76,67 @@ export function TableShell({
     } catch {
       /* ignore */
     }
+    // Hiding chat while actions are docked → float so controls stay reachable.
+    if (!visible && actionPlacement === 'chat') {
+      setActionPlacement('float');
+      saveActionPlacement('float');
+    }
   }
+
+  function placeActions(next: ActionPlacement) {
+    setActionPlacement(next);
+    saveActionPlacement(next);
+    if (next === 'chat') {
+      setDesktopOpen(true);
+      try {
+        localStorage.setItem(STORAGE_KEY, '1');
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  const showFloat = !!actions && (narrow || actionPlacement === 'float');
+  const showChatDock = !!actions && !narrow && actionPlacement === 'chat' && desktopOpen;
 
   return (
     <div className="relative flex h-full min-h-0 flex-1 overflow-hidden">
       <EmojiOverlay />
+      <TableActionToast />
 
       <div
         className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ${
           narrow ? 'px-0 py-0' : 'px-4 py-2'
         }`}
       >
-        {children}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{children}</div>
+        {narrow ? <MobileQuickReactions onEmoji={onEmoji} /> : null}
+        {showFloat ? (
+          <FloatingActionDock
+            expanded={actionsExpanded}
+            label="Actions"
+            onDockToChat={!narrow ? () => placeActions('chat') : undefined}
+          >
+            {actions}
+          </FloatingActionDock>
+        ) : null}
       </div>
 
       {!narrow && desktopOpen ? (
         <aside className="relative flex w-[21rem] shrink-0 flex-col overflow-hidden border-l border-sidebar/12 bg-mushroom shadow-[-8px_0_28px_rgb(29_4_50/0.06)]">
-          <ChatPanel
-            onSend={onSend}
-            onEmoji={onEmoji}
-            onClose={() => setChatVisible(false)}
-            closeLabel="Hide"
-          />
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            <ChatPanel
+              onSend={onSend}
+              onEmoji={onEmoji}
+              onClose={() => setChatVisible(false)}
+              closeLabel="Hide"
+            />
+          </div>
+          {showChatDock ? (
+            <ChatActionDock expanded={actionsExpanded} onFloat={() => placeActions('float')}>
+              {actions}
+            </ChatActionDock>
+          ) : null}
         </aside>
       ) : null}
 

@@ -25,7 +25,9 @@ export function TopUpModal({
           onConfirm(amount);
         }}
       >
-        <h3 className="font-display text-xl text-mushroom">Top up</h3>
+        <h3 className="font-display text-xl font-bold uppercase tracking-wide text-mushroom">
+          Top up
+        </h3>
         <p className="text-sm text-cream/60">
           Stack ${formatChips(currentStack)} · table buy-in ${formatChips(buyIn)}
         </p>

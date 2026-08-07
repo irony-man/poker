@@ -10,6 +10,7 @@ import {
   unregisterContest,
   WS_URL,
 } from '@/lib/api';
+import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { useSession } from '@/lib/store';
 
 function nameOf(contest: ContestView, userId: string | null): string {
@@ -97,6 +98,7 @@ export default function ContestPage() {
         } else if (msg.type === 'contest_event' && msg.event === 'match_assigned' && msg.tableId) {
           if (navigatedTable.current !== msg.tableId) {
             navigatedTable.current = msg.tableId;
+            enterMobileFullscreen();
             router.push(`/table/${msg.tableId}?contest=${contestId}`);
           }
         }
@@ -125,6 +127,7 @@ export default function ContestPage() {
     const a = contest.assignments.find((x) => x.userId === userId);
     if (a?.tableId && navigatedTable.current !== a.tableId) {
       navigatedTable.current = a.tableId;
+      enterMobileFullscreen();
       router.push(`/table/${a.tableId}?contest=${contestId}`);
     }
   }, [contest, userId, contestId, router]);
@@ -233,7 +236,10 @@ export default function ContestPage() {
           <button
             type="button"
             className="btn-primary"
-            onClick={() => router.push(`/table/${myAssignment.tableId}?contest=${contestId}`)}
+            onClick={() => {
+              enterMobileFullscreen();
+              router.push(`/table/${myAssignment.tableId}?contest=${contestId}`);
+            }}
           >
             Go to table
           </button>
@@ -316,9 +322,10 @@ export default function ContestPage() {
                           <button
                             type="button"
                             className="ml-2 text-sidebar underline"
-                            onClick={() =>
-                              router.push(`/table/${m.tableId}?contest=${contestId}`)
-                            }
+                            onClick={() => {
+                              enterMobileFullscreen();
+                              router.push(`/table/${m.tableId}?contest=${contestId}`);
+                            }}
                           >
                             Table
                           </button>

@@ -1,0 +1,25 @@
+{
+  "name": "POKR — Texas Hold'em",
+  "short_name": "POKR",
+  "description": "Private No-Limit Texas Hold'em for home games",
+  "start_url": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone", "browser"],
+  "orientation": "any",
+  "background_color": "#e6d9d7",
+  "theme_color": "#1d0432",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

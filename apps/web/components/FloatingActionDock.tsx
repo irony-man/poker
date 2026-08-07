@@ -11,6 +11,9 @@ import {
 import { useIsLandscapePhone, useIsNarrow } from '@/lib/tableLayout';
 
 const POS_KEY = 'felt-action-dock-pos';
+export const ACTION_PLACEMENT_KEY = 'felt-action-placement';
+
+export type ActionPlacement = 'float' | 'chat';
 
 type Pos = { x: number; y: number };
 
@@ -34,20 +37,95 @@ function savePos(p: Pos) {
   }
 }
 
+export function loadActionPlacement(): ActionPlacement {
+  try {
+    const raw = localStorage.getItem(ACTION_PLACEMENT_KEY);
+    if (raw === 'chat' || raw === 'float') return raw;
+  } catch {
+    /* ignore */
+  }
+  return 'float';
+}
+
+export function saveActionPlacement(p: ActionPlacement) {
+  try {
+    localStorage.setItem(ACTION_PLACEMENT_KEY, p);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Fixed-height action body used by float, mobile, and chat docks. */
+export function ActionDockBody({
+  children,
+  className = '',
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`flex h-[160px] min-h-[160px] w-full flex-col overflow-hidden bg-mushroom ${className}`}
+    >
+      <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">{children}</div>
+    </div>
+  );
+}
+
+/** Actions pinned under desktop chat. */
+export function ChatActionDock({
+  children,
+  expanded,
+  onFloat,
+}: {
+  children: ReactNode;
+  expanded: boolean;
+  onFloat: () => void;
+}) {
+  return (
+    <div
+      className={`shrink-0 border-t bg-mushroom ${
+        expanded ? 'border-sidebar/25' : 'border-sidebar/12'
+      }`}
+    >
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-sidebar/10 bg-white/70 px-3 py-1.5">
+        <span
+          className={`text-[10px] font-display uppercase tracking-[0.18em] ${
+            expanded ? 'text-sidebar' : 'text-ink-strong-muted'
+          }`}
+        >
+          {expanded ? 'Your move' : 'Actions'}
+        </span>
+        <button
+          type="button"
+          onClick={onFloat}
+          className="rounded border border-sidebar/20 px-2 py-0.5 text-[10px] font-display font-semibold uppercase tracking-wider text-ink-strong-muted hover:border-sidebar/40 hover:bg-sidebar/8 hover:text-sidebar"
+          title="Float actions over the table"
+        >
+          Float
+        </button>
+      </div>
+      <ActionDockBody>{children}</ActionDockBody>
+    </div>
+  );
+}
+
 /**
- * Mobile portrait: fixed-height dock.
- * Mobile landscape: fixed slim strip.
- * Desktop: fixed-height undocked floating popup.
+ * Mobile portrait/landscape: bottom dock.
+ * Desktop: floating draggable popup (optional Dock-to-chat).
  */
 export function FloatingActionDock({
   children,
   expanded,
   label = 'Actions',
+  onDockToChat,
 }: {
   children: ReactNode;
   /** When true, it's your turn. */
   expanded: boolean;
   label?: string;
+  /** Desktop only — dock actions under chat. */
+  onDockToChat?: () => void;
 }) {
   const narrow = useIsNarrow();
   const landscape = useIsLandscapePhone();
@@ -174,31 +252,36 @@ export function FloatingActionDock({
             expanded ? 'border-sidebar/30 ring-1 ring-sidebar/10' : 'border-sidebar/18'
           }`}
         >
-          <div className="flex shrink-0 cursor-grab items-center justify-between gap-3 border-b border-sidebar/12 bg-white/70 px-3 py-1.5 active:cursor-grabbing">
+          <div className="flex shrink-0 cursor-grab items-center justify-between gap-2 border-b border-sidebar/12 bg-white/70 px-3 py-1.5 active:cursor-grabbing">
             <span
-              className={`text-[10px] font-display uppercase tracking-[0.22em] ${
+              className={`min-w-0 truncate text-[10px] font-display uppercase tracking-[0.22em] ${
                 expanded ? 'text-sidebar' : 'text-ink-strong-muted'
               }`}
             >
               Drag · {expanded ? 'your move' : 'actions'}
             </span>
-            <button
-              type="button"
-              data-no-drag
-              onClick={() => setOpen(false)}
-              className="rounded border border-sidebar/20 px-2 py-0.5 text-[10px] uppercase tracking-wider text-ink-strong-muted hover:border-sidebar/40 hover:bg-sidebar/8 hover:text-sidebar"
-            >
-              Min
-            </button>
-          </div>
-          {/* Fixed action body: 160px min/height — no layout jump between wait & turn */}
-          <div
-            data-no-drag
-            className="flex h-[160px] min-h-[160px] w-full flex-col overflow-hidden bg-mushroom"
-          >
-            <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
-              {children}
+            <div className="flex shrink-0 items-center gap-1" data-no-drag>
+              {onDockToChat ? (
+                <button
+                  type="button"
+                  onClick={onDockToChat}
+                  className="rounded border border-sidebar/20 px-2 py-0.5 text-[10px] font-display font-semibold uppercase tracking-wider text-ink-strong-muted hover:border-sidebar/40 hover:bg-sidebar/8 hover:text-sidebar"
+                  title="Dock actions in chat panel"
+                >
+                  In chat
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="rounded border border-sidebar/20 px-2 py-0.5 text-[10px] uppercase tracking-wider text-ink-strong-muted hover:border-sidebar/40 hover:bg-sidebar/8 hover:text-sidebar"
+              >
+                Min
+              </button>
             </div>
+          </div>
+          <div data-no-drag>
+            <ActionDockBody>{children}</ActionDockBody>
           </div>
         </div>
       )}

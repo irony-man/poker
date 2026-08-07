@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { FriendsPanel } from '@/components/FriendsPanel';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
+import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { useLobbySession } from '@/lib/useLobbySession';
 
 export default function FriendsPage() {
@@ -18,6 +19,7 @@ export default function FriendsPage() {
       <FriendsPanel
         disabled={!signedIn}
         onNavigateTable={(tableId, inviteCode) => {
+          enterMobileFullscreen();
           router.push(`/table/${tableId}?invite=${inviteCode}`);
         }}
       />

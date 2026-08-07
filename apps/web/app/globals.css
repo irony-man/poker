@@ -136,7 +136,8 @@ html {
 h1,
 h2,
 h3 {
-  font-family: var(--font-heading);
+  font-family: var(--font-display);
+  font-weight: 700;
 }
 
 /* Same mushroom ground as lobby pages — table oval provides the purple. */
@@ -150,6 +151,19 @@ body {
   color: rgb(var(--ink-strong));
 }
 
+/* Mobile browser fullscreen during play — fill the display edge-to-edge. */
+html:fullscreen,
+html:-webkit-full-screen {
+  height: 100%;
+  background-color: rgb(var(--mushroom));
+}
+
+html:fullscreen body,
+html:-webkit-full-screen body {
+  height: 100%;
+  max-height: 100%;
+}
+
 body::before {
   display: none;
 }
@@ -161,6 +175,9 @@ body > * {
 
 /* Play routes (table / offline / contest): keep light page ground. */
 .play-shell {
+  min-height: 100%;
+  min-height: 100dvh;
+  min-height: 100svh;
   background-color: rgb(var(--mushroom));
   color: rgb(var(--ink-strong));
 }
@@ -250,6 +267,10 @@ body > * {
   color: rgb(var(--ink-strong-muted));
 }
 
+.lobby-shell .field-help {
+  color: rgb(var(--ink-strong-muted));
+}
+
 .lobby-shell .choice-chip {
   border-color: rgb(var(--sidebar) / 0.14);
   background-color: rgb(var(--mushroom) / 0.5);
@@ -331,7 +352,7 @@ body > * {
 
 @layer components {
   .field-select {
-    @apply w-full rounded-md border border-mushroom/20 bg-ink-raised px-3 py-2 text-cream outline-none font-medium tracking-wide;
+    @apply w-full rounded-md border border-mushroom/20 bg-ink-raised px-3 py-2 text-cream outline-none font-body font-medium tracking-wide;
     color-scheme: dark;
   }
 
@@ -357,7 +378,7 @@ body > * {
   }
 
   .hud-input {
-    @apply mt-1 w-full rounded-md border border-mushroom/15 bg-ink/70 px-3 py-2 text-cream outline-none transition;
+    @apply mt-1 w-full rounded-md border border-mushroom/15 bg-ink/70 px-3 py-2 font-body text-cream outline-none transition;
   }
 
   .hud-input::placeholder {
@@ -370,6 +391,10 @@ body > * {
 
   .hud-label {
     @apply block text-xs uppercase tracking-[0.16em] text-cream-muted font-display font-semibold;
+  }
+
+  .field-help {
+    @apply mt-1 block text-xs font-body text-ink-strong-muted;
   }
 
   .choice-chip {
@@ -464,32 +489,56 @@ body > * {
       0 0 0 1px rgb(var(--sidebar) / 0.35),
       0 16px 40px rgb(29 4 50 / 0.18);
   }
+}
 
-  .seat-action-popup {
-    animation: seat-action-pop 5s var(--ease-out) both;
+/* Heads-up table action notification (spring in, fade up-out). */
+@keyframes table-action-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-120%) scale(0.94);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(4px) scale(1.01);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
-@keyframes seat-action-pop {
-  0% {
-    opacity: 0;
-    transform: translateY(8px) scale(0.8);
-  }
-  4% {
-    opacity: 1;
-    transform: translateY(0) scale(1.08);
-  }
-  8% {
-    transform: translateY(0) scale(1);
-  }
-  85% {
+@keyframes table-action-toast-out {
+  from {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
-  100% {
+  to {
     opacity: 0;
-    transform: translateY(-12px) scale(0.96);
+    transform: translateY(-110%) scale(0.96);
   }
+}
+
+@keyframes table-action-toast-bar {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.table-action-toast-in {
+  animation: table-action-toast-in 420ms var(--ease-out) both;
+}
+
+.table-action-toast-out {
+  animation: table-action-toast-out 280ms var(--ease-out) both;
+}
+
+.table-action-toast-bar {
+  animation-name: table-action-toast-bar;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
 }
 
 @media (prefers-reduced-motion: reduce) {

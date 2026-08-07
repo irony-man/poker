@@ -1,14 +1,20 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { ActionControls } from './ActionControls';
 import { CommunityBoard } from './CommunityBoard';
-import { FloatingActionDock } from './FloatingActionDock';
 import { DealerPotZone } from './DealerPotZone';
 import { HowToPlayHelp } from './HowToPlayHelp';
 import { SeatView } from './SeatView';
 import { CopyRoomLink } from './CopyRoomLink';
+import {
+  LeaderboardToggle,
+  TableLeaderboard,
+  loadShowLeaderboard,
+  saveShowLeaderboard,
+} from './TableLeaderboard';
 import { TableOverflowMenu, type OverflowItem } from './TableOverflowMenu';
 import { TableShell } from './TableShell';
 import { TopUpModal } from './TopUpModal';
@@ -48,8 +54,21 @@ export function TableView({
   const [spectating, setSpectating] = useState(initialSpectate);
   const [dismissedWinHandId, setDismissedWinHandId] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
   const prevVersion = useRef<number | null>(null);
   const autoSitSent = useRef(false);
+
+  useEffect(() => {
+    setShowLeaderboard(loadShowLeaderboard());
+  }, []);
+
+  const toggleLeaderboard = () => {
+    setShowLeaderboard((prev) => {
+      const next = !prev;
+      saveShowLeaderboard(next);
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (lastErrorCode !== 'not_found' && lastErrorCode !== 'kicked') return;
@@ -330,6 +349,12 @@ export function TableView({
       onClick: () => setChatOpen(true),
       tone: 'accent',
     });
+    mobileOverflowItems.push({
+      id: 'leaderboard',
+      label: showLeaderboard ? 'Hide leaderboard' : 'Show leaderboard',
+      onClick: toggleLeaderboard,
+      tone: 'accent',
+    });
     if (!isSpectating && emptySeats > 0) {
       mobileOverflowItems.push(
         {
@@ -401,27 +426,33 @@ export function TableView({
       onEmoji={(emoji) => send({ type: 'emoji', tableId, emoji })}
       chatOpen={chatOpen}
       onChatOpenChange={setChatOpen}
+      actionsExpanded={!!isMyTurn}
+      actions={
+        <ActionControls
+          onAction={onAction}
+          spectating={isSpectating}
+          bare
+          connectionOpen={connection === 'open'}
+        />
+      }
     >
       <div className="flex min-h-0 flex-1 flex-col">
-        {/* Mobile: street · blinds · overflow | Desktop: full chrome */}
+        {/* Mobile controls | Desktop chrome — brand mark top-left */}
         <div className="mb-1 flex shrink-0 items-center justify-between gap-2 px-1.5 text-sm text-ink-strong-muted sm:mb-2 sm:px-0">
-          <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
-            <span className="status-chip shrink-0 border-sidebar/25 bg-sidebar/8 text-sidebar capitalize max-sm:px-1.5 max-sm:py-0.5 max-sm:text-[10px]">
-              {table?.street ?? '…'}
-            </span>
+          <div className="flex min-w-0 items-center gap-2">
+            <Image
+              src="/purple-logo.png"
+              alt="POKR"
+              width={140}
+              height={40}
+              className="h-7 w-auto object-contain object-left sm:h-8"
+              priority
+            />
             {isSpectating && (
               <span className="status-chip shrink-0 border-brass/40 bg-brass/15 text-ink-strong max-sm:text-[10px]">
                 Spec
               </span>
             )}
-            {table && (
-              <span className="truncate text-[10px] text-ink-strong-muted sm:text-xs">
-                {table.config.smallBlind}/{table.config.bigBlind}
-              </span>
-            )}
-            {table?.handId ? (
-              <span className="hidden font-mono text-[10px] text-ink-strong-muted/70 sm:inline">#{table.handId}</span>
-            ) : null}
           </div>
 
           {narrow ? (
@@ -467,6 +498,7 @@ export function TableView({
                 onLeave={voice.leaveVoice}
                 onToggleMute={voice.toggleMute}
               />
+              <LeaderboardToggle open={showLeaderboard} onToggle={toggleLeaderboard} />
               <HowToPlayHelp />
               <div
                 className={
@@ -544,6 +576,17 @@ export function TableView({
           {!narrow ? (
             <div className="pointer-events-none absolute inset-6 z-[1] rounded-[40%] border border-white/10" />
           ) : null}
+
+          <TableLeaderboard
+            players={table?.players ?? []}
+            userId={userId}
+            open={showLeaderboard}
+            onClose={() => {
+              setShowLeaderboard(false);
+              saveShowLeaderboard(false);
+            }}
+            compact={narrow}
+          />
 
           <div
             className={`absolute left-1/2 z-20 -translate-x-1/2 -translate-y-1/2 ${
@@ -776,14 +819,6 @@ export function TableView({
           )}
         </div>
 
-        <FloatingActionDock expanded={!!isMyTurn} label="Actions">
-          <ActionControls
-            onAction={onAction}
-            spectating={isSpectating}
-            bare
-            connectionOpen={connection === 'open'}
-          />
-        </FloatingActionDock>
       </div>
 
           {showWinModal && table && (

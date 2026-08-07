@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { resolveContestInvite, resolveInvite } from '@/lib/api';
+import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { useLobbySession } from '@/lib/useLobbySession';
 
 export default function JoinPage() {
@@ -23,6 +24,7 @@ export default function JoinPage() {
   }
 
   async function enterInvite(mode: 'play' | 'spectate') {
+    enterMobileFullscreen();
     setBusy(true);
     setError(null);
     try {
@@ -71,19 +73,18 @@ export default function JoinPage() {
               inputMode="numeric"
               maxLength={8}
               required
-              placeholder="Room code"
               autoComplete="off"
             />
           </label>
           <div className="mt-1 grid grid-cols-2 gap-2.5">
-            <button disabled={busy} type="submit" className="btn-ghost min-h-11 w-full">
+            <button disabled={busy} type="submit" className="btn-primary min-h-11 w-full">
               Enter table
             </button>
             <button
               disabled={busy || !invite.trim()}
               type="button"
               onClick={() => void enterInvite('spectate')}
-              className="min-h-11 rounded-md border border-sidebar/30 bg-sidebar/5 px-4 py-2.5 text-sm font-display font-semibold uppercase tracking-wider text-sidebar transition hover:bg-sidebar/10 disabled:opacity-40"
+              className="btn-ghost min-h-11 w-full"
             >
               Spectate
             </button>

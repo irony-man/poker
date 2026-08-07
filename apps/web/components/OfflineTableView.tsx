@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Image from 'next/image';
 import {
   applyAction,
   applyTimeout,
@@ -24,10 +25,15 @@ import {
 } from '@poker/engine';
 import { ActionControls } from './ActionControls';
 import { CommunityBoard } from './CommunityBoard';
-import { FloatingActionDock } from './FloatingActionDock';
 import { DealerPotZone } from './DealerPotZone';
 import { SeatView } from './SeatView';
 import { HowToPlayHelp } from './HowToPlayHelp';
+import {
+  LeaderboardToggle,
+  TableLeaderboard,
+  loadShowLeaderboard,
+  saveShowLeaderboard,
+} from './TableLeaderboard';
 import { TableOverflowMenu, type OverflowItem } from './TableOverflowMenu';
 import { TableShell } from './TableShell';
 import { TopUpModal } from './TopUpModal';
@@ -164,8 +170,21 @@ export function OfflineTableView({
   const [dismissedWinHandId, setDismissedWinHandId] = useState<string | null>(null);
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevVersion = useRef<number | null>(null);
+
+  useEffect(() => {
+    setShowLeaderboard(loadShowLeaderboard());
+  }, []);
+
+  const toggleLeaderboard = () => {
+    setShowLeaderboard((prev) => {
+      const next = !prev;
+      saveShowLeaderboard(next);
+      return next;
+    });
+  };
 
   const clearTimer = () => {
     if (timerRef.current) {
@@ -179,7 +198,6 @@ export function OfflineTableView({
     (next: HandState, events: EngineEvent[]) => {
       announceEvents(next, events, pushChat, (seat, label) => {
         setActionBurst({ seat, label, at: Date.now() });
-        window.setTimeout(() => setActionBurst(null), 5000);
       });
     },
     [pushChat, setActionBurst],
@@ -451,6 +469,12 @@ export function OfflineTableView({
       onClick: () => setChatOpen(true),
       tone: 'accent',
     });
+    offlineOverflow.push({
+      id: 'leaderboard',
+      label: showLeaderboard ? 'Hide leaderboard' : 'Show leaderboard',
+      onClick: toggleLeaderboard,
+      tone: 'accent',
+    });
     if (canSitOut) {
       offlineOverflow.push({
         id: 'sit-out',
@@ -497,19 +521,20 @@ export function OfflineTableView({
       }}
       chatOpen={chatOpen}
       onChatOpenChange={setChatOpen}
+      actionsExpanded={!!isMyTurn}
+      actions={<ActionControls onAction={onAction} bare />}
     >
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="mb-1 flex shrink-0 items-center justify-between gap-2 px-1.5 text-sm text-ink-strong-muted sm:mb-2 sm:px-0">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <span className="status-chip border-positive/35 bg-positive/10 text-positive max-sm:px-1.5 max-sm:py-0.5 max-sm:text-[10px]">
-              Offline
-            </span>
-            <span className="status-chip border-sidebar/25 bg-sidebar/8 text-sidebar capitalize max-sm:px-1.5 max-sm:py-0.5 max-sm:text-[10px]">
-              {publicTable.street}
-            </span>
-            <span className="text-[10px] text-ink-strong-muted sm:text-xs">
-              {config.smallBlind}/{config.bigBlind}
-            </span>
+          <div className="flex min-w-0 items-center gap-2">
+            <Image
+              src="/purple-logo.png"
+              alt="POKR"
+              width={140}
+              height={40}
+              className="h-7 w-auto object-contain object-left sm:h-8"
+              priority
+            />
           </div>
           {narrow ? (
             <div className="flex shrink-0 items-center gap-1.5">
@@ -518,6 +543,7 @@ export function OfflineTableView({
             </div>
           ) : (
             <div className="flex shrink-0 items-center gap-2">
+              <LeaderboardToggle open={showLeaderboard} onToggle={toggleLeaderboard} />
               <HowToPlayHelp />
               <a href="/" className="text-[10px] text-sidebar/80 hover:text-sidebar sm:text-xs">
                 ← Lobby
@@ -538,6 +564,17 @@ export function OfflineTableView({
           {!narrow ? (
             <div className="pointer-events-none absolute inset-6 z-[1] rounded-[40%] border border-white/10" />
           ) : null}
+
+          <TableLeaderboard
+            players={publicTable.players}
+            userId={HUMAN_ID}
+            open={showLeaderboard}
+            onClose={() => {
+              setShowLeaderboard(false);
+              saveShowLeaderboard(false);
+            }}
+            compact={narrow}
+          />
 
           <div
             className={`absolute left-1/2 z-20 -translate-x-1/2 -translate-y-1/2 ${
@@ -653,9 +690,6 @@ export function OfflineTableView({
           )}
         </div>
 
-        <FloatingActionDock expanded={!!isMyTurn} label="Actions">
-          <ActionControls onAction={onAction} bare />
-        </FloatingActionDock>
       </div>
 
       {showWinModal && publicTable && (

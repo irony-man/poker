@@ -10,19 +10,6 @@ function money(n: number): string {
   return `$${formatChips(n)}`;
 }
 
-function SeatActionPopup({ label, burstKey }: { label: string; burstKey: number }) {
-  return (
-    <div
-      key={burstKey}
-      className="pointer-events-none absolute left-1/2 top-0 z-30 -translate-x-1/2 -translate-y-[115%]"
-    >
-      <span className="seat-action-popup inline-block whitespace-nowrap rounded-lg border-2 border-mushroom/55 bg-sidebar/95 px-3.5 py-1.5 text-sm font-extrabold uppercase tracking-wide text-mushroom shadow-[0_6px_18px_rgba(14,6,24,0.65)]">
-        {label}
-      </span>
-    </div>
-  );
-}
-
 export function SeatView({
   player,
   isToAct,
@@ -81,6 +68,7 @@ export function SeatView({
   const y = 50 + Math.sin(rad) * ry;
   const isBot = !!player.userId?.startsWith('bot:');
   const actionBurst = useSession((s) => s.actionBurst);
+  /** Highlight the acting seat while the table toast is up. */
   const showAction = actionBurst != null && actionBurst.seat === player.seat;
 
   const betX = 50 + Math.cos(rad) * (landscape ? 22 : compact ? 24 : 23);
@@ -152,10 +140,13 @@ export function SeatView({
         style={{ left: `${x}%`, top: `${y}%` }}
         className={`absolute -translate-x-1/2 -translate-y-1/2 ${isToAct || isWinner || showAction ? 'z-20' : 'z-10'}`}
       >
-        {showAction && actionBurst && (
-          <SeatActionPopup label={actionBurst.label} burstKey={actionBurst.at} />
-        )}
-        <div className={folded || sittingOut ? 'opacity-55' : undefined}>
+        <div
+          className={`${folded || sittingOut ? 'opacity-55' : ''} ${
+            showAction
+              ? 'rounded-xl ring-2 ring-mushroom/70 ring-offset-2 ring-offset-transparent shadow-[0_0_0_6px_rgb(29_4_50/0.25)]'
+              : ''
+          }`}
+        >
         {/* —— Landscape reference: cards → red $ → name; D on dealer —— */}
         {landscape ? (
           <div
@@ -170,7 +161,7 @@ export function SeatView({
             )}
 
             {folded && (
-              <div className="mb-0.5 font-serif text-[12px] font-normal tracking-wide text-white drop-shadow">
+              <div className="mb-0.5 font-display text-[12px] font-semibold tracking-wide text-white drop-shadow">
                 Fold
               </div>
             )}

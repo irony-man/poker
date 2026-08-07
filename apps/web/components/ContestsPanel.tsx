@@ -166,9 +166,9 @@ export function ContestsPanel({
             className="hud-input font-mono tracking-[0.2em]"
             inputMode="numeric"
             maxLength={8}
-            placeholder="4–8 digit code"
             autoComplete="off"
           />
+          <span className="field-help">4–8 digits</span>
         </label>
         <button
           disabled={disabled || busy || !invite.trim()}

@@ -79,9 +79,8 @@ export function usePokerSocket(
             setActionBurst({
               seat: msg.seat,
               label: typeof msg.label === 'string' ? msg.label : String(msg.action ?? ''),
-              at: msg.at,
+              at: typeof msg.at === 'number' ? msg.at : Date.now(),
             });
-            setTimeout(() => setActionBurst(null), 5000);
             break;
           case 'error':
             setError(

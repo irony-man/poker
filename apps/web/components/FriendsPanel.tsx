@@ -215,9 +215,9 @@ export function FriendsPanel({
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="hud-input"
-          placeholder="Search username…"
           maxLength={32}
           disabled={disabled}
+          autoComplete="off"
         />
       </label>
 
@@ -346,9 +346,9 @@ export function FriendsPanel({
                   value={newGroupName}
                   onChange={(e) => setNewGroupName(e.target.value)}
                   className="hud-input"
-                  placeholder="e.g. Home game"
                   maxLength={40}
                   required
+                  autoComplete="off"
                 />
               </label>
               <div>

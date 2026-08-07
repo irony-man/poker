@@ -227,7 +227,7 @@ export function ActionControls({
         {timer}
         {canBet && (
           <div className="flex shrink-0 items-center gap-1 border-b border-sidebar/12 px-1.5 py-0.5">
-            <span className="shrink-0 font-serif text-sm font-normal tabular-nums text-sidebar">
+            <span className="shrink-0 font-display text-sm font-semibold tabular-nums text-sidebar">
               ${amount}
             </span>
             <input
@@ -452,7 +452,7 @@ export function ActionControls({
                       submitBet(amount);
                     }
                   }}
-                  className="w-full rounded border border-sidebar/18 bg-white px-2 py-1.5 font-mono text-sm font-bold tabular-nums text-ink-strong outline-none focus:border-sidebar/45 focus:shadow-[0_0_0_2px_rgb(29_4_50/0.08)]"
+                  className="w-full rounded-md border border-sidebar/18 bg-mushroom/55 px-2 py-1.5 font-mono text-sm font-bold tabular-nums text-ink-strong outline-none focus:border-sidebar/45 focus:shadow-[0_0_0_2px_rgb(29_4_50/0.08)]"
                 />
               </label>
               {(

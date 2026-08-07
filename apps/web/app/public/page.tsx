@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
 import { PublicTablesPanel } from '@/components/PublicTablesPanel';
+import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { useLobbySession } from '@/lib/useLobbySession';
 
 export default function PublicTablesPage() {
@@ -13,6 +14,7 @@ export default function PublicTablesPage() {
   const [error, setError] = useState<string | null>(null);
 
   async function joinPublicTable(tableId: string, inviteCode: string) {
+    enterMobileFullscreen();
     setBusy(true);
     setError(null);
     try {

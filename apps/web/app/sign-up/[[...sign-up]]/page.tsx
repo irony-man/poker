@@ -42,7 +42,7 @@ export default function SignUpPage() {
   return (
     <div className="lobby-fade-up flex w-full flex-col justify-start">
       <div className="mb-4 sm:mb-5">
-        <h1 className="font-serif text-3xl tracking-tight text-ink-strong sm:text-4xl">
+        <h1 className="font-display text-3xl font-bold tracking-tight text-ink-strong sm:text-4xl">
           Create account
         </h1>
         <p className="mt-2 text-sm text-ink-strong-muted">Create a username and password</p>
@@ -60,8 +60,10 @@ export default function SignUpPage() {
               maxLength={24}
               autoComplete="username"
               pattern="[a-zA-Z0-9_]+"
-              placeholder="letters, numbers, _"
             />
+            <span className="field-help">
+              Letters, numbers, and underscores · 3–24 characters
+            </span>
           </label>
           <label className="block">
             <span className="hud-label">Password</span>
@@ -75,6 +77,7 @@ export default function SignUpPage() {
               maxLength={128}
               autoComplete="new-password"
             />
+            <span className="field-help">At least 6 characters</span>
           </label>
           <AvatarPicker
             value={avatarId}

@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useSession } from '@/lib/store';
+import { QUICK_REACTIONS } from './MobileQuickReactions';
 
-const FREQUENT = ['🔥', '😂', '👏', '😮', '💀', '😎', '👀', '🤙', '🤠', '🃏'];
+const FREQUENT = [...QUICK_REACTIONS].slice(0, 10);
 
 const ALL_EMOJIS: { label: string; emojis: string[] }[] = [
   {
@@ -420,13 +421,13 @@ export function ChatPanel({
             maxLength={280}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="Message the table…"
-            className="min-w-0 flex-1 bg-transparent py-2 text-sm text-ink-strong outline-none placeholder:text-ink-strong-muted/55"
+            aria-label="Message the table"
+            className="min-w-0 flex-1 bg-transparent py-2 text-sm font-body text-ink-strong outline-none"
           />
           <button
             type="submit"
             disabled={!draft.trim()}
-            className="shrink-0 rounded-xl bg-gradient-to-b from-[#341252] to-sidebar px-4 py-2.5 text-[11px] font-display font-bold uppercase tracking-wider text-mushroom shadow-[0_6px_14px_rgb(29_4_50/0.2)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+            className="btn-primary shrink-0 min-h-0 rounded-xl px-4 py-2.5 text-[11px] disabled:cursor-not-allowed"
           >
             Send
           </button>

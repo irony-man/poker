@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ChoiceRow } from '@/components/ChoiceRow';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
+import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { useLobbySession } from '@/lib/useLobbySession';
 
 const SEAT_OPTIONS = [2, 3, 4, 5, 6, 7, 8, 9] as const;
@@ -20,6 +21,7 @@ export default function SoloPage() {
 
   function onOffline(e: React.FormEvent) {
     e.preventDefault();
+    enterMobileFullscreen();
     const display = encodeURIComponent(name.trim() || 'Player');
     router.push(`/offline?name=${display}&seats=${offlineSeats}`);
   }

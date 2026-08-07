@@ -41,7 +41,9 @@ function SignInForm() {
   return (
     <div className="lobby-fade-up flex w-full flex-col justify-start">
       <div className="mb-4 sm:mb-5">
-        <h1 className="font-serif text-3xl tracking-tight text-ink-strong sm:text-4xl">Sign in</h1>
+        <h1 className="font-display text-3xl font-bold tracking-tight text-ink-strong sm:text-4xl">
+          Sign in
+        </h1>
         <p className="mt-2 text-sm text-ink-strong-muted">Sign in with your username</p>
       </div>
       <form onSubmit={onSubmit}>
@@ -57,7 +59,6 @@ function SignInForm() {
               maxLength={24}
               autoComplete="username"
               pattern="[a-zA-Z0-9_]+"
-              placeholder="your_username"
             />
           </label>
           <label className="block">

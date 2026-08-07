@@ -10,7 +10,7 @@ export function PotBanner({
 }: {
   amount: number;
   sidePotCount?: number;
-  /** Phone landscape: multi-chip pile + serif pot (reference layout). */
+  /** Phone landscape: multi-chip pile + display pot (reference layout). */
   landscape?: boolean;
 }) {
   const value = Math.max(0, amount);
@@ -39,7 +39,7 @@ export function PotBanner({
         <span
           className={`tabular-nums tracking-tight text-white ${
             landscape
-              ? 'font-serif text-2xl font-normal drop-shadow-md'
+              ? 'font-display text-2xl font-bold drop-shadow-md'
               : 'font-display text-3xl font-extrabold sm:text-4xl'
           }`}
         >

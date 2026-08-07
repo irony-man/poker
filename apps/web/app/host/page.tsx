@@ -6,6 +6,7 @@ import { ChoiceRow } from '@/components/ChoiceRow';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { createTable } from '@/lib/api';
+import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { useLobbySession } from '@/lib/useLobbySession';
 import { DEFAULT_STAKE_ID, STAKE_PRESETS, stakeById } from '@poker/protocol';
 
@@ -29,6 +30,7 @@ export default function HostPage() {
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
+    enterMobileFullscreen();
     setBusy(true);
     setError(null);
     try {
@@ -120,9 +122,11 @@ export default function HostPage() {
               inputMode="numeric"
               pattern="\d{4,8}"
               maxLength={8}
-              placeholder="Auto · or 4–8 digits"
               autoComplete="off"
             />
+            <span className="field-help">
+              Leave blank to auto-generate, or enter 4–8 digits
+            </span>
           </label>
           <button disabled={busy} type="submit" className="btn-primary mt-1 min-h-11 w-full">
             Create private table

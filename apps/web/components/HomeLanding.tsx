@@ -124,7 +124,7 @@ function FeatureRow({ feature, index }: { feature: Feature; index: number }) {
       </div>
 
       <div className={`min-w-0 text-center sm:text-left ${textOrder}`}>
-        <h2 className="font-serif text-[clamp(1.85rem,3.8vw,2.85rem)] leading-[1.1] tracking-tight text-ink-strong">
+        <h2 className="font-display text-[clamp(1.85rem,3.8vw,2.85rem)] font-bold leading-[1.1] tracking-tight text-ink-strong">
           {feature.title}
         </h2>
         <p className="mx-auto mt-3 max-w-md text-[0.98rem] leading-relaxed text-ink-strong-muted sm:mx-0 sm:mt-4 sm:text-lg">

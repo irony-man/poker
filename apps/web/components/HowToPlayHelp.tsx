@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
+import { PlayingCard } from './PlayingCard';
 
 const TIPS: { title: string; body: string }[] = [
   {
@@ -21,9 +22,142 @@ const TIPS: { title: string; body: string }[] = [
   },
 ];
 
+/** Strongest → weakest. `dimmed` codes are kickers / non-scoring cards. */
+const HAND_RANKINGS: {
+  name: string;
+  desc: string;
+  cards: { code: string; dimmed?: boolean }[];
+}[] = [
+  {
+    name: 'Royal flush',
+    desc: 'A, K, Q, J, 10, all of the same suit',
+    cards: [
+      { code: 'As' },
+      { code: 'Ks' },
+      { code: 'Qs' },
+      { code: 'Js' },
+      { code: 'Ts' },
+    ],
+  },
+  {
+    name: 'Straight flush',
+    desc: '5 cards of the same suit in sequence',
+    cards: [
+      { code: 'Th' },
+      { code: '9h' },
+      { code: '8h' },
+      { code: '7h' },
+      { code: '6h' },
+    ],
+  },
+  {
+    name: 'Four of a kind',
+    desc: '4 cards of equal value',
+    cards: [
+      { code: 'Qh' },
+      { code: 'Qs' },
+      { code: 'Qd' },
+      { code: 'Qc' },
+      { code: '5d', dimmed: true },
+    ],
+  },
+  {
+    name: 'Full house',
+    desc: 'Three of a kind with a pair',
+    cards: [
+      { code: 'Ad' },
+      { code: 'As' },
+      { code: 'Ah' },
+      { code: '7c' },
+      { code: '7d' },
+    ],
+  },
+  {
+    name: 'Flush',
+    desc: 'Any 5 cards of the same suit',
+    cards: [
+      { code: 'Ad' },
+      { code: 'Jd' },
+      { code: '8d' },
+      { code: '5d' },
+      { code: '7d' },
+    ],
+  },
+  {
+    name: 'Straight',
+    desc: '5 cards in a sequence',
+    cards: [
+      { code: 'Th' },
+      { code: '9s' },
+      { code: '8d' },
+      { code: '7d' },
+      { code: '6s' },
+    ],
+  },
+  {
+    name: 'Three of a kind',
+    desc: '3 cards of the same value',
+    cards: [
+      { code: 'Qh' },
+      { code: 'Qs' },
+      { code: 'Qd' },
+      { code: '7c', dimmed: true },
+      { code: '6s', dimmed: true },
+    ],
+  },
+  {
+    name: 'Two pair',
+    desc: '2 different pairs',
+    cards: [
+      { code: 'Jh' },
+      { code: 'Jc' },
+      { code: '9d' },
+      { code: '9c' },
+      { code: '2d', dimmed: true },
+    ],
+  },
+  {
+    name: 'One pair',
+    desc: '2 cards of the same value',
+    cards: [
+      { code: 'Qs' },
+      { code: 'Qh' },
+      { code: '6d', dimmed: true },
+      { code: '9c', dimmed: true },
+      { code: '2d', dimmed: true },
+    ],
+  },
+  {
+    name: 'High card',
+    desc: 'No pair — highest card plays',
+    cards: [
+      { code: 'Ah' },
+      { code: 'Qs', dimmed: true },
+      { code: '6s', dimmed: true },
+      { code: '5d', dimmed: true },
+      { code: 'Ts', dimmed: true },
+    ],
+  },
+];
+
+function RankingExample({
+  cards,
+}: {
+  cards: { code: string; dimmed?: boolean }[];
+}) {
+  return (
+    <div className="flex items-center gap-0.5" aria-hidden>
+      {cards.map(({ code, dimmed }) => (
+        <PlayingCard key={`${code}-${dimmed ? 'd' : 'h'}`} code={code} size="xs" dimmed={dimmed} />
+      ))}
+    </div>
+  );
+}
+
 /** Compact “How to play” help for table chrome (popover, not browser title tooltip). */
 export function HowToPlayHelp({ className = '' }: { className?: string }) {
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<'basics' | 'rankings'>('rankings');
   const panelId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -68,9 +202,9 @@ export function HowToPlayHelp({ className = '' }: { className?: string }) {
           id={panelId}
           role="dialog"
           aria-label="How to play"
-          className="absolute right-0 top-[calc(100%+0.4rem)] z-[60] w-[min(calc(100vw-1.5rem),20rem)] rounded-xl border border-sidebar/12 bg-white p-3 shadow-[0_12px_40px_rgba(29,4,50,0.12)] sm:w-[22rem] sm:p-4"
+          className="absolute right-0 top-[calc(100%+0.4rem)] z-[60] flex max-h-[min(70dvh,32rem)] w-[min(calc(100vw-1rem),22rem)] flex-col overflow-hidden rounded-xl border border-sidebar/12 bg-white shadow-[0_12px_40px_rgba(29,4,50,0.12)] sm:w-[24rem]"
         >
-          <div className="mb-2.5 flex items-center justify-between gap-2">
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-sidebar/10 px-3 py-2.5 sm:px-4">
             <h3 className="font-display text-sm font-bold uppercase tracking-wider text-sidebar">
               How to play
             </h3>
@@ -83,19 +217,85 @@ export function HowToPlayHelp({ className = '' }: { className?: string }) {
               Close
             </button>
           </div>
-          <ul className="space-y-2.5">
-            {TIPS.map((tip) => (
-              <li key={tip.title}>
-                <p className="text-[11px] font-display font-semibold uppercase tracking-wider text-sidebar/70">
-                  {tip.title}
-                </p>
-                <p className="mt-0.5 text-xs leading-relaxed text-ink-strong-muted">{tip.body}</p>
-              </li>
+
+          <div className="flex shrink-0 gap-1 border-b border-sidebar/10 px-3 py-2 sm:px-4">
+            {(
+              [
+                ['rankings', 'Hand rankings'],
+                ['basics', 'Basics'],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setTab(id)}
+                className={`rounded px-2.5 py-1 text-[10px] font-display font-semibold uppercase tracking-wider transition ${
+                  tab === id
+                    ? 'bg-sidebar text-mushroom'
+                    : 'text-ink-strong-muted hover:bg-sidebar/8 hover:text-sidebar'
+                }`}
+              >
+                {label}
+              </button>
             ))}
-          </ul>
-          <p className="mt-3 border-t border-sidebar/10 pt-2 text-[10px] leading-snug text-ink-strong-muted">
-            Texas Hold&apos;em · highest hand wins · use your two cards + five community cards
-          </p>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4">
+            {tab === 'basics' ? (
+              <>
+                <ul className="space-y-2.5">
+                  {TIPS.map((tip) => (
+                    <li key={tip.title}>
+                      <p className="text-[11px] font-display font-semibold uppercase tracking-wider text-sidebar/70">
+                        {tip.title}
+                      </p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-ink-strong-muted">
+                        {tip.body}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-3 border-t border-sidebar/10 pt-2 text-[10px] leading-snug text-ink-strong-muted">
+                  Texas Hold&apos;em · highest hand wins · use your two cards + five community
+                  cards
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="mb-3 text-[11px] leading-relaxed text-ink-strong-muted">
+                  Strongest at the top. Dimmed cards are kickers (not part of the core hand).
+                </p>
+                <ol className="space-y-3">
+                  {HAND_RANKINGS.map((hand, i) => (
+                    <li
+                      key={hand.name}
+                      className="rounded-lg border border-sidebar/10 bg-mushroom/40 px-2.5 py-2"
+                    >
+                      <div className="flex items-start gap-2">
+                        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sidebar text-[9px] font-display font-bold text-mushroom">
+                          {i + 1}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[11px] font-display font-bold uppercase tracking-wider text-sidebar">
+                            {hand.name}
+                          </p>
+                          <p className="mt-0.5 text-[11px] leading-snug text-ink-strong-muted">
+                            {hand.desc}
+                          </p>
+                          <div className="mt-1.5">
+                            <RankingExample cards={hand.cards} />
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+                <p className="mt-3 border-t border-sidebar/10 pt-2 text-[10px] leading-snug text-ink-strong-muted">
+                  Texas Hold&apos;em · best 5-card hand from 2 hole cards + board
+                </p>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>

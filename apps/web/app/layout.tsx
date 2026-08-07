@@ -6,14 +6,14 @@ import { AppChrome } from '@/components/AppChrome';
 const body = Inter({ subsets: ['latin'], variable: '--font-body', display: 'swap' });
 
 export const metadata: Metadata = {
-  title: "POKR — Texas Hold'em",
-  description: 'Private No-Limit Texas Hold\'em for home games',
-  applicationName: 'POKR',
+  title: "pokr.site - Play Poker Online - Free Games",
+  description: 'Play online poker with your friends and family',
+  applicationName: 'pokr.site',
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'POKR',
+    title: 'pokr.site',
   },
   formatDetection: {
     telephone: false,

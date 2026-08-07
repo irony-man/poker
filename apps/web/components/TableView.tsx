@@ -6,6 +6,7 @@ import { ActionControls } from './ActionControls';
 import { CommunityBoard } from './CommunityBoard';
 import { FloatingActionDock } from './FloatingActionDock';
 import { DealerPotZone } from './DealerPotZone';
+import { HowToPlayHelp } from './HowToPlayHelp';
 import { SeatView } from './SeatView';
 import { ShareTableLink } from './ShareTableLink';
 import { TableOverflowMenu, type OverflowItem } from './TableOverflowMenu';
@@ -73,6 +74,7 @@ export function TableView({
   const myPlayer = mySeat !== undefined ? table?.players[mySeat] : undefined;
   const isSpectating = spectating && mySeat === undefined;
   const canTopUp =
+    !table?.tournament?.noTopUp &&
     mySeat !== undefined &&
     !!myPlayer &&
     myPlayer.stack === 0 &&
@@ -183,7 +185,9 @@ export function TableView({
 
   const emptySeats = table?.players.filter((p) => p.status === 'empty').length ?? 0;
   const botSeats = table?.players.filter((p) => p.userId?.startsWith('bot:')).length ?? 0;
+  const isTournament = Boolean(table?.tournament);
   const canStartHand =
+    !isTournament &&
     betweenHands &&
     mySeat !== undefined &&
     myPlayer?.status !== 'sittingOut' &&
@@ -195,8 +199,8 @@ export function TableView({
       canSitOut ||
       canSitIn ||
       canTopUp ||
-      (!isSpectating && emptySeats > 0) ||
-      (!isSpectating && botSeats > 0) ||
+      (!isTournament && !isSpectating && emptySeats > 0) ||
+      (!isTournament && !isSpectating && botSeats > 0) ||
       canStartHand);
   const showMobileStartCta = narrow && (canStartHand || isSpectating);
 
@@ -427,27 +431,30 @@ export function TableView({
           </div>
 
           {narrow ? (
-            <TableOverflowMenu
-              items={mobileOverflowItems}
-              footer={
-                <div className="flex items-center gap-2 text-[10px] text-cream/45">
-                  <span
-                    className={`h-1.5 w-1.5 rounded-full ${
-                      connection === 'open'
-                        ? 'bg-felt-neon animate-live-blink'
-                        : connection === 'connecting'
-                          ? 'bg-amber-300 animate-live-blink'
-                          : 'bg-red-400'
-                    }`}
-                  />
-                  {connection === 'open'
-                    ? 'Live'
-                    : connection === 'connecting'
-                      ? 'Reconnecting'
-                      : 'Offline'}
-                </div>
-              }
-            />
+            <div className="flex shrink-0 items-center gap-1.5">
+              <HowToPlayHelp />
+              <TableOverflowMenu
+                items={mobileOverflowItems}
+                footer={
+                  <div className="flex items-center gap-2 text-[10px] text-cream/45">
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        connection === 'open'
+                          ? 'bg-felt-neon animate-live-blink'
+                          : connection === 'connecting'
+                            ? 'bg-amber-300 animate-live-blink'
+                            : 'bg-red-400'
+                      }`}
+                    />
+                    {connection === 'open'
+                      ? 'Live'
+                      : connection === 'connecting'
+                        ? 'Reconnecting'
+                        : 'Offline'}
+                  </div>
+                }
+              />
+            </div>
           ) : (
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-1 sm:gap-2">
               {inviteCode && <ShareTableLink tableId={tableId} inviteCode={inviteCode} />}
@@ -461,6 +468,7 @@ export function TableView({
                 onLeave={voice.leaveVoice}
                 onToggleMute={voice.toggleMute}
               />
+              <HowToPlayHelp />
               <div
                 className={
                   connection === 'open'
@@ -503,6 +511,26 @@ export function TableView({
           >
             {lastError} (dismiss)
           </button>
+        )}
+
+        {table?.tournament && (
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <span className="status-chip border-gold/30 bg-gold/10 text-gold">
+              {table.tournament.mode === 'knockout' ? 'Knockout' : 'Table match'}
+              {table.tournament.frozen ? ' · match over' : ''}
+            </span>
+            <span className="text-xs text-cream/50">
+              Blinds {table.config.smallBlind}/{table.config.bigBlind} · no rebuy
+            </span>
+            {table.tournament.contestId && (
+              <a
+                href={`/contest/${table.tournament.contestId}`}
+                className="text-xs text-cyan underline"
+              >
+                Contest lobby
+              </a>
+            )}
+          </div>
         )}
 
         <div className="relative flex min-h-0 flex-1 flex-col">
@@ -658,7 +686,7 @@ export function TableView({
                   Start hand
                 </button>
               )}
-              {!isSpectating && emptySeats > 0 && (
+              {!isSpectating && !isTournament && emptySeats > 0 && (
                 <>
                   <button
                     type="button"

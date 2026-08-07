@@ -3,9 +3,11 @@ package com.felt.android.feature.lobby
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.felt.android.core.datastore.SessionPreferences
+import com.felt.android.core.model.CreateContestRequest
 import com.felt.android.core.model.CreateTableRequest
 import com.felt.android.core.model.RegisterRequest
 import com.felt.android.core.model.SessionDto
+import com.felt.android.core.model.UserIdBody
 import com.felt.android.core.network.FeltApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -23,6 +25,10 @@ data class LobbyUiState(
     val customRoomCode: String = "",
     val inviteCode: String = "",
     val offlineSeats: Int = 6,
+    val contestMode: String = "table_match",
+    val contestFieldSize: Int = 6,
+    val contestBotCount: Int = 3,
+    val contestInvite: String = "",
     val busy: Boolean = false,
     val error: String? = null,
 )
@@ -61,6 +67,26 @@ class LobbyViewModel @Inject constructor(
     fun onInviteChange(value: String) =
         _uiState.update { it.copy(inviteCode = value.trim().take(8)) }
     fun onOfflineSeatsChange(value: Int) = _uiState.update { it.copy(offlineSeats = value) }
+    fun onContestModeChange(value: String) {
+        val size = if (value == "knockout") 4 else 6
+        _uiState.update {
+            it.copy(
+                contestMode = value,
+                contestFieldSize = size,
+                contestBotCount = it.contestBotCount.coerceAtMost(size - 1),
+            )
+        }
+    }
+    fun onContestFieldSizeChange(value: Int) =
+        _uiState.update {
+            it.copy(
+                contestFieldSize = value,
+                contestBotCount = it.contestBotCount.coerceAtMost(value - 1),
+            )
+        }
+    fun onContestBotCountChange(value: Int) = _uiState.update { it.copy(contestBotCount = value) }
+    fun onContestInviteChange(value: String) =
+        _uiState.update { it.copy(contestInvite = value.filter { ch -> ch.isDigit() }.take(8)) }
     fun clearError() = _uiState.update { it.copy(error = null) }
 
     fun host(onSuccess: (tableId: String, invite: String) -> Unit) {
@@ -126,6 +152,60 @@ class LobbyViewModel @Inject constructor(
             bots,
             state.name.trim().ifBlank { "Player" },
         )
+    }
+
+    fun createContest(onSuccess: (contestId: String) -> Unit) {
+        val state = _uiState.value
+        if (state.name.isBlank()) {
+            _uiState.update { it.copy(error = "Enter a callsign to play") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(busy = true, error = null) }
+            runCatching {
+                val session = ensureSession(state.name.trim())
+                val mode = state.contestMode
+                val field = state.contestFieldSize
+                feltApi.createContest(
+                    CreateContestRequest(
+                        userId = session.userId,
+                        name = "${session.name}'s ${if (mode == "knockout") "Knockout" else "Table Match"}",
+                        mode = mode,
+                        fieldSize = field,
+                        botCount = state.contestBotCount.coerceAtMost(field - 1),
+                        isPrivate = true,
+                        autoStart = true,
+                    ),
+                ).contest.id
+            }.onSuccess { id ->
+                _uiState.update { it.copy(busy = false) }
+                onSuccess(id)
+            }.onFailure { err ->
+                _uiState.update { it.copy(busy = false, error = err.message ?: "Contest failed") }
+            }
+        }
+    }
+
+    fun joinContest(onSuccess: (contestId: String) -> Unit) {
+        val state = _uiState.value
+        if (state.name.isBlank()) {
+            _uiState.update { it.copy(error = "Enter a callsign to play") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(busy = true, error = null) }
+            runCatching {
+                val session = ensureSession(state.name.trim())
+                val resolved = feltApi.resolveContestInvite(state.contestInvite.trim()).contest
+                feltApi.registerContest(resolved.id, UserIdBody(session.userId))
+                resolved.id
+            }.onSuccess { id ->
+                _uiState.update { it.copy(busy = false) }
+                onSuccess(id)
+            }.onFailure { err ->
+                _uiState.update { it.copy(busy = false, error = err.message ?: "Join contest failed") }
+            }
+        }
     }
 
     private suspend fun ensureSession(displayName: String): SessionDto {

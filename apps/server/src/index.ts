@@ -5,6 +5,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import {
   ChallengeFriendBodySchema,
   ClientMessageSchema,
+  CreateContestBodySchema,
   CreateTableBodySchema,
   FriendRequestBodySchema,
   FriendRespondBodySchema,
@@ -17,6 +18,7 @@ import { createHistoryStore, writeSchemaDoc } from './history.js';
 import { createKv } from './kv.js';
 import { ensurePublicTables } from './publicTables.js';
 import { RoomManager } from './room.js';
+import { TournamentManager } from './tournament.js';
 import path from 'node:path';
 
 const PORT = Number(process.env.PORT ?? 4000);
@@ -42,6 +44,7 @@ async function main() {
   const history = await createHistoryStore();
   await writeSchemaDoc(dataDir);
   const rooms = new RoomManager(kv, history);
+  const tournaments = new TournamentManager(rooms);
   const friends = new FriendsStore(dataDir);
   ensurePublicTables(rooms);
 
@@ -300,6 +303,104 @@ async function main() {
     res.json({ ok: true });
   });
 
+  app.post('/api/contests', async (req, res) => {
+    const body = CreateContestBodySchema.safeParse(req.body);
+    if (!body.success) {
+      res.status(400).json({ error: body.error.message });
+      return;
+    }
+    const identity = await optionalClerkIdentity(req);
+    const userId = identity?.userId ?? String(req.body?.userId ?? '');
+    const user = auth.getUser(userId);
+    if (!user) {
+      res.status(401).json({ error: 'Register first' });
+      return;
+    }
+    try {
+      const d = body.data;
+      const contest = tournaments.create({
+        name: d.name,
+        mode: d.mode,
+        hostUserId: user.id,
+        hostName: user.name,
+        fieldSize: d.fieldSize,
+        startingStack: d.startingStack,
+        smallBlind: d.smallBlind,
+        bigBlind: d.bigBlind,
+        turnTimeMs: d.turnTimeMs,
+        botCount: d.botCount,
+        isPrivate: d.isPrivate,
+        inviteCode: d.inviteCode,
+        autoStart: d.autoStart,
+      });
+      res.json({ contest });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create contest';
+      const status = message.includes('already in use') ? 409 : 400;
+      res.status(status).json({ error: message });
+    }
+  });
+
+  app.get('/api/contests', (_req, res) => {
+    res.json({ contests: tournaments.listPublic() });
+  });
+
+  app.get('/api/contests/invite/:code', (req, res) => {
+    const contest = tournaments.getByInvite(req.params.code!);
+    if (!contest) {
+      res.status(404).json({ error: 'Contest not found' });
+      return;
+    }
+    res.json({ contest });
+  });
+
+  app.get('/api/contests/:id', (req, res) => {
+    const contest = tournaments.get(req.params.id!);
+    if (!contest) {
+      res.status(404).json({ error: 'Contest not found' });
+      return;
+    }
+    res.json({ contest });
+  });
+
+  app.post('/api/contests/:id/register', async (req, res) => {
+    const userId = await requireUserId(req, res);
+    if (!userId) return;
+    const user = auth.getUser(userId);
+    if (!user) {
+      res.status(401).json({ error: 'Register first' });
+      return;
+    }
+    const result = tournaments.register(req.params.id!, user.id, user.name);
+    if (!result.ok) {
+      res.status(400).json({ error: result.error });
+      return;
+    }
+    res.json({ contest: result.contest });
+  });
+
+  app.post('/api/contests/:id/unregister', async (req, res) => {
+    const userId = await requireUserId(req, res);
+    if (!userId) return;
+    const result = tournaments.unregister(req.params.id!, userId);
+    if (!result.ok) {
+      res.status(400).json({ error: result.error });
+      return;
+    }
+    res.json({ contest: result.contest });
+  });
+
+  app.post('/api/contests/:id/start', async (req, res) => {
+    const userId = await requireUserId(req, res);
+    if (!userId) return;
+    const result = tournaments.start(req.params.id!, userId);
+    if (!result.ok) {
+      res.status(400).json({ error: result.error });
+      return;
+    }
+    res.json({ contest: result.contest });
+  });
+
   const server = http.createServer(app);
   const wss = new WebSocketServer({ server, path: '/ws' });
 
@@ -307,6 +408,7 @@ async function main() {
     let userId: string | null = null;
     let name: string | null = null;
     let tableId: string | null = null;
+    let contestId: string | null = null;
 
     const send = (msg: unknown) => {
       if (ws.readyState === WebSocket.OPEN) {
@@ -352,6 +454,25 @@ async function main() {
         return;
       }
 
+      if (msg.type === 'join_contest') {
+        if (contestId && contestId !== msg.contestId) {
+          tournaments.detachWatcher(contestId, userId);
+        }
+        const ok = tournaments.attachWatcher(msg.contestId, userId, send);
+        if (!ok) {
+          send({ type: 'error', message: 'Contest not found', code: 'not_found' });
+          return;
+        }
+        contestId = msg.contestId;
+        return;
+      }
+
+      if (msg.type === 'leave_contest') {
+        tournaments.detachWatcher(msg.contestId, userId);
+        if (contestId === msg.contestId) contestId = null;
+        return;
+      }
+
       if (msg.type === 'join_table') {
         const room = rooms.get(msg.tableId);
         if (!room) {
@@ -372,7 +493,10 @@ async function main() {
         if (!msg.spectate) {
           const seated = room.autoSit(userId, name);
           if (!seated.ok && seated.error && seated.error !== 'Table full') {
-            send({ type: 'error', message: seated.error, code: 'sit_failed' });
+            // Tournament seats are pre-assigned — already seated is fine; other errors surface.
+            if (seated.error !== 'Tournament seats are assigned') {
+              send({ type: 'error', message: seated.error, code: 'sit_failed' });
+            }
           }
         }
         return;
@@ -434,16 +558,28 @@ async function main() {
           r.emoji(userId, name, msg.emoji);
           break;
         case 'add_bot': {
+          if (r.isTournament()) {
+            send({ type: 'error', message: 'Cannot add bots mid-tournament' });
+            break;
+          }
           const result = r.addBot(userId, msg.seat, msg.buyIn, msg.count ?? 1);
           if (!result.ok) send({ type: 'error', message: result.error ?? 'Add bot failed' });
           break;
         }
         case 'remove_bot': {
+          if (r.isTournament()) {
+            send({ type: 'error', message: 'Cannot remove bots mid-tournament' });
+            break;
+          }
           const result = r.removeBot(msg.seat);
           if (!result.ok) send({ type: 'error', message: result.error ?? 'Remove bot failed' });
           break;
         }
         case 'remove_all_bots': {
+          if (r.isTournament()) {
+            send({ type: 'error', message: 'Cannot remove bots mid-tournament' });
+            break;
+          }
           const result = r.removeAllBots();
           if (!result.ok) send({ type: 'error', message: result.error ?? 'Remove bots failed' });
           break;
@@ -469,6 +605,11 @@ async function main() {
         const room = rooms.get(tableId);
         room?.detach(userId);
         room?.scheduleDisconnect(userId);
+      }
+      if (userId && contestId) {
+        tournaments.detachWatcher(contestId, userId);
+      } else if (userId) {
+        tournaments.detachWatcherAll(userId);
       }
     });
   });

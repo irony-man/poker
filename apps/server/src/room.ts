@@ -24,6 +24,14 @@ import type { HandHistoryStore } from './history.js';
 import { avatarIdFromUserId, clampAvatarId } from './avatars.js';
 import { chooseBotAction, isBotUserId, makeBotUserId, pickBotName } from './bot.js';
 
+export interface TournamentTableRules {
+  contestId: string;
+  mode: 'knockout' | 'table_match';
+  matchId?: string;
+  /** When true, no more hands will be dealt on this table. */
+  frozen?: boolean;
+}
+
 export interface TableMeta {
   id: string;
   inviteCode: string;
@@ -34,7 +42,12 @@ export interface TableMeta {
   stakeId?: string;
   config: TableConfig;
   createdAt: number;
+  /** Present when this room is owned by a tournament contest. */
+  tournament?: TournamentTableRules;
 }
+
+/** Called after a tournament table hand reaches payout (before next-hand scheduling). */
+export type TournamentHandEndedHook = (room: Room) => void;
 
 export interface ConnectionContext {
   userId: string;
@@ -66,12 +79,158 @@ export class Room {
   private kv: KvStore;
   private history: HandHistoryStore;
   private handStartedAt = 0;
+  private tournamentHook: TournamentHandEndedHook | null = null;
+  private autoStartTimer: NodeJS.Timeout | null = null;
+  /** Tournament: one hand → payout transition already notified. */
+  private lastNotifiedHandId: string | null = null;
 
-  constructor(meta: TableMeta, kv: KvStore, history: HandHistoryStore) {
+  constructor(
+    meta: TableMeta,
+    kv: KvStore,
+    history: HandHistoryStore,
+    tournamentHook: TournamentHandEndedHook | null = null,
+  ) {
     this.meta = meta;
     this.state = createEmptyTable(meta.config);
     this.kv = kv;
     this.history = history;
+    this.tournamentHook = tournamentHook;
+  }
+
+  setTournamentHook(hook: TournamentHandEndedHook | null): void {
+    this.tournamentHook = hook;
+  }
+
+  isTournament(): boolean {
+    return Boolean(this.meta.tournament);
+  }
+
+  /** Seat a player without websocket (contest assignment). */
+  forceSeat(
+    userId: string,
+    name: string,
+    seat: number,
+    stack: number,
+  ): { ok: boolean; error?: string } {
+    if (this.state.street === 'payout') {
+      this.state = returnToWaiting(this.state);
+    }
+    const result = sitDown(this.state, seat, userId, name, stack);
+    if (!result.ok) return { ok: false, error: result.error };
+    this.state = result.state;
+    this.avatarByUser.set(userId, avatarIdFromUserId(userId));
+    void this.afterStateChange();
+    return { ok: true };
+  }
+
+  applyBlindLevel(smallBlind: number, bigBlind: number): void {
+    this.meta.config = {
+      ...this.meta.config,
+      smallBlind,
+      bigBlind,
+    };
+  }
+
+  playersWithChips(): { userId: string; name: string | null; seat: number; stack: number }[] {
+    return this.state.players
+      .filter((p) => p.userId && p.status !== 'empty' && p.stack > 0)
+      .map((p) => ({
+        userId: p.userId!,
+        name: p.name,
+        seat: p.seat,
+        stack: p.stack,
+      }));
+  }
+
+  playersBusted(): { userId: string; name: string | null; seat: number }[] {
+    return this.state.players
+      .filter((p) => p.userId && p.status !== 'empty' && p.stack === 0)
+      .map((p) => ({
+        userId: p.userId!,
+        name: p.name,
+        seat: p.seat,
+      }));
+  }
+
+  seatedPlayersSnapshot(): {
+    userId: string;
+    name: string | null;
+    seat: number;
+    stack: number;
+  }[] {
+    return this.state.players
+      .filter((p) => p.userId && p.status !== 'empty')
+      .map((p) => ({
+        userId: p.userId!,
+        name: p.name,
+        seat: p.seat,
+        stack: p.stack,
+      }));
+  }
+
+  /** Vacate a busted tournament seat between hands. */
+  eliminateSeat(seat: number): void {
+    if (this.state.street === 'payout') {
+      this.state = returnToWaiting(this.state);
+    }
+    const p = this.state.players[seat];
+    if (!p || p.status === 'empty') return;
+    const name = p.name ?? 'Player';
+    const result = standUp(this.state, seat);
+    if (result.ok) {
+      this.state = result.state;
+      this.systemChat('Dealer', `${name} is eliminated`);
+      void this.afterStateChange();
+    }
+  }
+
+  freezeTournamentMatch(): void {
+    if (this.meta.tournament) {
+      this.meta.tournament = { ...this.meta.tournament, frozen: true };
+    }
+    if (this.autoStartTimer) {
+      clearTimeout(this.autoStartTimer);
+      this.autoStartTimer = null;
+    }
+    this.clearTurnTimer();
+    if (this.state.street === 'payout') {
+      this.state = returnToWaiting(this.state);
+    }
+    this.systemChat('Dealer', 'Match over');
+    this.broadcast();
+  }
+
+  /** Public wrapper for tournament system chat. */
+  systemChatPublic(name: string, text: string): void {
+    this.systemChat(name, text);
+  }
+
+  /**
+   * Schedule auto-deal for tournament tables (no human start required).
+   * Skips when frozen or fewer than 2 players with chips.
+   */
+  scheduleTournamentAutoStart(delayMs = 2200): void {
+    if (!this.isTournament()) return;
+    if (this.meta.tournament?.frozen) return;
+    if (this.autoStartTimer) {
+      clearTimeout(this.autoStartTimer);
+      this.autoStartTimer = null;
+    }
+    this.autoStartTimer = setTimeout(() => {
+      this.autoStartTimer = null;
+      this.tournamentAutoStart();
+    }, delayMs);
+  }
+
+  private tournamentAutoStart(): void {
+    if (!this.isTournament() || this.meta.tournament?.frozen) return;
+    if (this.state.street !== 'waiting' && this.state.street !== 'payout') return;
+    const ready = this.state.players.filter(
+      (p) => p.userId && p.stack > 0 && p.status !== 'sittingOut',
+    );
+    if (ready.length < 2) return;
+    const starter = ready[0]!.userId!;
+    void this.startHand(starter);
   }
 
   get config(): TableConfig {
@@ -340,6 +499,15 @@ export class Room {
     return {
       ...base,
       turnEndsAt: this.turnEndsAt,
+      tournament: this.meta.tournament
+        ? {
+            contestId: this.meta.tournament.contestId,
+            mode: this.meta.tournament.mode,
+            matchId: this.meta.tournament.matchId ?? null,
+            frozen: Boolean(this.meta.tournament.frozen),
+            noTopUp: true,
+          }
+        : null,
       players: base.players.map((p) => ({
         ...p,
         avatarId: p.userId
@@ -384,7 +552,20 @@ export class Room {
           })),
         },
       });
-      // Stay on payout until a seated player confirms Next Hand (start_hand).
+      if (
+        this.isTournament() &&
+        this.tournamentHook &&
+        this.state.handId &&
+        this.state.handId !== this.lastNotifiedHandId
+      ) {
+        this.lastNotifiedHandId = this.state.handId;
+        try {
+          this.tournamentHook(this);
+        } catch (err) {
+          console.error('[tournament] hand-ended hook failed', err);
+        }
+      }
+      // Cash: stay on payout until Next Hand. Tournament: hook schedules next deal.
     }
     this.armTurnTimer();
     this.broadcast();
@@ -392,6 +573,10 @@ export class Room {
   }
 
   maybeAutoStart(): void {
+    if (this.isTournament()) {
+      this.scheduleTournamentAutoStart(1500);
+      return;
+    }
     if (this.state.street !== 'waiting') return;
     const humans = this.state.players.filter(
       (p) => p.userId && p.stack > 0 && !isBotUserId(p.userId),
@@ -417,6 +602,9 @@ export class Room {
   }
 
   startHand(userId: string): { ok: boolean; error?: string } {
+    if (this.meta.tournament?.frozen) {
+      return { ok: false, error: 'Match is over' };
+    }
     if (this.seatOf(userId) === null) {
       return { ok: false, error: 'Sit down before starting a hand' };
     }
@@ -448,6 +636,11 @@ export class Room {
 
   sit(userId: string, name: string, seat: number, buyIn: number): { ok: boolean; error?: string } {
     if (!this.rateLimit(`${userId}:sit`)) return { ok: false, error: 'Rate limited' };
+    if (this.isTournament()) {
+      // Already force-seated entrants re-attach via autoSit; free sit not allowed.
+      if (this.seatOf(userId) !== null) return { ok: true };
+      return { ok: false, error: 'Tournament seats are assigned' };
+    }
     if (buyIn !== this.config.buyIn) {
       return { ok: false, error: 'Buy-in must match table buy-in' };
     }
@@ -492,6 +685,9 @@ export class Room {
   }
 
   doTopUp(userId: string, seat: number, amount: number): { ok: boolean; error?: string } {
+    if (this.isTournament()) {
+      return { ok: false, error: 'No top-up in tournaments' };
+    }
     if (this.seatOf(userId) !== seat) return { ok: false, error: 'Not your seat' };
     const result = topUp(this.state, seat, amount, this.config.buyIn);
     if (!result.ok) return { ok: false, error: result.error };
@@ -704,10 +900,18 @@ export class RoomManager {
   private byInvite = new Map<string, string>();
   private kv: KvStore;
   private history: HandHistoryStore;
+  private tournamentHook: TournamentHandEndedHook | null = null;
 
   constructor(kv: KvStore, history: HandHistoryStore) {
     this.kv = kv;
     this.history = history;
+  }
+
+  setTournamentHook(hook: TournamentHandEndedHook | null): void {
+    this.tournamentHook = hook;
+    for (const room of this.rooms.values()) {
+      room.setTournamentHook(hook);
+    }
   }
 
   create(opts: {
@@ -718,6 +922,7 @@ export class RoomManager {
     stakeId?: string;
     /** Optional custom numerical invite code. */
     inviteCode?: string;
+    tournament?: TournamentTableRules;
   }): TableMeta {
     const inviteCode = opts.inviteCode ?? this.allocateInviteCode();
     if (this.byInvite.has(inviteCode)) {
@@ -733,8 +938,9 @@ export class RoomManager {
       stakeId: opts.stakeId,
       config: opts.config,
       createdAt: Date.now(),
+      tournament: opts.tournament,
     };
-    const room = new Room(meta, this.kv, this.history);
+    const room = new Room(meta, this.kv, this.history, this.tournamentHook);
     this.rooms.set(id, room);
     this.byInvite.set(inviteCode, id);
     void this.history.recordTable(meta);

@@ -6,6 +6,8 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.felt.android.feature.lobby.ContestRoute
+import com.felt.android.feature.lobby.ContestScreen
 import com.felt.android.feature.lobby.LobbyRoute
 import com.felt.android.feature.lobby.LobbyScreen
 import com.felt.android.feature.offline.OfflineTableRoute
@@ -35,6 +37,19 @@ fun FeltNavHost(modifier: Modifier = Modifier) {
                 },
                 onOffline = { seats, bots, name ->
                     navController.navigate(OfflineTableRoute(seats = seats, bots = bots, name = name))
+                },
+                onContest = { contestId ->
+                    navController.navigate(ContestRoute(contestId = contestId))
+                },
+            )
+        }
+        composable<ContestRoute> {
+            ContestScreen(
+                onBack = {
+                    navController.popBackStack(LobbyRoute, inclusive = false)
+                },
+                onOpenTable = { tableId ->
+                    navController.navigate(OnlineTableRoute(tableId = tableId))
                 },
             )
         }

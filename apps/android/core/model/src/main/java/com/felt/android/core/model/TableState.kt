@@ -36,6 +36,15 @@ data class ShowdownHand(
 )
 
 @Serializable
+data class TournamentInfo(
+    val contestId: String,
+    val mode: String,
+    val matchId: String? = null,
+    val frozen: Boolean = false,
+    val noTopUp: Boolean = true,
+)
+
+@Serializable
 data class PublicTable(
     val tableId: String,
     val handId: String,
@@ -54,6 +63,7 @@ data class PublicTable(
     val winners: List<Winner>,
     val showdownHands: List<ShowdownHand> = emptyList(),
     val turnEndsAt: Long? = null,
+    val tournament: TournamentInfo? = null,
     val config: TableConfig,
 )
 

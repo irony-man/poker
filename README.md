@@ -31,6 +31,15 @@ npm run dev:web
 
 Open http://localhost:3000 — register a name, create a table, share the invite code.
 
+### Contests (tournaments)
+
+Lobby **Contests** tab (web) or Contests panel (Android):
+
+1. **Table match** — 2–9 players, fixed stacks, no rebuy; eliminated when chips hit zero; last player wins. Blinds rise on a fixed hand schedule.
+2. **Knockout** — 4 / 8 / 16 players, heads-up single elimination. Winners advance through the bracket until a champion.
+
+Create with optional bot fill, share the contest code, or open from the lobby. Contest page shows registration, bracket/standings, and routes you to your assigned table when play starts.
+
 ## Tests
 
 ```bash
@@ -82,4 +91,5 @@ See [apps/android/README.md](apps/android/README.md).
 - Authoritative server: clients send action intents; hole cards are private per seat.
 - Action messages require `handId` + monotonic `actionSeq`.
 - Turn timeouts auto-check or auto-fold.
+- Contests are orchestrated in-memory by `TournamentManager` on top of cash `Room`s (no rebuy; auto-deal between hands).
 - See `apps/server/data/schema.sql` (written on boot) for Postgres DDL.

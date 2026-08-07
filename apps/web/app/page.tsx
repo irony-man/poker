@@ -6,14 +6,15 @@ import { ChoiceRow } from '@/components/ChoiceRow';
 import { AvatarPicker } from '@/components/PlayerAvatar';
 import { FriendsPanel } from '@/components/FriendsPanel';
 import { PublicTablesPanel } from '@/components/PublicTablesPanel';
-import { createTable, register, resolveInvite } from '@/lib/api';
+import { ContestsPanel } from '@/components/ContestsPanel';
+import { createTable, register, resolveContestInvite, resolveInvite } from '@/lib/api';
 import { loadSavedAvatarId, saveAvatarId } from '@/lib/avatars';
 import { useSession } from '@/lib/store';
 import { DEFAULT_STAKE_ID, STAKE_PRESETS, stakeById } from '@poker/protocol';
 
 const SEAT_OPTIONS = [2, 3, 4, 5, 6, 7, 8, 9] as const;
 
-type LobbyTab = 'host' | 'join' | 'offline';
+type LobbyTab = 'host' | 'join' | 'contests' | 'offline';
 
 export default function HomePage() {
   const router = useRouter();
@@ -122,6 +123,18 @@ export default function HomePage() {
     }
   }
 
+  async function enterContestCode(code: string) {
+    if (!name.trim()) {
+      setError('Enter a callsign to play');
+      return;
+    }
+    const session = await ensureSession(name);
+    const { contest } = await resolveContestInvite(code);
+    const { registerContest } = await import('@/lib/api');
+    await registerContest(contest.id, { userId: session.userId });
+    router.push(`/contest/${contest.id}`);
+  }
+
   async function enterInvite(mode: 'play' | 'spectate') {
     if (!name.trim()) {
       setError('Enter a callsign to play');
@@ -131,9 +144,14 @@ export default function HomePage() {
     setError(null);
     try {
       await ensureSession(name);
-      const t = await resolveInvite(invite.trim());
-      const spectate = mode === 'spectate' ? '&mode=spectate' : '';
-      router.push(`/table/${t.tableId}?invite=${t.inviteCode}${spectate}`);
+      try {
+        const t = await resolveInvite(invite.trim());
+        const spectate = mode === 'spectate' ? '&mode=spectate' : '';
+        router.push(`/table/${t.tableId}?invite=${t.inviteCode}${spectate}`);
+      } catch {
+        // Fall through to contest invite codes
+        await enterContestCode(invite.trim());
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
     } finally {
@@ -353,8 +371,27 @@ export default function HomePage() {
   const tabs: { id: LobbyTab; label: string }[] = [
     { id: 'host', label: 'Host' },
     { id: 'join', label: 'Join' },
+    { id: 'contests', label: 'Contests' },
     { id: 'offline', label: 'Offline' },
   ];
+
+  const contestsPanel = (
+    <ContestsPanel
+      disabled={busy}
+      displayName={name}
+      onEnsureSession={ensureSession}
+      onOpenContest={(id) => router.push(`/contest/${id}`)}
+      onJoinCode={async (code) => {
+        setBusy(true);
+        setError(null);
+        try {
+          await enterContestCode(code);
+        } finally {
+          setBusy(false);
+        }
+      }}
+    />
+  );
 
   return (
     <div className="relative mx-auto w-full max-w-5xl px-1 sm:px-0 pt-3 sm:pt-8 pb-8">
@@ -437,6 +474,7 @@ export default function HomePage() {
             />
           </>
         )}
+        {tab === 'contests' && contestsPanel}
         {tab === 'offline' && offlineForm}
       </div>
 
@@ -445,6 +483,7 @@ export default function HomePage() {
         {hostForm}
         {joinForm}
         <PublicTablesPanel disabled={busy} onJoin={joinPublicTable} />
+        {contestsPanel}
         {offlineForm}
         <FriendsPanel
           disabled={busy}

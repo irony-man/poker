@@ -34,6 +34,14 @@ export interface PublicTable {
   showdownHands?: { seat: number; handName: string; cards?: string[] }[];
   /** Epoch ms when current turn expires (server clock). */
   turnEndsAt?: number | null;
+  /** Present on tournament tables. */
+  tournament?: {
+    contestId: string;
+    mode: 'knockout' | 'table_match';
+    matchId: string | null;
+    frozen: boolean;
+    noTopUp: boolean;
+  } | null;
   config: {
     maxSeats: number;
     smallBlind: number;

@@ -44,6 +44,7 @@ fun LobbyScreen(
     onHosted: (tableId: String, invite: String) -> Unit,
     onJoined: (tableId: String, invite: String, spectate: Boolean) -> Unit,
     onOffline: (seats: Int, bots: Int, name: String) -> Unit,
+    onContest: (contestId: String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LobbyViewModel = hiltViewModel(),
 ) {
@@ -170,6 +171,66 @@ fun LobbyScreen(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("CONTESTS", color = FeltColors.Gold, fontWeight = FontWeight.Bold)
+                    StatusChip(text = "Tournament", accent = FeltColors.Cyan)
+                }
+                Text(
+                    "Knockout brackets · table match (chip elimination)",
+                    color = FeltColors.Cream.copy(alpha = 0.5f),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                val contestSizes =
+                    if (state.contestMode == "knockout") listOf(4, 8, 16) else (2..9).toList()
+                val contestMaxBots = (state.contestFieldSize - 1).coerceAtLeast(0)
+                ChoiceRowString(
+                    label = "Mode",
+                    selected = state.contestMode,
+                    options = listOf("table_match", "knockout"),
+                    onSelect = viewModel::onContestModeChange,
+                ) { if (it == "knockout") "Knockout" else "Table match" }
+                ChoiceRow(
+                    label = if (state.contestMode == "knockout") "Field" else "Players",
+                    selected = state.contestFieldSize,
+                    options = contestSizes,
+                    onSelect = viewModel::onContestFieldSizeChange,
+                )
+                ChoiceRow(
+                    label = "Fill bots",
+                    selected = state.contestBotCount.coerceAtMost(contestMaxBots),
+                    options = (0..contestMaxBots).toList(),
+                    onSelect = viewModel::onContestBotCountChange,
+                ) { if (it == 0) "None" else "$it" }
+                FeltPrimaryButton(
+                    text = "Create contest",
+                    onClick = { viewModel.createContest(onContest) },
+                    enabled = !state.busy,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FeltLabel("Contest code")
+                    LobbyTextField(
+                        value = state.contestInvite,
+                        onValueChange = viewModel::onContestInviteChange,
+                        placeholder = "4–8 digit code",
+                        numeric = true,
+                    )
+                }
+                FeltGhostButton(
+                    text = "Join contest",
+                    onClick = { viewModel.joinContest(onContest) },
+                    enabled = !state.busy && state.contestInvite.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+
+        HudPanel(modifier = Modifier.fillMaxWidth()) {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.Top,
                 ) {
                     Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
@@ -267,6 +328,28 @@ private fun ChoiceRow(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChoiceRowString(
+    label: String,
+    selected: String,
+    options: List<String>,
+    onSelect: (String) -> Unit,
+    format: (String) -> String = { it },
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        FeltLabel(label)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            options.forEach { option ->
+                FeltChoiceChip(
+                    text = format(option),
+                    selected = option == selected,
+                    onClick = { onSelect(option) },
+                )
             }
         }
     }

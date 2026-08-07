@@ -111,4 +111,12 @@ sealed interface ClientMessage {
     @Serializable
     @SerialName("ping")
     data object Ping : ClientMessage
+
+    @Serializable
+    @SerialName("join_contest")
+    data class JoinContest(val contestId: String) : ClientMessage
+
+    @Serializable
+    @SerialName("leave_contest")
+    data class LeaveContest(val contestId: String) : ClientMessage
 }

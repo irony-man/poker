@@ -112,6 +112,14 @@ export const ClientMessageSchema = z.discriminatedUnion('type', [
         .optional(),
     }),
   }),
+  z.object({
+    type: z.literal('join_contest'),
+    contestId: z.string().min(1),
+  }),
+  z.object({
+    type: z.literal('leave_contest'),
+    contestId: z.string().min(1),
+  }),
 ]);
 
 export type ClientMessage = z.infer<typeof ClientMessageSchema>;
@@ -160,6 +168,19 @@ export const ServerMessageSchema = z.discriminatedUnion('type', [
   }),
   z.object({
     type: z.literal('pong'),
+  }),
+  z.object({
+    type: z.literal('contest_sync'),
+    contest: z.unknown(),
+  }),
+  z.object({
+    type: z.literal('contest_event'),
+    contestId: z.string(),
+    event: z.enum(['match_assigned', 'eliminated', 'contest_completed', 'contest_started']),
+    message: z.string().optional(),
+    tableId: z.string().optional(),
+    matchId: z.string().optional(),
+    place: z.number().int().positive().optional(),
   }),
 ]);
 

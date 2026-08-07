@@ -214,3 +214,128 @@ export async function joinFriendChallenge(challengeId: string, options: AuthOpti
     body: { userId: options.userId },
   });
 }
+
+export type ContestMode = 'knockout' | 'table_match';
+export type ContestStatus = 'registering' | 'running' | 'completed' | 'cancelled';
+
+export interface ContestView {
+  id: string;
+  inviteCode: string;
+  name: string;
+  mode: ContestMode;
+  status: ContestStatus;
+  hostUserId: string;
+  fieldSize: number;
+  startingStack: number;
+  smallBlind: number;
+  bigBlind: number;
+  turnTimeMs: number;
+  isPrivate: boolean;
+  entrants: { userId: string; name: string; isBot?: boolean; registeredAt: number }[];
+  placements: { userId: string; name: string; place: number }[];
+  matches: {
+    id: string;
+    round: number;
+    index: number;
+    playerA: string | null;
+    playerB: string | null;
+    winnerId: string | null;
+    tableId: string | null;
+    status: 'pending' | 'active' | 'completed';
+  }[];
+  tableId: string | null;
+  blinds: {
+    levelIndex: number;
+    smallBlind: number;
+    bigBlind: number;
+    handsAtLevel: number;
+    handsUntilNext: number;
+  } | null;
+  assignments: {
+    userId: string;
+    tableId: string | null;
+    matchId: string | null;
+    eliminated: boolean;
+    place: number | null;
+  }[];
+  createdAt: number;
+  startedAt: number | null;
+  completedAt: number | null;
+}
+
+export async function createContest(
+  input: {
+    userId: string;
+    name?: string;
+    mode: ContestMode;
+    fieldSize: number;
+    startingStack?: number;
+    smallBlind?: number;
+    bigBlind?: number;
+    turnTimeMs?: number;
+    botCount?: number;
+    isPrivate?: boolean;
+    inviteCode?: string;
+    autoStart?: boolean;
+  },
+  options?: { clerkToken?: string | null },
+) {
+  const res = await fetch(`${API_URL}/api/contests`, {
+    method: 'POST',
+    headers: await authHeaders(options?.clerkToken),
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    let message = 'Failed to create contest';
+    try {
+      const parsed = (await res.json()) as { error?: string };
+      if (parsed.error) message = parsed.error;
+    } catch {
+      /* keep */
+    }
+    throw new Error(message);
+  }
+  return res.json() as Promise<{ contest: ContestView }>;
+}
+
+export async function listPublicContests() {
+  const res = await fetch(`${API_URL}/api/contests`);
+  if (!res.ok) throw new Error('Failed to load contests');
+  return res.json() as Promise<{ contests: ContestView[] }>;
+}
+
+export async function resolveContestInvite(code: string) {
+  const res = await fetch(`${API_URL}/api/contests/invite/${code}`);
+  if (!res.ok) throw new Error('Contest not found');
+  return res.json() as Promise<{ contest: ContestView }>;
+}
+
+export async function getContest(contestId: string) {
+  const res = await fetch(`${API_URL}/api/contests/${contestId}`);
+  if (!res.ok) throw new Error('Contest not found');
+  return res.json() as Promise<{ contest: ContestView }>;
+}
+
+export async function registerContest(contestId: string, options: AuthOptions) {
+  return authedFetch(`/api/contests/${contestId}/register`, {
+    ...options,
+    method: 'POST',
+    body: { userId: options.userId },
+  }) as Promise<{ contest: ContestView }>;
+}
+
+export async function unregisterContest(contestId: string, options: AuthOptions) {
+  return authedFetch(`/api/contests/${contestId}/unregister`, {
+    ...options,
+    method: 'POST',
+    body: { userId: options.userId },
+  }) as Promise<{ contest: ContestView }>;
+}
+
+export async function startContest(contestId: string, options: AuthOptions) {
+  return authedFetch(`/api/contests/${contestId}/start`, {
+    ...options,
+    method: 'POST',
+    body: { userId: options.userId },
+  }) as Promise<{ contest: ContestView }>;
+}

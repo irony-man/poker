@@ -27,6 +27,7 @@ import { CommunityBoard } from './CommunityBoard';
 import { FloatingActionDock } from './FloatingActionDock';
 import { DealerPotZone } from './DealerPotZone';
 import { SeatView } from './SeatView';
+import { HowToPlayHelp } from './HowToPlayHelp';
 import { TableOverflowMenu, type OverflowItem } from './TableOverflowMenu';
 import { TableShell } from './TableShell';
 import { TopUpModal } from './TopUpModal';
@@ -511,11 +512,17 @@ export function OfflineTableView({
             </span>
           </div>
           {narrow ? (
-            <TableOverflowMenu items={offlineOverflow} />
+            <div className="flex shrink-0 items-center gap-1.5">
+              <HowToPlayHelp />
+              <TableOverflowMenu items={offlineOverflow} />
+            </div>
           ) : (
-            <a href="/" className="text-[10px] text-gold/80 hover:text-gold sm:text-xs">
-              ← Lobby
-            </a>
+            <div className="flex shrink-0 items-center gap-2">
+              <HowToPlayHelp />
+              <a href="/" className="text-[10px] text-gold/80 hover:text-gold sm:text-xs">
+                ← Lobby
+              </a>
+            </div>
           )}
         </div>
 

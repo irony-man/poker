@@ -352,22 +352,41 @@ private fun TableFooterControls(
         myPlayer.status != "sittingOut"
     val canSitIn = myPlayer?.status == "sittingOut" && betweenHands
     val canTopUp = mySeat != null &&
+        table.tournament?.noTopUp != true &&
         myPlayer?.stack == 0 &&
         (table.street == "waiting" || table.street == "payout")
+    val isTournament = table.tournament != null
     var botCount by remember { mutableIntStateOf(minOf(3, emptySeats.coerceAtLeast(1))) }
 
     Column(
         modifier = Modifier.padding(top = 6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        if (mySeat != null && myPlayer.status != "sittingOut" && playersInHand >= 2 && betweenHands) {
+        if (isTournament) {
+            Text(
+                text = buildString {
+                    append(if (table.tournament?.mode == "knockout") "Knockout" else "Table match")
+                    append(" · blinds ${table.config.smallBlind}/${table.config.bigBlind}")
+                    if (table.tournament?.frozen == true) append(" · match over")
+                },
+                color = FeltColors.Gold,
+                fontSize = 12.sp,
+            )
+        }
+        if (
+            !isTournament &&
+            mySeat != null &&
+            myPlayer.status != "sittingOut" &&
+            playersInHand >= 2 &&
+            betweenHands
+        ) {
             FeltGhostButton(
                 text = "Start hand",
                 onClick = onStartHand,
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-        if (emptySeats > 0) {
+        if (!isTournament && emptySeats > 0) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 FeltGhostButton(
                     text = "Add $botCount bots",

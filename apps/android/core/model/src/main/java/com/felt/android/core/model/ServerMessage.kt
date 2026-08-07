@@ -53,4 +53,21 @@ sealed interface ServerMessage {
     @Serializable
     @SerialName("pong")
     data object Pong : ServerMessage
+
+    @Serializable
+    @SerialName("contest_sync")
+    data class ContestSync(
+        val contest: ContestView,
+    ) : ServerMessage
+
+    @Serializable
+    @SerialName("contest_event")
+    data class ContestEvent(
+        val contestId: String,
+        val event: String,
+        val message: String? = null,
+        val tableId: String? = null,
+        val matchId: String? = null,
+        val place: Int? = null,
+    ) : ServerMessage
 }

@@ -37,7 +37,6 @@ import {
 } from './TableLeaderboard';
 import { TableOverflowMenu, type OverflowItem } from './TableOverflowMenu';
 import { TableShell } from './TableShell';
-import { TopUpModal } from './TopUpModal';
 import { WinHandModal } from './WinHandModal';
 import { playTick } from '@/lib/audio';
 import { avatarIdFromUserId, loadSavedAvatarId } from '@/lib/avatars';
@@ -169,7 +168,6 @@ export function OfflineTableView({
   const [bootstrapped, setBootstrapped] = useState(false);
   const [turnEndsAt, setTurnEndsAt] = useState<number | null>(null);
   const [dismissedWinHandId, setDismissedWinHandId] = useState<string | null>(null);
-  const [topUpOpen, setTopUpOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -388,12 +386,11 @@ export function OfflineTableView({
     setState(result.state);
   };
 
-  const doTopUp = (amount: number) => {
-    if (mySeat === undefined) return;
-    const result = topUp(state, mySeat, amount, config.buyIn);
+  const doTopUp = () => {
+    if (mySeat === undefined || !canTopUp) return;
+    const result = topUp(state, mySeat, config.buyIn, config.buyIn);
     if (!result.ok) return;
     setState(result.state);
-    setTopUpOpen(false);
   };
 
   const angles = useMemo(
@@ -496,7 +493,7 @@ export function OfflineTableView({
       offlineOverflow.push({
         id: 'top-up',
         label: 'Top up',
-        onClick: () => setTopUpOpen(true),
+        onClick: doTopUp,
         tone: 'gold',
       });
     }
@@ -681,7 +678,7 @@ export function OfflineTableView({
               {canTopUp && (
                 <button
                   type="button"
-                  onClick={() => setTopUpOpen(true)}
+                  onClick={doTopUp}
                   className="rounded-full border border-sidebar/25 bg-sidebar/8 px-3 py-1.5 text-xs text-sidebar hover:bg-sidebar/12"
                 >
                   Top up
@@ -733,19 +730,10 @@ export function OfflineTableView({
             setDismissedWinHandId(publicTable.handId);
             start();
           }}
-          onTopUp={() => setTopUpOpen(true)}
+          onTopUp={doTopUp}
           onSitOut={doSitOut}
           onSitIn={doSitIn}
           onDismiss={() => setDismissedWinHandId(publicTable.handId)}
-        />
-      )}
-
-      {topUpOpen && myPlayer && myPlayer.stack === 0 && (
-        <TopUpModal
-          currentStack={myPlayer.stack}
-          buyIn={config.buyIn}
-          onDismiss={() => setTopUpOpen(false)}
-          onConfirm={doTopUp}
         />
       )}
     </TableShell>

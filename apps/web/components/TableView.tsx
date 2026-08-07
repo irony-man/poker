@@ -11,7 +11,6 @@ import { SeatView } from './SeatView';
 import { CopyRoomLink } from './CopyRoomLink';
 import { TableOverflowMenu, type OverflowItem } from './TableOverflowMenu';
 import { TableShell } from './TableShell';
-import { TopUpModal } from './TopUpModal';
 import { VoiceCallBar } from './VoiceCallBar';
 import { WinHandModal } from './WinHandModal';
 import { playTick } from '@/lib/audio';
@@ -43,7 +42,6 @@ export function TableView({
   const router = useRouter();
   const narrow = useIsNarrow();
   const landscape = useIsLandscapePhone();
-  const [topUpOpen, setTopUpOpen] = useState(false);
   const botAddCount = 3;
   const [spectating, setSpectating] = useState(initialSpectate);
   const [dismissedWinHandId, setDismissedWinHandId] = useState<string | null>(null);
@@ -90,6 +88,17 @@ export function TableView({
     !!myPlayer &&
     myPlayer.stack === 0 &&
     (table?.street === 'waiting' || table?.street === 'payout');
+
+  /** Instant rebuy to table stake (no modal). Also sits back in if sitting out. */
+  const doTopUp = () => {
+    if (!table || mySeat === undefined || !canTopUp) return;
+    send({
+      type: 'top_up',
+      tableId,
+      seat: mySeat,
+      amount: table.config.buyIn,
+    });
+  };
 
   const sitAtFirstOpenSeat = () => {
     if (!table || isSpectating) return false;
@@ -394,7 +403,7 @@ export function TableView({
       mobileOverflowItems.push({
         id: 'top-up',
         label: 'Top up',
-        onClick: () => setTopUpOpen(true),
+        onClick: doTopUp,
         tone: 'gold',
       });
     }
@@ -757,7 +766,7 @@ export function TableView({
               {canTopUp && (
                 <button
                   type="button"
-                  onClick={() => setTopUpOpen(true)}
+                  onClick={doTopUp}
                   className="rounded-full border border-sidebar/25 bg-sidebar/8 px-3 py-1.5 text-xs text-sidebar hover:bg-sidebar/12"
                 >
                   Top up
@@ -810,7 +819,7 @@ export function TableView({
               onNextHand={() => {
                 send({ type: 'set_ready', tableId, ready: !myReady });
               }}
-              onTopUp={() => setTopUpOpen(true)}
+              onTopUp={doTopUp}
               onSitOut={() => {
                 if (mySeat === undefined) return;
                 send({ type: 'sit_out', tableId, seat: mySeat });
@@ -820,18 +829,6 @@ export function TableView({
                 send({ type: 'sit_in', tableId, seat: mySeat });
               }}
               onDismiss={() => setDismissedWinHandId(table.handId)}
-            />
-          )}
-
-          {topUpOpen && table && mySeat !== undefined && myPlayer && myPlayer.stack === 0 && (
-            <TopUpModal
-              currentStack={myPlayer.stack}
-              buyIn={table.config.buyIn}
-              onDismiss={() => setTopUpOpen(false)}
-              onConfirm={(amount) => {
-                send({ type: 'top_up', tableId, seat: mySeat, amount });
-                setTopUpOpen(false);
-              }}
             />
           )}
     </TableShell>

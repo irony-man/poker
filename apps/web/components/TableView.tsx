@@ -9,12 +9,6 @@ import { DealerPotZone } from './DealerPotZone';
 import { HowToPlayHelp } from './HowToPlayHelp';
 import { SeatView } from './SeatView';
 import { CopyRoomLink } from './CopyRoomLink';
-import {
-  LeaderboardToggle,
-  TableLeaderboard,
-  loadShowLeaderboard,
-  saveShowLeaderboard,
-} from './TableLeaderboard';
 import { TableOverflowMenu, type OverflowItem } from './TableOverflowMenu';
 import { TableShell } from './TableShell';
 import { TopUpModal } from './TopUpModal';
@@ -53,21 +47,8 @@ export function TableView({
   const [spectating, setSpectating] = useState(initialSpectate);
   const [dismissedWinHandId, setDismissedWinHandId] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
-  const [showLeaderboard, setShowLeaderboard] = useState(false);
   const prevVersion = useRef<number | null>(null);
   const autoSitSent = useRef(false);
-
-  useEffect(() => {
-    setShowLeaderboard(loadShowLeaderboard());
-  }, []);
-
-  const toggleLeaderboard = () => {
-    setShowLeaderboard((prev) => {
-      const next = !prev;
-      saveShowLeaderboard(next);
-      return next;
-    });
-  };
 
   useEffect(() => {
     if (lastErrorCode !== 'not_found' && lastErrorCode !== 'kicked') return;
@@ -348,12 +329,6 @@ export function TableView({
       onClick: () => setChatOpen(true),
       tone: 'accent',
     });
-    mobileOverflowItems.push({
-      id: 'leaderboard',
-      label: showLeaderboard ? 'Hide leaderboard' : 'Show leaderboard',
-      onClick: toggleLeaderboard,
-      tone: 'accent',
-    });
     if (!isSpectating && emptySeats > 0) {
       mobileOverflowItems.push(
         {
@@ -497,7 +472,6 @@ export function TableView({
                 onLeave={voice.leaveVoice}
                 onToggleMute={voice.toggleMute}
               />
-              <LeaderboardToggle open={showLeaderboard} onToggle={toggleLeaderboard} />
               <HowToPlayHelp />
               <div
                 className={
@@ -565,17 +539,6 @@ export function TableView({
           {!narrow ? (
             <div className="pointer-events-none absolute inset-6 z-[1] rounded-[40%] border border-white/10" />
           ) : null}
-
-          <TableLeaderboard
-            players={table?.players ?? []}
-            userId={userId}
-            open={showLeaderboard}
-            onClose={() => {
-              setShowLeaderboard(false);
-              saveShowLeaderboard(false);
-            }}
-            compact={narrow}
-          />
 
           <div
             className={`absolute left-1/2 z-20 -translate-x-1/2 -translate-y-1/2 ${

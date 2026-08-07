@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { listPublicTables, type PublicTableSummary } from '@/lib/api';
 import { STAKE_PRESETS } from '@poker/protocol';
 
@@ -60,9 +61,9 @@ export function PublicTablesPanel({
   }
 
   return (
-    <div className="hud-panel flex flex-col gap-4 p-5 sm:p-6">
+    <LobbySplitCard imageSrc="/home-table.png" imageAlt="Open ring game on the felt">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <p className="text-sm text-ink-strong-muted font-medium">
+        <p className="text-sm font-medium text-ink-strong-muted">
           Pick your stakes · 6-max ring games
         </p>
         <div className="flex items-center gap-2">
@@ -100,7 +101,7 @@ export function PublicTablesPanel({
                   <p className="font-display text-lg font-bold uppercase tracking-wider text-sidebar">
                     {stake.label}
                   </p>
-                  <p className="mt-0.5 text-xs text-ink-strong-muted font-medium">
+                  <p className="mt-0.5 text-xs font-medium text-ink-strong-muted">
                     Blinds {stake.smallBlind}/{stake.bigBlind}
                   </p>
                 </div>
@@ -138,6 +139,6 @@ export function PublicTablesPanel({
           {error}
         </p>
       )}
-    </div>
+    </LobbySplitCard>
   );
 }

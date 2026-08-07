@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChoiceRow } from '@/components/ChoiceRow';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
+import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { createTable } from '@/lib/api';
 import { useLobbySession } from '@/lib/useLobbySession';
 import { DEFAULT_STAKE_ID, STAKE_PRESETS, stakeById } from '@poker/protocol';
@@ -62,69 +63,71 @@ export default function HostPage() {
   }
 
   if (!authReady) {
-    return <p className="pt-12 text-center text-ink-strong-muted">Loading…</p>;
+    return <p className="pt-4 text-ink-strong-muted">Loading…</p>;
   }
 
   return (
     <LobbyPageShell title="Host" signedIn={signedIn} error={error}>
-      <form onSubmit={onCreate} className="hud-panel flex flex-col gap-3 p-4 sm:gap-3.5 sm:p-6">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="font-display text-xl font-bold uppercase tracking-wider text-sidebar">
-            Create table
-          </h2>
-          <span className="text-[10px] font-display uppercase tracking-[0.2em] text-ink-strong-muted">
-            Online
-          </span>
-        </div>
-        <ChoiceRow
-          label="Stakes"
-          name="host-stakes"
-          selected={hostStakeId}
-          options={STAKE_PRESETS.map((s) => s.id)}
-          onSelect={setHostStakeId}
-          format={(id) => {
-            const s = stakeById(id)!;
-            return (
-              <span className="inline-flex flex-col items-start leading-tight">
-                <span>{s.label}</span>
-                <span className="text-[10px] font-medium opacity-70">
-                  ${s.buyIn} · {s.smallBlind}/{s.bigBlind}
+      <form onSubmit={onCreate}>
+        <LobbySplitCard imageSrc="/home-table.png" imageAlt="Private cash-game table with chips">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-display text-xl font-bold uppercase tracking-wider text-sidebar">
+              Create table
+            </h2>
+            <span className="text-[10px] font-display uppercase tracking-[0.2em] text-ink-strong-muted">
+              Online
+            </span>
+          </div>
+          <ChoiceRow
+            label="Stakes"
+            name="host-stakes"
+            selected={hostStakeId}
+            options={STAKE_PRESETS.map((s) => s.id)}
+            onSelect={setHostStakeId}
+            format={(id) => {
+              const s = stakeById(id)!;
+              return (
+                <span className="inline-flex flex-col items-start leading-tight">
+                  <span>{s.label}</span>
+                  <span className="text-[10px] font-medium opacity-70">
+                    ${s.buyIn} · {s.smallBlind}/{s.bigBlind}
+                  </span>
                 </span>
-              </span>
-            );
-          }}
-        />
-        <ChoiceRow
-          label="Seats"
-          name="host-seats"
-          selected={maxSeats}
-          options={SEAT_OPTIONS}
-          onSelect={setMaxSeats}
-        />
-        <ChoiceRow
-          label="Starting bots"
-          name="host-bots"
-          selected={botCount}
-          options={Array.from({ length: maxBots + 1 }, (_, n) => n)}
-          onSelect={setBotCount}
-          format={(n) => (n === 0 ? 'None' : String(n))}
-        />
-        <label className="block">
-          <span className="hud-label">Room code (optional)</span>
-          <input
-            value={customRoomCode}
-            onChange={(e) => setCustomRoomCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
-            className="hud-input font-mono tracking-[0.2em]"
-            inputMode="numeric"
-            pattern="\d{4,8}"
-            maxLength={8}
-            placeholder="Auto · or 4–8 digits"
-            autoComplete="off"
+              );
+            }}
           />
-        </label>
-        <button disabled={busy} type="submit" className="btn-primary mt-2 min-h-11 w-full">
-          Create private table
-        </button>
+          <ChoiceRow
+            label="Seats"
+            name="host-seats"
+            selected={maxSeats}
+            options={SEAT_OPTIONS}
+            onSelect={setMaxSeats}
+          />
+          <ChoiceRow
+            label="Starting bots"
+            name="host-bots"
+            selected={botCount}
+            options={Array.from({ length: maxBots + 1 }, (_, n) => n)}
+            onSelect={setBotCount}
+            format={(n) => (n === 0 ? 'None' : String(n))}
+          />
+          <label className="block">
+            <span className="hud-label">Room code (optional)</span>
+            <input
+              value={customRoomCode}
+              onChange={(e) => setCustomRoomCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+              className="hud-input font-mono tracking-[0.2em]"
+              inputMode="numeric"
+              pattern="\d{4,8}"
+              maxLength={8}
+              placeholder="Auto · or 4–8 digits"
+              autoComplete="off"
+            />
+          </label>
+          <button disabled={busy} type="submit" className="btn-primary mt-1 min-h-11 w-full">
+            Create private table
+          </button>
+        </LobbySplitCard>
       </form>
     </LobbyPageShell>
   );

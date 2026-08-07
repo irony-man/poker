@@ -17,8 +17,8 @@ export function LobbyPageShell({
   children: ReactNode;
 }) {
   return (
-    <div className="lobby-fade-up flex min-h-full w-full flex-col justify-center">
-      <header className="mb-4 shrink-0 sm:mb-6">
+    <div className="lobby-fade-up flex w-full flex-col justify-start">
+      <header className="mb-4 shrink-0 sm:mb-5">
         <h1 className="font-serif text-3xl tracking-tight text-ink-strong sm:text-4xl">{title}</h1>
         {requireAuth && !signedIn && (
           <p className="mt-2 text-sm text-ink-strong-muted">

@@ -7,6 +7,7 @@ import {
   createContest,
   listPublicContests,
 } from '@/lib/api';
+import { LobbySplitCard } from './LobbySplitCard';
 import { ChoiceRow } from './ChoiceRow';
 
 const KNOCKOUT_SIZES = [4, 8, 16] as const;
@@ -113,9 +114,9 @@ export function ContestsPanel({
   }
 
   return (
-    <div className="hud-panel flex h-full flex-col gap-3 p-4 sm:gap-3.5 sm:p-6 sm:col-span-2">
+    <LobbySplitCard imageSrc="/home-contest.png" imageAlt="Tournament championship scene">
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <p className="text-sm text-ink-strong-muted font-medium">
+        <p className="text-sm font-medium text-ink-strong-muted">
           Knockout brackets · table match (chip elimination)
         </p>
         <span className="status-chip shrink-0">Tournament</span>
@@ -206,6 +207,6 @@ export function ContestsPanel({
           {error}
         </p>
       )}
-    </div>
+    </LobbySplitCard>
   );
 }

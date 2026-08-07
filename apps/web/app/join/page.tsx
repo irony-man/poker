@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
+import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { resolveContestInvite, resolveInvite } from '@/lib/api';
 import { useLobbySession } from '@/lib/useLobbySession';
 
@@ -41,7 +42,7 @@ export default function JoinPage() {
   }
 
   if (!authReady) {
-    return <p className="pt-12 text-center text-ink-strong-muted">Loading…</p>;
+    return <p className="pt-4 text-ink-strong-muted">Loading…</p>;
   }
 
   return (
@@ -51,42 +52,43 @@ export default function JoinPage() {
           e.preventDefault();
           void enterInvite('play');
         }}
-        className="hud-panel flex flex-col gap-3 p-4 sm:gap-3.5 sm:p-6"
       >
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="font-display text-xl font-bold uppercase tracking-wider text-sidebar">
-            Invite
-          </h2>
-          <span className="text-[10px] font-display uppercase tracking-[0.2em] text-ink-strong-muted">
-            Table or contest
-          </span>
-        </div>
-        <label className="block">
-          <span className="hud-label">Invite code</span>
-          <input
-            value={invite}
-            onChange={(e) => setInvite(e.target.value.trim())}
-            className="hud-input font-mono tracking-[0.2em]"
-            inputMode="numeric"
-            maxLength={8}
-            required
-            placeholder="Room code"
-            autoComplete="off"
-          />
-        </label>
-        <div className="mt-2 grid grid-cols-2 gap-2.5">
-          <button disabled={busy} type="submit" className="btn-ghost min-h-11 w-full">
-            Enter table
-          </button>
-          <button
-            disabled={busy || !invite.trim()}
-            type="button"
-            onClick={() => void enterInvite('spectate')}
-            className="min-h-11 rounded-md border border-sidebar/30 bg-sidebar/5 px-4 py-2.5 text-sm font-display font-semibold uppercase tracking-wider text-sidebar transition hover:bg-sidebar/10 disabled:opacity-40"
-          >
-            Spectate
-          </button>
-        </div>
+        <LobbySplitCard imageSrc="/home-cards.png" imageAlt="Playing cards and chips on felt">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-display text-xl font-bold uppercase tracking-wider text-sidebar">
+              Invite
+            </h2>
+            <span className="text-[10px] font-display uppercase tracking-[0.2em] text-ink-strong-muted">
+              Table or contest
+            </span>
+          </div>
+          <label className="block">
+            <span className="hud-label">Invite code</span>
+            <input
+              value={invite}
+              onChange={(e) => setInvite(e.target.value.trim())}
+              className="hud-input font-mono tracking-[0.2em]"
+              inputMode="numeric"
+              maxLength={8}
+              required
+              placeholder="Room code"
+              autoComplete="off"
+            />
+          </label>
+          <div className="mt-1 grid grid-cols-2 gap-2.5">
+            <button disabled={busy} type="submit" className="btn-ghost min-h-11 w-full">
+              Enter table
+            </button>
+            <button
+              disabled={busy || !invite.trim()}
+              type="button"
+              onClick={() => void enterInvite('spectate')}
+              className="min-h-11 rounded-md border border-sidebar/30 bg-sidebar/5 px-4 py-2.5 text-sm font-display font-semibold uppercase tracking-wider text-sidebar transition hover:bg-sidebar/10 disabled:opacity-40"
+            >
+              Spectate
+            </button>
+          </div>
+        </LobbySplitCard>
       </form>
     </LobbyPageShell>
   );

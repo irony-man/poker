@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
+import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { AvatarPicker } from '@/components/PlayerAvatar';
 import { signup } from '@/lib/api';
 import { loadSavedAvatarId, saveAvatarId } from '@/lib/avatars';
@@ -39,62 +40,64 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="lobby-fade-up relative flex min-h-full w-full flex-col justify-center">
-      <div className="relative">
+    <div className="lobby-fade-up flex w-full flex-col justify-start">
+      <div className="mb-4 sm:mb-5">
         <h1 className="font-serif text-3xl tracking-tight text-ink-strong sm:text-4xl">
           Create account
         </h1>
         <p className="mt-2 text-sm text-ink-strong-muted">Create a username and password</p>
       </div>
-      <form onSubmit={onSubmit} className="hud-panel mt-6 w-full space-y-4 p-5 sm:mt-8 sm:p-6">
-        <label className="block">
-          <span className="hud-label">Username</span>
-          <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="hud-input"
-            required
-            minLength={3}
-            maxLength={24}
-            autoComplete="username"
-            pattern="[a-zA-Z0-9_]+"
-            placeholder="letters, numbers, _"
+      <form onSubmit={onSubmit}>
+        <LobbySplitCard imageSrc="/home-contest.png" imageAlt="High-stakes tournament atmosphere">
+          <label className="block">
+            <span className="hud-label">Username</span>
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="hud-input"
+              required
+              minLength={3}
+              maxLength={24}
+              autoComplete="username"
+              pattern="[a-zA-Z0-9_]+"
+              placeholder="letters, numbers, _"
+            />
+          </label>
+          <label className="block">
+            <span className="hud-label">Password</span>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="hud-input"
+              required
+              minLength={6}
+              maxLength={128}
+              autoComplete="new-password"
+            />
+          </label>
+          <AvatarPicker
+            value={avatarId}
+            onChange={(id) => {
+              setAvatarId(id);
+              saveAvatarId(id);
+            }}
           />
-        </label>
-        <label className="block">
-          <span className="hud-label">Password</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="hud-input"
-            required
-            minLength={6}
-            maxLength={128}
-            autoComplete="new-password"
-          />
-        </label>
-        <AvatarPicker
-          value={avatarId}
-          onChange={(id) => {
-            setAvatarId(id);
-            saveAvatarId(id);
-          }}
-        />
-        {error && (
-          <p role="alert" className="status-chip border-red-500/40 bg-red-950/50 text-red-300">
-            {error}
+          {error && (
+            <p role="alert" className="status-chip border-danger/30 bg-danger/10 text-danger text-xs">
+              {error}
+            </p>
+          )}
+          <button disabled={busy} type="submit" className="btn-primary min-h-11 w-full">
+            {busy ? 'Creating…' : 'Create account'}
+          </button>
+          <p className="text-sm text-ink-strong-muted">
+            Already have an account?{' '}
+            <Link href="/sign-in" className="font-semibold text-sidebar hover:underline">
+              Sign in
+            </Link>
           </p>
-        )}
-        <button disabled={busy} type="submit" className="btn-primary min-h-11 w-full">
-          {busy ? 'Creating…' : 'Create account'}
-        </button>
-        <p className="text-center text-sm text-ink-strong-muted">
-          Already have an account?{' '}
-          <Link href="/sign-in" className="text-sidebar font-semibold hover:underline">
-            Sign in
-          </Link>
-        </p>
+        </LobbySplitCard>
       </form>
     </div>
   );

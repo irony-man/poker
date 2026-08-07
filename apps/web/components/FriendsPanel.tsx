@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 import {
   challengeFriend,
@@ -200,7 +201,7 @@ export function FriendsPanel({
   }
 
   return (
-    <div className="hud-panel flex flex-col gap-4 p-4 sm:gap-5 sm:p-6">
+    <LobbySplitCard imageSrc="/home-cards.png" imageAlt="Friendly home-game cards and chips">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <p className="text-sm font-medium text-ink-strong-muted">
           Search players · accept requests · challenge to a table
@@ -208,7 +209,7 @@ export function FriendsPanel({
         <span className="status-chip shrink-0">Social</span>
       </div>
 
-      <label className="block w-full max-w-xl">
+      <label className="block w-full">
         <span className="hud-label">Find player</span>
         <input
           value={searchQuery}
@@ -501,6 +502,6 @@ export function FriendsPanel({
       {!userId && (
         <p className="text-sm text-ink-strong-muted">Sign in to use friends and groups.</p>
       )}
-    </div>
+    </LobbySplitCard>
   );
 }

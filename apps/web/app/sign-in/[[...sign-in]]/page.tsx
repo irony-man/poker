@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, Suspense, useState } from 'react';
+import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { login } from '@/lib/api';
 import { loadSavedAvatarId, saveAvatarId } from '@/lib/avatars';
 import { writeStoredSession } from '@/lib/session';
@@ -38,52 +39,54 @@ function SignInForm() {
   }
 
   return (
-    <div className="lobby-fade-up relative flex min-h-full w-full flex-col justify-center">
-      <div className="relative">
+    <div className="lobby-fade-up flex w-full flex-col justify-start">
+      <div className="mb-4 sm:mb-5">
         <h1 className="font-serif text-3xl tracking-tight text-ink-strong sm:text-4xl">Sign in</h1>
         <p className="mt-2 text-sm text-ink-strong-muted">Sign in with your username</p>
       </div>
-      <form onSubmit={onSubmit} className="hud-panel mt-6 w-full space-y-4 p-5 sm:mt-8 sm:p-6">
-        <label className="block">
-          <span className="hud-label">Username</span>
-          <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="hud-input"
-            required
-            minLength={3}
-            maxLength={24}
-            autoComplete="username"
-            pattern="[a-zA-Z0-9_]+"
-            placeholder="your_username"
-          />
-        </label>
-        <label className="block">
-          <span className="hud-label">Password</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="hud-input"
-            required
-            minLength={6}
-            autoComplete="current-password"
-          />
-        </label>
-        {error && (
-          <p role="alert" className="status-chip border-red-500/40 bg-red-950/50 text-red-300">
-            {error}
+      <form onSubmit={onSubmit}>
+        <LobbySplitCard imageSrc="/home-cards.png" imageAlt="Cards on felt — sign in to play">
+          <label className="block">
+            <span className="hud-label">Username</span>
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="hud-input"
+              required
+              minLength={3}
+              maxLength={24}
+              autoComplete="username"
+              pattern="[a-zA-Z0-9_]+"
+              placeholder="your_username"
+            />
+          </label>
+          <label className="block">
+            <span className="hud-label">Password</span>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="hud-input"
+              required
+              minLength={6}
+              autoComplete="current-password"
+            />
+          </label>
+          {error && (
+            <p role="alert" className="status-chip border-danger/30 bg-danger/10 text-danger text-xs">
+              {error}
+            </p>
+          )}
+          <button disabled={busy} type="submit" className="btn-primary min-h-11 w-full">
+            {busy ? 'Signing in…' : 'Sign in'}
+          </button>
+          <p className="text-sm text-ink-strong-muted">
+            No account?{' '}
+            <Link href="/sign-up" className="font-semibold text-sidebar hover:underline">
+              Sign up
+            </Link>
           </p>
-        )}
-        <button disabled={busy} type="submit" className="btn-primary min-h-11 w-full">
-          {busy ? 'Signing in…' : 'Sign in'}
-        </button>
-        <p className="text-center text-sm text-ink-strong-muted">
-          No account?{' '}
-          <Link href="/sign-up" className="text-sidebar font-semibold hover:underline">
-            Sign up
-          </Link>
-        </p>
+        </LobbySplitCard>
       </form>
     </div>
   );
@@ -91,7 +94,7 @@ function SignInForm() {
 
 export default function SignInPage() {
   return (
-    <Suspense fallback={<p className="text-ink-strong-muted pt-10 text-center">Loading…</p>}>
+    <Suspense fallback={<p className="text-ink-strong-muted pt-4">Loading…</p>}>
       <SignInForm />
     </Suspense>
   );

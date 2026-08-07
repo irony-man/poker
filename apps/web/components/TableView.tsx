@@ -52,7 +52,7 @@ export function TableView({
   const autoSitSent = useRef(false);
 
   useEffect(() => {
-    if (lastErrorCode !== 'not_found') return;
+    if (lastErrorCode !== 'not_found' && lastErrorCode !== 'kicked') return;
     voice.leaveVoice();
     leaveTable();
     clearTable();
@@ -167,11 +167,6 @@ export function TableView({
     (table.winners?.length ?? 0) > 0 &&
     table.handId !== dismissedWinHandId;
   const youWon = !!table?.winners.some((w) => table.players[w.seat]?.userId === userId);
-  const canStartNext =
-    !isSpectating &&
-    mySeat !== undefined &&
-    myPlayer?.status !== 'sittingOut' &&
-    (table?.players.filter((p) => p.userId && p.stack > 0 && p.status !== 'sittingOut').length ?? 0) >= 2;
   const betweenHands = table?.street === 'waiting' || table?.street === 'payout';
   const canSitOut =
     mySeat !== undefined &&
@@ -186,13 +181,22 @@ export function TableView({
   const emptySeats = table?.players.filter((p) => p.status === 'empty').length ?? 0;
   const botSeats = table?.players.filter((p) => p.userId?.startsWith('bot:')).length ?? 0;
   const isTournament = Boolean(table?.tournament);
-  const canStartHand =
+  const isHost = !!userId && table?.hostUserId === userId;
+  /** Humans + bots eligible for next cash hand. */
+  const eligiblePlayers =
+    table?.players.filter(
+      (p) => p.userId && p.stack > 0 && p.status !== 'sittingOut' && p.status !== 'empty',
+    ) ?? [];
+  const readyCount = eligiblePlayers.filter((p) => p.ready).length;
+  const myReady = !!myPlayer?.ready;
+  const canReady =
     !isTournament &&
     betweenHands &&
     mySeat !== undefined &&
     myPlayer?.status !== 'sittingOut' &&
-    playersInHand >= 2;
-  /** Desktop keeps the full pill row; mobile only shows a Start CTA between hands. */
+    (myPlayer?.stack ?? 0) > 0 &&
+    eligiblePlayers.length >= 2;
+  /** Desktop keeps the full pill row; mobile only shows Ready/Sit CTA between hands. */
   const showDesktopTools =
     !narrow &&
     (isSpectating ||
@@ -201,8 +205,8 @@ export function TableView({
       canTopUp ||
       (!isTournament && !isSpectating && emptySeats > 0) ||
       (!isTournament && !isSpectating && botSeats > 0) ||
-      canStartHand);
-  const showMobileStartCta = narrow && (canStartHand || isSpectating);
+      canReady);
+  const showMobileStartCta = narrow && (canReady || isSpectating);
 
   const shareInvite = async () => {
     if (!inviteCode) return;
@@ -606,11 +610,20 @@ export function TableView({
                 winningCards={highlightMode ? winningCards : null}
                 turnEndsAt={table.toAct === p.seat ? table.turnEndsAt : null}
                 turnTotalMs={table.config.turnTimeMs}
-                canManageBots={!isSpectating}
+                canManageBots={!isSpectating && !isTournament}
                 spectating={isSpectating}
                 compact={narrow}
                 landscape={landscape}
                 isDealer={table.dealerButton === p.seat}
+                showReady={betweenHands && !isTournament && !!p.ready}
+                canKick={
+                  isHost &&
+                  betweenHands &&
+                  !isTournament &&
+                  !!p.userId &&
+                  p.userId !== userId &&
+                  p.status !== 'empty'
+                }
                 onSit={() => {
                   if (!table || isSpectating) return;
                   send({
@@ -629,6 +642,7 @@ export function TableView({
                   })
                 }
                 onRemoveBot={() => send({ type: 'remove_bot', tableId, seat: p.seat })}
+                onKick={() => send({ type: 'kick_player', tableId, seat: p.seat })}
               />
             );
           })}
@@ -636,7 +650,7 @@ export function TableView({
           </div>
 
           {showMobileStartCta && (
-            <div className="relative z-30 flex shrink-0 justify-center px-1 pb-0.5 pt-1">
+            <div className="relative z-30 flex shrink-0 flex-col items-center gap-1 px-1 pb-0.5 pt-1">
               {isSpectating ? (
                 <button
                   type="button"
@@ -650,13 +664,20 @@ export function TableView({
                   Sit & play
                 </button>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => send({ type: 'start_hand', tableId })}
-                  className="btn-primary min-h-10 px-5 text-[11px] font-display font-bold uppercase tracking-wide"
-                >
-                  Start hand
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => send({ type: 'set_ready', tableId, ready: !myReady })}
+                    className={`min-h-10 px-5 text-[11px] font-display font-bold uppercase tracking-wide ${
+                      myReady ? 'btn-ghost' : 'btn-primary'
+                    }`}
+                  >
+                    {myReady ? 'Not ready' : 'Ready'}
+                  </button>
+                  <span className="text-[10px] font-display uppercase tracking-wider text-cream/50">
+                    {readyCount}/{eligiblePlayers.length} ready
+                  </span>
+                </>
               )}
             </div>
           )}
@@ -677,14 +698,23 @@ export function TableView({
                   Sit and play
                 </button>
               )}
-              {canStartHand && (
-                <button
-                  type="button"
-                  onClick={() => send({ type: 'start_hand', tableId })}
-                  className="btn-ghost text-xs py-1.5"
-                >
-                  Start hand
-                </button>
+              {canReady && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => send({ type: 'set_ready', tableId, ready: !myReady })}
+                    className={`text-xs py-1.5 ${
+                      myReady
+                        ? 'rounded-full border border-felt-neon/40 bg-felt-neon/15 px-3 text-felt-neon'
+                        : 'btn-ghost'
+                    }`}
+                  >
+                    {myReady ? 'Ready ✓' : 'Ready'}
+                  </button>
+                  <span className="px-1 text-[10px] font-display uppercase tracking-wider text-cream/45">
+                    {readyCount}/{eligiblePlayers.length}
+                  </span>
+                </>
               )}
               {!isSpectating && !isTournament && emptySeats > 0 && (
                 <>
@@ -772,7 +802,10 @@ export function TableView({
           {showWinModal && table && (
             <WinHandModal
               youWon={youWon}
-              canStartNext={canStartNext}
+              canStartNext={canReady}
+              readyCount={readyCount}
+              readyTotal={eligiblePlayers.length}
+              isReady={myReady}
               canTopUp={canTopUp}
               canSitOut={canSitOut}
               canSitIn={canSitIn}
@@ -804,8 +837,7 @@ export function TableView({
                 return [...bySeat.values()];
               })()}
               onNextHand={() => {
-                setDismissedWinHandId(table.handId);
-                send({ type: 'start_hand', tableId });
+                send({ type: 'set_ready', tableId, ready: !myReady });
               }}
               onTopUp={() => setTopUpOpen(true)}
               onSitOut={() => {

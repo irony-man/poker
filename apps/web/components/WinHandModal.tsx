@@ -17,6 +17,9 @@ export function WinHandModal({
   winners,
   youWon,
   canStartNext,
+  readyCount,
+  readyTotal,
+  isReady,
   canTopUp,
   canSitOut,
   canSitIn,
@@ -29,6 +32,9 @@ export function WinHandModal({
   winners: WinLine[];
   youWon: boolean;
   canStartNext: boolean;
+  readyCount?: number;
+  readyTotal?: number;
+  isReady?: boolean;
   canTopUp?: boolean;
   canSitOut?: boolean;
   canSitIn?: boolean;
@@ -182,13 +188,22 @@ export function WinHandModal({
               </button>
             )}
             {canStartNext ? (
-              <button
-                type="button"
-                onClick={onNextHand}
-                className="btn-primary min-h-9 flex-1 px-3 py-2 text-xs font-display font-bold uppercase tracking-wide"
-              >
-                Next hand
-              </button>
+              <div className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center">
+                <button
+                  type="button"
+                  onClick={onNextHand}
+                  className={`btn-primary min-h-9 flex-1 px-3 py-2 text-xs font-display font-bold uppercase tracking-wide ${
+                    isReady ? 'opacity-90 ring-1 ring-felt-neon/50' : ''
+                  }`}
+                >
+                  {isReady ? 'Not ready' : 'Ready'}
+                </button>
+                {typeof readyCount === 'number' && typeof readyTotal === 'number' && (
+                  <span className="shrink-0 text-center text-[10px] font-display uppercase tracking-wider text-cream/50 sm:px-1">
+                    {readyCount}/{readyTotal}
+                  </span>
+                )}
+              </div>
             ) : (
               <p className="flex-1 text-center text-[10px] text-cream/45">Waiting…</p>
             )}

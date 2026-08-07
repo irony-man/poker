@@ -76,6 +76,8 @@ export class Room {
   private voiceParticipants = new Map<string, string>();
   /** Preset avatar index per seated/connected user (incl. bots). */
   private avatarByUser = new Map<string, number>();
+  /** Cash: humans who have opted in for the next hand. */
+  private readyUserIds = new Set<string>();
   private kv: KvStore;
   private history: HandHistoryStore;
   private handStartedAt = 0;
@@ -229,8 +231,7 @@ export class Room {
       (p) => p.userId && p.stack > 0 && p.status !== 'sittingOut',
     );
     if (ready.length < 2) return;
-    const starter = ready[0]!.userId!;
-    void this.startHand(starter);
+    void this.dealHand();
   }
 
   get config(): TableConfig {
@@ -290,6 +291,7 @@ export class Room {
   /** Fold/stand if seated, then detach the websocket — preferred leave path. */
   leave(userId: string): { ok: boolean; error?: string } {
     this.cancelDisconnect(userId);
+    this.readyUserIds.delete(userId);
     const seat = this.seatOf(userId);
     if (seat !== null) {
       const name = this.state.players[seat]?.name ?? 'Player';
@@ -496,8 +498,11 @@ export class Room {
 
   private enrichPublic() {
     const base = toPublicView(this.meta.id, this.state, this.config);
+    const between =
+      this.state.street === 'waiting' || this.state.street === 'payout';
     return {
       ...base,
+      hostUserId: this.meta.hostUserId,
       turnEndsAt: this.turnEndsAt,
       tournament: this.meta.tournament
         ? {
@@ -508,12 +513,25 @@ export class Room {
             noTopUp: true,
           }
         : null,
-      players: base.players.map((p) => ({
-        ...p,
-        avatarId: p.userId
-          ? (this.avatarByUser.get(p.userId) ?? avatarIdFromUserId(p.userId))
-          : null,
-      })),
+      players: base.players.map((p) => {
+        const eligible =
+          between &&
+          !!p.userId &&
+          p.stack > 0 &&
+          p.status !== 'sittingOut' &&
+          p.status !== 'empty';
+        const ready =
+          eligible &&
+          !!p.userId &&
+          (isBotUserId(p.userId) || this.readyUserIds.has(p.userId));
+        return {
+          ...p,
+          ready: Boolean(ready),
+          avatarId: p.userId
+            ? (this.avatarByUser.get(p.userId) ?? avatarIdFromUserId(p.userId))
+            : null,
+        };
+      }),
     };
   }
 
@@ -573,44 +591,84 @@ export class Room {
   }
 
   maybeAutoStart(): void {
+    // Cash tables require every human to ready up (no auto-deal).
     if (this.isTournament()) {
       this.scheduleTournamentAutoStart(1500);
-      return;
-    }
-    if (this.state.street !== 'waiting') return;
-    const humans = this.state.players.filter(
-      (p) => p.userId && p.stack > 0 && !isBotUserId(p.userId),
-    ).length;
-    const ready = this.state.players.filter(
-      (p) => p.userId && p.stack > 0 && p.status !== 'sittingOut',
-    ).length;
-    // Wait for at least one human so bots don't start the hand before the host sits
-    if (humans >= 1 && ready >= 2) {
-      setTimeout(() => {
-        if (this.state.street !== 'waiting') return;
-        const human = this.state.players.find(
-          (p) => p.userId && p.stack > 0 && !isBotUserId(p.userId),
-        );
-        const stillReady = this.state.players.filter(
-          (p) => p.userId && p.stack > 0 && p.status !== 'sittingOut',
-        ).length;
-        if (human?.userId && stillReady >= 2) {
-          void this.startHand(human.userId);
-        }
-      }, 1500);
     }
   }
 
+  /**
+   * Cash: toggle ready / set ready. Deals when all eligible humans are ready.
+   * Tournament: force-deals (existing host start).
+   */
   startHand(userId: string): { ok: boolean; error?: string } {
+    if (this.isTournament()) {
+      return this.dealHand();
+    }
+    const currentlyReady = this.readyUserIds.has(userId);
+    return this.setReady(userId, !currentlyReady);
+  }
+
+  setReady(userId: string, ready: boolean): { ok: boolean; error?: string } {
+    if (this.isTournament()) {
+      return { ok: false, error: 'Ready is only for cash tables' };
+    }
+    if (this.state.street !== 'waiting' && this.state.street !== 'payout') {
+      return { ok: false, error: 'Hand in progress' };
+    }
+    if (isBotUserId(userId)) {
+      return { ok: false, error: 'Bots are always ready' };
+    }
+    const seat = this.seatOf(userId);
+    if (seat === null) {
+      return { ok: false, error: 'Sit down before ready' };
+    }
+    const me = this.state.players[seat];
+    if (!me || me.status === 'sittingOut') {
+      return { ok: false, error: 'Sit in before ready' };
+    }
+    if (me.stack <= 0) {
+      return { ok: false, error: 'Top up before ready' };
+    }
+    if (ready) this.readyUserIds.add(userId);
+    else this.readyUserIds.delete(userId);
+    void this.afterStateChange();
+    this.tryDealIfAllReady();
+    return { ok: true };
+  }
+
+  private eligibleForNextHand(): { userId: string; human: boolean }[] {
+    return this.state.players
+      .filter(
+        (p) =>
+          !!p.userId &&
+          p.stack > 0 &&
+          p.status !== 'sittingOut' &&
+          p.status !== 'empty',
+      )
+      .map((p) => ({
+        userId: p.userId!,
+        human: !isBotUserId(p.userId!),
+      }));
+  }
+
+  private tryDealIfAllReady(): void {
+    if (this.isTournament()) return;
+    if (this.state.street !== 'waiting' && this.state.street !== 'payout') return;
+    const eligible = this.eligibleForNextHand();
+    if (eligible.length < 2) return;
+    const humans = eligible.filter((e) => e.human);
+    if (humans.length === 0) return;
+    for (const h of humans) {
+      if (!this.readyUserIds.has(h.userId)) return;
+    }
+    void this.dealHand();
+  }
+
+  /** Actually deal — cash consensus or tournament auto-start. */
+  private dealHand(): { ok: boolean; error?: string } {
     if (this.meta.tournament?.frozen) {
       return { ok: false, error: 'Match is over' };
-    }
-    if (this.seatOf(userId) === null) {
-      return { ok: false, error: 'Sit down before starting a hand' };
-    }
-    const mySeat = this.seatOf(userId)!;
-    if (this.state.players[mySeat]?.status === 'sittingOut') {
-      return { ok: false, error: 'Sit in before starting a hand' };
     }
     if (this.state.street !== 'waiting' && this.state.street !== 'payout') {
       return { ok: false, error: 'Hand in progress' };
@@ -618,18 +676,65 @@ export class Room {
     if (this.state.street === 'payout') {
       this.state = returnToWaiting(this.state);
     }
-    const ready = this.state.players.filter(
+    const readyCount = this.state.players.filter(
       (p) => p.userId && p.stack > 0 && p.status !== 'sittingOut',
     ).length;
-    if (ready < 2) {
+    if (readyCount < 2) {
       return { ok: false, error: 'Need at least 2 players with chips' };
     }
+    this.readyUserIds.clear();
     const handId = nanoid(10);
     this.handStartedAt = Date.now();
     const result = startHand(this.state, this.config, handId, (n) => randomBytes(n));
     if (!result.ok) return { ok: false, error: result.error };
     this.state = result.state;
     this.announceEngineEvents(result.events);
+    void this.afterStateChange();
+    return { ok: true };
+  }
+
+  /** Host removes a seated player between hands (cash only). */
+  kickPlayer(hostId: string, seat: number): { ok: boolean; error?: string } {
+    if (this.isTournament()) {
+      return { ok: false, error: 'Cannot kick in tournament' };
+    }
+    if (hostId !== this.meta.hostUserId) {
+      return { ok: false, error: 'Only the host can kick players' };
+    }
+    if (this.state.street !== 'waiting' && this.state.street !== 'payout') {
+      return { ok: false, error: 'Wait until the hand ends' };
+    }
+    const target = this.state.players[seat];
+    if (!target || target.status === 'empty' || !target.userId) {
+      return { ok: false, error: 'Empty seat' };
+    }
+    if (target.userId === hostId) {
+      return { ok: false, error: 'Cannot kick yourself' };
+    }
+    const kickedName = target.name ?? 'Player';
+    const kickedId = target.userId;
+    this.readyUserIds.delete(kickedId);
+
+    if (isBotUserId(kickedId)) {
+      const result = standUp(this.state, seat);
+      if (!result.ok) return { ok: false, error: result.error };
+      this.state = result.state;
+      this.systemChat('Dealer', `Host removed ${kickedName}`);
+      void this.afterStateChange();
+      return { ok: true };
+    }
+
+    // Human: vacate seat and drop their connection if present.
+    const result = leaveSeat(this.state, seat);
+    if (!result.ok) return { ok: false, error: result.error };
+    this.state = result.state;
+    this.announceEngineEvents(result.events);
+    if (this.connections.has(kickedId)) {
+      const conn = this.connections.get(kickedId)!;
+      conn.send({ type: 'error', message: 'You were removed from the table', code: 'kicked' });
+      this.detach(kickedId);
+    }
+    this.systemChat('Dealer', `Host removed ${kickedName}`);
     void this.afterStateChange();
     return { ok: true };
   }
@@ -659,6 +764,7 @@ export class Room {
 
   stand(userId: string, seat: number): { ok: boolean; error?: string } {
     if (this.seatOf(userId) !== seat) return { ok: false, error: 'Not your seat' };
+    this.readyUserIds.delete(userId);
     const result = standUp(this.state, seat);
     if (!result.ok) return { ok: false, error: result.error };
     this.state = result.state;
@@ -668,6 +774,7 @@ export class Room {
 
   doSitOut(userId: string, seat: number): { ok: boolean; error?: string } {
     if (this.seatOf(userId) !== seat) return { ok: false, error: 'Not your seat' };
+    this.readyUserIds.delete(userId);
     const result = sitOut(this.state, seat);
     if (!result.ok) return { ok: false, error: result.error };
     this.state = result.state;

@@ -748,8 +748,19 @@ async function main() {
           break;
         }
         case 'start_hand': {
+          // Cash: toggles ready consensus. Tournament: deals immediately.
           const result = r.startHand(userId);
           if (!result.ok) send({ type: 'error', message: result.error ?? 'Start failed' });
+          break;
+        }
+        case 'set_ready': {
+          const result = r.setReady(userId, msg.ready);
+          if (!result.ok) send({ type: 'error', message: result.error ?? 'Ready failed' });
+          break;
+        }
+        case 'kick_player': {
+          const result = r.kickPlayer(userId, msg.seat);
+          if (!result.ok) send({ type: 'error', message: result.error ?? 'Kick failed' });
           break;
         }
         case 'action': {

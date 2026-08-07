@@ -13,6 +13,8 @@ export interface PublicPlayer {
   holeCards: [string, string] | null;
   /** Preset profile picture index (0–7). */
   avatarId?: number | null;
+  /** Between hands on cash tables: opted in for next deal (bots always true). */
+  ready?: boolean;
 }
 
 export interface PublicTable {
@@ -34,6 +36,8 @@ export interface PublicTable {
   showdownHands?: { seat: number; handName: string; cards?: string[] }[];
   /** Epoch ms when current turn expires (server clock). */
   turnEndsAt?: number | null;
+  /** Table creator (cash host). */
+  hostUserId?: string | null;
   /** Present on tournament tables. */
   tournament?: {
     contestId: string;

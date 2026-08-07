@@ -49,6 +49,18 @@ export const ClientMessageSchema = z.discriminatedUnion('type', [
     type: z.literal('start_hand'),
     tableId: z.string().min(1),
   }),
+  /** Cash tables: mark ready / unready between hands. Hand deals when all humans ready. */
+  z.object({
+    type: z.literal('set_ready'),
+    tableId: z.string().min(1),
+    ready: z.boolean(),
+  }),
+  /** Host only: remove a seated player (between hands, cash tables). */
+  z.object({
+    type: z.literal('kick_player'),
+    tableId: z.string().min(1),
+    seat: z.number().int().min(0).max(9),
+  }),
   z.object({
     type: z.literal('action'),
     tableId: z.string().min(1),

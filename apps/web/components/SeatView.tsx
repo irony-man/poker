@@ -16,7 +16,7 @@ function SeatActionPopup({ label, burstKey }: { label: string; burstKey: number 
       key={burstKey}
       className="pointer-events-none absolute left-1/2 top-0 z-30 -translate-x-1/2 -translate-y-[115%]"
     >
-      <span className="seat-action-popup inline-block whitespace-nowrap rounded-lg border-2 border-gold/60 bg-ink/95 px-3.5 py-1.5 text-sm font-extrabold uppercase tracking-wide text-gold shadow-[0_6px_18px_rgba(0,0,0,0.6)]">
+      <span className="seat-action-popup inline-block whitespace-nowrap rounded-lg border-2 border-mushroom/55 bg-sidebar/95 px-3.5 py-1.5 text-sm font-extrabold uppercase tracking-wide text-mushroom shadow-[0_6px_18px_rgba(14,6,24,0.65)]">
         {label}
       </span>
     </div>
@@ -38,12 +38,15 @@ export function SeatView({
   onSit,
   onAddBot,
   onRemoveBot,
+  onKick,
   canManageBots,
   spectating,
   angle,
   compact = false,
   landscape = false,
   isDealer = false,
+  showReady = false,
+  canKick = false,
 }: {
   player: PublicPlayer;
   isToAct: boolean;
@@ -59,6 +62,7 @@ export function SeatView({
   onSit?: () => void;
   onAddBot?: () => void;
   onRemoveBot?: () => void;
+  onKick?: () => void;
   canManageBots?: boolean;
   spectating?: boolean;
   angle: number;
@@ -67,6 +71,8 @@ export function SeatView({
   /** Rotated phone — reference-style stacked cards → stack → name. */
   landscape?: boolean;
   isDealer?: boolean;
+  showReady?: boolean;
+  canKick?: boolean;
 }) {
   const rad = (angle * Math.PI) / 180;
   const rx = landscape ? 41 : compact ? 42 : 41;
@@ -158,7 +164,7 @@ export function SeatView({
             }`}
           >
             {isDealer && (
-              <span className="absolute -right-1 top-0 z-20 flex h-4 w-4 items-center justify-center rounded-full bg-white text-[9px] font-black text-black shadow ring-1 ring-black/20">
+              <span className="absolute -right-1 top-0 z-20 flex h-4 w-4 items-center justify-center rounded-full bg-sidebar text-[9px] font-black text-mushroom shadow ring-1 ring-mushroom/40">
                 D
               </span>
             )}
@@ -239,15 +245,15 @@ export function SeatView({
                 </div>
               )}
               <div
-                className={`relative px-1 py-0.5 text-center text-[11px] font-extrabold tabular-nums leading-none text-white ${
-                  isWinner ? 'bg-[#c9a227]' : 'bg-[#c62828]'
+                className={`relative px-1 py-0.5 text-center text-[11px] font-extrabold tabular-nums leading-none text-mushroom ${
+                  isWinner ? 'bg-brass text-ink' : 'bg-sidebar'
                 }`}
               >
                 {money(player.stack)}
               </div>
               <div
                 className={`truncate px-1 py-0.5 text-center text-[10px] font-bold leading-none ${
-                  isSelf ? 'bg-[#f5c518] text-black' : 'bg-[#e4e4e4] text-black'
+                  isSelf ? 'bg-mushroom text-sidebar' : 'bg-[#efe6e4] text-sidebar'
                 }`}
               >
                 {displayName}
@@ -257,6 +263,11 @@ export function SeatView({
             {player.status === 'allin' && !folded && (
               <div className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-[#2aff9a] drop-shadow">
                 All-in
+              </div>
+            )}
+            {showReady && !sittingOut && (
+              <div className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-felt-neon drop-shadow">
+                Ready
               </div>
             )}
           </div>
@@ -368,16 +379,16 @@ export function SeatView({
                 </div>
                 <div className="flex w-full flex-col overflow-hidden rounded-md shadow-[0_3px_8px_rgba(0,0,0,0.45)]">
                   {isSelf && (
-                    <span className="bg-[#f5c518] px-0.5 py-px text-center text-[6px] font-extrabold uppercase leading-none tracking-wide text-black">
+                    <span className="bg-mushroom px-0.5 py-px text-center text-[6px] font-extrabold uppercase leading-none tracking-wide text-sidebar">
                       You
                     </span>
                   )}
-                  <span className="truncate bg-white px-0.5 py-0.5 text-center text-[8px] font-bold leading-none text-black">
+                  <span className="truncate bg-[#efe6e4] px-0.5 py-0.5 text-center text-[8px] font-bold leading-none text-sidebar">
                     {displayName}
                   </span>
                   <span
-                    className={`px-0.5 py-0.5 text-center text-[10px] font-extrabold tabular-nums leading-none tracking-tight text-white ${
-                      isWinner ? 'bg-[#c9a227]' : 'bg-[#c62828]'
+                    className={`px-0.5 py-0.5 text-center text-[10px] font-extrabold tabular-nums leading-none tracking-tight ${
+                      isWinner ? 'bg-brass text-ink' : 'bg-sidebar text-mushroom'
                     }`}
                   >
                     {money(player.stack)}
@@ -407,12 +418,12 @@ export function SeatView({
                 <div className="flex items-stretch shadow-[0_3px_8px_rgba(0,0,0,0.45)]">
                   <div className="flex flex-col justify-end">
                     {isSelf && (
-                      <span className="rounded-t-sm bg-[#f5c518] px-1 py-[1px] text-center text-[7px] font-extrabold uppercase leading-tight tracking-wide text-black">
+                      <span className="rounded-t-sm bg-mushroom px-1 py-[1px] text-center text-[7px] font-extrabold uppercase leading-tight tracking-wide text-sidebar">
                         You
                       </span>
                     )}
                     <span
-                      className={`max-w-[3.2rem] truncate rounded-b-sm bg-white px-1.5 py-1 text-[10px] font-bold leading-none text-black sm:max-w-[3.6rem] ${
+                      className={`max-w-[3.2rem] truncate rounded-b-sm bg-[#efe6e4] px-1.5 py-1 text-[10px] font-bold leading-none text-sidebar sm:max-w-[3.6rem] ${
                         isSelf ? '' : 'rounded-sm'
                       }`}
                     >
@@ -420,8 +431,10 @@ export function SeatView({
                     </span>
                   </div>
                   <div
-                    className={`flex min-w-[2.75rem] items-center justify-center px-1.5 py-1 text-[11px] font-extrabold tabular-nums tracking-tight text-white sm:min-w-[3.75rem] sm:px-2.5 sm:py-1.5 sm:text-[13px] ${
-                      isWinner ? 'bg-[#c9a227]' : 'bg-[#c62828]'
+                    className={`flex min-w-[2.75rem] items-center justify-center px-1.5 py-1 text-[11px] font-extrabold tabular-nums tracking-tight sm:min-w-[3.75rem] sm:px-2.5 sm:py-1.5 sm:text-[13px] ${
+                      isWinner
+                        ? 'bg-brass text-ink'
+                        : 'bg-sidebar text-mushroom'
                     }`}
                   >
                     {money(player.stack)}
@@ -455,6 +468,11 @@ export function SeatView({
                 Sitting out
               </div>
             )}
+            {showReady && !sittingOut && (
+              <div className="relative z-[1] mt-0.5 text-[7px] font-bold uppercase tracking-[0.14em] text-felt-neon">
+                Ready
+              </div>
+            )}
           </div>
         )}
 
@@ -480,6 +498,24 @@ export function SeatView({
             className="mt-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-black/50 text-[9px] text-white/50 hover:text-red-300"
           >
             ×
+          </button>
+        )}
+        {canKick && onKick && !isBot && (
+          <button
+            type="button"
+            onClick={onKick}
+            className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/40 hover:text-red-300"
+          >
+            Kick
+          </button>
+        )}
+        {canKick && onKick && isBot && !canManageBots && (
+          <button
+            type="button"
+            onClick={onKick}
+            className="mt-0.5 text-[10px] text-white/40 hover:text-red-300"
+          >
+            Kick
           </button>
         )}
         </div>

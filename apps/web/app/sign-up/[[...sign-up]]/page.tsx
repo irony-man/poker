@@ -39,14 +39,14 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="lobby-fade-up relative mx-auto flex min-h-full w-full max-w-md flex-col justify-center">
-      <div className="relative text-center">
+    <div className="lobby-fade-up relative flex min-h-full w-full flex-col justify-center">
+      <div className="relative">
         <h1 className="font-serif text-3xl tracking-tight text-ink-strong sm:text-4xl">
           Create account
         </h1>
         <p className="mt-2 text-sm text-ink-strong-muted">Create a username and password</p>
       </div>
-      <form onSubmit={onSubmit} className="hud-panel mt-8 space-y-4 p-5 sm:p-6">
+      <form onSubmit={onSubmit} className="hud-panel mt-6 w-full space-y-4 p-5 sm:mt-8 sm:p-6">
         <label className="block">
           <span className="hud-label">Username</span>
           <input

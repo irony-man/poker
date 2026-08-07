@@ -208,7 +208,7 @@ export function FriendsPanel({
         <span className="status-chip shrink-0">Social</span>
       </div>
 
-      <label className="block max-w-md">
+      <label className="block w-full max-w-xl">
         <span className="hud-label">Find player</span>
         <input
           value={searchQuery}

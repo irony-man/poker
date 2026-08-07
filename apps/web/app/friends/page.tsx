@@ -14,7 +14,7 @@ export default function FriendsPage() {
   }
 
   return (
-    <LobbyPageShell title="Friends" signedIn={signedIn} requireAuth wide>
+    <LobbyPageShell title="Friends" signedIn={signedIn} requireAuth>
       <FriendsPanel
         disabled={!signedIn}
         onNavigateTable={(tableId, inviteCode) => {

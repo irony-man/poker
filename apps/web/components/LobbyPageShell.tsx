@@ -9,21 +9,15 @@ export function LobbyPageShell({
   signedIn,
   error,
   children,
-  wide = false,
 }: {
   title: string;
   requireAuth?: boolean;
   signedIn: boolean;
   error?: string | null;
   children: ReactNode;
-  wide?: boolean;
 }) {
   return (
-    <div
-      className={`lobby-fade-up mx-auto flex min-h-full w-full flex-col justify-center ${
-        wide ? 'max-w-5xl' : 'max-w-2xl'
-      }`}
-    >
+    <div className="lobby-fade-up flex min-h-full w-full flex-col justify-center">
       <header className="mb-4 shrink-0 sm:mb-6">
         <h1 className="font-serif text-3xl tracking-tight text-ink-strong sm:text-4xl">{title}</h1>
         {requireAuth && !signedIn && (

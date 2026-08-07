@@ -30,7 +30,7 @@ export default function PublicTablesPage() {
   }
 
   return (
-    <LobbyPageShell title="Public Tables" signedIn={signedIn} error={error} wide>
+    <LobbyPageShell title="Public Tables" signedIn={signedIn} error={error}>
       <PublicTablesPanel disabled={busy} onJoin={joinPublicTable} />
     </LobbyPageShell>
   );

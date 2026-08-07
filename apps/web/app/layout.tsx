@@ -23,7 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="en"
       className={`h-full ${body.variable} ${display.variable} ${serif.variable}`}
     >
-      <body className="min-h-dvh flex flex-col">
+      <body className="flex h-dvh flex-col overflow-hidden">
         <AppChrome>{children}</AppChrome>
       </body>
     </html>

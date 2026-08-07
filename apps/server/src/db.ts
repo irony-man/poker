@@ -1,5 +1,5 @@
 /**
- * Shared Postgres pool for local/production when DATABASE_URL is set.
+ * Shared Postgres pool. DATABASE_URL is required — no file/in-memory fallback.
  */
 import { POSTGRES_DDL } from '@poker/db';
 
@@ -33,11 +33,10 @@ function needsSsl(connectionString: string): boolean {
   }
 }
 
-export async function initDatabase(): Promise<PgPool | null> {
+export async function initDatabase(): Promise<PgPool> {
   const url = process.env.DATABASE_URL?.trim();
   if (!url) {
-    console.log('[db] DATABASE_URL unset — using file/in-memory stores');
-    return null;
+    throw new Error('DATABASE_URL is required');
   }
 
   try {
@@ -49,8 +48,7 @@ export async function initDatabase(): Promise<PgPool | null> {
     };
     const PoolCtor = mod.Pool ?? mod.default?.Pool;
     if (!PoolCtor) {
-      console.warn('[db] pg.Pool not found — is the pg package installed?');
-      return null;
+      throw new Error('pg.Pool not found — is the pg package installed?');
     }
 
     const options: PoolOptions = {
@@ -75,8 +73,8 @@ export async function initDatabase(): Promise<PgPool | null> {
     console.log('[db] Postgres connected and schema ready');
     return pool;
   } catch (err) {
-    console.error('[db] Postgres unavailable:', err);
     sharedPool = null;
-    return null;
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Postgres unavailable: ${message}`, { cause: err });
   }
 }

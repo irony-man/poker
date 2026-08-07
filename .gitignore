@@ -17,5 +17,11 @@ bin/cloudflared
 
 # Android (apps/android)
 apps/android/.gradle/
+apps/android/.gradle-home/
+apps/android/.android-home/
+apps/android/.tmp-home/
+apps/android/.tmp/
+apps/android/.kotlin/
 apps/android/**/build/
 apps/android/local.properties
+apps/android/build-apk.log

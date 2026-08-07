@@ -63,13 +63,7 @@ export function TableShell({
   }
 
   return (
-    <div
-      className={`relative flex min-h-0 ${
-        narrow
-          ? 'h-[100dvh] -mx-1.5 -my-1'
-          : 'h-[calc(100dvh-3.5rem)] -mx-8 -my-4'
-      }`}
-    >
+    <div className="relative flex h-full min-h-0 flex-1 overflow-hidden">
       <EmojiOverlay />
 
       <div

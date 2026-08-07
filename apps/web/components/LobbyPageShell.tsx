@@ -19,8 +19,10 @@ export function LobbyPageShell({
   wide?: boolean;
 }) {
   return (
-    <div className={`mx-auto w-full ${wide ? 'max-w-5xl' : 'max-w-2xl'}`}>
-      <header className="mb-6">
+    <div
+      className={`mx-auto flex min-h-0 w-full flex-1 flex-col ${wide ? 'max-w-5xl' : 'max-w-2xl'}`}
+    >
+      <header className="mb-4 shrink-0 sm:mb-6">
         <h1 className="font-serif text-3xl tracking-tight text-ink-strong sm:text-4xl">{title}</h1>
         {requireAuth && !signedIn && (
           <p className="mt-2 text-sm text-ink-strong-muted">

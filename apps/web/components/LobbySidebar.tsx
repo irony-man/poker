@@ -2,8 +2,22 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { FriendsPanel } from '@/components/FriendsPanel';
 import { LOBBY_NAV, isLobbyNavActive } from '@/lib/lobbyNav';
+
+function useMdUp() {
+  const [mdUp, setMdUp] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)');
+    const sync = () => setMdUp(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+  return mdUp;
+}
 
 export function LobbySidebar({
   open,
@@ -19,8 +33,21 @@ export function LobbySidebar({
   onLogout: () => void;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const mdUp = useMdUp();
+  const [view, setView] = useState<'nav' | 'friends'>('nav');
 
-  const nav = (
+  // Return to lobby nav when the drawer closes (mobile).
+  useEffect(() => {
+    if (!open) setView('nav');
+  }, [open]);
+
+  const navigateTable = (tableId: string, inviteCode: string) => {
+    onClose();
+    router.push(`/table/${tableId}?invite=${inviteCode}`);
+  };
+
+  const navLinks = (
     <nav className="flex flex-1 flex-col gap-1 px-3 py-4" aria-label="Lobby">
       {LOBBY_NAV.map((t) => {
         const active = isLobbyNavActive(pathname, t.href);
@@ -39,7 +66,38 @@ export function LobbySidebar({
           </Link>
         );
       })}
+      <button
+        type="button"
+        onClick={() => setView('friends')}
+        className="mt-1 rounded-md border border-mushroom/15 px-3 py-2.5 text-left text-sm font-display font-semibold uppercase tracking-[0.12em] text-mushroom/55 transition hover:border-mushroom/30 hover:bg-mushroom/10 hover:text-mushroom/90"
+      >
+        Friends
+      </button>
     </nav>
+  );
+
+  const friendsView = (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex items-center gap-1 border-b border-mushroom/10 px-2 py-2">
+        <button
+          type="button"
+          onClick={() => setView('nav')}
+          className="rounded-md px-2 py-1.5 text-mushroom/60 transition hover:bg-mushroom/10 hover:text-mushroom"
+          aria-label="Back to menu"
+        >
+          ←
+        </button>
+        <div className="min-w-0 flex-1">
+          <p className="font-display text-sm font-semibold uppercase tracking-[0.14em] text-mushroom">
+            Friends
+          </p>
+          <p className="text-[10px] text-mushroom/45">Groups · invites · challenge</p>
+        </div>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+        <FriendsPanel disabled={!signedIn} onNavigateTable={navigateTable} />
+      </div>
+    </div>
   );
 
   const footer = (
@@ -103,11 +161,15 @@ export function LobbySidebar({
     </Link>
   );
 
+  // Mount FriendsPanel in only the active shell to avoid double API polling.
+  const desktopInner = view === 'friends' && mdUp ? friendsView : navLinks;
+  const mobileInner = view === 'friends' && !mdUp ? friendsView : navLinks;
+
   return (
     <>
-      <aside className="lobby-sidebar hidden md:flex md:w-60 md:shrink-0 md:flex-col md:min-h-dvh">
+      <aside className="lobby-sidebar hidden h-full min-h-0 md:flex md:w-60 md:shrink-0 md:flex-col">
         {logo}
-        {nav}
+        {desktopInner}
         {footer}
       </aside>
 
@@ -139,7 +201,7 @@ export function LobbySidebar({
               ✕
             </button>
           </div>
-          {nav}
+          {mobileInner}
           {footer}
         </aside>
       </div>

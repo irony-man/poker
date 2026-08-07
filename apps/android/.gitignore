@@ -1,4 +1,9 @@
 .gradle/
+.gradle-home/
+.android-home/
+.tmp-home/
+.tmp/
+.kotlin/
 build/
 local.properties
 *.iml
@@ -8,3 +13,5 @@ captures/
 .cxx/
 *.apk
 *.aab
+build-apk.log
+gradle/gradle-daemon-jvm.properties.bak

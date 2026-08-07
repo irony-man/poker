@@ -68,12 +68,14 @@
 }
 
 html {
-  min-height: 100%;
+  height: 100%;
   background-color: rgb(var(--ink));
 }
 
 body {
-  min-height: 100dvh;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
   @apply bg-ink text-cream font-body antialiased;
   background-color: rgb(var(--ink));
   background-image:
@@ -111,7 +113,7 @@ body:has(.lobby-shell)::before {
 }
 
 .lobby-shell {
-  @apply min-h-dvh flex w-full;
+  @apply flex h-full min-h-0 w-full overflow-hidden;
   background-color: rgb(var(--mushroom));
   color: rgb(var(--ink-strong));
 }

@@ -105,7 +105,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
 
   if (immersive) {
     return (
-      <main className="flex min-h-dvh flex-1 flex-col px-1.5 py-1 md:px-3 md:py-2">
+      <main className="flex h-full min-h-0 flex-1 flex-col overflow-hidden px-1.5 py-1 md:px-3 md:py-2">
         {children}
       </main>
     );
@@ -121,7 +121,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
         onLogout={() => void onLogout()}
       />
 
-      <div className="flex min-h-dvh min-w-0 flex-1 flex-col lobby-main">
+      <div className="lobby-main flex h-full min-h-0 min-w-0 flex-1 flex-col">
         <header className="flex shrink-0 items-center justify-between gap-3 bg-sidebar px-3 py-2.5 md:hidden">
           <button
             type="button"
@@ -149,7 +149,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
         </header>
 
         <main
-          className={`flex-1 min-h-0 overflow-y-auto ${
+          className={`flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain ${
             isHome
               ? 'px-4 py-4 sm:px-8 sm:py-5 lg:px-12 xl:px-16'
               : 'px-4 py-5 sm:px-8 sm:py-8 lg:px-12'

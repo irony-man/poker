@@ -5,9 +5,9 @@ import Link from 'next/link';
 
 export function HomeLanding({ signedIn }: { signedIn: boolean }) {
   return (
-    <div className="flex w-full flex-col gap-0">
-      {/* Hero fills first viewport */}
-      <section className="lobby-fade-up grid min-h-[calc(100dvh-5.5rem)] items-center gap-10 lg:min-h-[calc(100dvh-4rem)] lg:grid-cols-2 lg:gap-14">
+    <>
+      {/* Hero fills the visible main scrollport (main is height-locked) */}
+      <section className="lobby-fade-up grid min-h-full items-center gap-10 lg:grid-cols-2 lg:gap-14">
         <div className="min-w-0">
           <h1 className="font-serif text-[clamp(2.4rem,5.5vw,4.25rem)] leading-[1.02] tracking-tight text-ink-strong">
             Private tables.
@@ -172,6 +172,6 @@ export function HomeLanding({ signedIn }: { signedIn: boolean }) {
           </div>
         </div>
       </section>
-    </div>
+    </>
   );
 }

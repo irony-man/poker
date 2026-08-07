@@ -19,7 +19,7 @@ import {
 } from '@/lib/api';
 import { useSession } from '@/lib/store';
 
-/** Friends, groups & challenges — requires logged-in session. */
+/** Friends, groups & challenges — requires logged-in session. Styled for the lobby sidebar. */
 export function FriendsPanel({
   disabled,
   onNavigateTable,
@@ -199,41 +199,42 @@ export function FriendsPanel({
     }
   }
 
-  return (
-    <div className="hud-panel flex flex-col gap-4 p-5 sm:col-span-2 sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="font-display text-xl font-bold uppercase tracking-wider text-sidebar">Friends</h2>
-          <p className="mt-1 text-sm text-ink-strong-muted font-medium">
-            Groups · quick table invite · heads-up challenge
-          </p>
-        </div>
-        <span className="status-chip shrink-0">Social</span>
-      </div>
+  const inputClass =
+    'w-full rounded-md border border-mushroom/20 bg-mushroom/5 px-2.5 py-2 text-sm text-mushroom placeholder:text-mushroom/35 outline-none transition focus:border-mushroom/45';
+  const ghostBtn =
+    'rounded-md border border-mushroom/20 px-2 py-1 text-[10px] font-display font-semibold uppercase tracking-wider text-mushroom/70 transition hover:border-mushroom/40 hover:text-mushroom disabled:opacity-40';
+  const primaryBtn =
+    'rounded-md border border-mushroom/30 bg-mushroom/15 px-2.5 py-1.5 text-[10px] font-display font-semibold uppercase tracking-wider text-mushroom transition hover:bg-mushroom/25 disabled:opacity-40';
+  const rowClass = 'rounded border border-mushroom/12 bg-mushroom/5 px-2 py-2';
+  const labelClass = 'text-[10px] font-display uppercase tracking-[0.16em] text-mushroom/45';
 
+  return (
+    <div className="flex flex-col gap-3 text-mushroom">
       <label className="block">
-        <span className="hud-label">Find player</span>
+        <span className={labelClass}>Find player</span>
         <input
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="hud-input"
-          placeholder="Search by username…"
+          className={`mt-1.5 ${inputClass}`}
+          placeholder="Search username…"
           maxLength={32}
           disabled={disabled}
         />
       </label>
 
       {searchResults.length > 0 && (
-        <ul className="divide-y divide-sidebar/10 rounded border border-sidebar/15 bg-mushroom/50">
+        <ul className="divide-y divide-mushroom/10 rounded border border-mushroom/15">
           {searchResults.map((u) => (
-            <li key={u.userId} className="flex items-center gap-3 px-3 py-2.5">
-              <PlayerAvatar userId={u.userId} avatarId={u.avatarId} size={36} title={u.name} />
-              <span className="min-w-0 flex-1 truncate font-medium text-ink-strong">{u.name}</span>
+            <li key={u.userId} className="flex items-center gap-2 px-2 py-2">
+              <PlayerAvatar userId={u.userId} avatarId={u.avatarId} size={28} title={u.name} />
+              <span className="min-w-0 flex-1 truncate text-sm font-medium text-mushroom">
+                {u.name}
+              </span>
               <button
                 type="button"
                 disabled={disabled || busy === u.userId}
                 onClick={() => void onAddFriend(u.userId)}
-                className="btn-ghost shrink-0 py-1.5 px-3 text-xs"
+                className={ghostBtn}
               >
                 Add
               </button>
@@ -244,25 +245,22 @@ export function FriendsPanel({
 
       {incoming.length > 0 && (
         <div>
-          <span className="hud-label">Incoming requests</span>
-          <ul className="mt-2 space-y-2">
+          <span className={labelClass}>Requests</span>
+          <ul className="mt-1.5 space-y-1.5">
             {incoming.map((req) => (
-              <li
-                key={req.id}
-                className="flex flex-wrap items-center gap-2 rounded border border-sidebar/15 bg-mushroom/40 px-3 py-2"
-              >
+              <li key={req.id} className={`flex flex-wrap items-center gap-1.5 ${rowClass}`}>
                 <PlayerAvatar
                   userId={req.from.userId}
                   avatarId={req.from.avatarId}
-                  size={32}
+                  size={24}
                   title={req.from.name}
                 />
-                <span className="min-w-0 flex-1 truncate text-sm font-medium">{req.from.name}</span>
+                <span className="min-w-0 flex-1 truncate text-xs font-medium">{req.from.name}</span>
                 <button
                   type="button"
                   disabled={disabled || busy === req.id}
                   onClick={() => void onRespond(req.id, true)}
-                  className="btn-primary py-1 px-2.5 text-xs"
+                  className={primaryBtn}
                 >
                   Accept
                 </button>
@@ -270,7 +268,7 @@ export function FriendsPanel({
                   type="button"
                   disabled={disabled || busy === req.id}
                   onClick={() => void onRespond(req.id, false)}
-                  className="btn-ghost py-1 px-2.5 text-xs"
+                  className={ghostBtn}
                 >
                   Decline
                 </button>
@@ -282,35 +280,34 @@ export function FriendsPanel({
 
       {challenges.length > 0 && (
         <div>
-          <span className="hud-label">Game invites waiting</span>
-          <ul className="mt-2 space-y-2">
+          <span className={labelClass}>Game invites</span>
+          <ul className="mt-1.5 space-y-1.5">
             {challenges.map((c) => (
-              <li
-                key={c.id}
-                className="flex flex-wrap items-center gap-2 rounded border border-sidebar/20 bg-sidebar/5 px-3 py-2"
-              >
-                <PlayerAvatar
-                  userId={c.challenger.userId}
-                  avatarId={c.challenger.avatarId}
-                  size={32}
-                  title={c.challenger.name}
-                />
-                <span className="min-w-0 flex-1 truncate text-sm">
-                  <span className="font-medium text-sidebar">{c.challenger.name}</span>
-                  {c.groupName ? (
-                    <span className="text-ink-strong-muted">
-                      {' '}
-                      invited you · <span className="text-sidebar/80">{c.groupName}</span>
-                    </span>
-                  ) : (
-                    <span className="text-ink-strong-muted"> challenged you</span>
-                  )}
-                </span>
+              <li key={c.id} className={`flex flex-col gap-1.5 ${rowClass}`}>
+                <div className="flex items-center gap-2">
+                  <PlayerAvatar
+                    userId={c.challenger.userId}
+                    avatarId={c.challenger.avatarId}
+                    size={24}
+                    title={c.challenger.name}
+                  />
+                  <span className="min-w-0 flex-1 text-xs leading-snug">
+                    <span className="font-medium text-mushroom">{c.challenger.name}</span>
+                    {c.groupName ? (
+                      <span className="text-mushroom/55">
+                        {' '}
+                        · {c.groupName}
+                      </span>
+                    ) : (
+                      <span className="text-mushroom/55"> challenged you</span>
+                    )}
+                  </span>
+                </div>
                 <button
                   type="button"
-                  disabled={disabled}
+                  disabled={disabled || busy === `join-${c.id}`}
                   onClick={() => void onJoinChallenge(c)}
-                  className="rounded border border-sidebar/25 bg-sidebar/8 px-3 py-1.5 text-xs font-display font-semibold uppercase tracking-wider text-sidebar hover:bg-sidebar/12"
+                  className={`${primaryBtn} w-full`}
                 >
                   Join table
                 </button>
@@ -320,42 +317,41 @@ export function FriendsPanel({
         </div>
       )}
 
-      {/* Groups */}
       <div>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="hud-label">Groups ({groups.length})</span>
+        <div className="flex items-center justify-between gap-2">
+          <span className={labelClass}>Groups ({groups.length})</span>
           <button
             type="button"
             disabled={disabled || friends.length === 0}
             onClick={() => setShowCreateGroup((v) => !v)}
-            className="btn-ghost py-1 px-2.5 text-xs disabled:opacity-40"
+            className={ghostBtn}
           >
-            {showCreateGroup ? 'Cancel' : 'New group'}
+            {showCreateGroup ? 'Cancel' : 'New'}
           </button>
         </div>
 
         {showCreateGroup && (
           <form
             onSubmit={(e) => void onCreateGroup(e)}
-            className="mt-2 space-y-3 rounded border border-sidebar/15 bg-mushroom/40 p-3"
+            className={`mt-1.5 space-y-2 ${rowClass}`}
           >
             <label className="block">
-              <span className="hud-label">Group name</span>
+              <span className={labelClass}>Group name</span>
               <input
                 value={newGroupName}
                 onChange={(e) => setNewGroupName(e.target.value)}
-                className="hud-input"
-                placeholder="e.g. Home game crew"
+                className={`mt-1 ${inputClass}`}
+                placeholder="e.g. Home game"
                 maxLength={40}
                 required
               />
             </label>
             <div>
-              <span className="hud-label">Add friends ({selectedMembers.size}/8)</span>
+              <span className={labelClass}>Members ({selectedMembers.size}/8)</span>
               {friends.length === 0 ? (
-                <p className="mt-1 text-xs text-ink-strong-muted">Add friends first, then build a group.</p>
+                <p className="mt-1 text-[11px] text-mushroom/50">Add friends first.</p>
               ) : (
-                <ul className="mt-2 max-h-40 space-y-1.5 overflow-y-auto">
+                <ul className="mt-1.5 max-h-32 space-y-1 overflow-y-auto">
                   {friends.map((f) => {
                     const on = selectedMembers.has(f.userId);
                     return (
@@ -363,20 +359,20 @@ export function FriendsPanel({
                         <button
                           type="button"
                           onClick={() => toggleMember(f.userId)}
-                          className={`flex w-full items-center gap-2 rounded border px-2 py-1.5 text-left text-sm transition ${
+                          className={`flex w-full items-center gap-2 rounded border px-2 py-1 text-left text-xs transition ${
                             on
-                              ? 'border-sidebar/30 bg-sidebar/10 text-sidebar'
-                              : 'border-sidebar/12 bg-mushroom/40 text-ink-strong hover:border-sidebar/25'
+                              ? 'border-mushroom/35 bg-mushroom/15 text-mushroom'
+                              : 'border-mushroom/12 bg-transparent text-mushroom/70 hover:border-mushroom/25'
                           }`}
                         >
                           <PlayerAvatar
                             userId={f.userId}
                             avatarId={f.avatarId}
-                            size={28}
+                            size={22}
                             title={f.name}
                           />
                           <span className="min-w-0 flex-1 truncate">{f.name}</span>
-                          <span className="text-[10px] uppercase tracking-wider opacity-70">
+                          <span className="text-[9px] uppercase tracking-wider opacity-70">
                             {on ? 'In' : 'Add'}
                           </span>
                         </button>
@@ -389,7 +385,7 @@ export function FriendsPanel({
             <button
               type="submit"
               disabled={disabled || busy === 'create-group' || !newGroupName.trim()}
-              className="btn-primary w-full min-h-10 text-sm"
+              className={`${primaryBtn} w-full py-2`}
             >
               Create group
             </button>
@@ -397,58 +393,53 @@ export function FriendsPanel({
         )}
 
         {groups.length === 0 && !showCreateGroup ? (
-          <p className="mt-2 text-sm text-ink-strong-muted">
-            Create a group of friends for one-tap table invites.
+          <p className="mt-1.5 text-[11px] leading-snug text-mushroom/50">
+            Create a group for one-tap invites.
           </p>
         ) : (
-          <ul className="mt-2 space-y-2">
+          <ul className="mt-1.5 space-y-1.5">
             {groups.map((g) => (
-              <li
-                key={g.id}
-                className="rounded border border-sidebar/15 bg-mushroom/35 px-3 py-3"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="font-display font-semibold uppercase tracking-wider text-sidebar truncate">
-                      {g.name}
-                    </p>
-                    <p className="mt-0.5 text-xs text-ink-strong-muted">
-                      {g.members.length} member{g.members.length === 1 ? '' : 's'}
-                      {!g.isOwner ? ' · shared' : ''}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
+              <li key={g.id} className={rowClass}>
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-display font-semibold uppercase tracking-wider text-mushroom">
+                    {g.name}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-mushroom/50">
+                    {g.members.length} member{g.members.length === 1 ? '' : 's'}
+                    {!g.isOwner ? ' · shared' : ''}
+                  </p>
+                </div>
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  <button
+                    type="button"
+                    disabled={disabled || busy === `invite-${g.id}` || g.members.length === 0}
+                    onClick={() => void onInviteGroup(g.id)}
+                    className={primaryBtn}
+                  >
+                    Invite
+                  </button>
+                  {g.isOwner && (
                     <button
                       type="button"
-                      disabled={disabled || busy === `invite-${g.id}` || g.members.length === 0}
-                      onClick={() => void onInviteGroup(g.id)}
-                      className="rounded border border-sidebar/25 bg-sidebar/5 px-3 py-1.5 text-xs font-display font-semibold uppercase tracking-wider text-sidebar transition hover:bg-sidebar/10 disabled:opacity-40"
+                      disabled={disabled || busy === `delete-${g.id}`}
+                      onClick={() => void onDeleteGroup(g.id)}
+                      className={ghostBtn}
                     >
-                      Invite to game
+                      Delete
                     </button>
-                    {g.isOwner && (
-                      <button
-                        type="button"
-                        disabled={disabled || busy === `delete-${g.id}`}
-                        onClick={() => void onDeleteGroup(g.id)}
-                        className="btn-ghost py-1.5 px-2 text-xs"
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </div>
+                  )}
                 </div>
                 {g.members.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
+                  <div className="mt-1.5 flex flex-wrap gap-1">
                     {g.members.map((m) => (
                       <span
                         key={m.userId}
-                        className="inline-flex items-center gap-1.5 rounded border border-sidebar/12 bg-mushroom/50 px-2 py-1 text-xs text-ink-strong"
+                        className="inline-flex items-center gap-1 rounded border border-mushroom/12 px-1.5 py-0.5 text-[10px] text-mushroom/75"
                       >
                         <PlayerAvatar
                           userId={m.userId}
                           avatarId={m.avatarId}
-                          size={20}
+                          size={16}
                           title={m.name}
                         />
                         {m.name}
@@ -463,23 +454,22 @@ export function FriendsPanel({
       </div>
 
       <div>
-        <span className="hud-label">Your friends ({friends.length})</span>
+        <span className={labelClass}>Friends ({friends.length})</span>
         {friends.length === 0 ? (
-          <p className="mt-2 text-sm text-ink-strong-muted">No friends yet — search for players above.</p>
+          <p className="mt-1.5 text-[11px] text-mushroom/50">
+            No friends yet — search above.
+          </p>
         ) : (
-          <ul className="mt-2 space-y-2">
+          <ul className="mt-1.5 space-y-1.5">
             {friends.map((f) => (
-              <li
-                key={f.userId}
-                className="flex items-center gap-3 rounded border border-sidebar/12 bg-mushroom/35 px-3 py-2.5"
-              >
-                <PlayerAvatar userId={f.userId} avatarId={f.avatarId} size={36} title={f.name} />
-                <span className="min-w-0 flex-1 truncate font-medium">{f.name}</span>
+              <li key={f.userId} className={`flex items-center gap-2 ${rowClass}`}>
+                <PlayerAvatar userId={f.userId} avatarId={f.avatarId} size={28} title={f.name} />
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">{f.name}</span>
                 <button
                   type="button"
                   disabled={disabled || busy === `challenge-${f.userId}`}
                   onClick={() => void onChallenge(f.userId)}
-                  className="rounded border border-sidebar/25 bg-sidebar/5 px-3 py-1.5 text-xs font-display font-semibold uppercase tracking-wider text-sidebar transition hover:bg-sidebar/10 disabled:opacity-40"
+                  className={primaryBtn}
                 >
                   Challenge
                 </button>
@@ -492,13 +482,15 @@ export function FriendsPanel({
       {(error || loadError) && (
         <p
           role="alert"
-          className="status-chip border-danger/30 bg-danger/10 text-danger text-xs"
+          className="rounded border border-danger/35 bg-danger/10 px-2 py-1.5 text-[11px] text-danger"
         >
           {error ?? loadError}
         </p>
       )}
       {!userId && (
-        <p className="text-sm text-ink-strong-muted">Sign in to use friends and groups.</p>
+        <p className="text-[11px] leading-snug text-mushroom/50">
+          Sign in to use friends and groups.
+        </p>
       )}
     </div>
   );

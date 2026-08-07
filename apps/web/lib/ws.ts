@@ -15,6 +15,7 @@ export function usePokerSocket(
   const spectate = opts?.spectate ?? false;
   const ticket = useSession((s) => s.ticket);
   const setConnection = useSession((s) => s.setConnection);
+  const bindTable = useSession((s) => s.bindTable);
   const applyStateSync = useSession((s) => s.applyStateSync);
   const pushChat = useSession((s) => s.pushChat);
   const setError = useSession((s) => s.setError);
@@ -22,48 +23,71 @@ export function usePokerSocket(
   const setActionBurst = useSession((s) => s.setActionBurst);
   const wsRef = useRef<WebSocket | null>(null);
   const intentionalLeaveRef = useRef(false);
-  const mountedRef = useRef(false);
+  /** Bumps on every effect teardown so stale sockets never reconnect or apply state. */
+  const epochRef = useRef(0);
   const spectateRef = useRef(spectate);
+  const tableIdRef = useRef(tableId);
+  const ticketRef = useRef(ticket);
   spectateRef.current = spectate;
+  tableIdRef.current = tableId;
+  ticketRef.current = ticket;
 
   useEffect(() => {
     if (!ticket || !tableId) return;
 
-    mountedRef.current = true;
     intentionalLeaveRef.current = false;
+    const epoch = ++epochRef.current;
+    bindTable(tableId);
 
     let ws: WebSocket | null = null;
     let ping: ReturnType<typeof setInterval> | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
+    const isCurrent = () =>
+      epoch === epochRef.current && !intentionalLeaveRef.current && tableIdRef.current === tableId;
+
     const connect = () => {
-      if (!mountedRef.current || intentionalLeaveRef.current) return;
+      if (!isCurrent()) return;
 
       setConnection('connecting');
       ws = new WebSocket(WS_URL);
       wsRef.current = ws;
 
       ws.onopen = () => {
-        ws!.send(JSON.stringify({ type: 'auth', ticket }));
+        if (!isCurrent() || wsRef.current !== ws) {
+          ws?.close();
+          return;
+        }
+        const t = ticketRef.current;
+        if (!t) return;
+        ws!.send(JSON.stringify({ type: 'auth', ticket: t }));
       };
 
       ws.onmessage = (ev) => {
+        if (!isCurrent() || wsRef.current !== ws) return;
         const msg = JSON.parse(String(ev.data));
         emitSocketMessage(msg);
         switch (msg.type) {
-          case 'auth_ok':
+          case 'auth_ok': {
             setConnection('open');
+            const id = tableIdRef.current;
+            if (!id) return;
             ws!.send(
               JSON.stringify({
                 type: 'join_table',
-                tableId,
+                tableId: id,
                 ...(spectateRef.current ? { spectate: true } : {}),
               }),
             );
             break;
-          case 'state_sync':
-            applyStateSync(msg.table as PublicTable, (msg.private as PrivateView) ?? null);
+          }
+          case 'state_sync': {
+            const table = msg.table as PublicTable;
+            // Drop late packets after navigation / reconnect epoch change.
+            if (table?.tableId !== tableIdRef.current) return;
+            applyStateSync(table, (msg.private as PrivateView) ?? null);
             break;
+          }
           case 'chat':
             pushChat({
               userId: msg.userId,
@@ -79,7 +103,6 @@ export function usePokerSocket(
           case 'seat_action': {
             const label =
               typeof msg.label === 'string' ? msg.label : String(msg.action ?? '');
-            // Seat popup only (fold/check/call/bet/raise/all-in).
             if (isSeatActionLabel(label)) {
               setActionBurst({
                 seat: msg.seat,
@@ -94,7 +117,7 @@ export function usePokerSocket(
               typeof msg.message === 'string' ? msg.message : 'Error',
               typeof msg.code === 'string' ? msg.code : null,
             );
-            if (msg.code === 'not_found') {
+            if (msg.code === 'not_found' || msg.code === 'kicked' || msg.code === 'bad_auth') {
               intentionalLeaveRef.current = true;
               if (reconnectTimer) {
                 clearTimeout(reconnectTimer);
@@ -109,19 +132,25 @@ export function usePokerSocket(
       };
 
       ws.onclose = () => {
-        wsRef.current = null;
+        if (wsRef.current === ws) wsRef.current = null;
+        // Ignore closes from superseded sockets (Strict Mode remount / table switch).
+        if (!isCurrent()) return;
         setConnection('closed');
-        if (mountedRef.current && !intentionalLeaveRef.current) {
+        if (!intentionalLeaveRef.current) {
           reconnectTimer = setTimeout(connect, RECONNECT_DELAY_MS);
         }
       };
 
-      ws.onerror = () => setError('WebSocket error');
+      ws.onerror = () => {
+        if (!isCurrent() || wsRef.current !== ws) return;
+        setError('WebSocket error');
+      };
     };
 
     connect();
 
     ping = setInterval(() => {
+      if (!isCurrent()) return;
       const open = wsRef.current;
       if (open && open.readyState === WebSocket.OPEN) {
         open.send(JSON.stringify({ type: 'ping' }));
@@ -129,16 +158,30 @@ export function usePokerSocket(
     }, 20_000);
 
     return () => {
-      mountedRef.current = false;
+      epochRef.current += 1;
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (ping) clearInterval(ping);
       // Drop socket only — server keeps the seat through a reconnect grace window.
-      if (ws && ws.readyState === WebSocket.OPEN) {
+      if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+        ws.onclose = null;
+        ws.onmessage = null;
+        ws.onerror = null;
+        ws.onopen = null;
         ws.close();
       }
-      wsRef.current = null;
+      if (wsRef.current === ws) wsRef.current = null;
     };
-  }, [ticket, tableId, setConnection, applyStateSync, pushChat, setError, setEmoji, setActionBurst]);
+  }, [
+    ticket,
+    tableId,
+    bindTable,
+    setConnection,
+    applyStateSync,
+    pushChat,
+    setError,
+    setEmoji,
+    setActionBurst,
+  ]);
 
   const send = useCallback((payload: unknown): boolean => {
     const open = wsRef.current;
@@ -152,9 +195,17 @@ export function usePokerSocket(
   const leaveTable = useCallback(() => {
     if (!tableId) return;
     intentionalLeaveRef.current = true;
+    epochRef.current += 1;
     send({ type: 'leave_table', tableId });
-    wsRef.current?.close();
-  }, [send, tableId]);
+    const open = wsRef.current;
+    if (open) {
+      open.onclose = null;
+      open.close();
+      wsRef.current = null;
+    }
+    bindTable(null);
+    setConnection('closed');
+  }, [send, tableId, bindTable, setConnection]);
 
   return { send, leaveTable };
 }

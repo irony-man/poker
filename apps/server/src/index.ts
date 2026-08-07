@@ -828,8 +828,11 @@ async function main() {
     ws.on('close', () => {
       if (userId && tableId) {
         const room = rooms.get(tableId);
-        room?.detach(userId);
-        room?.scheduleDisconnect(userId);
+        // Only detach if this socket is still the registered one — a faster
+        // reconnect would have replaced the map entry and must not be cleared.
+        if (room?.detachIfActive(userId, send)) {
+          room.scheduleDisconnect(userId);
+        }
       }
       if (userId && contestId) {
         tournaments.detachWatcher(contestId, userId);

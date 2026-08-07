@@ -35,6 +35,7 @@ export function TableView({
   const userId = useSession((s) => s.userId);
   const connection = useSession((s) => s.connection);
   const lastErrorCode = useSession((s) => s.lastErrorCode);
+  const boundTableId = useSession((s) => s.boundTableId);
   const setError = useSession((s) => s.setError);
   const clearTable = useSession((s) => s.clearTable);
   const { send, leaveTable } = usePokerSocket(tableId, { spectate: initialSpectate });
@@ -52,12 +53,23 @@ export function TableView({
 
   useEffect(() => {
     if (lastErrorCode !== 'not_found' && lastErrorCode !== 'kicked') return;
+    // Only leave if the error is for *this* table (guards against stale socket races).
+    if (boundTableId && boundTableId !== tableId) return;
     voice.leaveVoice();
     leaveTable();
     clearTable();
     setError(null);
     router.replace('/');
-  }, [lastErrorCode, voice.leaveVoice, leaveTable, clearTable, setError, router]);
+  }, [
+    lastErrorCode,
+    boundTableId,
+    tableId,
+    voice.leaveVoice,
+    leaveTable,
+    clearTable,
+    setError,
+    router,
+  ]);
 
   useEffect(() => {
     if (!table) return;

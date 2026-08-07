@@ -80,6 +80,8 @@ interface SessionState {
   ticket: string | null;
   sessionToken: string | null;
   connection: 'idle' | 'connecting' | 'open' | 'closed';
+  /** Table the active socket is bound to (guards against stale state_sync). */
+  boundTableId: string | null;
   table: PublicTable | null;
   private: PrivateView | null;
   chat: ChatMessage[];
@@ -97,6 +99,7 @@ interface SessionState {
   }) => void;
   clearSession: () => void;
   setConnection: (c: SessionState['connection']) => void;
+  bindTable: (tableId: string | null) => void;
   applyStateSync: (table: PublicTable, priv: PrivateView | null) => void;
   clearTable: () => void;
   pushChat: (m: ChatMessage) => void;
@@ -112,6 +115,7 @@ export const useSession = create<SessionState>((set) => ({
   ticket: null,
   sessionToken: null,
   connection: 'idle',
+  boundTableId: null,
   table: null,
   private: null,
   chat: [],
@@ -136,12 +140,21 @@ export const useSession = create<SessionState>((set) => ({
       sessionToken: null,
     }),
   setConnection: (connection) => set({ connection }),
+  bindTable: (boundTableId) => set({ boundTableId }),
   applyStateSync: (table, priv) =>
     set((prev) => {
-      if (prev.table && prev.table.tableId !== table.tableId) {
-        return { table, private: priv, chat: [], actionBurst: null };
+      // Never apply state for a table the socket isn't currently bound to.
+      if (prev.boundTableId && table.tableId !== prev.boundTableId) {
+        return prev;
       }
-      if (prev.table && table.version < prev.table.version) return prev;
+      // If we already show a different table, ignore cross-table packets (stale reconnect).
+      if (prev.table && prev.table.tableId !== table.tableId) {
+        return prev;
+      }
+      // Ignore out-of-order / older versions for the same table.
+      if (prev.table && table.version < prev.table.version) {
+        return prev;
+      }
       return { table, private: priv };
     }),
   clearTable: () =>
@@ -152,6 +165,7 @@ export const useSession = create<SessionState>((set) => ({
       lastError: null,
       lastErrorCode: null,
       actionBurst: null,
+      boundTableId: null,
     }),
   pushChat: (m) => set((s) => ({ chat: [...s.chat.slice(-80), m] })),
   setError: (lastError, code = null) => set({ lastError, lastErrorCode: lastError ? code : null }),

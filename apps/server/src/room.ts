@@ -256,6 +256,11 @@ export class Room {
     this.pushTo(conn.userId);
   }
 
+  /** True if `send` is still the room's live connection for this user. */
+  isActiveConnection(userId: string, send: ConnectionContext['send']): boolean {
+    return this.connections.get(userId)?.send === send;
+  }
+
   /**
    * Seat a newly joined player at the first empty seat.
    * Restores reserved chips after a kick when present; otherwise table buy-in.
@@ -266,6 +271,16 @@ export class Room {
     const empty = this.state.players.find((p) => p.status === 'empty');
     if (!empty) return { ok: false, error: 'Table full' };
     return this.sit(userId, name, empty.seat, this.config.buyIn);
+  }
+
+  /**
+   * Drop this user only if `send` is still their active connection.
+   * Prevents a late close from an old tab/socket from clearing a newer reconnect.
+   */
+  detachIfActive(userId: string, send: ConnectionContext['send']): boolean {
+    if (!this.isActiveConnection(userId, send)) return false;
+    this.detach(userId);
+    return true;
   }
 
   detach(userId: string): void {

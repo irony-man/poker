@@ -182,6 +182,27 @@ describe('RoomManager', () => {
     expect(room.state.players[1]?.userId).toBeNull();
   });
 
+  it('late close of an old socket does not detach a newer reconnect', () => {
+    const kv = new MemoryKv();
+    const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-reconn-${Date.now()}`));
+    const rooms = new RoomManager(kv, history);
+    const meta = rooms.create({
+      name: 'Reconn',
+      hostUserId: 'host1',
+      isPrivate: true,
+      config: { ...cashConfig() },
+    });
+    const room = rooms.get(meta.id)!;
+    const oldSend = () => {};
+    const newSend = () => {};
+    room.attach({ userId: 'u1', name: 'A', avatarId: 0, send: oldSend });
+    room.attach({ userId: 'u1', name: 'A', avatarId: 0, send: newSend });
+
+    expect(room.detachIfActive('u1', oldSend)).toBe(false);
+    expect(room.isActiveConnection('u1', newSend)).toBe(true);
+    expect(room.detachIfActive('u1', newSend)).toBe(true);
+  });
+
   it('reseat after kick restores reserved chip stack, not table buy-in', async () => {
     const kv = new MemoryKv();
     const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-kick-stack-${Date.now()}`));

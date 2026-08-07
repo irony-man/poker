@@ -198,8 +198,11 @@ export function FloatingActionDock({
               Min
             </button>
           </div>
-          <div data-no-drag className="max-h-[min(50vh,24rem)] min-h-[11rem] w-[min(100vw-2rem,28rem)] overflow-y-auto">
-            {children}
+          <div
+            data-no-drag
+            className="flex max-h-[min(50vh,24rem)] min-h-[11rem] w-[min(100vw-2rem,28rem)] flex-col overflow-y-auto"
+          >
+            <div className="flex min-h-[11rem] w-full flex-1 flex-col">{children}</div>
           </div>
         </div>
       )}

@@ -66,7 +66,7 @@ export function ActionControls({
   }, [min, table?.actionSeq]);
 
   const shell = bare
-    ? 'w-full overflow-hidden'
+    ? 'flex h-full min-h-full w-full flex-1 flex-col overflow-hidden'
     : 'hud-panel mx-auto w-full max-w-xl overflow-hidden p-0';
 
   if (!isTurn || !legal || legal.types.length === 0) {
@@ -74,8 +74,8 @@ export function ActionControls({
       <div
         className={
           bare
-            ? 'flex h-full items-center justify-center px-3 text-center text-sm font-medium tracking-wide text-cream/55'
-            : 'hud-panel px-4 py-3 text-center text-sm font-medium tracking-wide text-cream/55'
+            ? 'flex h-full min-h-full flex-1 items-center justify-center px-3 py-6 text-center text-sm font-medium tracking-wide text-cream/55'
+            : 'hud-panel flex items-center justify-center px-4 py-6 text-center text-sm font-medium tracking-wide text-cream/55'
         }
       >
         {waitingCopy({

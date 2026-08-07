@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { SITE_URL } from '@/lib/site';
+import { SITE_HOST, SITE_URL } from '@/lib/site';
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -9,5 +9,6 @@ export default function robots(): MetadataRoute.Robots {
       disallow: ['/table/', '/contest/', '/offline', '/sign-in', '/sign-up', '/friends'],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
+    host: SITE_HOST,
   };
 }

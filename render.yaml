@@ -5,7 +5,7 @@
 # WebSockets are supported: use wss:// for the game server.
 #
 # Public URLs:
-#   web:    https://felt-web.onrender.com
+#   web:    https://pokr.site (custom domain; Render: felt-web.onrender.com)
 #   server: https://felt-server-hgi4.onrender.com
 
 services:
@@ -24,7 +24,7 @@ services:
       - key: DATA_DIR
         value: /opt/render/project/src/data
       - key: WEB_ORIGIN
-        value: https://felt-web.onrender.com
+        value: https://pokr.site
       # Required. Prefer Supabase Session pooler URI (IPv4) if using Supabase —
       # direct db.<ref>.supabase.co is IPv6-only and fails on Render free.
       - key: DATABASE_URL
@@ -47,10 +47,17 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
+      - key: NEXT_PUBLIC_SITE_URL
+        value: https://pokr.site
       - key: NEXT_PUBLIC_API_URL
         value: https://felt-server-hgi4.onrender.com
       - key: NEXT_PUBLIC_WS_URL
         value: wss://felt-server-hgi4.onrender.com/ws
+      # Optional Search Console / Bing HTML verification tokens
+      - key: NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+        sync: false
+      - key: NEXT_PUBLIC_BING_SITE_VERIFICATION
+        sync: false
       - key: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
         sync: false
       - key: CLERK_SECRET_KEY

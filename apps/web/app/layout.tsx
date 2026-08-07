@@ -2,9 +2,17 @@ import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { AppChrome } from '@/components/AppChrome';
-import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE_DEFAULT, SITE_URL } from '@/lib/site';
+import {
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_TITLE_DEFAULT,
+  SITE_URL,
+  siteVerification,
+} from '@/lib/site';
 
 const body = Inter({ subsets: ['latin'], variable: '--font-body', display: 'swap' });
+
+const verification = siteVerification();
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -31,6 +39,7 @@ export const metadata: Metadata = {
     title: SITE_TITLE_DEFAULT,
     description: SITE_DESCRIPTION,
   },
+  ...(verification ? { verification } : {}),
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -47,6 +56,7 @@ export const metadata: Metadata = {
     ],
     apple: [{ url: '/apple-icon.png', sizes: '180x180', type: 'image/png' }],
   },
+  category: 'games',
 };
 
 export const viewport: Viewport = {

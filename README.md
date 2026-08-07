@@ -73,6 +73,17 @@ For a public URL (Vercel/Railway/Fly), you’ll need accounts + `NEXT_PUBLIC_API
 | `NEXT_PUBLIC_SITE_URL` | `https://pokr.site` | Canonical site URL (metadata, sitemap, OG) |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:4000` | Browser → API |
 | `NEXT_PUBLIC_WS_URL` | `ws://localhost:4000/ws` | Browser → WebSocket |
+| `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` | unset | Google Search Console HTML tag content |
+| `NEXT_PUBLIC_BING_SITE_VERIFICATION` | unset | Bing Webmaster `msvalidate.01` content |
+| `NEXT_PUBLIC_YANDEX_VERIFICATION` | unset | Yandex site verification content |
+
+### Search consoles (external)
+
+1. Verify ownership: set the env vars above (or DNS TXT) for [Google Search Console](https://search.google.com/search-console) and [Bing Webmaster Tools](https://www.bing.com/webmasters).
+2. Submit sitemap: `https://pokr.site/sitemap.xml`
+3. Spot-check structured data: [Rich Results Test](https://search.google.com/test/rich-results) on `/`
+4. Spot-check social cards: paste `/` into an Open Graph debugger after deploy
+5. Point `WEB_ORIGIN` (server CORS) at `https://pokr.site` in production
 
 ### Local Postgres
 

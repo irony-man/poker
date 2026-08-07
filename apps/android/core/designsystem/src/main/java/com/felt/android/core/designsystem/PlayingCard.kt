@@ -8,8 +8,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,10 +31,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 
-/** Modern white stock — matches web PlayingCard glossy face. */
-private val CardFaceTop = Color(0xFFFFFFFF)
-private val CardFaceBottom = Color(0xFFF2F2F2)
-private val SuitRed = Color(0xFFE53935)
+/** Bold flat face — matches web PlayingCard rank-over-suit layout. */
+private val CardFace = Color(0xFFFFFFFF)
+private val SuitRed = Color(0xFFE31C23)
 private val SuitBlack = Color(0xFF111111)
 
 data class ParsedCard(
@@ -114,11 +113,11 @@ fun PlayingCard(
                 scaleY = dealScale
                 cameraDistance = 16f * density
             }
-            .shadow(if (highlight) 10.dp else 6.dp, shape)
+            .shadow(if (highlight) 10.dp else 5.dp, shape)
             .clip(shape)
             .then(
                 if (highlight) Modifier.border(2.dp, FeltColors.Brass, shape)
-                else Modifier.border(1.dp, Color.Black.copy(alpha = 0.18f), shape),
+                else Modifier.border(1.5.dp, Color.Black, shape),
             )
             .background(
                 if (faceDown || code == null) {
@@ -126,7 +125,7 @@ fun PlayingCard(
                         listOf(Color(0xFF2A1F12), Color(0xFF0F0C08)),
                     )
                 } else {
-                    Brush.verticalGradient(listOf(CardFaceTop, CardFaceBottom))
+                    CardFace
                 },
             ),
         contentAlignment = Alignment.Center,
@@ -159,69 +158,40 @@ fun PlayingCard(
                 )
             } else {
                 val ink = (if (parsed.isRed) SuitRed else SuitBlack).copy(alpha = faceAlpha)
-                val rankSp = if (parsed.rank == "10") 11.sp else 14.sp
-                val cornerSuitSp = 11.sp
-                val topRightSp = 14.sp
-                val centerSp = (height.value * 0.42f).sp
+                val isTen = parsed.rank == "10"
+                val rankSp = (height.value * if (isTen) 0.36f else 0.42f).sp
+                val suitSp = (height.value * 0.36f).sp
 
-                Box(modifier = Modifier.fillMaxSize()) {
-                    // Soft sheen
+                Column(modifier = Modifier.fillMaxSize()) {
                     Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    0f to Color.White.copy(alpha = 0.55f),
-                                    0.5f to Color.White.copy(alpha = 0.12f),
-                                    1f to Color.Transparent,
-                                ),
-                            ),
-                    )
-
-                    // Top-left rank + small suit
-                    Column(
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .padding(start = 4.dp, top = 3.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.BottomCenter,
                     ) {
                         Text(
                             text = parsed.rank,
                             color = ink,
                             fontSize = rankSp,
-                            fontWeight = FontWeight.ExtraBold,
+                            fontWeight = FontWeight.Black,
                             fontFamily = FontFamily.SansSerif,
                             lineHeight = rankSp,
+                            letterSpacing = if (isTen) (-1).sp else 0.sp,
                         )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.TopCenter,
+                    ) {
                         Text(
                             text = parsed.suit,
                             color = ink,
-                            fontSize = cornerSuitSp,
-                            lineHeight = cornerSuitSp,
+                            fontSize = suitSp,
+                            lineHeight = suitSp,
                         )
                     }
-
-                    // Top-right medium suit
-                    Text(
-                        text = parsed.suit,
-                        color = ink,
-                        fontSize = topRightSp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(end = 4.dp, top = 4.dp),
-                    )
-
-                    // Large center suit
-                    Text(
-                        text = parsed.suit,
-                        color = ink,
-                        fontSize = centerSp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .offset(y = height * 0.04f),
-                    )
                 }
             }
         }

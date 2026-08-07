@@ -64,9 +64,8 @@ function isTiny(size: CardSize) {
 }
 
 /**
- * Modern glossy face (reference style):
- * top-left rank + small suit, top-right medium suit, large centered suit,
- * soft sheen across white stock — no pip grid.
+ * Bold flat face (reference style): oversized centered rank over oversized suit,
+ * pure white stock, solid ink — no corner indices or glossy sheen.
  */
 function ModernFace({
   rank,
@@ -79,68 +78,29 @@ function ModernFace({
   red: boolean;
   size: CardSize;
 }) {
-  const color = red ? 'text-[#e53935]' : 'text-[#111111]';
+  const color = red ? 'text-[#e31c23]' : 'text-[#111111]';
   const tiny = isTiny(size);
   const isTen = rank === '10';
 
   const rankClass = tiny
     ? isTen
-      ? 'text-[9px] leading-none'
-      : 'text-[11px] leading-none'
+      ? 'text-[0.95rem] leading-none tracking-tighter'
+      : 'text-[1.2rem] leading-none tracking-tight'
     : isTen
-      ? 'text-[13px] sm:text-[17px] leading-none'
-      : 'text-[15px] sm:text-[20px] leading-none';
+      ? 'text-[1.65rem] sm:text-[2.55rem] leading-none tracking-tighter'
+      : 'text-[1.95rem] sm:text-[2.9rem] leading-none tracking-tight';
 
-  const cornerSuit = tiny ? 'text-[9px] leading-none' : 'text-[12px] sm:text-[15px] leading-none';
-  const topRightSuit = tiny ? 'text-[12px] leading-none' : 'text-[16px] sm:text-[22px] leading-none';
-  const centerSuit = tiny
-    ? 'text-[1.55rem] leading-none'
-    : 'text-[2.15rem] sm:text-[3rem] leading-none';
+  const suitClass = tiny
+    ? 'text-[1.05rem] leading-none'
+    : 'text-[1.7rem] sm:text-[2.55rem] leading-none';
 
   return (
-    <div
-      className="absolute inset-0"
-      style={{
-        background: 'linear-gradient(180deg, #ffffff 0%, #ffffff 48%, #f2f2f2 100%)',
-      }}
-    >
-      {/* Soft horizontal sheen like polished plastic */}
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-[55%]"
-        style={{
-          background:
-            'linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.55) 55%, transparent 100%)',
-        }}
-      />
-      <div
-        className="pointer-events-none absolute inset-x-[8%] top-[42%] h-px opacity-40"
-        style={{
-          background:
-            'linear-gradient(90deg, transparent, rgba(0,0,0,0.08), transparent)',
-        }}
-      />
-
-      {/* Top-left: rank + small suit */}
-      <div
-        className={`absolute left-[5%] top-[5%] z-[1] flex flex-col items-center ${color}`}
-      >
-        <span className={`select-none font-extrabold tracking-tight ${rankClass}`}>{rank}</span>
-        <span className={`select-none mt-px ${cornerSuit}`}>{suit}</span>
+    <div className={`absolute inset-0 flex flex-col items-center bg-white ${color}`}>
+      <div className="flex min-h-0 flex-1 items-end justify-center pb-[1%]">
+        <span className={`select-none font-black ${rankClass}`}>{rank}</span>
       </div>
-
-      {/* Top-right: medium suit */}
-      <div className={`absolute right-[6%] top-[6%] z-[1] ${color}`}>
-        <span className={`select-none font-semibold ${topRightSuit}`}>{suit}</span>
-      </div>
-
-      {/* Large center suit */}
-      <div className={`absolute inset-0 flex items-center justify-center ${color}`}>
-        <span
-          className={`select-none font-semibold ${centerSuit}`}
-          style={{ transform: 'translateY(8%)' }}
-        >
-          {suit}
-        </span>
+      <div className="flex min-h-0 flex-1 items-start justify-center pt-[2%]">
+        <span className={`select-none ${suitClass}`}>{suit}</span>
       </div>
     </div>
   );
@@ -176,7 +136,7 @@ function CardBack({ size }: { size: CardSize }) {
 }
 
 /**
- * Modern glossy playing cards for board, opponents, and hole cards.
+ * Bold flat playing cards for board, opponents, and hole cards.
  * `variant` is kept for call-site compatibility; all faces use the same design.
  */
 export function PlayingCard({
@@ -204,19 +164,19 @@ export function PlayingCard({
   const w = SIZE[resolved];
   const radius =
     resolved === 'xs' || resolved === 'peek' || resolved === 'board' || resolved === 'handSm'
-      ? 'rounded-md'
+      ? 'rounded-[0.35rem]'
       : resolved === 'hand' || resolved === 'md' || resolved === 'lg'
         ? 'rounded-lg sm:rounded-xl'
         : 'rounded-md sm:rounded-lg';
   const winRing = highlight
     ? 'ring-2 ring-brass shadow-[0_0_18px_rgba(201,162,39,0.5)] scale-105 z-10'
-    : 'ring-1 ring-black/20';
+    : 'ring-1 ring-black';
   const dim = dimmed && !highlight ? 'opacity-35 saturate-50' : '';
   const shell = [
     w,
     radius,
     'relative overflow-hidden bg-white',
-    'shadow-[0_4px_12px_rgba(0,0,0,0.35)]',
+    'shadow-[0_3px_10px_rgba(0,0,0,0.28)]',
     winRing,
     dim,
     'transition-[opacity,transform,box-shadow] duration-300',

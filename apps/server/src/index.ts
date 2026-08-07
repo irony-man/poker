@@ -25,6 +25,7 @@ import { createHistoryStore, writeSchemaDoc } from './history.js';
 import { createKv } from './kv.js';
 import { ensurePublicTables } from './publicTables.js';
 import { RoomManager } from './room.js';
+import { createTableChipStore } from './tableChips.js';
 import { TournamentManager } from './tournament.js';
 
 // Load monorepo root .env then apps/server/.env (later wins).
@@ -74,7 +75,8 @@ async function main() {
   const kv = await createKv();
   const history = await createHistoryStore(pool);
   await writeSchemaDoc(dataDir);
-  const rooms = new RoomManager(kv, history);
+  const chips = await createTableChipStore(pool, dataDir);
+  const rooms = new RoomManager(kv, history, chips);
   const tournaments = new TournamentManager(rooms);
   const friends = new FriendsStore(dataDir, pool);
   ensurePublicTables(rooms);
@@ -623,6 +625,10 @@ async function main() {
     };
 
     ws.on('message', (raw) => {
+      void handleMessage(raw);
+    });
+
+    async function handleMessage(raw: WebSocket.RawData): Promise<void> {
       let data: unknown;
       try {
         data = JSON.parse(String(raw));
@@ -646,7 +652,7 @@ async function main() {
       if (msg.type === 'auth') {
         const user = auth.consumeTicket(msg.ticket);
         if (!user) {
-          send({ type: 'error', message: 'Invalid ticket', code: 'auth' });
+          send({ type: 'error', message: 'Invalid or expired ticket', code: 'bad_auth' });
           return;
         }
         userId = user.id;
@@ -697,7 +703,7 @@ async function main() {
         room.attach({ userId, name, avatarId, send });
         // Join means play: seat automatically unless the client asked to spectate.
         if (!msg.spectate) {
-          const seated = room.autoSit(userId, name);
+          const seated = await room.autoSit(userId, name);
           if (!seated.ok && seated.error && seated.error !== 'Table full') {
             // Tournament seats are pre-assigned — already seated is fine; other errors surface.
             if (seated.error !== 'Tournament seats are assigned') {
@@ -723,7 +729,7 @@ async function main() {
 
       switch (msg.type) {
         case 'sit': {
-          const result = r.sit(userId, name, msg.seat, msg.buyIn);
+          const result = await r.sit(userId, name, msg.seat, msg.buyIn);
           if (!result.ok) send({ type: 'error', message: result.error ?? 'Sit failed' });
           break;
         }
@@ -759,7 +765,7 @@ async function main() {
           break;
         }
         case 'kick_player': {
-          const result = r.kickPlayer(userId, msg.seat);
+          const result = await r.kickPlayer(userId, msg.seat);
           if (!result.ok) send({ type: 'error', message: result.error ?? 'Kick failed' });
           break;
         }
@@ -814,8 +820,10 @@ async function main() {
           if (!result.ok) send({ type: 'error', message: result.error ?? 'Voice signal failed' });
           break;
         }
+        default:
+          break;
       }
-    });
+    }
 
     ws.on('close', () => {
       if (userId && tableId) {

@@ -72,7 +72,7 @@ describe('bots', () => {
       config,
     });
     const room = rooms.get(meta.id)!;
-    expect(room.sit('host', 'Host', 0, 1000).ok).toBe(true);
+    expect((await room.sit('host', 'Host', 0, 1000)).ok).toBe(true);
     expect(room.addBot('host').ok).toBe(true);
     expect(room.state.players.some((p) => isBotUserId(p.userId))).toBe(true);
   });
@@ -88,7 +88,7 @@ describe('bots', () => {
       config,
     });
     const room = rooms.get(meta.id)!;
-    expect(room.sit('host', 'Host', 0, 1000).ok).toBe(true);
+    expect((await room.sit('host', 'Host', 0, 1000)).ok).toBe(true);
     const result = room.addBot('host', undefined, 1000, 3);
     expect(result.ok).toBe(true);
     expect(result.added).toBe(3);

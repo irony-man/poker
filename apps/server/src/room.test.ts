@@ -3,6 +3,7 @@ import { AuthStore } from '../src/auth.js';
 import { MemoryKv } from '../src/kv.js';
 import { FileHistoryStore } from '../src/history.js';
 import { RoomManager } from '../src/room.js';
+import { MemoryTableChipStore } from '../src/tableChips.js';
 import path from 'node:path';
 import os from 'node:os';
 
@@ -39,9 +40,9 @@ describe('RoomManager', () => {
       config: { ...cashConfig() },
     });
     const room = rooms.get(meta.id)!;
-    expect(room.sit('u1', 'A', 0, 1000).ok).toBe(true);
-    expect(room.sit('u1', 'A', 1, 1000).ok).toBe(false); // already seated
-    expect(room.sit('u2', 'B', 1, 1000).ok).toBe(true);
+    expect((await room.sit('u1', 'A', 0, 1000)).ok).toBe(true);
+    expect((await room.sit('u1', 'A', 1, 1000)).ok).toBe(false); // already seated
+    expect((await room.sit('u2', 'B', 1, 1000)).ok).toBe(true);
 
     // Cash: both humans must ready before deal
     expect(room.setReady('u1', true).ok).toBe(true);
@@ -65,7 +66,7 @@ describe('RoomManager', () => {
     expect(room.action('spectator', handId, room.state.actionSeq, 'fold').ok).toBe(false);
   });
 
-  it('keeps seat during disconnect grace and vacates after timeout', () => {
+  it('keeps seat during disconnect grace and vacates after timeout', async () => {
     vi.useFakeTimers();
     const kv = new MemoryKv();
     const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-test-${Date.now()}`));
@@ -79,7 +80,7 @@ describe('RoomManager', () => {
     const room = rooms.get(meta.id)!;
     const noop = () => {};
     room.attach({ userId: 'u1', name: 'A', avatarId: 0, send: noop });
-    expect(room.sit('u1', 'A', 0, 1000).ok).toBe(true);
+    expect((await room.sit('u1', 'A', 0, 1000)).ok).toBe(true);
 
     room.detach('u1');
     room.scheduleDisconnect('u1');
@@ -91,7 +92,7 @@ describe('RoomManager', () => {
     vi.useRealTimers();
   });
 
-  it('cancels disconnect grace when player reconnects', () => {
+  it('cancels disconnect grace when player reconnects', async () => {
     vi.useFakeTimers();
     const kv = new MemoryKv();
     const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-test-${Date.now()}`));
@@ -105,7 +106,7 @@ describe('RoomManager', () => {
     const room = rooms.get(meta.id)!;
     const noop = () => {};
     room.attach({ userId: 'u1', name: 'A', avatarId: 0, send: noop });
-    expect(room.sit('u1', 'A', 0, 1000).ok).toBe(true);
+    expect((await room.sit('u1', 'A', 0, 1000)).ok).toBe(true);
 
     room.detach('u1');
     room.scheduleDisconnect('u1');
@@ -117,7 +118,7 @@ describe('RoomManager', () => {
     vi.useRealTimers();
   });
 
-  it('deals only when every human is ready (bots always ready)', () => {
+  it('deals only when every human is ready (bots always ready)', async () => {
     const kv = new MemoryKv();
     const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-ready-${Date.now()}`));
     const rooms = new RoomManager(kv, history);
@@ -128,7 +129,7 @@ describe('RoomManager', () => {
       config: { ...cashConfig() },
     });
     const room = rooms.get(meta.id)!;
-    expect(room.sit('u1', 'Host', 0, 1000).ok).toBe(true);
+    expect((await room.sit('u1', 'Host', 0, 1000)).ok).toBe(true);
     expect(room.addBot('u1').ok).toBe(true);
 
     expect(room.setReady('u1', true).ok).toBe(true);
@@ -136,7 +137,7 @@ describe('RoomManager', () => {
     expect(room.state.street).not.toBe('waiting');
   });
 
-  it('does not deal until all humans ready; sit-out clears ready', () => {
+  it('does not deal until all humans ready; sit-out clears ready', async () => {
     const kv = new MemoryKv();
     const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-ready2-${Date.now()}`));
     const rooms = new RoomManager(kv, history);
@@ -147,9 +148,9 @@ describe('RoomManager', () => {
       config: { ...cashConfig() },
     });
     const room = rooms.get(meta.id)!;
-    room.sit('u1', 'A', 0, 1000);
-    room.sit('u2', 'B', 1, 1000);
-    room.sit('u3', 'C', 2, 1000);
+    await room.sit('u1', 'A', 0, 1000);
+    await room.sit('u2', 'B', 1, 1000);
+    await room.sit('u3', 'C', 2, 1000);
 
     expect(room.setReady('u1', true).ok).toBe(true);
     expect(room.setReady('u2', true).ok).toBe(true);
@@ -161,7 +162,7 @@ describe('RoomManager', () => {
     expect(room.state.street).not.toBe('waiting');
   });
 
-  it('kick is host-only and vacates seat between hands', () => {
+  it('kick is host-only and vacates seat between hands', async () => {
     const kv = new MemoryKv();
     const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-kick-${Date.now()}`));
     const rooms = new RoomManager(kv, history);
@@ -172,16 +173,46 @@ describe('RoomManager', () => {
       config: { ...cashConfig() },
     });
     const room = rooms.get(meta.id)!;
-    room.sit('host1', 'Host', 0, 1000);
-    room.sit('u2', 'Guest', 1, 1000);
+    await room.sit('host1', 'Host', 0, 1000);
+    await room.sit('u2', 'Guest', 1, 1000);
 
-    expect(room.kickPlayer('u2', 0).ok).toBe(false);
-    expect(room.kickPlayer('host1', 1).ok).toBe(true);
+    expect((await room.kickPlayer('u2', 0)).ok).toBe(false);
+    expect((await room.kickPlayer('host1', 1)).ok).toBe(true);
     expect(room.state.players[1]?.status).toBe('empty');
     expect(room.state.players[1]?.userId).toBeNull();
   });
 
-  it('start_hand toggles ready on cash tables', () => {
+  it('reseat after kick restores reserved chip stack, not table buy-in', async () => {
+    const kv = new MemoryKv();
+    const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-kick-stack-${Date.now()}`));
+    const chips = new MemoryTableChipStore();
+    const rooms = new RoomManager(kv, history, chips);
+    const meta = rooms.create({
+      name: 'KickStack',
+      hostUserId: 'host1',
+      isPrivate: true,
+      config: { ...cashConfig() },
+    });
+    const room = rooms.get(meta.id)!;
+    await room.sit('host1', 'Host', 0, 1000);
+    await room.sit('u2', 'Guest', 1, 1000);
+    room.state.players[1]!.stack = 420;
+
+    expect((await room.kickPlayer('host1', 1)).ok).toBe(true);
+    expect(room.state.players[1]?.status).toBe('empty');
+
+    // Client always sends table buy-in; server should use reserved 420 instead.
+    expect((await room.sit('u2', 'Guest', 1, 1000)).ok).toBe(true);
+    expect(room.state.players[1]?.userId).toBe('u2');
+    expect(room.state.players[1]?.stack).toBe(420);
+
+    // Reserved stack is single-use.
+    await room.stand('u2', 1);
+    expect((await room.sit('u2', 'Guest', 1, 1000)).ok).toBe(true);
+    expect(room.state.players[1]?.stack).toBe(1000);
+  });
+
+  it('start_hand toggles ready on cash tables', async () => {
     const kv = new MemoryKv();
     const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-toggle-${Date.now()}`));
     const rooms = new RoomManager(kv, history);
@@ -192,8 +223,8 @@ describe('RoomManager', () => {
       config: { ...cashConfig() },
     });
     const room = rooms.get(meta.id)!;
-    room.sit('u1', 'A', 0, 1000);
-    room.sit('u2', 'B', 1, 1000);
+    await room.sit('u1', 'A', 0, 1000);
+    await room.sit('u2', 'B', 1, 1000);
 
     expect(room.startHand('u1').ok).toBe(true);
     expect(room.state.street).toBe('waiting');

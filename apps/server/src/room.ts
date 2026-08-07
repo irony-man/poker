@@ -21,6 +21,8 @@ import {
 } from '@poker/engine';
 import type { KvStore } from './kv.js';
 import type { HandHistoryStore } from './history.js';
+import type { TableChipStore } from './tableChips.js';
+import { MemoryTableChipStore } from './tableChips.js';
 import { avatarIdFromUserId, clampAvatarId } from './avatars.js';
 import { chooseBotAction, isBotUserId, makeBotUserId, pickBotName } from './bot.js';
 
@@ -80,6 +82,7 @@ export class Room {
   private readyUserIds = new Set<string>();
   private kv: KvStore;
   private history: HandHistoryStore;
+  private chips: TableChipStore;
   private handStartedAt = 0;
   private tournamentHook: TournamentHandEndedHook | null = null;
   private autoStartTimer: NodeJS.Timeout | null = null;
@@ -91,11 +94,13 @@ export class Room {
     kv: KvStore,
     history: HandHistoryStore,
     tournamentHook: TournamentHandEndedHook | null = null,
+    chips: TableChipStore = new MemoryTableChipStore(),
   ) {
     this.meta = meta;
     this.state = createEmptyTable(meta.config);
     this.kv = kv;
     this.history = history;
+    this.chips = chips;
     this.tournamentHook = tournamentHook;
   }
 
@@ -252,10 +257,11 @@ export class Room {
   }
 
   /**
-   * Seat a newly joined player at the first empty seat (buy-in = table stake).
+   * Seat a newly joined player at the first empty seat.
+   * Restores reserved chips after a kick when present; otherwise table buy-in.
    * No-op if already seated, spectating, or the table is full.
    */
-  autoSit(userId: string, name: string): { ok: boolean; error?: string } {
+  async autoSit(userId: string, name: string): Promise<{ ok: boolean; error?: string }> {
     if (this.seatOf(userId) !== null) return { ok: true };
     const empty = this.state.players.find((p) => p.status === 'empty');
     if (!empty) return { ok: false, error: 'Table full' };
@@ -694,7 +700,7 @@ export class Room {
   }
 
   /** Host removes a seated player between hands (cash only). */
-  kickPlayer(hostId: string, seat: number): { ok: boolean; error?: string } {
+  async kickPlayer(hostId: string, seat: number): Promise<{ ok: boolean; error?: string }> {
     if (this.isTournament()) {
       return { ok: false, error: 'Cannot kick in tournament' };
     }
@@ -713,6 +719,7 @@ export class Room {
     }
     const kickedName = target.name ?? 'Player';
     const kickedId = target.userId;
+    const reservedStack = target.stack;
     this.readyUserIds.delete(kickedId);
 
     if (isBotUserId(kickedId)) {
@@ -724,11 +731,16 @@ export class Room {
       return { ok: true };
     }
 
-    // Human: vacate seat and drop their connection if present.
+    // Human: vacate seat, persist stack for rejoin, and drop connection if present.
     const result = leaveSeat(this.state, seat);
     if (!result.ok) return { ok: false, error: result.error };
     this.state = result.state;
     this.announceEngineEvents(result.events);
+    try {
+      await this.chips.reserve(this.meta.id, kickedId, reservedStack);
+    } catch (err) {
+      console.error('[chips] failed to reserve kick stack', err);
+    }
     if (this.connections.has(kickedId)) {
       const conn = this.connections.get(kickedId)!;
       conn.send({ type: 'error', message: 'You were removed from the table', code: 'kicked' });
@@ -739,18 +751,42 @@ export class Room {
     return { ok: true };
   }
 
-  sit(userId: string, name: string, seat: number, buyIn: number): { ok: boolean; error?: string } {
+  async sit(
+    userId: string,
+    name: string,
+    seat: number,
+    buyIn: number,
+  ): Promise<{ ok: boolean; error?: string }> {
     if (!this.rateLimit(`${userId}:sit`)) return { ok: false, error: 'Rate limited' };
     if (this.isTournament()) {
       // Already force-seated entrants re-attach via autoSit; free sit not allowed.
       if (this.seatOf(userId) !== null) return { ok: true };
       return { ok: false, error: 'Tournament seats are assigned' };
     }
-    if (buyIn !== this.config.buyIn) {
+
+    let reserved: number | null = null;
+    try {
+      reserved = await this.chips.take(this.meta.id, userId);
+    } catch (err) {
+      console.error('[chips] failed to load reserved stack', err);
+    }
+
+    const stack = reserved ?? buyIn;
+    if (reserved == null && buyIn !== this.config.buyIn) {
       return { ok: false, error: 'Buy-in must match table buy-in' };
     }
-    const result = sitDown(this.state, seat, userId, name, buyIn);
-    if (!result.ok) return { ok: false, error: result.error };
+
+    const result = sitDown(this.state, seat, userId, name, stack);
+    if (!result.ok) {
+      if (reserved != null) {
+        try {
+          await this.chips.reserve(this.meta.id, userId, reserved);
+        } catch (err) {
+          console.error('[chips] failed to restore reserved stack after sit failure', err);
+        }
+      }
+      return { ok: false, error: result.error };
+    }
     this.state = result.state;
     const conn = this.connections.get(userId);
     if (conn) this.avatarByUser.set(userId, clampAvatarId(conn.avatarId));
@@ -1007,11 +1043,17 @@ export class RoomManager {
   private byInvite = new Map<string, string>();
   private kv: KvStore;
   private history: HandHistoryStore;
+  private chips: TableChipStore;
   private tournamentHook: TournamentHandEndedHook | null = null;
 
-  constructor(kv: KvStore, history: HandHistoryStore) {
+  constructor(
+    kv: KvStore,
+    history: HandHistoryStore,
+    chips: TableChipStore = new MemoryTableChipStore(),
+  ) {
     this.kv = kv;
     this.history = history;
+    this.chips = chips;
   }
 
   setTournamentHook(hook: TournamentHandEndedHook | null): void {
@@ -1047,7 +1089,7 @@ export class RoomManager {
       createdAt: Date.now(),
       tournament: opts.tournament,
     };
-    const room = new Room(meta, this.kv, this.history, this.tournamentHook);
+    const room = new Room(meta, this.kv, this.history, this.tournamentHook, this.chips);
     this.rooms.set(id, room);
     this.byInvite.set(inviteCode, id);
     void this.history.recordTable(meta);

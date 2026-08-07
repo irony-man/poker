@@ -45,6 +45,14 @@ export interface ChipLedgerRow {
   createdAt: Date;
 }
 
+/** Stack reserved when a player is removed so they rejoin this table with the same chips. */
+export interface TableChipBalanceRow {
+  userId: string;
+  tableId: string;
+  stack: number;
+  updatedAt: Date;
+}
+
 /** SQL DDL for Postgres bootstrap. */
 export const POSTGRES_DDL = `
 CREATE TABLE IF NOT EXISTS users (
@@ -113,6 +121,17 @@ CREATE TABLE IF NOT EXISTS chip_ledger (
 
 CREATE INDEX IF NOT EXISTS hand_history_table_idx ON hand_history(table_id);
 CREATE INDEX IF NOT EXISTS chip_ledger_user_idx ON chip_ledger(user_id);
+
+-- Reserved stack after kick (or other vacate) so rejoin restores chips across devices.
+CREATE TABLE IF NOT EXISTS table_chip_balances (
+  user_id TEXT NOT NULL,
+  table_id TEXT NOT NULL,
+  stack INT NOT NULL CHECK (stack >= 0),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, table_id)
+);
+
+CREATE INDEX IF NOT EXISTS table_chip_balances_table_idx ON table_chip_balances(table_id);
 
 -- Full social graph as one JSON document (simple durable store).
 CREATE TABLE IF NOT EXISTS social_store (

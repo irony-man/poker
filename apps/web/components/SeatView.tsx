@@ -24,6 +24,30 @@ function SeatActionPopup({ label, burstKey }: { label: string; burstKey: number 
   );
 }
 
+/** Seat-corner control so win chrome (+amount / hand name) does not push Kick outside the felt clip. */
+function SeatKickButton({
+  onKick,
+  compact,
+}: {
+  onKick: () => void;
+  compact?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onKick}
+      aria-label="Kick player"
+      className={
+        compact
+          ? 'absolute -right-1 -top-1 z-30 flex h-4 min-w-4 items-center justify-center rounded-full bg-black/70 px-0.5 text-[9px] font-bold leading-none text-white/70 hover:bg-red-950/90 hover:text-red-300'
+          : 'absolute -right-1.5 -top-1.5 z-30 rounded bg-black/70 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white/70 shadow hover:bg-red-950/90 hover:text-red-300'
+      }
+    >
+      {compact ? '×' : 'Kick'}
+    </button>
+  );
+}
+
 export function SeatView({
   player,
   isToAct,
@@ -141,6 +165,7 @@ export function SeatView({
   const cardSize: CardSize = landscape ? 'peek' : compact ? 'sm' : isSelf ? 'md' : 'sm';
   const avatarSize = compact ? (isSelf ? 30 : 26) : isSelf ? 28 : 24;
   const displayName = isSelf ? 'You' : (player.name ?? 'Seat').slice(0, landscape ? 8 : compact ? 7 : 10);
+  const showKick = canKick && !!onKick && !(isBot && canManageBots);
 
   return (
     <>
@@ -243,25 +268,28 @@ export function SeatView({
               )
             )}
 
-            <div className="relative z-[1] w-full overflow-hidden rounded shadow-[0_3px_10px_rgba(0,0,0,0.5)]">
+            <div className="relative z-[1] w-full rounded shadow-[0_3px_10px_rgba(0,0,0,0.5)]">
+              {showKick && onKick && <SeatKickButton onKick={onKick} compact />}
               {isToAct && (
                 <div className="pointer-events-none absolute -inset-1 z-0">
                   <SeatTurnRing endsAt={turnEndsAt} totalMs={turnTotalMs ?? 20000} active size={44} />
                 </div>
               )}
-              <div
-                className={`relative px-1 py-0.5 text-center text-[11px] font-extrabold tabular-nums leading-none text-mushroom ${
-                  isWinner ? 'bg-brass text-ink' : 'bg-sidebar'
-                }`}
-              >
-                {money(player.stack)}
-              </div>
-              <div
-                className={`truncate px-1 py-0.5 text-center text-[10px] font-bold leading-none ${
-                  isSelf ? 'bg-mushroom text-sidebar' : 'bg-[#efe6e4] text-sidebar'
-                }`}
-              >
-                {displayName}
+              <div className="overflow-hidden rounded">
+                <div
+                  className={`relative px-1 py-0.5 text-center text-[11px] font-extrabold tabular-nums leading-none text-mushroom ${
+                    isWinner ? 'bg-brass text-ink' : 'bg-sidebar'
+                  }`}
+                >
+                  {money(player.stack)}
+                </div>
+                <div
+                  className={`truncate px-1 py-0.5 text-center text-[10px] font-bold leading-none ${
+                    isSelf ? 'bg-mushroom text-sidebar' : 'bg-[#efe6e4] text-sidebar'
+                  }`}
+                >
+                  {displayName}
+                </div>
               </div>
             </div>
 
@@ -382,22 +410,25 @@ export function SeatView({
                     className="relative z-[1] shadow-md ring-1 ring-black/30"
                   />
                 </div>
-                <div className="flex w-full flex-col overflow-hidden rounded-md shadow-[0_3px_8px_rgba(0,0,0,0.45)]">
-                  {isSelf && (
-                    <span className="bg-mushroom px-0.5 py-px text-center text-[6px] font-extrabold uppercase leading-none tracking-wide text-sidebar">
-                      You
+                <div className="relative w-full">
+                  {showKick && onKick && <SeatKickButton onKick={onKick} compact />}
+                  <div className="flex w-full flex-col overflow-hidden rounded-md shadow-[0_3px_8px_rgba(0,0,0,0.45)]">
+                    {isSelf && (
+                      <span className="bg-mushroom px-0.5 py-px text-center text-[6px] font-extrabold uppercase leading-none tracking-wide text-sidebar">
+                        You
+                      </span>
+                    )}
+                    <span className="truncate bg-[#efe6e4] px-0.5 py-0.5 text-center text-[8px] font-bold leading-none text-sidebar">
+                      {displayName}
                     </span>
-                  )}
-                  <span className="truncate bg-[#efe6e4] px-0.5 py-0.5 text-center text-[8px] font-bold leading-none text-sidebar">
-                    {displayName}
-                  </span>
-                  <span
-                    className={`px-0.5 py-0.5 text-center text-[10px] font-extrabold tabular-nums leading-none tracking-tight ${
-                      isWinner ? 'bg-brass text-ink' : 'bg-sidebar text-mushroom'
-                    }`}
-                  >
-                    {money(player.stack)}
-                  </span>
+                    <span
+                      className={`px-0.5 py-0.5 text-center text-[10px] font-extrabold tabular-nums leading-none tracking-tight ${
+                        isWinner ? 'bg-brass text-ink' : 'bg-sidebar text-mushroom'
+                      }`}
+                    >
+                      {money(player.stack)}
+                    </span>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -420,7 +451,8 @@ export function SeatView({
                     className="relative z-[1] shadow-md ring-1 ring-black/30"
                   />
                 </div>
-                <div className="flex items-stretch shadow-[0_3px_8px_rgba(0,0,0,0.45)]">
+                <div className="relative flex items-stretch shadow-[0_3px_8px_rgba(0,0,0,0.45)]">
+                  {showKick && onKick && <SeatKickButton onKick={onKick} />}
                   <div className="flex flex-col justify-end">
                     {isSelf && (
                       <span className="rounded-t-sm bg-mushroom px-1 py-[1px] text-center text-[7px] font-extrabold uppercase leading-tight tracking-wide text-sidebar">
@@ -503,24 +535,6 @@ export function SeatView({
             className="mt-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-black/50 text-[9px] text-white/50 hover:text-red-300"
           >
             ×
-          </button>
-        )}
-        {canKick && onKick && !isBot && (
-          <button
-            type="button"
-            onClick={onKick}
-            className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/40 hover:text-red-300"
-          >
-            Kick
-          </button>
-        )}
-        {canKick && onKick && isBot && !canManageBots && (
-          <button
-            type="button"
-            onClick={onKick}
-            className="mt-0.5 text-[10px] text-white/40 hover:text-red-300"
-          >
-            Kick
           </button>
         )}
         </div>

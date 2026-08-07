@@ -641,7 +641,8 @@ export function TableView({
                   !isTournament &&
                   !!p.userId &&
                   p.userId !== userId &&
-                  p.status !== 'empty'
+                  p.status !== 'empty' &&
+                  !p.ready
                 }
                 onSit={() => {
                   if (!table || isSpectating) return;

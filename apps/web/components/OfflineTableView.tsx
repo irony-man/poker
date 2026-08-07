@@ -431,7 +431,7 @@ export function OfflineTableView({
   }, [publicTable, priv]);
 
   if (!publicTable || !bootstrapped) {
-    return <p className="text-cream/60">Dealing offline table…</p>;
+    return <p className="text-ink-strong-muted">Dealing offline table…</p>;
   }
 
   const isMyTurn = publicTable.toAct === mySeat && !!(priv?.legal?.types.length);
@@ -498,16 +498,16 @@ export function OfflineTableView({
       chatOpen={chatOpen}
       onChatOpenChange={setChatOpen}
     >
-      <div className="flex flex-1 flex-col min-h-0">
-        <div className="mb-1 flex shrink-0 items-center justify-between gap-2 text-sm text-cream/60 sm:mb-2">
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="mb-1 flex shrink-0 items-center justify-between gap-2 px-1.5 text-sm text-ink-strong-muted sm:mb-2 sm:px-0">
           <div className="flex min-w-0 items-center gap-1.5">
-            <span className="status-chip border-positive/30 bg-positive/10 text-positive max-sm:px-1.5 max-sm:py-0.5 max-sm:text-[10px]">
+            <span className="status-chip border-positive/35 bg-positive/10 text-positive max-sm:px-1.5 max-sm:py-0.5 max-sm:text-[10px]">
               Offline
             </span>
-            <span className="status-chip border-mushroom/30 bg-mushroom/10 text-mushroom capitalize max-sm:px-1.5 max-sm:py-0.5 max-sm:text-[10px]">
+            <span className="status-chip border-sidebar/25 bg-sidebar/8 text-sidebar capitalize max-sm:px-1.5 max-sm:py-0.5 max-sm:text-[10px]">
               {publicTable.street}
             </span>
-            <span className="text-[10px] text-cream/40 sm:text-xs">
+            <span className="text-[10px] text-ink-strong-muted sm:text-xs">
               {config.smallBlind}/{config.bigBlind}
             </span>
           </div>
@@ -519,7 +519,7 @@ export function OfflineTableView({
           ) : (
             <div className="flex shrink-0 items-center gap-2">
               <HowToPlayHelp />
-              <a href="/" className="text-[10px] text-mushroom/80 hover:text-mushroom sm:text-xs">
+              <a href="/" className="text-[10px] text-sidebar/80 hover:text-sidebar sm:text-xs">
                 ← Lobby
               </a>
             </div>
@@ -529,23 +529,15 @@ export function OfflineTableView({
         <div className="relative flex min-h-0 flex-1 flex-col">
           <div className="relative min-h-0 flex-1">
           <div
-            className={`absolute inset-0 felt-surface table-rim shadow-felt overflow-hidden ${
-              landscape
-                ? 'rounded-[42%_/_48%] border-[5px]'
-                : narrow
-                  ? 'rounded-[18%] border-[5px]'
-                  : 'rounded-[42%] border-[12px]'
-            }`}
+            className={
+              narrow
+                ? 'absolute inset-0 overflow-hidden felt-surface'
+                : 'absolute inset-0 overflow-hidden felt-surface table-rim shadow-felt rounded-[42%] border-[12px]'
+            }
           >
-          <div
-            className={`pointer-events-none absolute z-[1] border border-white/10 ${
-              landscape
-                ? 'inset-2 rounded-[40%_/_46%]'
-                : narrow
-                  ? 'inset-1.5 rounded-[16%]'
-                  : 'inset-6 rounded-[40%]'
-            }`}
-          />
+          {!narrow ? (
+            <div className="pointer-events-none absolute inset-6 z-[1] rounded-[40%] border border-white/10" />
+          ) : null}
 
           <div
             className={`absolute left-1/2 z-20 -translate-x-1/2 -translate-y-1/2 ${
@@ -623,7 +615,7 @@ export function OfflineTableView({
 
           {showDesktopTools && (
           <div className="relative z-30 flex shrink-0 justify-center px-2 pb-1 pt-2">
-            <div className="flex max-w-full flex-wrap items-center justify-center gap-1.5 rounded-full border border-cream/15 bg-ink/85 px-2 py-1.5 backdrop-blur-md">
+            <div className="flex max-w-full flex-wrap items-center justify-center gap-1.5 rounded-full border border-sidebar/15 bg-white/80 px-2 py-1.5 backdrop-blur-md shadow-[0_8px_24px_rgb(29_4_50/0.1)]">
               {betweenHands && (
                 <button type="button" onClick={start} className="btn-ghost text-xs py-1.5">
                   {publicTable.street === 'waiting' ? 'Start hand' : 'Next hand'}
@@ -633,7 +625,7 @@ export function OfflineTableView({
                 <button
                   type="button"
                   onClick={doSitOut}
-                  className="rounded-full border border-amber-400/30 px-3 py-1.5 text-xs text-amber-200 hover:bg-amber-400/10"
+                  className="rounded-full border border-amber-600/30 px-3 py-1.5 text-xs text-amber-900 hover:bg-amber-500/10"
                 >
                   Sit out
                 </button>
@@ -642,7 +634,7 @@ export function OfflineTableView({
                 <button
                   type="button"
                   onClick={doSitIn}
-                  className="rounded-full border border-mushroom/30 bg-mushroom/10 px-3 py-1.5 text-xs text-mushroom hover:bg-mushroom/20"
+                  className="rounded-full border border-sidebar/30 bg-sidebar/8 px-3 py-1.5 text-xs text-sidebar hover:bg-sidebar/12"
                 >
                   Sit in
                 </button>
@@ -651,7 +643,7 @@ export function OfflineTableView({
                 <button
                   type="button"
                   onClick={() => setTopUpOpen(true)}
-                  className="rounded-full border border-brass/30 bg-brass/10 px-3 py-1.5 text-xs text-brass-light hover:bg-brass/20"
+                  className="rounded-full border border-sidebar/25 bg-sidebar/8 px-3 py-1.5 text-xs text-sidebar hover:bg-sidebar/12"
                 >
                   Top up
                 </button>

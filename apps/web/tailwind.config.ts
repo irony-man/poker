@@ -76,7 +76,7 @@ export default {
         raised: 'var(--shadow-raised)',
         glow: 'var(--shadow-glow)',
         card: 'var(--shadow-card)',
-        felt: 'inset 0 0 120px rgb(14 6 24 / 0.55), 0 0 48px rgb(29 4 50 / 0.35)',
+        felt: 'inset 0 0 120px rgb(8 2 16 / 0.5), 0 12px 36px rgb(29 4 50 / 0.2)',
         /** Legacy aliases. */
         hud: 'var(--shadow-panel)',
         'glow-neon': 'var(--shadow-glow)',

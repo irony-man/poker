@@ -198,7 +198,7 @@ export default function ContestPage() {
 
   if (!contest) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-12 text-center text-cream/50">Loading contest…</div>
+      <div className="mx-auto max-w-lg px-4 py-12 text-center text-ink-strong-muted">Loading contest…</div>
     );
   }
 
@@ -207,21 +207,21 @@ export default function ContestPage() {
       <button
         type="button"
         onClick={() => router.push('/')}
-        className="text-xs font-display uppercase tracking-wider text-mushroom/70 hover:text-mushroom"
+        className="text-xs font-display uppercase tracking-wider text-sidebar/70 hover:text-sidebar"
       >
         ← Lobby
       </button>
 
       <header className="mt-3 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="status-chip border-mushroom/30 bg-mushroom/10 text-mushroom w-fit">
+          <p className="status-chip border-sidebar/25 bg-sidebar/8 text-sidebar w-fit">
             {contest.mode === 'knockout' ? 'Knockout' : 'Table match'} · {contest.status}
           </p>
-          <h1 className="mt-2 font-display text-3xl font-bold text-mushroom uppercase tracking-wide">
+          <h1 className="mt-2 font-display text-3xl font-bold text-sidebar uppercase tracking-wide">
             {contest.name}
           </h1>
-          <p className="mt-1 text-sm text-cream/50">
-            Code <span className="font-mono text-cream/80 tracking-widest">{contest.inviteCode}</span>
+          <p className="mt-1 text-sm text-ink-strong-muted">
+            Code <span className="font-mono text-ink-strong tracking-widest">{contest.inviteCode}</span>
             {' · '}
             {contest.entrants.length}/{contest.fieldSize} · stack {contest.startingStack} · blinds{' '}
             {contest.blinds
@@ -261,7 +261,7 @@ export default function ContestPage() {
       )}
 
       <section className="hud-panel mt-6 p-4 sm:p-5">
-        <h2 className="font-display text-sm font-bold uppercase tracking-wider text-cream/70">
+        <h2 className="font-display text-sm font-bold uppercase tracking-wider text-sidebar">
           Entrants
         </h2>
         <ul className="mt-3 grid gap-1.5 sm:grid-cols-2">
@@ -273,7 +273,7 @@ export default function ContestPage() {
               <span>
                 {e.name}
                 {e.isBot ? (
-                  <span className="ml-1.5 text-[10px] uppercase text-mushroom/55">bot</span>
+                  <span className="ml-1.5 text-[10px] uppercase text-ink-strong-muted">bot</span>
                 ) : null}
                 {e.userId === contest.hostUserId ? (
                   <span className="ml-1.5 text-[10px] uppercase text-brass-light/80">host</span>
@@ -291,13 +291,13 @@ export default function ContestPage() {
 
       {contest.mode === 'knockout' && contest.matches.length > 0 && (
         <section className="hud-panel mt-4 p-4 sm:p-5">
-          <h2 className="font-display text-sm font-bold uppercase tracking-wider text-cream/70">
+          <h2 className="font-display text-sm font-bold uppercase tracking-wider text-sidebar">
             Bracket
           </h2>
           <div className="mt-3 space-y-4">
             {bracketByRound.map((round, ri) => (
               <div key={ri}>
-                <p className="text-[10px] font-display uppercase tracking-widest text-cream/40">
+                <p className="text-[10px] font-display uppercase tracking-widest text-ink-strong-muted">
                   Round {ri + 1}
                 </p>
                 <ul className="mt-1.5 space-y-1.5">
@@ -309,13 +309,13 @@ export default function ContestPage() {
                       <span>
                         {nameOf(contest, m.playerA)} vs {nameOf(contest, m.playerB)}
                       </span>
-                      <span className="text-xs text-cream/45">
+                      <span className="text-xs text-ink-strong-muted">
                         {m.status}
                         {m.winnerId ? ` · ${nameOf(contest, m.winnerId)} wins` : ''}
                         {m.tableId && m.status === 'active' ? (
                           <button
                             type="button"
-                            className="ml-2 text-mushroom underline"
+                            className="ml-2 text-sidebar underline"
                             onClick={() =>
                               router.push(`/table/${m.tableId}?contest=${contestId}`)
                             }
@@ -335,7 +335,7 @@ export default function ContestPage() {
 
       {contest.placements.length > 0 && (
         <section className="hud-panel mt-4 p-4 sm:p-5">
-          <h2 className="font-display text-sm font-bold uppercase tracking-wider text-cream/70">
+          <h2 className="font-display text-sm font-bold uppercase tracking-wider text-sidebar">
             Standings
           </h2>
           <ol className="mt-3 space-y-1">

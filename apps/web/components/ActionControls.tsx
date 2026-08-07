@@ -66,26 +66,41 @@ export function ActionControls({
   }, [min, table?.actionSeq]);
 
   const shell = bare
-    ? 'flex h-full min-h-full w-full flex-1 flex-col overflow-hidden'
+    ? 'flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden text-ink-strong'
     : 'hud-panel mx-auto w-full max-w-xl overflow-hidden p-0';
 
   if (!isTurn || !legal || legal.types.length === 0) {
+    const copy = waitingCopy({
+      spectating,
+      street: table?.street,
+      isTurn: false,
+      mySeat,
+      toAct: table?.toAct,
+      connection: connectionOpen ? 'open' : 'closed',
+    });
     return (
       <div
         className={
           bare
-            ? 'flex h-full min-h-full flex-1 items-center justify-center px-3 py-6 text-center text-sm font-medium tracking-wide text-cream/55'
-            : 'hud-panel flex items-center justify-center px-4 py-6 text-center text-sm font-medium tracking-wide text-cream/55'
+            ? 'flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-1.5 px-3 py-2 text-center'
+            : 'hud-panel flex min-h-[160px] flex-col items-center justify-center gap-1.5 px-3 py-3 text-center'
         }
+        role="status"
+        aria-live="polite"
       >
-        {waitingCopy({
-          spectating,
-          street: table?.street,
-          isTurn: false,
-          mySeat,
-          toAct: table?.toAct,
-          connection: connectionOpen ? 'open' : 'closed',
-        })}
+        {/* eslint-disable-next-line @next/next/no-img-element -- public animated SVG loader */}
+        <img
+          src="/poker-chip-shuffle.svg"
+          alt=""
+          width={64}
+          height={64}
+          className="h-10 w-10 shrink-0 object-contain sm:h-11 sm:w-11"
+          aria-hidden
+          decoding="async"
+        />
+        <p className="max-w-[16rem] text-xs font-medium leading-snug tracking-wide text-ink-strong-muted sm:text-sm">
+          {copy}
+        </p>
       </div>
     );
   }
@@ -139,9 +154,9 @@ export function ActionControls({
   if (confirm) {
     return (
       <div className={shell}>
-        <div className="space-y-3 p-3 sm:p-4">
-          <p className="text-center text-sm font-medium text-cream">
-            Confirm <span className="font-bold text-brass-light">{confirm.label}</span>?
+        <div className="flex h-full min-h-0 flex-1 flex-col justify-center space-y-3 p-3 sm:p-4">
+          <p className="text-center text-sm font-medium text-ink-strong">
+            Confirm <span className="font-bold text-sidebar">{confirm.label}</span>?
           </p>
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -168,9 +183,11 @@ export function ActionControls({
   }
 
   const chipBtn =
-    'inline-flex min-h-8 items-center justify-center rounded border border-mushroom/20 bg-ink-raised px-1.5 text-[10px] font-display font-semibold uppercase tracking-wide hover:border-mushroom/50 hover:text-mushroom';
+    'inline-flex min-h-8 items-center justify-center rounded-md border border-sidebar/18 bg-white px-1.5 text-[10px] font-display font-semibold uppercase tracking-wide text-ink-strong hover:border-sidebar/40 hover:bg-sidebar/8 hover:text-sidebar';
   const actionBtn =
     'inline-flex min-h-10 items-center justify-center px-2 text-[11px] font-display font-bold uppercase tracking-wide';
+  const softAction =
+    'inline-flex min-h-10 items-center justify-center rounded border border-sidebar/20 bg-white px-2 text-[11px] font-display font-bold uppercase tracking-wide text-sidebar shadow-[0_2px_8px_rgb(29_4_50/0.06)] hover:border-sidebar/35 hover:bg-sidebar/5';
 
   const timer = (
     <MoveTimerStrip endsAt={turnEndsAt} totalMs={turnTotalMs} compact={!!(narrow && landscape)} />
@@ -193,10 +210,10 @@ export function ActionControls({
     </>
   );
 
-  /* —— Landscape: reference strip — size row + three wide black actions —— */
+  /* —— Landscape: sized strip + three wide actions —— */
   if (narrow && landscape) {
     const landBtn =
-      'inline-flex min-h-[2.75rem] flex-1 items-center justify-center rounded-lg border border-white/10 bg-gradient-to-b from-[#2a2a2a] to-black px-2 text-[13px] font-bold tracking-wide text-white shadow-[0_2px_8px_rgba(0,0,0,0.5)] active:from-[#1a1a1a] active:to-[#050505]';
+      'inline-flex min-h-[2.75rem] flex-1 items-center justify-center rounded-lg border border-sidebar/20 bg-white px-2 text-[13px] font-bold tracking-wide text-sidebar shadow-[0_2px_8px_rgb(29_4_50/0.08)] active:bg-sidebar/8';
     const midLabel = legal.types.includes('check')
       ? 'Check'
       : legal.types.includes('call')
@@ -206,11 +223,11 @@ export function ActionControls({
     const thirdIsAllin = !canBet && legal.types.includes('allin');
 
     return (
-      <div className="flex h-full min-h-0 flex-col">
+      <div className="flex h-full min-h-0 flex-col text-ink-strong">
         {timer}
         {canBet && (
-          <div className="flex shrink-0 items-center gap-1 border-b border-white/10 px-1.5 py-0.5">
-            <span className="shrink-0 font-serif text-sm font-normal tabular-nums text-white">
+          <div className="flex shrink-0 items-center gap-1 border-b border-sidebar/12 px-1.5 py-0.5">
+            <span className="shrink-0 font-serif text-sm font-normal tabular-nums text-sidebar">
               ${amount}
             </span>
             <input
@@ -237,7 +254,7 @@ export function ActionControls({
                   key={label}
                   type="button"
                   onClick={() => setBet(val)}
-                  className="rounded border border-white/15 bg-black/60 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white/80"
+                  className="rounded border border-sidebar/18 bg-white px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-ink-strong hover:bg-sidebar/8"
                 >
                   {label}
                 </button>
@@ -250,7 +267,7 @@ export function ActionControls({
             <button
               type="button"
               onClick={() => commit('fold', undefined, 'Fold')}
-              className={landBtn}
+              className={`${landBtn} border-danger/35 bg-danger text-cream hover:brightness-110`}
             >
               Fold
             </button>
@@ -271,14 +288,18 @@ export function ActionControls({
             <div className="flex-1" />
           )}
           {thirdIsBet ? (
-            <button type="button" onClick={() => submitBet(amount)} className={landBtn}>
+            <button
+              type="button"
+              onClick={() => submitBet(amount)}
+              className={`${landBtn} border-sidebar/30 bg-gradient-to-b from-[#341252] to-sidebar text-mushroom`}
+            >
               {betLabel}
             </button>
           ) : thirdIsAllin ? (
             <button
               type="button"
               onClick={() => commit('allin', undefined, 'All-in')}
-              className={landBtn}
+              className={`${landBtn} border-sidebar/30 bg-gradient-to-b from-[#341252] to-sidebar text-mushroom`}
             >
               All-in
             </button>
@@ -286,7 +307,7 @@ export function ActionControls({
             <button
               type="button"
               onClick={() => commit('allin', undefined, 'All-in')}
-              className={landBtn}
+              className={`${landBtn} border-sidebar/30 bg-gradient-to-b from-[#341252] to-sidebar text-mushroom`}
             >
               All-in
             </button>
@@ -303,16 +324,16 @@ export function ActionControls({
     return (
       <div className={shell}>
         {timer}
-        <div className="space-y-1 p-1.5">
+        <div className="flex min-h-0 flex-1 flex-col justify-between space-y-1 p-1.5">
           {canBet && (
             <div className="space-y-1">
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-cream-muted">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-strong-muted">
                   {betLabel} to
                 </span>
-                <span className="font-mono text-sm font-bold tabular-nums text-brass">
+                <span className="font-mono text-sm font-bold tabular-nums text-sidebar">
                   {amount}
-                  <span className="ml-1.5 text-[10px] font-medium text-cream-muted">
+                  <span className="ml-1.5 text-[10px] font-medium text-ink-strong-muted">
                     {min}–{max}
                   </span>
                 </span>
@@ -346,7 +367,7 @@ export function ActionControls({
               <button
                 type="button"
                 onClick={() => commit('check')}
-                className={`btn-secondary ${actionBtn} min-h-11`}
+                className={`${softAction} min-h-11`}
               >
                 Check
               </button>
@@ -355,7 +376,7 @@ export function ActionControls({
               <button
                 type="button"
                 onClick={() => commit('call')}
-                className={`btn-secondary ${actionBtn} min-h-11`}
+                className={`${softAction} min-h-11`}
               >
                 Call {callAmount}
               </button>
@@ -384,20 +405,20 @@ export function ActionControls({
     );
   }
 
-  /* —— Desktop: full text —— */
+  /* —— Desktop: fill fixed 160px dock —— */
   return (
     <div className={shell}>
-      {timer}
-      <div className="space-y-3 p-4">
+      <MoveTimerStrip endsAt={turnEndsAt} totalMs={turnTotalMs} compact />
+      <div className="flex min-h-0 flex-1 flex-col justify-between gap-1.5 px-3 pb-2 pt-1">
         {canBet && (
-          <div className="space-y-1.5">
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-cream-muted">
+          <div className="space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-strong-muted">
                 {betLabel} to
               </span>
-              <span className="font-mono text-sm font-bold tabular-nums text-brass">
+              <span className="font-mono text-sm font-bold tabular-nums text-sidebar">
                 {amount}
-                <span className="ml-1.5 text-[10px] font-medium text-cream-muted">
+                <span className="ml-1.5 text-[10px] font-medium text-ink-strong-muted">
                   {min}–{max}
                 </span>
               </span>
@@ -413,27 +434,27 @@ export function ActionControls({
               className="bet-slider w-full"
               aria-label={`${betLabel} amount`}
             />
-            <label className="flex min-w-0 flex-col gap-0.5">
-              <span className="sr-only">{betLabel} amount</span>
-              <input
-                type="number"
-                inputMode="numeric"
-                min={min}
-                max={max}
-                step={bb}
-                value={amount}
-                onChange={(e) => setBet(Number(e.target.value) || min)}
-                onBlur={() => setBet(amount)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    setBet(amount);
-                    submitBet(amount);
-                  }
-                }}
-                className="w-full rounded border border-mushroom/20 bg-ink-raised px-3 py-2 font-mono text-base font-bold tabular-nums text-cream outline-none focus:border-mushroom/50"
-              />
-            </label>
-            <div className="grid grid-cols-4 gap-1.5">
+            <div className="grid grid-cols-[minmax(4.5rem,1fr)_repeat(4,minmax(0,1fr))] gap-1">
+              <label className="min-w-0">
+                <span className="sr-only">{betLabel} amount</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={min}
+                  max={max}
+                  step={bb}
+                  value={amount}
+                  onChange={(e) => setBet(Number(e.target.value) || min)}
+                  onBlur={() => setBet(amount)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      setBet(amount);
+                      submitBet(amount);
+                    }
+                  }}
+                  className="w-full rounded border border-sidebar/18 bg-white px-2 py-1.5 font-mono text-sm font-bold tabular-nums text-ink-strong outline-none focus:border-sidebar/45 focus:shadow-[0_0_0_2px_rgb(29_4_50/0.08)]"
+                />
+              </label>
               {(
                 [
                   ['Min', min],
@@ -446,7 +467,7 @@ export function ActionControls({
                   key={label}
                   type="button"
                   onClick={() => setBet(val)}
-                  className="rounded border border-mushroom/20 bg-ink-raised py-1.5 text-[11px] font-display font-semibold uppercase tracking-wide hover:border-mushroom/50 hover:text-mushroom"
+                  className="rounded border border-sidebar/18 bg-white px-1 py-1.5 text-[10px] font-display font-semibold uppercase tracking-wide text-ink-strong hover:border-sidebar/40 hover:bg-sidebar/8 hover:text-sidebar"
                 >
                   {label}
                 </button>
@@ -455,28 +476,40 @@ export function ActionControls({
           </div>
         )}
 
-        <div className={`grid gap-2 ${canBet ? 'grid-cols-4' : 'grid-cols-3'}`}>
+        <div className={`grid gap-1.5 ${canBet ? 'grid-cols-4' : 'grid-cols-3'}`}>
           {legal.types.includes('fold') && (
             <button
               type="button"
               onClick={() => commit('fold', undefined, 'Fold')}
-              className="btn-danger py-2.5 text-sm"
+              className="btn-danger !rounded py-2 text-xs"
             >
               Fold
             </button>
           )}
           {legal.types.includes('check') && (
-            <button type="button" onClick={() => commit('check')} className="btn-secondary py-2.5 text-sm">
+            <button
+              type="button"
+              onClick={() => commit('check')}
+              className={`${softAction} min-h-9 py-2 text-xs`}
+            >
               Check
             </button>
           )}
           {legal.types.includes('call') && (
-            <button type="button" onClick={() => commit('call')} className="btn-secondary py-2.5 text-sm">
+            <button
+              type="button"
+              onClick={() => commit('call')}
+              className={`${softAction} min-h-9 py-2 text-xs`}
+            >
               Call {callAmount}
             </button>
           )}
           {canBet && (
-            <button type="button" onClick={() => submitBet(amount)} className="btn-primary py-2.5 text-sm">
+            <button
+              type="button"
+              onClick={() => submitBet(amount)}
+              className="btn-primary !rounded py-2 text-xs"
+            >
               {betLabel} {amount}
             </button>
           )}
@@ -484,7 +517,7 @@ export function ActionControls({
             <button
               type="button"
               onClick={() => commit('allin', undefined, 'All-in')}
-              className="btn-primary py-2.5 text-sm"
+              className="btn-primary !rounded py-2 text-xs"
             >
               All-in
             </button>

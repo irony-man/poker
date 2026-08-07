@@ -17,11 +17,11 @@ object FeltColors {
     val InkRaised = Color(0xFF2E1048)
     val InkOverlay = Color(0xFF08030E)
 
-    // Table
-    val FeltGreen = Color(0xFF226048)
-    val FeltGreenDark = Color(0xFF12342A)
-    val FeltRim = Color(0xFF1D0432)
-    val FeltRimEdge = Color(0xFFC4A8BA)
+    // Table (sidebar purple felt — matches web lobby rail)
+    val FeltGreen = Color(0xFF1D0432)
+    val FeltGreenDark = Color(0xFF120220)
+    val FeltRim = Color(0xFF120220)
+    val FeltRimEdge = Color(0xFFA88CA2)
 
     // Accent
     val Brass = Color(0xFFD6BA80)

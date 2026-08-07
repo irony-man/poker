@@ -45,7 +45,7 @@ export function TableOverflowMenu({
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}
-        className="flex h-11 w-11 items-center justify-center rounded-full border border-mushroom/25 bg-ink/80 text-lg font-bold text-cream/80 hover:border-mushroom/50 hover:text-mushroom"
+        className="flex h-11 w-11 items-center justify-center rounded-full border border-sidebar/20 bg-white/80 text-lg font-bold text-ink-strong hover:border-sidebar/40 hover:text-sidebar"
         title="More"
       >
         ⋯
@@ -54,7 +54,7 @@ export function TableOverflowMenu({
         <div
           id={panelId}
           role="menu"
-          className="absolute right-0 top-[calc(100%+0.35rem)] z-50 min-w-[12.5rem] overflow-hidden rounded-xl border border-mushroom/15 bg-ink-panel/95 py-1 shadow-[0_12px_40px_rgba(14,6,24,0.55)] backdrop-blur-md"
+          className="absolute right-0 top-[calc(100%+0.35rem)] z-50 min-w-[12.5rem] overflow-hidden rounded-xl border border-sidebar/12 bg-white py-1 shadow-[0_12px_40px_rgba(29,4,50,0.12)]"
         >
           {items.map((item) => (
             <button
@@ -68,18 +68,18 @@ export function TableOverflowMenu({
               }}
               className={`flex w-full items-center px-3.5 py-2.5 text-left text-sm font-medium disabled:opacity-40 ${
                 item.tone === 'danger'
-                  ? 'text-red-300 hover:bg-red-950/40'
+                  ? 'text-danger hover:bg-danger/10'
                   : item.tone === 'accent'
-                    ? 'text-mushroom hover:bg-mushroom/10'
+                    ? 'text-sidebar hover:bg-sidebar/8'
                     : item.tone === 'gold'
-                      ? 'text-brass-light hover:bg-brass/10'
-                      : 'text-cream/85 hover:bg-mushroom/10'
+                      ? 'text-sidebar hover:bg-sidebar/8'
+                      : 'text-ink-strong hover:bg-sidebar/8'
               }`}
             >
               {item.label}
             </button>
           ))}
-          {footer ? <div className="border-t border-mushroom/12 px-3 py-2">{footer}</div> : null}
+          {footer ? <div className="border-t border-sidebar/10 px-3 py-2">{footer}</div> : null}
         </div>
       )}
     </div>

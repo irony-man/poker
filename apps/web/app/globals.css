@@ -12,8 +12,8 @@
  */
 :root {
   /*
-   * Play room surfaces — deep POKR purple (same brand family as the lobby
-   * sidebar), not the old brown “card room” ink.
+   * Surfaces — ink* remain deep purple for play chrome (panels, chat, docks).
+   * Page ground is mushroom; the table oval uses sidebar purple felt.
    */
   --ink: 14 6 24;
   --ink-panel: 29 4 50;
@@ -26,11 +26,11 @@
   --ink-strong: 29 4 50;
   --ink-strong-muted: 90 70 95;
 
-  /* Table oval — classic green felt, purple/brass rail for brand */
-  --felt: 34 96 72;
-  --felt-deep: 18 52 42;
-  --felt-rim: 29 4 50;
-  --felt-rim-edge: 196 168 186;
+  /* Table oval = sidebar purple family */
+  --felt: 29 4 50;
+  --felt-deep: 18 2 32;
+  --felt-rim: 18 2 32;
+  --felt-rim-edge: 168 140 162;
 
   /* Accent — soft champagne that reads on purple panels */
   --brass: 214 186 128;
@@ -74,11 +74,63 @@
   --font-heading: 'RF Tone', 'Segoe UI', system-ui, sans-serif;
   --font-serif: 'RF Tone', 'Segoe UI', system-ui, sans-serif;
   --font-display: 'RF Tone', 'Segoe UI', system-ui, sans-serif;
+
+  /* Scrollbars — purple brand on mushroom (light surfaces) */
+  --scrollbar-size: 9px;
+  --scrollbar-track: rgb(var(--sidebar) / 0.07);
+  --scrollbar-thumb: rgb(var(--sidebar) / 0.38);
+  --scrollbar-thumb-hover: rgb(var(--sidebar) / 0.58);
 }
 
 html {
   height: 100%;
-  background-color: rgb(var(--ink));
+  background-color: rgb(var(--mushroom));
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+/*
+ * Themed scrollbars everywhere.
+ * Light pages: purple thumb on soft track.
+ * Dark chrome (sidebar, hud panels): mushroom thumb on purple track.
+ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.lobby-sidebar,
+.hud-panel {
+  --scrollbar-track: rgb(0 0 0 / 0.22);
+  --scrollbar-thumb: rgb(var(--mushroom) / 0.28);
+  --scrollbar-thumb-hover: rgb(var(--mushroom) / 0.48);
 }
 
 h1,
@@ -87,28 +139,19 @@ h3 {
   font-family: var(--font-heading);
 }
 
+/* Same mushroom ground as lobby pages — table oval provides the purple. */
 body {
   height: 100dvh;
   max-height: 100dvh;
   overflow: hidden;
-  @apply bg-ink text-cream font-body antialiased;
-  background-color: rgb(var(--ink));
-  background-image:
-    radial-gradient(ellipse 70% 50% at 50% -10%, rgb(var(--sidebar) / 0.55), transparent 58%),
-    radial-gradient(ellipse 55% 40% at 50% 110%, rgb(var(--felt) / 0.18), transparent 58%),
-    linear-gradient(168deg, #24103a 0%, #12061f 48%, #0a0412 100%);
-  background-attachment: fixed;
-  background-repeat: no-repeat;
+  @apply font-body antialiased;
+  background-color: rgb(var(--mushroom));
+  background-image: none;
+  color: rgb(var(--ink-strong));
 }
 
-/* Warm vignette instead of the old tech grid. */
 body::before {
-  content: '';
-  pointer-events: none;
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  background: radial-gradient(ellipse at center, transparent 45%, rgb(0 0 0 / 0.45) 100%);
+  display: none;
 }
 
 body > * {
@@ -116,15 +159,10 @@ body > * {
   z-index: 1;
 }
 
-/* Lobby: purple sidebar + mushroom main — no dark vignette. */
-body:has(.lobby-shell) {
+/* Play routes (table / offline / contest): keep light page ground. */
+.play-shell {
   background-color: rgb(var(--mushroom));
-  background-image: none;
   color: rgb(var(--ink-strong));
-}
-
-body:has(.lobby-shell)::before {
-  display: none;
 }
 
 .lobby-shell {
@@ -351,15 +389,15 @@ body:has(.lobby-shell)::before {
   }
 
   .bet-slider {
-    @apply h-2 cursor-pointer appearance-none rounded-full bg-ink-raised accent-mushroom;
+    @apply h-2 cursor-pointer appearance-none rounded-full bg-sidebar/15 accent-sidebar;
   }
 
   .bet-slider::-webkit-slider-thumb {
-    @apply h-4 w-4 cursor-pointer appearance-none rounded-full border border-mushroom/50 bg-mushroom shadow-glow;
+    @apply h-4 w-4 cursor-pointer appearance-none rounded-full border border-sidebar/40 bg-mushroom shadow-[0_1px_4px_rgb(29_4_50/0.25)];
   }
 
   .bet-slider::-moz-range-thumb {
-    @apply h-4 w-4 cursor-pointer rounded-full border border-mushroom/50 bg-mushroom;
+    @apply h-4 w-4 cursor-pointer rounded-full border border-sidebar/40 bg-mushroom;
   }
 
   .bet-slider:disabled {
@@ -386,32 +424,45 @@ body:has(.lobby-shell)::before {
   .status-chip {
     @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-display font-semibold uppercase tracking-[0.14em];
   }
+
+  /* Light page: ghost buttons match lobby. */
+  .play-shell .btn-ghost {
+    border-color: rgb(var(--sidebar) / 0.22);
+    background-color: rgb(255 252 250 / 0.85);
+    color: rgb(var(--ink-strong));
+  }
+
+  .play-shell .btn-ghost:hover {
+    border-color: rgb(var(--sidebar) / 0.4);
+    background-color: rgb(var(--sidebar) / 0.06);
+  }
 }
 
 @layer utilities {
+  /* Purple table matching lobby sidebar. */
   .felt-surface {
     background:
-      radial-gradient(ellipse at 50% 28%, rgb(var(--mushroom) / 0.07), transparent 42%),
-      radial-gradient(ellipse at 50% 32%, rgb(255 255 255 / 0.05), transparent 48%),
+      radial-gradient(ellipse at 50% 28%, rgb(var(--mushroom) / 0.1), transparent 44%),
+      radial-gradient(ellipse at 50% 55%, rgb(52 18 82 / 0.55), transparent 70%),
       radial-gradient(
         ellipse at center,
         rgb(var(--felt)) 0%,
-        rgb(var(--felt-deep)) 52%,
-        #0a241c 100%
+        rgb(var(--felt-deep)) 58%,
+        #0a0414 100%
       );
     box-shadow:
-      inset 0 0 90px rgb(14 6 24 / 0.5),
-      inset 0 0 0 1px rgb(var(--mushroom) / 0.06);
+      inset 0 0 100px rgb(0 0 0 / 0.45),
+      inset 0 0 0 1px rgb(var(--mushroom) / 0.08);
   }
 
-  /* Brand purple rail with a soft mushroom edge. */
+  /* Slightly darker rim so the oval reads on mushroom. */
   .table-rim {
     border-color: rgb(var(--felt-rim));
     background-clip: padding-box;
     box-shadow:
-      inset 0 0 0 2px rgb(var(--felt-rim-edge) / 0.45),
-      0 0 0 1px rgb(14 6 24 / 0.55),
-      0 18px 48px rgb(14 6 24 / 0.55);
+      inset 0 0 0 2px rgb(var(--felt-rim-edge) / 0.5),
+      0 0 0 1px rgb(var(--sidebar) / 0.35),
+      0 16px 40px rgb(29 4 50 / 0.18);
   }
 
   .seat-action-popup {

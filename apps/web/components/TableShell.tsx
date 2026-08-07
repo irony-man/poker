@@ -68,23 +68,20 @@ export function TableShell({
 
       <div
         className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ${
-          narrow ? 'px-1 py-0.5' : 'px-4 py-2'
+          narrow ? 'px-0 py-0' : 'px-4 py-2'
         }`}
       >
         {children}
       </div>
 
       {!narrow && desktopOpen ? (
-        <aside className="relative flex w-80 shrink-0 flex-col border-l border-mushroom/12 bg-ink-panel">
-          <button
-            type="button"
-            onClick={() => setChatVisible(false)}
-            className="absolute right-2 top-2.5 z-20 rounded border border-mushroom/20 px-2 py-1 text-[10px] font-display uppercase tracking-wider text-cream/55 hover:border-mushroom/45 hover:text-mushroom"
-            title="Hide chat"
-          >
-            Hide
-          </button>
-          <ChatPanel onSend={onSend} onEmoji={onEmoji} />
+        <aside className="relative flex w-[21rem] shrink-0 flex-col overflow-hidden border-l border-sidebar/12 bg-mushroom shadow-[-8px_0_28px_rgb(29_4_50/0.06)]">
+          <ChatPanel
+            onSend={onSend}
+            onEmoji={onEmoji}
+            onClose={() => setChatVisible(false)}
+            closeLabel="Hide"
+          />
         </aside>
       ) : null}
 
@@ -92,11 +89,11 @@ export function TableShell({
         <button
           type="button"
           onClick={() => setChatVisible(true)}
-          className="fixed right-4 top-1/2 z-40 flex -translate-y-1/2 flex-col items-center gap-2 rounded border border-mushroom/35 bg-ink-panel/95 px-2.5 py-4 text-[10px] font-display font-bold uppercase tracking-[0.18em] text-mushroom shadow-hud backdrop-blur"
+          className="fixed right-4 top-1/2 z-40 flex -translate-y-1/2 flex-col items-center gap-2 rounded-full border border-sidebar/20 bg-white px-3 py-5 text-[10px] font-display font-bold uppercase tracking-[0.18em] text-sidebar shadow-[0_10px_28px_rgb(29_4_50/0.12)] transition hover:border-sidebar/35 hover:bg-mushroom"
           style={{ writingMode: 'vertical-rl' }}
           title="Show chat"
         >
-          Comms
+          Chat
         </button>
       ) : null}
 
@@ -105,7 +102,7 @@ export function TableShell({
         <button
           type="button"
           onClick={() => setMobileOpen(true)}
-          className="fixed right-2 top-2 z-40 flex h-11 min-w-11 items-center justify-center rounded-full border border-mushroom/35 bg-ink-panel/95 px-3 text-[10px] font-display font-bold uppercase tracking-wider text-mushroom shadow-hud backdrop-blur"
+          className="fixed right-2 top-2 z-40 flex h-11 min-w-11 items-center justify-center rounded-full border border-sidebar/20 bg-white px-3.5 text-[10px] font-display font-bold uppercase tracking-wider text-sidebar shadow-[0_8px_24px_rgb(29_4_50/0.12)]"
         >
           Chat
         </button>
@@ -116,18 +113,16 @@ export function TableShell({
           <button
             type="button"
             aria-label="Close chat"
-            className="absolute inset-0 bg-ink-overlay/75"
+            className="absolute inset-0 bg-sidebar/35 backdrop-blur-[2px]"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="relative z-10 flex h-full w-[min(100%,20rem)] flex-col border-l border-mushroom/15 bg-ink-panel shadow-2xl pb-[env(safe-area-inset-bottom)]">
-            <button
-              type="button"
-              onClick={() => setMobileOpen(false)}
-              className="absolute right-2 top-2 z-20 flex h-11 items-center rounded border border-mushroom/20 px-3 text-[10px] font-display uppercase tracking-wider text-cream/60 hover:bg-mushroom/10"
-            >
-              Close
-            </button>
-            <ChatPanel onSend={onSend} onEmoji={onEmoji} />
+          <aside className="relative z-10 flex h-full w-[min(100%,22rem)] flex-col overflow-hidden border-l border-sidebar/12 bg-mushroom shadow-[-12px_0_40px_rgb(29_4_50/0.18)] pb-[env(safe-area-inset-bottom)]">
+            <ChatPanel
+              onSend={onSend}
+              onEmoji={onEmoji}
+              onClose={() => setMobileOpen(false)}
+              closeLabel="Close"
+            />
           </aside>
         </div>
       )}

@@ -51,12 +51,12 @@ export function HowToPlayHelp({ className = '' }: { className?: string }) {
         aria-controls={panelId}
         aria-haspopup="dialog"
         onClick={() => setOpen((v) => !v)}
-        className="flex h-11 items-center gap-1.5 rounded-full border border-mushroom/25 bg-ink/80 px-2.5 text-xs font-display font-semibold uppercase tracking-wider text-cream/75 hover:border-mushroom/50 hover:text-mushroom sm:h-9 sm:px-3"
+        className="flex h-11 items-center gap-1.5 rounded-full border border-sidebar/20 bg-white/80 px-2.5 text-xs font-display font-semibold uppercase tracking-wider text-ink-strong-muted hover:border-sidebar/40 hover:text-sidebar sm:h-9 sm:px-3"
         title="How to play"
       >
         <span
           aria-hidden
-          className="flex h-5 w-5 items-center justify-center rounded-full border border-mushroom/30 text-[11px] font-bold leading-none"
+          className="flex h-5 w-5 items-center justify-center rounded-full border border-sidebar/25 text-[11px] font-bold leading-none"
         >
           ?
         </span>
@@ -68,16 +68,16 @@ export function HowToPlayHelp({ className = '' }: { className?: string }) {
           id={panelId}
           role="dialog"
           aria-label="How to play"
-          className="absolute right-0 top-[calc(100%+0.4rem)] z-[60] w-[min(calc(100vw-1.5rem),20rem)] rounded-xl border border-mushroom/15 bg-ink-panel/95 p-3 shadow-[0_12px_40px_rgba(14,6,24,0.55)] backdrop-blur-md sm:w-[22rem] sm:p-4"
+          className="absolute right-0 top-[calc(100%+0.4rem)] z-[60] w-[min(calc(100vw-1.5rem),20rem)] rounded-xl border border-sidebar/12 bg-white p-3 shadow-[0_12px_40px_rgba(29,4,50,0.12)] sm:w-[22rem] sm:p-4"
         >
           <div className="mb-2.5 flex items-center justify-between gap-2">
-            <h3 className="font-display text-sm font-bold uppercase tracking-wider text-mushroom">
+            <h3 className="font-display text-sm font-bold uppercase tracking-wider text-sidebar">
               How to play
             </h3>
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="rounded px-1.5 py-0.5 text-xs text-cream/45 hover:text-cream/80"
+              className="rounded px-1.5 py-0.5 text-xs text-ink-strong-muted hover:text-sidebar"
               aria-label="Close help"
             >
               Close
@@ -86,14 +86,14 @@ export function HowToPlayHelp({ className = '' }: { className?: string }) {
           <ul className="space-y-2.5">
             {TIPS.map((tip) => (
               <li key={tip.title}>
-                <p className="text-[11px] font-display font-semibold uppercase tracking-wider text-mushroom/70">
+                <p className="text-[11px] font-display font-semibold uppercase tracking-wider text-sidebar/70">
                   {tip.title}
                 </p>
-                <p className="mt-0.5 text-xs leading-relaxed text-cream/70">{tip.body}</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-ink-strong-muted">{tip.body}</p>
               </li>
             ))}
           </ul>
-          <p className="mt-3 border-t border-mushroom/12 pt-2 text-[10px] leading-snug text-cream/40">
+          <p className="mt-3 border-t border-sidebar/10 pt-2 text-[10px] leading-snug text-ink-strong-muted">
             Texas Hold&apos;em · highest hand wins · use your two cards + five community cards
           </p>
         </div>

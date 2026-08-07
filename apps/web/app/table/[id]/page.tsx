@@ -75,7 +75,7 @@ function TablePageInner() {
   }, [tableId, needsAuth]);
 
   if (needsAuth === null) {
-    return <p className="text-cream/60">Loading…</p>;
+    return <p className="text-ink-strong-muted">Loading…</p>;
   }
 
   if (needsAuth) {
@@ -85,7 +85,7 @@ function TablePageInner() {
     return (
       <div className="hud-panel mx-auto max-w-md space-y-4 p-6">
         <h2 className="font-display text-xl uppercase tracking-wider text-mushroom">Sign in to join</h2>
-        <p className="text-sm text-cream/60">You need an account to enter this table.</p>
+        <p className="text-sm text-cream/70">You need an account to enter this table.</p>
         {error && (
           <p role="alert" className="status-chip border-red-500/40 bg-red-950/50 text-red-300">
             {error}
@@ -105,7 +105,7 @@ function TablePageInner() {
 
   if (!ready) {
     return (
-      <p className="text-cream/60">{booting ? 'Connecting…' : 'Loading table…'}</p>
+      <p className="text-ink-strong-muted">{booting ? 'Connecting…' : 'Loading table…'}</p>
     );
   }
 
@@ -114,7 +114,7 @@ function TablePageInner() {
 
 export default function TablePage() {
   return (
-    <Suspense fallback={<p className="text-cream/60">Loading…</p>}>
+    <Suspense fallback={<p className="text-ink-strong-muted">Loading…</p>}>
       <TablePageInner />
     </Suspense>
   );

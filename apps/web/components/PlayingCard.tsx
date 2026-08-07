@@ -64,10 +64,10 @@ function isTiny(size: CardSize) {
 }
 
 /**
- * Bold flat face (reference style): oversized centered rank over oversized suit,
- * pure white stock, solid ink — no corner indices or glossy sheen.
+ * Classic modern face: top-left rank + suit, top-right suit, large center suit,
+ * soft sheen on white stock.
  */
-function ModernFace({
+function CardFace({
   rank,
   suit,
   red,
@@ -78,66 +78,132 @@ function ModernFace({
   red: boolean;
   size: CardSize;
 }) {
-  const color = red ? 'text-[#e31c23]' : 'text-[#111111]';
+  const color = red ? 'text-[#e53935]' : 'text-[#111111]';
   const tiny = isTiny(size);
   const isTen = rank === '10';
 
   const rankClass = tiny
     ? isTen
-      ? 'text-[0.95rem] leading-none tracking-tighter'
-      : 'text-[1.2rem] leading-none tracking-tight'
+      ? 'text-[9px] leading-none'
+      : 'text-[11px] leading-none'
     : isTen
-      ? 'text-[1.65rem] sm:text-[2.55rem] leading-none tracking-tighter'
-      : 'text-[1.95rem] sm:text-[2.9rem] leading-none tracking-tight';
+      ? 'text-[13px] sm:text-[17px] leading-none'
+      : 'text-[15px] sm:text-[20px] leading-none';
 
-  const suitClass = tiny
-    ? 'text-[1.05rem] leading-none'
-    : 'text-[1.7rem] sm:text-[2.55rem] leading-none';
+  const cornerSuit = tiny ? 'text-[9px] leading-none' : 'text-[12px] sm:text-[15px] leading-none';
+  const topRightSuit = tiny ? 'text-[12px] leading-none' : 'text-[16px] sm:text-[22px] leading-none';
+  const centerSuit = tiny
+    ? 'text-[1.55rem] leading-none'
+    : 'text-[2.15rem] sm:text-[3rem] leading-none';
 
-  return (
-    <div className={`absolute inset-0 flex flex-col items-center bg-white ${color}`}>
-      <div className="flex min-h-0 flex-1 items-end justify-center pb-[1%]">
-        <span className={`select-none font-black ${rankClass}`}>{rank}</span>
-      </div>
-      <div className="flex min-h-0 flex-1 items-start justify-center pt-[2%]">
-        <span className={`select-none ${suitClass}`}>{suit}</span>
-      </div>
-    </div>
-  );
-}
-
-function CardBack({ size }: { size: CardSize }) {
-  const tiny = isTiny(size);
   return (
     <div
       className="absolute inset-0"
       style={{
-        background: 'linear-gradient(145deg, #2a1f12 0%, #1a140c 45%, #0f0c08 100%)',
+        background: 'linear-gradient(180deg, #ffffff 0%, #ffffff 48%, #f2f2f2 100%)',
       }}
     >
+      {/* Soft horizontal sheen */}
       <div
-        className="absolute inset-[3px] rounded-[3px] border border-[#c9a227]/50"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[55%]"
         style={{
-          backgroundImage:
-            'repeating-linear-gradient(45deg, rgba(201,162,39,0.16) 0 2px, transparent 2px 6px), repeating-linear-gradient(-45deg, rgba(201,162,39,0.1) 0 2px, transparent 2px 6px)',
+          background:
+            'linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.55) 55%, transparent 100%)',
         }}
       />
-      <div className="absolute inset-0 flex items-center justify-center">
+      <div
+        className="pointer-events-none absolute inset-x-[8%] top-[42%] h-px opacity-40"
+        style={{
+          background: 'linear-gradient(90deg, transparent, rgba(0,0,0,0.08), transparent)',
+        }}
+      />
+
+      {/* Top-left: rank + small suit */}
+      <div className={`absolute left-[5%] top-[5%] z-[1] flex flex-col items-center ${color}`}>
+        <span className={`select-none font-extrabold tracking-tight ${rankClass}`}>{rank}</span>
+      </div>
+
+      {/* Top-right: medium suit */}
+      {/* <div className={`absolute right-[6%] top-[6%] z-[1] ${color}`}>
+        <span className={`select-none font-semibold ${topRightSuit}`}>{suit}</span>
+      </div> */}
+
+      {/* Large center suit */}
+      <div className={`absolute inset-0 flex items-center justify-center ${color}`}>
         <span
-          className={`select-none font-serif tracking-wide text-[#e8ce83]/90 ${
-            tiny ? 'text-[9px]' : 'text-[11px] sm:text-sm'
-          }`}
+          className={`select-none font-semibold ${centerSuit}`}
+          style={{ transform: 'translateY(8%)' }}
         >
-          F
+          {suit}
         </span>
       </div>
     </div>
   );
 }
 
+/** Mushroom back with brand hatch pattern and centered POKR logo. */
+function CardBack({ size }: { size: CardSize }) {
+  const tiny = isTiny(size);
+  const micro = size === 'peek' || size === 'xs' || size === 'handSm';
+  const inset = micro ? 'inset-[2px]' : tiny ? 'inset-[2.5px]' : 'inset-[3px]';
+  const logoPad = micro ? 'p-[10%]' : tiny ? 'p-[12%]' : 'p-[14%]';
+
+  return (
+    <div
+      className="absolute inset-0"
+      style={{
+        background:
+          'linear-gradient(155deg, #f0e6e4 0%, #e6d9d7 42%, #d9cac7 100%)',
+      }}
+    >
+      {/* Inner rail + existing diagonal hatch (sidebar ink on mushroom stock) */}
+      <div
+        className={`absolute ${inset} rounded-[3px] border border-sidebar/20`}
+        style={{
+          backgroundImage: [
+            'radial-gradient(ellipse at 50% 35%, rgba(29,4,50,0.08), transparent 55%)',
+            'repeating-linear-gradient(45deg, rgba(29,4,50,0.1) 0 1px, transparent 1px 7px)',
+            'repeating-linear-gradient(-45deg, rgba(29,4,50,0.07) 0 1px, transparent 1px 7px)',
+          ].join(', '),
+        }}
+      />
+
+      {/* Accent ring */}
+      <div
+        className={`pointer-events-none absolute ${inset} m-[6%] rounded-sm border border-sidebar/12`}
+        aria-hidden
+      />
+
+      {/* POKR logo */}
+      <div className={`absolute inset-0 flex items-center justify-center ${logoPad}`}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- static public brand asset */}
+        <img
+          src="/purple-logo.png"
+          alt=""
+          width={80}
+          height={40}
+          className="h-full w-full max-h-full max-w-full object-contain object-center opacity-95 drop-shadow-[0_1px_2px_rgb(29_4_50/0.2)]"
+          aria-hidden
+          draggable={false}
+        />
+      </div>
+    </div>
+  );
+}
+
+function outerRadius(size: CardSize): string {
+  if (size === 'xs' || size === 'peek' || size === 'board' || size === 'handSm') {
+    return 'rounded-[0.2rem]';
+  }
+  if (size === 'hand' || size === 'md' || size === 'lg') {
+    return 'rounded-[0.3rem] sm:rounded-[0.35rem]';
+  }
+  return 'rounded-[0.25rem] sm:rounded-[0.3rem]';
+}
+
 /**
- * Bold flat playing cards for board, opponents, and hole cards.
- * `variant` is kept for call-site compatibility; all faces use the same design.
+ * Playing cards for board, opponents, and hole cards.
+ * Faces use the classic modern style; backs keep the mushroom brand pattern.
  */
 export function PlayingCard({
   code,
@@ -162,21 +228,17 @@ export function PlayingCard({
   const resolved: CardSize =
     size ?? (variant === 'hand' ? 'hand' : small ? 'sm' : 'md');
   const w = SIZE[resolved];
-  const radius =
-    resolved === 'xs' || resolved === 'peek' || resolved === 'board' || resolved === 'handSm'
-      ? 'rounded-[0.35rem]'
-      : resolved === 'hand' || resolved === 'md' || resolved === 'lg'
-        ? 'rounded-lg sm:rounded-xl'
-        : 'rounded-md sm:rounded-lg';
+  const radius = outerRadius(resolved);
   const winRing = highlight
-    ? 'ring-2 ring-brass shadow-[0_0_18px_rgba(201,162,39,0.5)] scale-105 z-10'
-    : 'ring-1 ring-black';
+    ? 'ring-2 ring-mushroom shadow-[0_0_20px_rgba(230,217,215,0.45)] scale-105 z-10'
+    : 'ring-1 ring-black/40';
   const dim = dimmed && !highlight ? 'opacity-35 saturate-50' : '';
   const shell = [
     w,
     radius,
-    'relative overflow-hidden bg-white',
-    'shadow-[0_3px_10px_rgba(0,0,0,0.28)]',
+    'relative overflow-hidden',
+    faceDown || !code ? 'bg-mushroom' : 'bg-white',
+    'shadow-[0_4px_12px_rgba(0,0,0,0.35)]',
     winRing,
     dim,
     'transition-[opacity,transform,box-shadow] duration-300',
@@ -231,9 +293,9 @@ export function PlayingCard({
       className={shell}
       aria-label={code}
     >
-      <ModernFace rank={parsed.rank} suit={parsed.suit} red={parsed.red} size={resolved} />
+      <CardFace rank={parsed.rank} suit={parsed.suit} red={parsed.red} size={resolved} />
       {highlight ? (
-        <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-transparent via-brass to-transparent" />
+        <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-transparent via-mushroom to-transparent" />
       ) : null}
     </motion.div>
   );
@@ -261,7 +323,7 @@ export function HoleCardFan({
       }`}
     >
       <div
-        className="absolute left-1/2 origin-bottom drop-shadow-lg"
+        className="absolute left-1/2 origin-bottom drop-shadow-[0_6px_12px_rgba(14,6,24,0.4)]"
         style={{ bottom: 0, transform: 'translateX(-72%) rotate(-12deg)' }}
       >
         <PlayingCard
@@ -275,7 +337,7 @@ export function HoleCardFan({
         />
       </div>
       <div
-        className="absolute left-1/2 origin-bottom drop-shadow-lg"
+        className="absolute left-1/2 origin-bottom drop-shadow-[0_6px_12px_rgba(14,6,24,0.4)]"
         style={{ bottom: 0, transform: 'translateX(-28%) rotate(10deg)', zIndex: 2 }}
       >
         <PlayingCard

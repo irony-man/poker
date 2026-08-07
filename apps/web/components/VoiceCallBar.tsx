@@ -37,7 +37,7 @@ export function VoiceCallBar({
           type="button"
           onClick={() => void onJoinVoice()}
           disabled={state === 'joining'}
-          className={`${btn} border-mushroom/30 text-mushroom hover:bg-mushroom/10`}
+          className={`${btn} border-sidebar/30 text-sidebar hover:bg-sidebar/10`}
           title="Join table voice chat"
         >
           {state === 'joining' ? '…' : compact ? 'Mic' : 'Voice'}
@@ -45,7 +45,7 @@ export function VoiceCallBar({
       ) : (
         <>
           {!compact && (
-            <span className="status-chip border-mushroom/30 bg-mushroom/10 text-mushroom">
+            <span className="status-chip border-sidebar/25 bg-sidebar/8 text-sidebar">
               <span className="h-1.5 w-1.5 rounded-full bg-positive animate-live-blink" />
               Voice · {peerLabel}
             </span>
@@ -55,8 +55,8 @@ export function VoiceCallBar({
             onClick={onToggleMute}
             className={
               muted
-                ? `rounded-full border border-cream/25 ${compact ? 'px-2 py-1 text-[10px]' : 'px-2.5 py-1.5 text-[10px]'} text-cream/70 hover:bg-cream/10`
-                : `rounded-full border border-mushroom/40 bg-mushroom/15 ${compact ? 'px-2 py-1 text-[10px]' : 'px-2.5 py-1.5 text-[10px]'} text-mushroom`
+                ? `rounded-full border border-sidebar/20 ${compact ? 'px-2 py-1 text-[10px]' : 'px-2.5 py-1.5 text-[10px]'} text-ink-strong-muted hover:bg-sidebar/8`
+                : `rounded-full border border-sidebar/35 bg-sidebar/10 ${compact ? 'px-2 py-1 text-[10px]' : 'px-2.5 py-1.5 text-[10px]'} text-sidebar`
             }
             title={muted ? 'Unmute microphone' : 'Mute microphone'}
           >
@@ -65,7 +65,7 @@ export function VoiceCallBar({
           <button
             type="button"
             onClick={onLeave}
-            className={`rounded-full ${compact ? 'px-1.5 py-1 text-[10px]' : 'px-2.5 py-1.5 text-[10px]'} text-cream/45 hover:text-red-300`}
+            className={`rounded-full ${compact ? 'px-1.5 py-1 text-[10px]' : 'px-2.5 py-1.5 text-[10px]'} text-ink-strong-muted hover:text-danger`}
           >
             {compact ? '×' : 'Leave call'}
           </button>

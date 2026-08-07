@@ -8,14 +8,14 @@ import { FloatingActionDock } from './FloatingActionDock';
 import { DealerPotZone } from './DealerPotZone';
 import { HowToPlayHelp } from './HowToPlayHelp';
 import { SeatView } from './SeatView';
-import { ShareTableLink } from './ShareTableLink';
+import { CopyRoomLink } from './CopyRoomLink';
 import { TableOverflowMenu, type OverflowItem } from './TableOverflowMenu';
 import { TableShell } from './TableShell';
 import { TopUpModal } from './TopUpModal';
 import { VoiceCallBar } from './VoiceCallBar';
 import { WinHandModal } from './WinHandModal';
 import { playTick } from '@/lib/audio';
-import { buildTableJoinLink, buildTableJoinShareText } from '@/lib/tableLink';
+import { buildTableJoinShareText } from '@/lib/tableLink';
 import { usePokerSocket } from '@/lib/ws';
 import { useSession } from '@/lib/store';
 import { useVoiceCall } from '@/hooks/useVoiceCall';
@@ -208,25 +208,6 @@ export function TableView({
       canReady);
   const showMobileStartCta = narrow && (canReady || isSpectating);
 
-  const shareInvite = async () => {
-    if (!inviteCode) return;
-    const link = buildTableJoinLink(tableId, inviteCode);
-    const text = buildTableJoinShareText(tableId, inviteCode);
-    if (typeof navigator.share === 'function') {
-      try {
-        await navigator.share({ title: 'Join my poker table', text, url: link });
-        return;
-      } catch {
-        /* cancelled */
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      /* ignore */
-    }
-  };
-
   const onAction = (action: string, amount?: number) => {
     if (!table) return;
     if (connection !== 'open') {
@@ -264,7 +245,7 @@ export function TableView({
   if (!table && lastErrorCode === 'not_found') {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-cream/60">Table not found — returning home…</p>
+        <p className="text-ink-strong-muted">Table not found — returning home…</p>
       </div>
     );
   }
@@ -272,7 +253,7 @@ export function TableView({
   if (!table && (connection === 'connecting' || connection === 'open')) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-cream/60">
+        <p className="text-ink-strong-muted">
           {connection === 'connecting' ? 'Connecting…' : 'Loading table…'}
         </p>
       </div>
@@ -282,8 +263,8 @@ export function TableView({
   if (!table && connection === 'closed') {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
-        <p className="text-cream/80">Can&apos;t reach the table</p>
-        <p className="max-w-sm text-sm text-cream-muted">
+        <p className="text-ink-strong">Can&apos;t reach the table</p>
+        <p className="max-w-sm text-sm text-ink-strong-muted">
           The connection closed before table data arrived. Check that the server is running, then
           try again.
         </p>
@@ -297,7 +278,7 @@ export function TableView({
   if (!table) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-cream/60">Syncing table…</p>
+        <p className="text-ink-strong-muted">Syncing table…</p>
       </div>
     );
   }
@@ -306,10 +287,19 @@ export function TableView({
   if (narrow) {
     if (inviteCode) {
       mobileOverflowItems.push({
-        id: 'invite',
-        label: 'Invite / share',
-        onClick: () => void shareInvite(),
-        tone: 'gold',
+        id: 'copy-link',
+        label: `Copy link · ${inviteCode}`,
+        onClick: () => {
+          void (async () => {
+            const text = buildTableJoinShareText(tableId, inviteCode);
+            try {
+              await navigator.clipboard.writeText(text);
+            } catch {
+              /* ignore */
+            }
+          })();
+        },
+        tone: 'accent',
       });
     }
     if (!voice.inVoice) {
@@ -412,35 +402,38 @@ export function TableView({
       chatOpen={chatOpen}
       onChatOpenChange={setChatOpen}
     >
-      <div className="flex flex-1 flex-col min-h-0">
+      <div className="flex min-h-0 flex-1 flex-col">
         {/* Mobile: street · blinds · overflow | Desktop: full chrome */}
-        <div className="mb-1 flex shrink-0 items-center justify-between gap-2 text-sm text-cream/60 sm:mb-2">
+        <div className="mb-1 flex shrink-0 items-center justify-between gap-2 px-1.5 text-sm text-ink-strong-muted sm:mb-2 sm:px-0">
           <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
-            <span className="status-chip shrink-0 border-mushroom/30 bg-mushroom/10 text-mushroom capitalize max-sm:px-1.5 max-sm:py-0.5 max-sm:text-[10px]">
+            <span className="status-chip shrink-0 border-sidebar/25 bg-sidebar/8 text-sidebar capitalize max-sm:px-1.5 max-sm:py-0.5 max-sm:text-[10px]">
               {table?.street ?? '…'}
             </span>
             {isSpectating && (
-              <span className="status-chip shrink-0 border-brass/35 bg-brass/10 text-brass-light max-sm:text-[10px]">
+              <span className="status-chip shrink-0 border-brass/40 bg-brass/15 text-ink-strong max-sm:text-[10px]">
                 Spec
               </span>
             )}
             {table && (
-              <span className="truncate text-[10px] text-cream/40 sm:text-xs">
+              <span className="truncate text-[10px] text-ink-strong-muted sm:text-xs">
                 {table.config.smallBlind}/{table.config.bigBlind}
               </span>
             )}
             {table?.handId ? (
-              <span className="hidden font-mono text-[10px] opacity-50 sm:inline">#{table.handId}</span>
+              <span className="hidden font-mono text-[10px] text-ink-strong-muted/70 sm:inline">#{table.handId}</span>
             ) : null}
           </div>
 
           {narrow ? (
             <div className="flex shrink-0 items-center gap-1.5">
+              {inviteCode ? (
+                <CopyRoomLink tableId={tableId} inviteCode={inviteCode} compact />
+              ) : null}
               <HowToPlayHelp />
               <TableOverflowMenu
                 items={mobileOverflowItems}
                 footer={
-                  <div className="flex items-center gap-2 text-[10px] text-cream/45">
+                  <div className="flex items-center gap-2 text-[10px] text-ink-strong-muted">
                     <span
                       className={`h-1.5 w-1.5 rounded-full ${
                         connection === 'open'
@@ -461,7 +454,9 @@ export function TableView({
             </div>
           ) : (
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-1 sm:gap-2">
-              {inviteCode && <ShareTableLink tableId={tableId} inviteCode={inviteCode} />}
+              {inviteCode ? (
+                <CopyRoomLink tableId={tableId} inviteCode={inviteCode} />
+              ) : null}
               <VoiceCallBar
                 inVoice={voice.inVoice}
                 state={voice.state}
@@ -476,10 +471,10 @@ export function TableView({
               <div
                 className={
                   connection === 'open'
-                    ? 'status-chip border-felt-neon/30 bg-felt-neon/10 text-felt-neon'
+                    ? 'status-chip border-positive/35 bg-positive/10 text-positive'
                     : connection === 'connecting'
-                      ? 'status-chip border-amber-400/30 bg-amber-400/10 text-amber-300'
-                      : 'status-chip border-red-500/40 bg-red-950/50 text-red-300'
+                      ? 'status-chip border-amber-500/35 bg-amber-500/10 text-amber-800'
+                      : 'status-chip border-danger/35 bg-danger/10 text-danger'
                 }
                 title={connection}
               >
@@ -519,17 +514,17 @@ export function TableView({
 
         {table?.tournament && (
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            <span className="status-chip border-mushroom/30 bg-mushroom/10 text-mushroom">
+            <span className="status-chip border-sidebar/25 bg-sidebar/8 text-sidebar">
               {table.tournament.mode === 'knockout' ? 'Knockout' : 'Table match'}
               {table.tournament.frozen ? ' · match over' : ''}
             </span>
-            <span className="text-xs text-cream/50">
+            <span className="text-xs text-ink-strong-muted">
               Blinds {table.config.smallBlind}/{table.config.bigBlind} · no rebuy
             </span>
             {table.tournament.contestId && (
               <a
                 href={`/contest/${table.tournament.contestId}`}
-                className="text-xs text-mushroom underline"
+                className="text-xs text-sidebar underline"
               >
                 Contest lobby
               </a>
@@ -540,23 +535,15 @@ export function TableView({
         <div className="relative flex min-h-0 flex-1 flex-col">
           <div className="relative min-h-0 min-w-0 flex-1">
           <div
-            className={`absolute inset-0 felt-surface table-rim shadow-felt overflow-hidden ${
-              landscape
-                ? 'rounded-[42%_/_48%] border-[5px]'
-                : narrow
-                  ? 'rounded-[18%] border-[5px]'
-                  : 'rounded-[42%] border-[12px]'
-            }`}
+            className={
+              narrow
+                ? 'absolute inset-0 overflow-hidden felt-surface'
+                : 'absolute inset-0 overflow-hidden felt-surface table-rim shadow-felt rounded-[42%] border-[12px]'
+            }
           >
-          <div
-            className={`pointer-events-none absolute z-[1] border border-white/10 ${
-              landscape
-                ? 'inset-2 rounded-[40%_/_46%]'
-                : narrow
-                  ? 'inset-1.5 rounded-[16%]'
-                  : 'inset-6 rounded-[40%]'
-            }`}
-          />
+          {!narrow ? (
+            <div className="pointer-events-none absolute inset-6 z-[1] rounded-[40%] border border-white/10" />
+          ) : null}
 
           <div
             className={`absolute left-1/2 z-20 -translate-x-1/2 -translate-y-1/2 ${
@@ -674,7 +661,7 @@ export function TableView({
                   >
                     {myReady ? 'Not ready' : 'Ready'}
                   </button>
-                  <span className="text-[10px] font-display uppercase tracking-wider text-cream/50">
+                  <span className="text-[10px] font-display uppercase tracking-wider text-ink-strong-muted">
                     {readyCount}/{eligiblePlayers.length} ready
                   </span>
                 </>
@@ -684,7 +671,7 @@ export function TableView({
 
           {showDesktopTools && (
           <div className="relative z-30 flex shrink-0 justify-center px-2 pb-1 pt-2">
-            <div className="flex max-w-full flex-wrap items-center justify-center gap-1.5 rounded-full border border-mushroom/20 bg-ink/85 px-2 py-1.5 shadow-lg backdrop-blur-md">
+            <div className="flex max-w-full flex-wrap items-center justify-center gap-1.5 rounded-full border border-sidebar/15 bg-white/80 px-2 py-1.5 shadow-[0_8px_24px_rgb(29_4_50/0.1)] backdrop-blur-md">
               {isSpectating && (
                 <button
                   type="button"
@@ -705,13 +692,13 @@ export function TableView({
                     onClick={() => send({ type: 'set_ready', tableId, ready: !myReady })}
                     className={`text-xs py-1.5 ${
                       myReady
-                        ? 'rounded-full border border-mushroom/45 bg-mushroom/15 px-3 text-mushroom'
+                        ? 'rounded-full border border-sidebar/40 bg-sidebar/10 px-3 text-sidebar'
                         : 'btn-ghost'
                     }`}
                   >
                     {myReady ? 'Ready ✓' : 'Ready'}
                   </button>
-                  <span className="px-1 text-[10px] font-display uppercase tracking-wider text-cream/45">
+                  <span className="px-1 text-[10px] font-display uppercase tracking-wider text-ink-strong-muted">
                     {readyCount}/{eligiblePlayers.length}
                   </span>
                 </>
@@ -728,7 +715,7 @@ export function TableView({
                         count: Math.min(Math.max(1, botAddCount), emptySeats),
                       })
                     }
-                    className="rounded-full border border-mushroom/25 px-3 py-1.5 text-xs text-cream/80 hover:bg-mushroom/10"
+                    className="rounded-full border border-sidebar/20 px-3 py-1.5 text-xs text-ink-strong hover:bg-sidebar/8"
                   >
                     + Bot
                   </button>
@@ -742,7 +729,7 @@ export function TableView({
                         count: emptySeats,
                       })
                     }
-                    className="rounded-full border border-mushroom/15 px-2.5 py-1.5 text-[10px] text-cream/55 hover:bg-mushroom/10"
+                    className="rounded-full border border-sidebar/12 px-2.5 py-1.5 text-[10px] text-ink-strong-muted hover:bg-sidebar/8"
                   >
                     Fill
                   </button>
@@ -752,7 +739,7 @@ export function TableView({
                 <button
                   type="button"
                   onClick={() => send({ type: 'remove_all_bots', tableId })}
-                  className="rounded-full px-2.5 py-1.5 text-[10px] text-cream/45 hover:text-red-300"
+                  className="rounded-full px-2.5 py-1.5 text-[10px] text-ink-strong-muted hover:text-danger"
                 >
                   − Bots
                 </button>
@@ -761,7 +748,7 @@ export function TableView({
                 <button
                   type="button"
                   onClick={() => send({ type: 'sit_out', tableId, seat: mySeat! })}
-                  className="rounded-full border border-amber-400/30 px-3 py-1.5 text-xs text-amber-200 hover:bg-amber-400/10"
+                  className="rounded-full border border-amber-600/30 px-3 py-1.5 text-xs text-amber-900 hover:bg-amber-500/10"
                 >
                   Sit out
                 </button>
@@ -770,7 +757,7 @@ export function TableView({
                 <button
                   type="button"
                   onClick={() => send({ type: 'sit_in', tableId, seat: mySeat! })}
-                  className="rounded-full border border-mushroom/30 bg-mushroom/10 px-3 py-1.5 text-xs text-mushroom hover:bg-mushroom/20"
+                  className="rounded-full border border-sidebar/30 bg-sidebar/8 px-3 py-1.5 text-xs text-sidebar hover:bg-sidebar/12"
                 >
                   Sit in
                 </button>
@@ -779,7 +766,7 @@ export function TableView({
                 <button
                   type="button"
                   onClick={() => setTopUpOpen(true)}
-                  className="rounded-full border border-brass/30 bg-brass/10 px-3 py-1.5 text-xs text-brass-light hover:bg-brass/20"
+                  className="rounded-full border border-sidebar/25 bg-sidebar/8 px-3 py-1.5 text-xs text-sidebar hover:bg-sidebar/12"
                 >
                   Top up
                 </button>

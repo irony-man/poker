@@ -86,7 +86,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
 
   if (immersive) {
     return (
-      <main className="flex h-full min-h-0 flex-1 flex-col overflow-hidden px-1.5 py-1 md:px-3 md:py-2">
+      <main className="play-shell flex h-full min-h-0 flex-1 flex-col overflow-hidden px-0 py-0 md:px-3 md:py-2">
         {children}
       </main>
     );

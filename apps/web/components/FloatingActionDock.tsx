@@ -35,9 +35,9 @@ function savePos(p: Pos) {
 }
 
 /**
- * Mobile portrait: dual-height dock.
- * Mobile landscape: slim single-row strip.
- * Desktop: undocked floating / draggable popup.
+ * Mobile portrait: fixed-height dock.
+ * Mobile landscape: fixed slim strip.
+ * Desktop: fixed-height undocked floating popup.
  */
 export function FloatingActionDock({
   children,
@@ -111,33 +111,26 @@ export function FloatingActionDock({
   /* —— Phone (portrait or landscape): docked —— */
   if (narrow) {
     if (landscape) {
-      const height = expanded ? 'h-[7.25rem]' : 'h-[2.35rem]';
       return (
-        <div className="relative z-40 shrink-0 border-t border-black/80 bg-black/95 px-1 pb-[max(0.15rem,env(safe-area-inset-bottom))] pt-0.5 shadow-[0_-8px_24px_rgba(0,0,0,0.55)]">
-          <div
-            className={`mx-auto flex w-full max-w-5xl flex-col overflow-hidden transition-[height] duration-200 ${height}`}
-          >
+        <div className="relative z-40 h-[160px] min-h-[160px] shrink-0 border-t border-sidebar/15 bg-mushroom px-1 pb-[max(0.15rem,env(safe-area-inset-bottom))] pt-0.5 shadow-[0_-8px_24px_rgb(29_4_50/0.1)]">
+          <div className="mx-auto flex h-full w-full max-w-5xl flex-col overflow-hidden">
             <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
           </div>
         </div>
       );
     }
 
-    const height = expanded ? 'h-[10.75rem]' : 'h-[3.75rem]';
-
     return (
       <div
-        className={`relative z-40 shrink-0 border-t px-1.5 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1 ${
+        className={`relative z-40 h-[160px] min-h-[160px] shrink-0 border-t px-1.5 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1 ${
           expanded
-            ? 'border-mushroom/35 bg-ink/98 shadow-[0_-6px_20px_rgba(14,6,24,0.4)]'
-            : 'border-mushroom/12 bg-ink/95'
+            ? 'border-sidebar/20 bg-mushroom shadow-[0_-6px_20px_rgb(29_4_50/0.1)]'
+            : 'border-sidebar/12 bg-mushroom/95'
         }`}
       >
         <div
-          className={`mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded-xl border transition-[height] duration-200 ${height} ${
-            expanded
-              ? 'border-mushroom/40 bg-ink-panel/95 ring-1 ring-mushroom/20'
-              : 'border-mushroom/15 bg-ink-panel/80'
+          className={`mx-auto flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-xl border bg-white ${
+            expanded ? 'border-sidebar/25 ring-1 ring-sidebar/10' : 'border-sidebar/15'
           }`}
         >
           <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
@@ -167,24 +160,24 @@ export function FloatingActionDock({
           type="button"
           data-no-drag
           onClick={() => setOpen(true)}
-          className={`rounded-full border px-5 py-3 text-xs font-display font-bold uppercase tracking-[0.18em] shadow-hud backdrop-blur ${
+          className={`rounded-full border px-5 py-3 text-xs font-display font-bold uppercase tracking-[0.18em] shadow-[0_8px_24px_rgb(29_4_50/0.12)] ${
             expanded
-              ? 'border-mushroom/50 bg-ink/95 text-mushroom animate-hud-pulse'
-              : 'border-mushroom/25 bg-ink/90 text-cream/70'
+              ? 'border-sidebar/40 bg-mushroom text-sidebar animate-hud-pulse'
+              : 'border-sidebar/20 bg-white text-ink-strong-muted'
           }`}
         >
           {expanded ? 'Your move' : label}
         </button>
       ) : (
         <div
-          className={`overflow-hidden rounded-2xl border bg-ink/95 shadow-[0_12px_40px_rgba(14,6,24,0.55)] backdrop-blur-md ${
-            expanded ? 'border-mushroom/45 ring-1 ring-mushroom/20' : 'border-mushroom/30'
+          className={`flex w-[min(100vw-2rem,28rem)] flex-col overflow-hidden rounded-lg border bg-mushroom shadow-[0_16px_48px_rgb(29_4_50/0.14)] ${
+            expanded ? 'border-sidebar/30 ring-1 ring-sidebar/10' : 'border-sidebar/18'
           }`}
         >
-          <div className="flex cursor-grab items-center justify-between gap-3 border-b border-mushroom/12 bg-ink-panel/80 px-3 py-2 active:cursor-grabbing">
+          <div className="flex shrink-0 cursor-grab items-center justify-between gap-3 border-b border-sidebar/12 bg-white/70 px-3 py-1.5 active:cursor-grabbing">
             <span
               className={`text-[10px] font-display uppercase tracking-[0.22em] ${
-                expanded ? 'text-mushroom' : 'text-cream/45'
+                expanded ? 'text-sidebar' : 'text-ink-strong-muted'
               }`}
             >
               Drag · {expanded ? 'your move' : 'actions'}
@@ -193,16 +186,19 @@ export function FloatingActionDock({
               type="button"
               data-no-drag
               onClick={() => setOpen(false)}
-              className="rounded border border-mushroom/20 px-2 py-0.5 text-[10px] uppercase tracking-wider text-cream/50 hover:text-cream"
+              className="rounded border border-sidebar/20 px-2 py-0.5 text-[10px] uppercase tracking-wider text-ink-strong-muted hover:border-sidebar/40 hover:bg-sidebar/8 hover:text-sidebar"
             >
               Min
             </button>
           </div>
+          {/* Fixed action body: 160px min/height — no layout jump between wait & turn */}
           <div
             data-no-drag
-            className="flex max-h-[min(50vh,24rem)] min-h-[11rem] w-[min(100vw-2rem,28rem)] flex-col overflow-y-auto"
+            className="flex h-[160px] min-h-[160px] w-full flex-col overflow-hidden bg-mushroom"
           >
-            <div className="flex min-h-[11rem] w-full flex-1 flex-col">{children}</div>
+            <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
+              {children}
+            </div>
           </div>
         </div>
       )}

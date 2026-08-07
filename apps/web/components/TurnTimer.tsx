@@ -29,22 +29,22 @@ export function MoveTimerStrip({
         <span
           className={`font-display uppercase tracking-[0.16em] ${
             compact ? 'text-[8px]' : 'text-[9px]'
-          } ${urgent ? 'text-red-300' : 'text-cream/45'}`}
+          } ${urgent ? 'text-danger' : 'text-ink-strong-muted'}`}
         >
           Your move
         </span>
         <span
           className={`font-mono font-bold tabular-nums ${
             compact ? 'text-[10px]' : 'text-xs'
-          } ${urgent ? 'text-red-300' : 'text-mushroom'}`}
+          } ${urgent ? 'text-danger' : 'text-sidebar'}`}
         >
           {secs}s
         </span>
       </div>
-      <div className={`w-full overflow-hidden bg-cream/10 ${compact ? 'h-1' : 'h-1.5'}`}>
+      <div className={`w-full overflow-hidden rounded-full bg-sidebar/10 ${compact ? 'h-1' : 'h-1.5'}`}>
         <div
-          className={`h-full transition-[width] duration-100 ease-linear ${
-            urgent ? 'bg-red-400' : 'bg-gradient-to-r from-positive to-mushroom'
+          className={`h-full rounded-full transition-[width] duration-100 ease-linear ${
+            urgent ? 'bg-danger' : 'bg-gradient-to-r from-sidebar to-[#5a2a7a]'
           }`}
           style={{ width: `${pct}%` }}
         />

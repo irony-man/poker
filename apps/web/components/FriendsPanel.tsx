@@ -13,6 +13,7 @@ import {
   respondFriendRequest,
   searchUsers,
   sendFriendRequest,
+  updateFriendGroup,
   type FriendGroup,
   type FriendProfile,
   type PendingChallenge,
@@ -43,6 +44,9 @@ export function FriendsPanel({
   const [newGroupName, setNewGroupName] = useState('');
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
   const [showCreateGroup, setShowCreateGroup] = useState(false);
+  /** Owner is editing members of this group id. */
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [editMembers, setEditMembers] = useState<Set<string>>(new Set());
 
   const auth = () => ({ sessionToken: sessionToken! });
 
@@ -91,6 +95,41 @@ export function FriendsPanel({
       else if (next.size < 8) next.add(id);
       return next;
     });
+  }
+
+  function toggleEditMember(id: string) {
+    setEditMembers((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else if (next.size < 8) next.add(id);
+      return next;
+    });
+  }
+
+  function openAddPeople(group: FriendGroup) {
+    if (editingGroupId === group.id) {
+      setEditingGroupId(null);
+      setEditMembers(new Set());
+      return;
+    }
+    setShowCreateGroup(false);
+    setEditingGroupId(group.id);
+    setEditMembers(new Set(group.members.map((m) => m.userId)));
+  }
+
+  async function onSaveGroupMembers(groupId: string) {
+    setBusy(`edit-${groupId}`);
+    setError(null);
+    try {
+      await updateFriendGroup(groupId, { memberUserIds: [...editMembers] }, auth());
+      setEditingGroupId(null);
+      setEditMembers(new Set());
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update group');
+    } finally {
+      setBusy(null);
+    }
   }
 
   async function onAddFriend(targetUserId: string) {
@@ -328,7 +367,11 @@ export function FriendsPanel({
             <button
               type="button"
               disabled={disabled || friends.length === 0}
-              onClick={() => setShowCreateGroup((v) => !v)}
+              onClick={() => {
+                setEditingGroupId(null);
+                setEditMembers(new Set());
+                setShowCreateGroup((v) => !v);
+              }}
               className="btn-ghost py-1.5 px-3 text-xs"
             >
               {showCreateGroup ? 'Cancel' : 'New group'}
@@ -403,19 +446,59 @@ export function FriendsPanel({
             </p>
           ) : (
             <ul className="mt-2 space-y-2">
-              {groups.map((g) => (
+              {groups.map((g) => {
+                const editing = editingGroupId === g.id;
+                const canAddMore = g.isOwner && friends.length > 0;
+                return (
                 <li
                   key={g.id}
                   className="rounded-lg border border-sidebar/12 bg-mushroom/45 p-3 sm:p-4"
                 >
-                  <div className="min-w-0">
-                    <p className="truncate font-display text-sm font-semibold uppercase tracking-wider text-sidebar">
-                      {g.name}
-                    </p>
-                    <p className="mt-0.5 text-xs text-ink-strong-muted">
-                      {g.members.length} member{g.members.length === 1 ? '' : 's'}
-                      {!g.isOwner ? ' · shared' : ''}
-                    </p>
+                  <div className="flex items-start gap-3">
+                    {/* Folder icon with member avatar stack */}
+                    <div
+                      className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-sidebar/15 bg-sidebar/8"
+                      aria-hidden
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="absolute inset-1.5 h-[calc(100%-0.75rem)] w-[calc(100%-0.75rem)] text-sidebar/35"
+                        fill="currentColor"
+                      >
+                        <path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z" />
+                      </svg>
+                      {g.members.length > 0 ? (
+                        <div className="relative z-[1] flex -space-x-1.5">
+                          {g.members.slice(0, 3).map((m, i) => (
+                            <span
+                              key={m.userId}
+                              className="inline-flex rounded-full ring-1 ring-mushroom/80"
+                              style={{ zIndex: 3 - i }}
+                            >
+                              <PlayerAvatar
+                                userId={m.userId}
+                                avatarId={m.avatarId}
+                                size={18}
+                                title={m.name}
+                              />
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="relative z-[1] flex h-5 w-5 items-center justify-center rounded-full bg-sidebar/15 text-[10px] font-bold text-sidebar">
+                          0
+                        </span>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-display text-sm font-semibold uppercase tracking-wider text-sidebar">
+                        {g.name}
+                      </p>
+                      <p className="mt-0.5 text-xs text-ink-strong-muted">
+                        {g.members.length} member{g.members.length === 1 ? '' : 's'}
+                        {!g.isOwner ? ' · shared' : ''}
+                      </p>
+                    </div>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <button
@@ -426,6 +509,16 @@ export function FriendsPanel({
                     >
                       Invite
                     </button>
+                    {canAddMore && (
+                      <button
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => openAddPeople(g)}
+                        className="btn-ghost py-1.5 px-3 text-xs"
+                      >
+                        {editing ? 'Cancel' : 'Add people'}
+                      </button>
+                    )}
                     {g.isOwner && (
                       <button
                         type="button"
@@ -455,8 +548,57 @@ export function FriendsPanel({
                       ))}
                     </div>
                   )}
+                  {editing && (
+                    <div className="mt-3 space-y-2 rounded-md border border-sidebar/12 bg-mushroom/30 p-2.5">
+                      <p className="text-[10px] font-display uppercase tracking-wider text-ink-strong-muted">
+                        Select friends ({editMembers.size}/8)
+                      </p>
+                      {friends.length === 0 ? (
+                        <p className="text-sm text-ink-strong-muted">Add friends first.</p>
+                      ) : (
+                        <ul className="max-h-40 space-y-1 overflow-y-auto">
+                          {friends.map((f) => {
+                            const on = editMembers.has(f.userId);
+                            return (
+                              <li key={f.userId}>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleEditMember(f.userId)}
+                                  className={`flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-sm transition ${
+                                    on
+                                      ? 'border-sidebar/35 bg-sidebar/10 text-ink-strong'
+                                      : 'border-sidebar/12 bg-transparent text-ink-strong-muted hover:border-sidebar/25'
+                                  }`}
+                                >
+                                  <PlayerAvatar
+                                    userId={f.userId}
+                                    avatarId={f.avatarId}
+                                    size={24}
+                                    title={f.name}
+                                  />
+                                  <span className="min-w-0 flex-1 truncate">{f.name}</span>
+                                  <span className="text-[10px] font-display uppercase tracking-wider opacity-70">
+                                    {on ? 'In' : 'Add'}
+                                  </span>
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                      <button
+                        type="button"
+                        disabled={disabled || busy === `edit-${g.id}`}
+                        onClick={() => void onSaveGroupMembers(g.id)}
+                        className="btn-primary min-h-9 w-full text-xs"
+                      >
+                        {busy === `edit-${g.id}` ? 'Saving…' : 'Save members'}
+                      </button>
+                    </div>
+                  )}
                 </li>
-              ))}
+                );
+              })}
             </ul>
           )}
         </section>

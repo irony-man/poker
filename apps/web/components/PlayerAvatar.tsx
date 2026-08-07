@@ -142,10 +142,11 @@ export function AvatarPicker({
   value: number;
   onChange: (id: number) => void;
 }) {
+  const chip = 40;
   return (
-    <div className="w-full">
+    <div className="w-full max-w-md">
       <span className="hud-label">Profile picture</span>
-      <div className="mt-2 flex w-full gap-1.5 sm:gap-2">
+      <div className="mt-2 flex flex-wrap gap-2">
         {Array.from({ length: AVATAR_PRESET_COUNT }, (_, id) => {
           const selected = value === id;
           return (
@@ -153,15 +154,16 @@ export function AvatarPicker({
               key={id}
               type="button"
               onClick={() => onChange(id)}
-              className={`min-w-0 flex-1 aspect-square rounded-full p-[6%] transition ${
+              className={`flex size-10 shrink-0 items-center justify-center rounded-full p-0.5 transition sm:size-11 ${
                 selected
                   ? 'ring-2 ring-sidebar shadow-[0_0_0_1px_rgb(var(--sidebar)/0.2)]'
-                  : 'ring-1 ring-sidebar/20 hover:ring-sidebar/45'
+                  : 'ring-1 ring-sidebar/25 hover:ring-sidebar/50'
               }`}
               aria-label={AVATAR_LABELS[id]}
               aria-pressed={selected}
             >
-              <PlayerAvatar avatarId={id} fill />
+              {/* Fixed size — avoid % height under aspect-ratio (collapses to blank). */}
+              <PlayerAvatar avatarId={id} size={chip} className="shadow-none ring-0" />
             </button>
           );
         })}

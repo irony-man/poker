@@ -215,12 +215,10 @@ export class AuthStore {
     this.usernameIndex.set(user.username.toLowerCase(), user.id);
   }
 
-  private async persist(): Promise<void> {
+  /** Full JSON snapshot — file-backed mode only. */
+  private async persistFile(): Promise<void> {
+    if (this.pool) return;
     const run = async () => {
-      if (this.pool) {
-        await this.persistSessionsAndTicketsToPostgres();
-        return;
-      }
       const snap: PersistedSnapshot = {
         users: [...this.users.values()],
         sessions: [...this.sessions.values()],
@@ -232,36 +230,55 @@ export class AuthStore {
     await this.writeChain;
   }
 
-  private async persistSessionsAndTicketsToPostgres(): Promise<void> {
-    if (!this.pool) return;
-    await this.pool.query(`DELETE FROM auth_sessions`);
-    await this.pool.query(`DELETE FROM auth_tickets`);
+  private lastExpiredCleanupAt = 0;
+  private static readonly EXPIRED_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 
-    for (const s of this.sessions.values()) {
-      if (s.expiresAt <= Date.now()) continue;
-      await this.pool.query(
-        `INSERT INTO auth_sessions (token, user_id, expires_at)
-         VALUES ($1, $2, to_timestamp($3 / 1000.0))
-         ON CONFLICT (token) DO UPDATE SET
-           user_id = EXCLUDED.user_id,
-           expires_at = EXCLUDED.expires_at`,
-        [s.token, s.userId, s.expiresAt],
-      );
+  /** Throttled expired-row cleanup so login is not O(table-size). */
+  private async maybeCleanupExpiredPostgres(): Promise<void> {
+    if (!this.pool) return;
+    const now = Date.now();
+    if (now - this.lastExpiredCleanupAt < AuthStore.EXPIRED_CLEANUP_INTERVAL_MS) return;
+    this.lastExpiredCleanupAt = now;
+    // Drop expired from memory too (cheap; avoids map growth between restarts).
+    for (const [token, s] of this.sessions) {
+      if (s.expiresAt <= now) this.sessions.delete(token);
     }
-    for (const t of this.tickets.values()) {
-      if (t.expiresAt <= Date.now()) continue;
-      await this.pool.query(
-        `INSERT INTO auth_tickets (ticket, user_id, expires_at)
-         VALUES ($1, $2, to_timestamp($3 / 1000.0))
-         ON CONFLICT (ticket) DO UPDATE SET
-           user_id = EXCLUDED.user_id,
-           expires_at = EXCLUDED.expires_at`,
-        [t.ticket, t.userId, t.expiresAt],
-      );
+    for (const [ticket, t] of this.tickets) {
+      if (t.expiresAt <= now) this.tickets.delete(ticket);
     }
-    // Best-effort cleanup of expired rows
-    await this.pool.query(`DELETE FROM auth_sessions WHERE expires_at <= NOW()`);
-    await this.pool.query(`DELETE FROM auth_tickets WHERE expires_at <= NOW()`);
+    await Promise.all([
+      this.pool.query(`DELETE FROM auth_sessions WHERE expires_at <= NOW()`),
+      this.pool.query(`DELETE FROM auth_tickets WHERE expires_at <= NOW()`),
+    ]);
+  }
+
+  private async upsertSessionPostgres(session: Session): Promise<void> {
+    if (!this.pool) return;
+    await this.pool.query(
+      `INSERT INTO auth_sessions (token, user_id, expires_at)
+       VALUES ($1, $2, to_timestamp($3 / 1000.0))
+       ON CONFLICT (token) DO UPDATE SET
+         user_id = EXCLUDED.user_id,
+         expires_at = EXCLUDED.expires_at`,
+      [session.token, session.userId, session.expiresAt],
+    );
+  }
+
+  private async upsertTicketPostgres(ticket: WsTicket): Promise<void> {
+    if (!this.pool) return;
+    await this.pool.query(
+      `INSERT INTO auth_tickets (ticket, user_id, expires_at)
+       VALUES ($1, $2, to_timestamp($3 / 1000.0))
+       ON CONFLICT (ticket) DO UPDATE SET
+         user_id = EXCLUDED.user_id,
+         expires_at = EXCLUDED.expires_at`,
+      [ticket.ticket, ticket.userId, ticket.expiresAt],
+    );
+  }
+
+  private async deleteSessionPostgres(token: string): Promise<void> {
+    if (!this.pool) return;
+    await this.pool.query(`DELETE FROM auth_sessions WHERE token = $1`, [token]);
   }
 
   private async writeAtomic(snap: PersistedSnapshot): Promise<void> {
@@ -343,7 +360,18 @@ export class AuthStore {
   private async issueAuthSession(user: User): Promise<AuthSessionPayload> {
     const sessionToken = this.createSession(user.id);
     const ticket = this.issueTicket(user.id, undefined, false);
-    await this.persist();
+    const session = this.sessions.get(sessionToken)!;
+    const wsTicket = this.tickets.get(ticket)!;
+    if (this.pool) {
+      await Promise.all([
+        this.upsertSessionPostgres(session),
+        this.upsertTicketPostgres(wsTicket),
+      ]);
+      // Fire-and-forget throttled cleanup; do not block login on table scans.
+      void this.maybeCleanupExpiredPostgres();
+    } else {
+      await this.persistFile();
+    }
     return {
       userId: user.id,
       username: user.username,
@@ -372,8 +400,11 @@ export class AuthStore {
   }
 
   async revokeSession(token: string): Promise<void> {
-    if (this.sessions.delete(token)) {
-      await this.persist();
+    if (!this.sessions.delete(token)) return;
+    if (this.pool) {
+      await this.deleteSessionPostgres(token);
+    } else {
+      await this.persistFile();
     }
   }
 
@@ -402,7 +433,13 @@ export class AuthStore {
 
   async issueTicketAndPersist(userId: string, ttlMs = 7 * 24 * 60 * 60 * 1000): Promise<string> {
     const ticket = this.issueTicket(userId, ttlMs, false);
-    await this.persist();
+    const wsTicket = this.tickets.get(ticket)!;
+    if (this.pool) {
+      await this.upsertTicketPostgres(wsTicket);
+      void this.maybeCleanupExpiredPostgres();
+    } else {
+      await this.persistFile();
+    }
     return ticket;
   }
 
@@ -441,7 +478,7 @@ export class AuthStore {
     };
     this.indexUser(user);
     await this.persistUserToPostgres(user);
-    await this.persist();
+    await this.persistFile();
     return user;
   }
 }

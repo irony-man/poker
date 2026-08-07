@@ -437,24 +437,6 @@ export function TableView({
               <HowToPlayHelp />
               <TableOverflowMenu
                 items={mobileOverflowItems}
-                footer={
-                  <div className="flex items-center gap-2 text-[10px] text-ink-strong-muted">
-                    <span
-                      className={`h-1.5 w-1.5 rounded-full ${
-                        connection === 'open'
-                          ? 'bg-felt-neon animate-live-blink'
-                          : connection === 'connecting'
-                            ? 'bg-amber-300 animate-live-blink'
-                            : 'bg-red-400'
-                      }`}
-                    />
-                    {connection === 'open'
-                      ? 'Live'
-                      : connection === 'connecting'
-                        ? 'Reconnecting'
-                        : 'Offline'}
-                  </div>
-                }
               />
             </div>
           ) : (
@@ -473,33 +455,6 @@ export function TableView({
                 onToggleMute={voice.toggleMute}
               />
               <HowToPlayHelp />
-              <div
-                className={
-                  connection === 'open'
-                    ? 'status-chip border-positive/35 bg-positive/10 text-positive'
-                    : connection === 'connecting'
-                      ? 'status-chip border-amber-500/35 bg-amber-500/10 text-amber-800'
-                      : 'status-chip border-danger/35 bg-danger/10 text-danger'
-                }
-                title={connection}
-              >
-                <span
-                  className={`h-1.5 w-1.5 rounded-full ${
-                    connection === 'open'
-                      ? 'bg-felt-neon animate-live-blink'
-                      : connection === 'connecting'
-                        ? 'bg-amber-300 animate-live-blink'
-                        : 'bg-red-400'
-                  }`}
-                />
-                <span>
-                  {connection === 'open'
-                    ? 'Live'
-                    : connection === 'connecting'
-                      ? 'Reconnecting'
-                      : 'Offline'}
-                </span>
-              </div>
               <button type="button" onClick={leaveRoom} className="btn-ghost text-xs py-1.5 px-3">
                 Leave
               </button>
@@ -528,6 +483,35 @@ export function TableView({
         )}
 
         <div className="relative flex min-h-0 flex-1 flex-col">
+          {!narrow && (
+            <div
+              className={
+                connection === 'open'
+                  ? 'pointer-events-none absolute bottom-2 left-2 z-30 status-chip border-positive/35 bg-positive/10 text-positive'
+                  : connection === 'connecting'
+                    ? 'pointer-events-none absolute bottom-2 left-2 z-30 status-chip border-amber-500/35 bg-amber-500/10 text-amber-800'
+                    : 'pointer-events-none absolute bottom-2 left-2 z-30 status-chip border-danger/35 bg-danger/10 text-danger'
+              }
+              title={connection}
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  connection === 'open'
+                    ? 'bg-felt-neon animate-live-blink'
+                    : connection === 'connecting'
+                      ? 'bg-amber-300 animate-live-blink'
+                      : 'bg-red-400'
+                }`}
+              />
+              <span>
+                {connection === 'open'
+                  ? 'Live'
+                  : connection === 'connecting'
+                    ? 'Reconnecting'
+                    : 'Offline'}
+              </span>
+            </div>
+          )}
           <div className="relative min-h-0 min-w-0 flex-1">
           <div
             className={

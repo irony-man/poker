@@ -5,46 +5,46 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 
 /**
- * Canonical design tokens — "Card Room".
+ * Canonical design tokens — POKR play room (mirrors web globals.css).
  *
  * These hex values mirror the CSS vars in `apps/web/app/globals.css` exactly.
  * Change them in both places or not at all. See `docs/DESIGN_SYSTEM.md`.
  */
 object FeltColors {
-    // Surfaces
-    val Ink = Color(0xFF12100E)
-    val InkPanel = Color(0xFF1C1916)
-    val InkRaised = Color(0xFF262119)
-    val InkOverlay = Color(0xFF0A0908)
+    // Surfaces (deep brand purple)
+    val Ink = Color(0xFF0E0618)
+    val InkPanel = Color(0xFF1D0432)
+    val InkRaised = Color(0xFF2E1048)
+    val InkOverlay = Color(0xFF08030E)
 
     // Table
-    val FeltGreen = Color(0xFF1E5B43)
-    val FeltGreenDark = Color(0xFF123A2B)
-    val FeltRim = Color(0xFF3A2A1C)
-    val FeltRimEdge = Color(0xFF8A6B3A)
+    val FeltGreen = Color(0xFF226048)
+    val FeltGreenDark = Color(0xFF12342A)
+    val FeltRim = Color(0xFF1D0432)
+    val FeltRimEdge = Color(0xFFC4A8BA)
 
     // Accent
-    val Brass = Color(0xFFC9A227)
-    val BrassLight = Color(0xFFE8CE83)
-    val BrassDim = Color(0xFF7A6218)
+    val Brass = Color(0xFFD6BA80)
+    val BrassLight = Color(0xFFECDAB0)
+    val BrassDim = Color(0xFF765C30)
 
     // Text
-    val Cream = Color(0xFFF2EDE4)
-    val CreamMuted = Color(0xFFA8A197)
+    val Cream = Color(0xFFF2EAE8)
+    val CreamMuted = Color(0xFFA896A6)
 
     // State
     val Danger = Color(0xFFC0392B)
-    val Positive = Color(0xFF3E9E6A)
-    val Patina = Color(0xFF6E9C86)
-    val PatinaDim = Color(0xFF3F5B50)
+    val Positive = Color(0xFF48A87A)
+    val Patina = Color(0xFFBAA2C6)
+    val PatinaDim = Color(0xFF583E70)
 
     // Cards
     val CardFace = Color(0xFFFAF7F0)
     val CardRed = Color(0xFFC8102E)
     val CardInk = Color(0xFF1A1A1A)
 
-    /** Stack bar on a seat — deep wine, not the old fire engine red. */
-    val StackRed = Color(0xFF8C2F27)
+    /** Stack bar on a seat — brand purple. */
+    val StackRed = Color(0xFF1D0432)
 
     // —— Legacy aliases, kept so existing call sites keep compiling ——
     val Gold = Brass
@@ -52,6 +52,8 @@ object FeltColors {
     val Cyan = Patina
     val Neon = Positive
     val YouYellow = BrassLight
+    val Sidebar = InkPanel
+    val Mushroom = Color(0xFFE6D9D7)
 }
 
 /**

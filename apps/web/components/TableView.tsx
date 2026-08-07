@@ -416,11 +416,11 @@ export function TableView({
         {/* Mobile: street · blinds · overflow | Desktop: full chrome */}
         <div className="mb-1 flex shrink-0 items-center justify-between gap-2 text-sm text-cream/60 sm:mb-2">
           <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
-            <span className="status-chip shrink-0 border-cyan/25 bg-cyan/10 text-cyan capitalize max-sm:px-1.5 max-sm:py-0.5 max-sm:text-[10px]">
+            <span className="status-chip shrink-0 border-mushroom/30 bg-mushroom/10 text-mushroom capitalize max-sm:px-1.5 max-sm:py-0.5 max-sm:text-[10px]">
               {table?.street ?? '…'}
             </span>
             {isSpectating && (
-              <span className="status-chip shrink-0 border-gold/30 bg-gold/10 text-gold max-sm:text-[10px]">
+              <span className="status-chip shrink-0 border-brass/35 bg-brass/10 text-brass-light max-sm:text-[10px]">
                 Spec
               </span>
             )}
@@ -519,7 +519,7 @@ export function TableView({
 
         {table?.tournament && (
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            <span className="status-chip border-gold/30 bg-gold/10 text-gold">
+            <span className="status-chip border-mushroom/30 bg-mushroom/10 text-mushroom">
               {table.tournament.mode === 'knockout' ? 'Knockout' : 'Table match'}
               {table.tournament.frozen ? ' · match over' : ''}
             </span>
@@ -529,7 +529,7 @@ export function TableView({
             {table.tournament.contestId && (
               <a
                 href={`/contest/${table.tournament.contestId}`}
-                className="text-xs text-cyan underline"
+                className="text-xs text-mushroom underline"
               >
                 Contest lobby
               </a>
@@ -684,7 +684,7 @@ export function TableView({
 
           {showDesktopTools && (
           <div className="relative z-30 flex shrink-0 justify-center px-2 pb-1 pt-2">
-            <div className="flex max-w-full flex-wrap items-center justify-center gap-1.5 rounded-full border border-cream/15 bg-ink/85 px-2 py-1.5 shadow-lg backdrop-blur-md">
+            <div className="flex max-w-full flex-wrap items-center justify-center gap-1.5 rounded-full border border-mushroom/20 bg-ink/85 px-2 py-1.5 shadow-lg backdrop-blur-md">
               {isSpectating && (
                 <button
                   type="button"
@@ -705,7 +705,7 @@ export function TableView({
                     onClick={() => send({ type: 'set_ready', tableId, ready: !myReady })}
                     className={`text-xs py-1.5 ${
                       myReady
-                        ? 'rounded-full border border-felt-neon/40 bg-felt-neon/15 px-3 text-felt-neon'
+                        ? 'rounded-full border border-mushroom/45 bg-mushroom/15 px-3 text-mushroom'
                         : 'btn-ghost'
                     }`}
                   >
@@ -728,7 +728,7 @@ export function TableView({
                         count: Math.min(Math.max(1, botAddCount), emptySeats),
                       })
                     }
-                    className="rounded-full border border-cream/25 px-3 py-1.5 text-xs text-cream/80 hover:bg-cream/10"
+                    className="rounded-full border border-mushroom/25 px-3 py-1.5 text-xs text-cream/80 hover:bg-mushroom/10"
                   >
                     + Bot
                   </button>
@@ -742,7 +742,7 @@ export function TableView({
                         count: emptySeats,
                       })
                     }
-                    className="rounded-full border border-cream/15 px-2.5 py-1.5 text-[10px] text-cream/55 hover:bg-cream/10"
+                    className="rounded-full border border-mushroom/15 px-2.5 py-1.5 text-[10px] text-cream/55 hover:bg-mushroom/10"
                   >
                     Fill
                   </button>
@@ -770,7 +770,7 @@ export function TableView({
                 <button
                   type="button"
                   onClick={() => send({ type: 'sit_in', tableId, seat: mySeat! })}
-                  className="rounded-full border border-felt-neon/30 bg-felt-neon/10 px-3 py-1.5 text-xs text-felt-neon hover:bg-felt-neon/20"
+                  className="rounded-full border border-mushroom/30 bg-mushroom/10 px-3 py-1.5 text-xs text-mushroom hover:bg-mushroom/20"
                 >
                   Sit in
                 </button>
@@ -779,7 +779,7 @@ export function TableView({
                 <button
                   type="button"
                   onClick={() => setTopUpOpen(true)}
-                  className="rounded-full border border-gold/30 bg-gold/10 px-3 py-1.5 text-xs text-gold hover:bg-gold/20"
+                  className="rounded-full border border-brass/30 bg-brass/10 px-3 py-1.5 text-xs text-brass-light hover:bg-brass/20"
                 >
                   Top up
                 </button>

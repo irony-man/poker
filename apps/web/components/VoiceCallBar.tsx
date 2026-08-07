@@ -37,7 +37,7 @@ export function VoiceCallBar({
           type="button"
           onClick={() => void onJoinVoice()}
           disabled={state === 'joining'}
-          className={`${btn} border-felt-neon/30 text-felt-neon hover:bg-felt-neon/10`}
+          className={`${btn} border-mushroom/30 text-mushroom hover:bg-mushroom/10`}
           title="Join table voice chat"
         >
           {state === 'joining' ? '…' : compact ? 'Mic' : 'Voice'}
@@ -45,8 +45,8 @@ export function VoiceCallBar({
       ) : (
         <>
           {!compact && (
-            <span className="status-chip border-felt-neon/30 bg-felt-neon/10 text-felt-neon">
-              <span className="h-1.5 w-1.5 rounded-full bg-felt-neon animate-live-blink" />
+            <span className="status-chip border-mushroom/30 bg-mushroom/10 text-mushroom">
+              <span className="h-1.5 w-1.5 rounded-full bg-positive animate-live-blink" />
               Voice · {peerLabel}
             </span>
           )}
@@ -56,7 +56,7 @@ export function VoiceCallBar({
             className={
               muted
                 ? `rounded-full border border-cream/25 ${compact ? 'px-2 py-1 text-[10px]' : 'px-2.5 py-1.5 text-[10px]'} text-cream/70 hover:bg-cream/10`
-                : `rounded-full border border-felt-neon/40 bg-felt-neon/15 ${compact ? 'px-2 py-1 text-[10px]' : 'px-2.5 py-1.5 text-[10px]'} text-felt-neon`
+                : `rounded-full border border-mushroom/40 bg-mushroom/15 ${compact ? 'px-2 py-1 text-[10px]' : 'px-2.5 py-1.5 text-[10px]'} text-mushroom`
             }
             title={muted ? 'Unmute microphone' : 'Mute microphone'}
           >

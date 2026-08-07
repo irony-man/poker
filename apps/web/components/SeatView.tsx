@@ -261,12 +261,12 @@ export function SeatView({
             </div>
 
             {player.status === 'allin' && !folded && (
-              <div className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-[#2aff9a] drop-shadow">
+              <div className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-mushroom drop-shadow">
                 All-in
               </div>
             )}
             {showReady && !sittingOut && (
-              <div className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-felt-neon drop-shadow">
+              <div className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-mushroom drop-shadow">
                 Ready
               </div>
             )}
@@ -454,7 +454,7 @@ export function SeatView({
             )}
 
             {player.status === 'allin' && (
-              <div className="relative z-[1] mt-0.5 text-[7px] font-bold uppercase tracking-[0.14em] text-[#2aff9a]">
+              <div className="relative z-[1] mt-0.5 text-[7px] font-bold uppercase tracking-[0.14em] text-mushroom">
                 All-in
               </div>
             )}
@@ -469,7 +469,7 @@ export function SeatView({
               </div>
             )}
             {showReady && !sittingOut && (
-              <div className="relative z-[1] mt-0.5 text-[7px] font-bold uppercase tracking-[0.14em] text-felt-neon">
+              <div className="relative z-[1] mt-0.5 text-[7px] font-bold uppercase tracking-[0.14em] text-mushroom">
                 Ready
               </div>
             )}

@@ -76,7 +76,7 @@ export default {
         raised: 'var(--shadow-raised)',
         glow: 'var(--shadow-glow)',
         card: 'var(--shadow-card)',
-        felt: 'inset 0 0 120px rgb(0 0 0 / 0.5), 0 0 48px rgb(30 91 67 / 0.2)',
+        felt: 'inset 0 0 120px rgb(14 6 24 / 0.55), 0 0 48px rgb(29 4 50 / 0.35)',
         /** Legacy aliases. */
         hud: 'var(--shadow-panel)',
         'glow-neon': 'var(--shadow-glow)',
@@ -91,8 +91,8 @@ export default {
       },
       keyframes: {
         'hud-pulse': {
-          '0%, 100%': { boxShadow: '0 0 0 0 rgb(var(--brass) / 0.5)' },
-          '50%': { boxShadow: '0 0 0 8px rgb(var(--brass) / 0)' },
+          '0%, 100%': { boxShadow: '0 0 0 0 rgb(var(--mushroom) / 0.45)' },
+          '50%': { boxShadow: '0 0 0 8px rgb(var(--mushroom) / 0)' },
         },
         'live-blink': {
           '0%, 100%': { opacity: '1' },

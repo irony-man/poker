@@ -231,26 +231,26 @@ export function ChatPanel({
 
   return (
     <div className="relative flex h-full min-h-0 flex-col bg-ink-panel">
-      <div className="shrink-0 flex items-center justify-between gap-2 border-b border-cyan/15 px-4 py-3 pr-16">
-        <span className="text-[11px] font-display font-semibold uppercase tracking-[0.2em] text-cyan">
-          Comms
+      <div className="shrink-0 flex items-center justify-between gap-2 border-b border-mushroom/12 px-4 py-3 pr-16">
+        <span className="text-[11px] font-display font-semibold uppercase tracking-[0.2em] text-mushroom/80">
+          Chat
         </span>
-        <span className="h-1.5 w-1.5 rounded-full bg-felt-neon animate-live-blink" />
+        <span className="h-1.5 w-1.5 rounded-full bg-positive animate-live-blink" />
       </div>
       <div ref={scroller} className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-2.5 text-sm">
         {chat.length === 0 && (
-          <p className="text-cream/35 text-xs font-medium tracking-wide">Channel quiet…</p>
+          <p className="text-cream/35 text-xs font-medium tracking-wide">No messages yet…</p>
         )}
         {chat.map((m, i) => {
           const isSystem = m.userId === 'system';
           return (
             <div
               key={`${m.at}-${i}`}
-              className={isSystem ? 'text-cream/60 italic border-l-2 border-cyan/20 pl-2' : ''}
+              className={isSystem ? 'text-cream/60 italic border-l-2 border-mushroom/25 pl-2' : ''}
             >
               <span
                 className={`font-display font-semibold tracking-wide ${
-                  isSystem ? 'text-cyan/70 not-italic' : 'text-gold'
+                  isSystem ? 'text-mushroom/65 not-italic' : 'text-brass-light'
                 }`}
               >
                 {m.name}
@@ -267,10 +267,10 @@ export function ChatPanel({
         </div>
       )}
       {pickerOpen && (
-        <div className="absolute inset-x-0 bottom-[7.5rem] z-20 mx-2 max-h-[55%] overflow-y-auto rounded border border-cyan/25 bg-ink shadow-[0_12px_40px_rgba(0,0,0,0.55)]">
+        <div className="absolute inset-x-0 bottom-[7.5rem] z-20 mx-2 max-h-[55%] overflow-y-auto rounded border border-mushroom/20 bg-ink shadow-[0_12px_40px_rgba(14,6,24,0.55)]">
           {ALL_EMOJIS.map((group) => (
-            <div key={group.label} className="border-b border-cyan/10 last:border-b-0">
-              <div className="sticky top-0 bg-ink-panel/95 px-3 py-1.5 text-[10px] font-display font-semibold uppercase tracking-[0.18em] text-cyan/80 backdrop-blur">
+            <div key={group.label} className="border-b border-mushroom/10 last:border-b-0">
+              <div className="sticky top-0 bg-ink-panel/95 px-3 py-1.5 text-[10px] font-display font-semibold uppercase tracking-[0.18em] text-mushroom/70 backdrop-blur">
                 {group.label}
               </div>
               <div className="flex flex-wrap gap-0.5 px-2 pb-2">
@@ -279,7 +279,7 @@ export function ChatPanel({
                     key={`${group.label}-${e}`}
                     type="button"
                     onClick={() => pick(e)}
-                    className="rounded border border-transparent px-1.5 py-1 text-lg hover:border-cyan/30 hover:bg-cyan/10 active:scale-90 transition"
+                    className="rounded border border-transparent px-1.5 py-1 text-lg hover:border-mushroom/30 hover:bg-mushroom/10 active:scale-90 transition"
                     aria-label={`React ${e}`}
                   >
                     {e}
@@ -290,13 +290,13 @@ export function ChatPanel({
           ))}
         </div>
       )}
-      <div className="shrink-0 flex flex-wrap items-center justify-center gap-1 px-3 py-2 border-t border-cyan/10">
+      <div className="shrink-0 flex flex-wrap items-center justify-center gap-1 px-3 py-2 border-t border-mushroom/10">
         {FREQUENT.map((e) => (
           <button
             key={e}
             type="button"
             onClick={() => pick(e)}
-            className="rounded border border-transparent px-2.5 py-2 hover:border-cyan/30 hover:bg-cyan/10 text-lg active:scale-90 transition"
+            className="rounded border border-transparent px-2.5 py-2 hover:border-mushroom/30 hover:bg-mushroom/10 text-lg active:scale-90 transition"
             aria-label={`React ${e}`}
           >
             {e}
@@ -307,8 +307,8 @@ export function ChatPanel({
           onClick={() => setPickerOpen((open) => !open)}
           className={`rounded border px-2.5 py-2 text-xs font-display font-semibold uppercase tracking-wider transition ${
             pickerOpen
-              ? 'border-cyan/50 bg-cyan/15 text-cyan'
-              : 'border-transparent text-cream/55 hover:border-cyan/30 hover:bg-cyan/10 hover:text-cream'
+              ? 'border-mushroom/45 bg-mushroom/15 text-mushroom'
+              : 'border-transparent text-cream/55 hover:border-mushroom/30 hover:bg-mushroom/10 hover:text-cream'
           }`}
           aria-expanded={pickerOpen}
           aria-label="All emojis"
@@ -317,7 +317,7 @@ export function ChatPanel({
         </button>
       </div>
       <form
-        className="shrink-0 flex gap-2 p-3 border-t border-cyan/15"
+        className="shrink-0 flex gap-2 p-3 border-t border-mushroom/12"
         onSubmit={(e) => {
           e.preventDefault();
           const fd = new FormData(e.currentTarget);
@@ -329,10 +329,13 @@ export function ChatPanel({
         <input
           name="text"
           maxLength={280}
-          placeholder="Transmit…"
-          className="flex-1 rounded border border-cream/10 bg-ink px-2 py-1.5 text-sm outline-none focus:border-gold/50"
+          placeholder="Say something…"
+          className="flex-1 rounded border border-mushroom/15 bg-ink px-2 py-1.5 text-sm outline-none focus:border-mushroom/45"
         />
-        <button type="submit" className="rounded border border-gold/40 bg-gold/90 px-3 text-xs font-display font-bold uppercase tracking-wider text-ink">
+        <button
+          type="submit"
+          className="rounded border border-mushroom/20 bg-gradient-to-b from-[#341252] to-sidebar px-3 text-xs font-display font-bold uppercase tracking-wider text-mushroom"
+        >
           Send
         </button>
       </form>

@@ -207,17 +207,17 @@ export default function ContestPage() {
       <button
         type="button"
         onClick={() => router.push('/')}
-        className="text-xs font-display uppercase tracking-wider text-cyan/70 hover:text-cyan"
+        className="text-xs font-display uppercase tracking-wider text-mushroom/70 hover:text-mushroom"
       >
         ← Lobby
       </button>
 
       <header className="mt-3 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="status-chip border-gold/30 bg-gold/10 text-gold w-fit">
+          <p className="status-chip border-mushroom/30 bg-mushroom/10 text-mushroom w-fit">
             {contest.mode === 'knockout' ? 'Knockout' : 'Table match'} · {contest.status}
           </p>
-          <h1 className="mt-2 font-display text-3xl font-bold text-gold uppercase tracking-wide">
+          <h1 className="mt-2 font-display text-3xl font-bold text-mushroom uppercase tracking-wide">
             {contest.name}
           </h1>
           <p className="mt-1 text-sm text-cream/50">
@@ -273,14 +273,14 @@ export default function ContestPage() {
               <span>
                 {e.name}
                 {e.isBot ? (
-                  <span className="ml-1.5 text-[10px] uppercase text-cyan/60">bot</span>
+                  <span className="ml-1.5 text-[10px] uppercase text-mushroom/55">bot</span>
                 ) : null}
                 {e.userId === contest.hostUserId ? (
-                  <span className="ml-1.5 text-[10px] uppercase text-gold/70">host</span>
+                  <span className="ml-1.5 text-[10px] uppercase text-brass-light/80">host</span>
                 ) : null}
               </span>
               {contest.placements.find((p) => p.userId === e.userId) && (
-                <span className="text-xs text-gold">
+                <span className="text-xs text-brass-light">
                   #{contest.placements.find((p) => p.userId === e.userId)!.place}
                 </span>
               )}
@@ -315,7 +315,7 @@ export default function ContestPage() {
                         {m.tableId && m.status === 'active' ? (
                           <button
                             type="button"
-                            className="ml-2 text-cyan underline"
+                            className="ml-2 text-mushroom underline"
                             onClick={() =>
                               router.push(`/table/${m.tableId}?contest=${contestId}`)
                             }
@@ -344,7 +344,7 @@ export default function ContestPage() {
               .map((p) => (
                 <li key={p.userId} className="flex justify-between text-sm">
                   <span>
-                    <span className="text-gold font-mono mr-2">#{p.place}</span>
+                    <span className="text-brass-light font-mono mr-2">#{p.place}</span>
                     {p.name}
                   </span>
                 </li>

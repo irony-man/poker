@@ -86,7 +86,7 @@ export function ShareTableLink({
       ) : (
         <>
           <span
-            className="status-chip border-gold/25 bg-gold/10 font-mono text-[10px] text-gold"
+            className="status-chip border-mushroom/25 bg-mushroom/10 font-mono text-[10px] text-mushroom"
             title="Invite code"
           >
             {inviteCode}

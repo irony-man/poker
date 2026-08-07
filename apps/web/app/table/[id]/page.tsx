@@ -84,7 +84,7 @@ function TablePageInner() {
     );
     return (
       <div className="hud-panel mx-auto max-w-md space-y-4 p-6">
-        <h2 className="font-display text-xl uppercase tracking-wider text-gold">Sign in to join</h2>
+        <h2 className="font-display text-xl uppercase tracking-wider text-mushroom">Sign in to join</h2>
         <p className="text-sm text-cream/60">You need an account to enter this table.</p>
         {error && (
           <p role="alert" className="status-chip border-red-500/40 bg-red-950/50 text-red-300">

@@ -3,175 +3,140 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
+type Feature = {
+  title: string;
+  body: string;
+  cta: string;
+  href: string;
+  image: string;
+  imageAlt: string;
+  /** Illustration on the left at desktop width (matches zigzag layout). */
+  imageFirst: boolean;
+};
+
+const FEATURES: Feature[] = [
+  {
+    title: 'Knockout Tournaments',
+    body: "Fixed buy-in Texas Hold'em on 4- or 8-player tables. Last player standing takes it all.",
+    cta: 'Contests',
+    href: '/contests',
+    image: '/home-knockout.png',
+    imageAlt: 'Player holding cards behind colorful chip stacks',
+    imageFirst: true,
+  },
+  {
+    title: 'Fixed round table plays',
+    body: "Fixed-round Hold'em with a clear buy-in. Play the session; add chips when you need them and finish when the rounds end.",
+    cta: 'Contests',
+    href: '/contests',
+    image: '/home-rounds.png',
+    imageAlt: 'Stacks of colorful poker chips',
+    imageFirst: false,
+  },
+  {
+    title: 'Host a Private Table',
+    body: 'Host a private table with your friends. Custom group names. Only people you invite can sit. Share a link and start dealing.',
+    cta: 'Host',
+    href: '/host',
+    image: '/home-host.png',
+    imageAlt: 'Hand holding a poker chip',
+    imageFirst: true,
+  },
+  {
+    title: 'Challenge 1v1',
+    body: 'Challenge one player to a head-to-head duel—just you, them, and the board. No full table required.',
+    cta: 'Friends',
+    href: '/friends',
+    image: '/home-challenge.png',
+    imageAlt: 'Playing cards and gold coins',
+    imageFirst: false,
+  },
+  {
+    title: 'Offline arena',
+    body: "Play Hold'em against bots with no connection. Practice lines and timing offline, then jump into live modes when you're ready.",
+    cta: 'Offline',
+    href: '/solo',
+    image: '/home-offline.png',
+    imageAlt: 'Stack of red and white poker chips',
+    imageFirst: true,
+  },
+];
+
 export function HomeLanding({ signedIn }: { signedIn: boolean }) {
   return (
-    <>
-      {/* Hero fills the visible main scrollport (main is height-locked) */}
-      <section className="lobby-fade-up grid min-h-full items-center gap-10 lg:grid-cols-2 lg:gap-14">
-        <div className="min-w-0">
-          <h1 className="font-serif text-[clamp(2.4rem,5.5vw,4.25rem)] leading-[1.02] tracking-tight text-ink-strong">
-            Private tables.
-            <br />
-            Real stakes.
-            <br />
-            No fluff.
-          </h1>
-          <p className="mt-5 max-w-xl text-base leading-relaxed text-ink-strong-muted sm:text-lg">
-            POKR is No-Limit Texas Hold&apos;em for home games — host a private cash table, jump in
-            with a code, grind public seats, or practice offline against bots.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/host" className="btn-primary min-h-11 px-6 inline-flex items-center">
-              Host a table
-            </Link>
-            <Link
-              href="/public"
-              className="inline-flex min-h-11 items-center rounded-md border border-sidebar/25 bg-transparent px-6 py-2.5 font-display font-semibold uppercase tracking-wider text-ink-strong transition hover:border-sidebar/50 hover:bg-sidebar/5"
-            >
-              Browse public
-            </Link>
-            {!signedIn && (
-              <Link
-                href="/sign-in"
-                className="inline-flex min-h-11 items-center px-3 text-sm font-display font-semibold uppercase tracking-wider text-ink-strong-muted underline-offset-4 hover:text-ink-strong hover:underline"
-              >
-                Sign in
-              </Link>
-            )}
-          </div>
-        </div>
-        <div className="relative hidden min-h-[18rem] overflow-hidden rounded-xl bg-sidebar/5 sm:block lg:min-h-[28rem]">
+    <div className="mx-auto w-full max-w-5xl pb-12 pt-4 sm:pb-20 sm:pt-6 lg:pt-8">
+      <div className="flex flex-col gap-16 sm:gap-20 lg:gap-28">
+        {FEATURES.map((feature, i) => (
+          <FeatureRow key={feature.title} feature={feature} index={i} />
+        ))}
+      </div>
+
+      {!signedIn && (
+        <p className="lobby-fade-up lobby-fade-up-delay-3 mt-16 text-center text-sm text-ink-strong-muted sm:mt-20">
+          Ready to play?{' '}
+          <Link
+            href="/sign-in"
+            className="font-display font-semibold uppercase tracking-wider text-sidebar underline-offset-4 hover:underline"
+          >
+            Sign in
+          </Link>
+          {' · '}
+          <Link
+            href="/sign-up"
+            className="font-display font-semibold uppercase tracking-wider text-sidebar underline-offset-4 hover:underline"
+          >
+            Create account
+          </Link>
+        </p>
+      )}
+    </div>
+  );
+}
+
+function FeatureRow({ feature, index }: { feature: Feature; index: number }) {
+  const delayClass =
+    index === 0
+      ? ''
+      : index === 1
+        ? 'lobby-fade-up-delay-1'
+        : index === 2
+          ? 'lobby-fade-up-delay-2'
+          : 'lobby-fade-up-delay-3';
+
+  const imageOrder = feature.imageFirst ? 'order-1' : 'order-1 lg:order-2';
+  const textOrder = feature.imageFirst ? 'order-2' : 'order-2 lg:order-1';
+
+  return (
+    <section
+      className={`lobby-fade-up ${delayClass} grid items-center gap-6 sm:gap-8 lg:grid-cols-2 lg:gap-12 xl:gap-16`}
+    >
+      <div className={`relative mx-auto w-full max-w-[20rem] sm:max-w-sm lg:max-w-none ${imageOrder}`}>
+        <div className="relative aspect-square w-full sm:aspect-[5/4]">
           <Image
-            src="/home-table.png"
-            alt="Poker table with chips and cards"
+            src={feature.image}
+            alt={feature.imageAlt}
             fill
-            className="object-cover object-center"
-            sizes="(max-width: 1024px) 100vw, 50vw"
-            priority
+            className="object-contain object-center drop-shadow-[0_12px_28px_rgb(29_4_50/0.12)]"
+            sizes="(max-width: 1024px) 80vw, 38vw"
+            priority={index === 0}
           />
         </div>
-      </section>
+      </div>
 
-      <section className="lobby-fade-up lobby-fade-up-delay-1 border-t border-sidebar/10 py-14 sm:py-20">
-        <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
-          <div className="min-w-0">
-            <h2 className="font-serif text-3xl tracking-tight text-ink-strong sm:text-4xl lg:text-5xl">
-              Host private cash games
-            </h2>
-            <p className="mt-4 max-w-lg text-ink-strong-muted leading-relaxed text-base sm:text-lg">
-              Pick stakes, seats, and optional bots. Share a short room code so friends sit at your
-              table — no casino lobby, just your night.
-            </p>
-            <Link
-              href="/host"
-              className="mt-6 inline-block text-sm font-display font-bold uppercase tracking-wider text-sidebar underline-offset-4 hover:underline"
-            >
-              Open host controls →
-            </Link>
-          </div>
-          <div className="relative aspect-[16/10] overflow-hidden rounded-xl bg-sidebar/5 lg:aspect-[5/3]">
-            <Image
-              src="/home-cards.png"
-              alt="Playing cards on a felt table"
-              fill
-              className="object-cover object-center"
-              sizes="(max-width: 1024px) 100vw, 50vw"
-            />
-          </div>
-        </div>
-      </section>
-
-      <section className="lobby-fade-up lobby-fade-up-delay-2 border-t border-sidebar/10 py-14 sm:py-20">
-        <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
-          <div className="relative order-2 aspect-[16/10] overflow-hidden rounded-xl bg-sidebar/5 lg:order-1 lg:aspect-[5/3]">
-            <Image
-              src="/home-contest.png"
-              alt="Tournament style poker scene"
-              fill
-              className="object-cover object-center"
-              sizes="(max-width: 1024px) 100vw, 50vw"
-            />
-          </div>
-          <div className="order-1 min-w-0 lg:order-2">
-            <h2 className="font-serif text-3xl tracking-tight text-ink-strong sm:text-4xl lg:text-5xl">
-              Join by code or public seat
-            </h2>
-            <p className="mt-4 max-w-lg text-ink-strong-muted leading-relaxed text-base sm:text-lg">
-              Enter an invite, spectate a friend, or scan open public tables. Friends who are already
-              seated show up so you can jump into their game.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-5">
-              <Link
-                href="/join"
-                className="text-sm font-display font-bold uppercase tracking-wider text-sidebar underline-offset-4 hover:underline"
-              >
-                Join with code →
-              </Link>
-              <Link
-                href="/public"
-                className="text-sm font-display font-bold uppercase tracking-wider text-sidebar underline-offset-4 hover:underline"
-              >
-                Public tables →
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="lobby-fade-up lobby-fade-up-delay-3 border-t border-sidebar/10 py-14 sm:py-20">
-        <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
-          <div>
-            <h2 className="font-serif text-3xl tracking-tight text-ink-strong sm:text-4xl lg:text-5xl">
-              Contests &amp; offline arena
-            </h2>
-            <p className="mt-4 max-w-lg text-ink-strong-muted leading-relaxed text-base sm:text-lg">
-              Run structured contests with registration, or fire up local bots with no server — same
-              engine, solo practice whenever you want.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-5">
-              <Link
-                href="/contests"
-                className="text-sm font-display font-bold uppercase tracking-wider text-sidebar underline-offset-4 hover:underline"
-              >
-                Contests →
-              </Link>
-              <Link
-                href="/solo"
-                className="text-sm font-display font-bold uppercase tracking-wider text-sidebar underline-offset-4 hover:underline"
-              >
-                Play offline →
-              </Link>
-            </div>
-          </div>
-          <div className="grid gap-6 sm:grid-cols-2">
-            {[
-              {
-                t: 'Blinds & deal',
-                b: 'Small and big blinds post, then each player gets two hole cards.',
-              },
-              {
-                t: 'Streets',
-                b: 'Preflop → flop (3) → turn → river. Act when the timer lights your seat.',
-              },
-              {
-                t: 'Actions',
-                b: 'Fold, check, call, bet/raise, or go all-in. The pot grows with every bet.',
-              },
-              {
-                t: 'Table tools',
-                b: 'Host starts hands, sit out to skip, chat and voice, top up when broke.',
-              },
-            ].map((item) => (
-              <div key={item.t} className="hud-panel p-4 sm:p-5">
-                <h3 className="font-display text-sm font-bold uppercase tracking-[0.14em] text-sidebar">
-                  {item.t}
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-ink-strong-muted">{item.b}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-    </>
+      <div className={`min-w-0 text-center sm:text-left ${textOrder}`}>
+        <h2 className="font-serif text-[clamp(1.85rem,3.8vw,2.85rem)] leading-[1.1] tracking-tight text-ink-strong">
+          {feature.title}
+        </h2>
+        <p className="mx-auto mt-3 max-w-md text-[0.98rem] leading-relaxed text-ink-strong-muted sm:mx-0 sm:mt-4 sm:text-lg">
+          {feature.body}
+        </p>
+        <Link
+          href={feature.href}
+          className="mt-6 inline-flex min-h-10 items-center justify-center rounded-full bg-sidebar px-8 py-2.5 text-xs font-display font-bold uppercase tracking-[0.16em] text-mushroom shadow-[0_8px_22px_rgb(29_4_50/0.2)] transition duration-base ease-out hover:brightness-110 active:scale-[0.98] sm:mt-8"
+        >
+          {feature.cta}
+        </Link>
+      </div>
+    </section>
   );
 }

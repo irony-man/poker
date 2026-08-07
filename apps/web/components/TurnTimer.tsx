@@ -36,7 +36,7 @@ export function MoveTimerStrip({
         <span
           className={`font-mono font-bold tabular-nums ${
             compact ? 'text-[10px]' : 'text-xs'
-          } ${urgent ? 'text-red-300' : 'text-felt-neon'}`}
+          } ${urgent ? 'text-red-300' : 'text-mushroom'}`}
         >
           {secs}s
         </span>
@@ -44,7 +44,7 @@ export function MoveTimerStrip({
       <div className={`w-full overflow-hidden bg-cream/10 ${compact ? 'h-1' : 'h-1.5'}`}>
         <div
           className={`h-full transition-[width] duration-100 ease-linear ${
-            urgent ? 'bg-red-400' : 'bg-gradient-to-r from-felt-neon to-gold'
+            urgent ? 'bg-red-400' : 'bg-gradient-to-r from-positive to-mushroom'
           }`}
           style={{ width: `${pct}%` }}
         />
@@ -102,7 +102,7 @@ export function TurnTimerBar({
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-cream/10">
         <div
           className={`h-full rounded-full transition-[width] duration-100 ease-linear ${
-            urgent ? 'bg-red-400' : 'bg-gradient-to-r from-felt-neon to-gold'
+            urgent ? 'bg-red-400' : 'bg-gradient-to-r from-positive to-mushroom'
           }`}
           style={{ width: `${pct}%` }}
         />
@@ -152,7 +152,7 @@ export function SeatTurnRing({
         cy="28"
         r={r}
         fill="none"
-        stroke={urgent ? '#f87171' : '#2AFF9A'}
+        stroke={urgent ? '#f87171' : '#E6D9D7'}
         strokeWidth="3.5"
         strokeLinecap="round"
         strokeDasharray={`${dash} ${c}`}

@@ -5,10 +5,10 @@
 @tailwind utilities;
 
 /*
- * Canonical design tokens — "Card Room".
+ * Canonical design tokens — POKR (lobby purple/mushroom + brand play room).
  * Colors are stored as space-separated RGB channels so Tailwind can apply
  * opacity modifiers (e.g. `border-brass/40`) via rgb(var(--x) / <alpha-value>).
- * apps/android/.../Components.kt mirrors these values. See docs/DESIGN_SYSTEM.md.
+ * Android mirrors these values in FeltTokens.kt. See docs/DESIGN_SYSTEM.md.
  */
 :root {
   /*

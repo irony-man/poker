@@ -168,7 +168,7 @@ export function ActionControls({
   }
 
   const chipBtn =
-    'inline-flex min-h-8 items-center justify-center rounded border border-cream/15 bg-ink-raised px-1.5 text-[10px] font-display font-semibold uppercase tracking-wide hover:border-brass/50 hover:text-brass-light';
+    'inline-flex min-h-8 items-center justify-center rounded border border-mushroom/20 bg-ink-raised px-1.5 text-[10px] font-display font-semibold uppercase tracking-wide hover:border-mushroom/50 hover:text-mushroom';
   const actionBtn =
     'inline-flex min-h-10 items-center justify-center px-2 text-[11px] font-display font-bold uppercase tracking-wide';
 
@@ -430,7 +430,7 @@ export function ActionControls({
                     submitBet(amount);
                   }
                 }}
-                className="w-full rounded border border-cream/20 bg-ink-raised px-3 py-2 font-mono text-base font-bold tabular-nums text-cream outline-none focus:border-brass/50"
+                className="w-full rounded border border-mushroom/20 bg-ink-raised px-3 py-2 font-mono text-base font-bold tabular-nums text-cream outline-none focus:border-mushroom/50"
               />
             </label>
             <div className="grid grid-cols-4 gap-1.5">
@@ -446,7 +446,7 @@ export function ActionControls({
                   key={label}
                   type="button"
                   onClick={() => setBet(val)}
-                  className="rounded border border-cream/15 bg-ink-raised py-1.5 text-[11px] font-display font-semibold uppercase tracking-wide hover:border-brass/50 hover:text-brass-light"
+                  className="rounded border border-mushroom/20 bg-ink-raised py-1.5 text-[11px] font-display font-semibold uppercase tracking-wide hover:border-mushroom/50 hover:text-mushroom"
                 >
                   {label}
                 </button>

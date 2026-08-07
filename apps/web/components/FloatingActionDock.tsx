@@ -129,15 +129,15 @@ export function FloatingActionDock({
       <div
         className={`relative z-40 shrink-0 border-t px-1.5 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1 ${
           expanded
-            ? 'border-felt-neon/35 bg-ink/98 shadow-[0_-6px_20px_rgba(0,0,0,0.35)]'
-            : 'border-cream/10 bg-ink/95'
+            ? 'border-mushroom/35 bg-ink/98 shadow-[0_-6px_20px_rgba(14,6,24,0.4)]'
+            : 'border-mushroom/12 bg-ink/95'
         }`}
       >
         <div
           className={`mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded-xl border transition-[height] duration-200 ${height} ${
             expanded
-              ? 'border-gold/40 bg-ink-panel/95 ring-1 ring-felt-neon/20'
-              : 'border-cream/15 bg-ink-panel/80'
+              ? 'border-mushroom/40 bg-ink-panel/95 ring-1 ring-mushroom/20'
+              : 'border-mushroom/15 bg-ink-panel/80'
           }`}
         >
           <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
@@ -169,22 +169,22 @@ export function FloatingActionDock({
           onClick={() => setOpen(true)}
           className={`rounded-full border px-5 py-3 text-xs font-display font-bold uppercase tracking-[0.18em] shadow-hud backdrop-blur ${
             expanded
-              ? 'border-felt-neon/50 bg-ink/95 text-felt-neon animate-hud-pulse'
-              : 'border-cream/25 bg-ink/90 text-cream/70'
+              ? 'border-mushroom/50 bg-ink/95 text-mushroom animate-hud-pulse'
+              : 'border-mushroom/25 bg-ink/90 text-cream/70'
           }`}
         >
           {expanded ? 'Your move' : label}
         </button>
       ) : (
         <div
-          className={`overflow-hidden rounded-2xl border bg-ink/95 shadow-[0_12px_40px_rgba(0,0,0,0.55)] backdrop-blur-md ${
-            expanded ? 'border-gold/40 ring-1 ring-felt-neon/20' : 'border-gold/35'
+          className={`overflow-hidden rounded-2xl border bg-ink/95 shadow-[0_12px_40px_rgba(14,6,24,0.55)] backdrop-blur-md ${
+            expanded ? 'border-mushroom/45 ring-1 ring-mushroom/20' : 'border-mushroom/30'
           }`}
         >
-          <div className="flex cursor-grab items-center justify-between gap-3 border-b border-cream/10 bg-ink-panel/80 px-3 py-2 active:cursor-grabbing">
+          <div className="flex cursor-grab items-center justify-between gap-3 border-b border-mushroom/12 bg-ink-panel/80 px-3 py-2 active:cursor-grabbing">
             <span
               className={`text-[10px] font-display uppercase tracking-[0.22em] ${
-                expanded ? 'text-felt-neon' : 'text-cream/45'
+                expanded ? 'text-mushroom' : 'text-cream/45'
               }`}
             >
               Drag · {expanded ? 'your move' : 'actions'}
@@ -193,7 +193,7 @@ export function FloatingActionDock({
               type="button"
               data-no-drag
               onClick={() => setOpen(false)}
-              className="rounded border border-cream/15 px-2 py-0.5 text-[10px] uppercase tracking-wider text-cream/50 hover:text-cream"
+              className="rounded border border-mushroom/20 px-2 py-0.5 text-[10px] uppercase tracking-wider text-cream/50 hover:text-cream"
             >
               Min
             </button>

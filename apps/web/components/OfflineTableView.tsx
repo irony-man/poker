@@ -501,10 +501,10 @@ export function OfflineTableView({
       <div className="flex flex-1 flex-col min-h-0">
         <div className="mb-1 flex shrink-0 items-center justify-between gap-2 text-sm text-cream/60 sm:mb-2">
           <div className="flex min-w-0 items-center gap-1.5">
-            <span className="status-chip border-felt-neon/30 bg-felt-neon/10 text-felt-neon max-sm:px-1.5 max-sm:py-0.5 max-sm:text-[10px]">
+            <span className="status-chip border-positive/30 bg-positive/10 text-positive max-sm:px-1.5 max-sm:py-0.5 max-sm:text-[10px]">
               Offline
             </span>
-            <span className="status-chip border-cyan/25 bg-cyan/10 text-cyan capitalize max-sm:px-1.5 max-sm:py-0.5 max-sm:text-[10px]">
+            <span className="status-chip border-mushroom/30 bg-mushroom/10 text-mushroom capitalize max-sm:px-1.5 max-sm:py-0.5 max-sm:text-[10px]">
               {publicTable.street}
             </span>
             <span className="text-[10px] text-cream/40 sm:text-xs">
@@ -519,7 +519,7 @@ export function OfflineTableView({
           ) : (
             <div className="flex shrink-0 items-center gap-2">
               <HowToPlayHelp />
-              <a href="/" className="text-[10px] text-gold/80 hover:text-gold sm:text-xs">
+              <a href="/" className="text-[10px] text-mushroom/80 hover:text-mushroom sm:text-xs">
                 ← Lobby
               </a>
             </div>
@@ -642,7 +642,7 @@ export function OfflineTableView({
                 <button
                   type="button"
                   onClick={doSitIn}
-                  className="rounded-full border border-felt-neon/30 bg-felt-neon/10 px-3 py-1.5 text-xs text-felt-neon hover:bg-felt-neon/20"
+                  className="rounded-full border border-mushroom/30 bg-mushroom/10 px-3 py-1.5 text-xs text-mushroom hover:bg-mushroom/20"
                 >
                   Sit in
                 </button>
@@ -651,7 +651,7 @@ export function OfflineTableView({
                 <button
                   type="button"
                   onClick={() => setTopUpOpen(true)}
-                  className="rounded-full border border-gold/30 bg-gold/10 px-3 py-1.5 text-xs text-gold hover:bg-gold/20"
+                  className="rounded-full border border-brass/30 bg-brass/10 px-3 py-1.5 text-xs text-brass-light hover:bg-brass/20"
                 >
                   Top up
                 </button>

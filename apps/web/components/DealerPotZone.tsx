@@ -20,7 +20,7 @@ export function DealerPotZone({
     <div className="pointer-events-none flex flex-col items-center gap-1.5">
       {showDealer && !landscape && (
         <div className="flex flex-col items-center gap-0.5">
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#c62828] text-xs font-black text-white shadow-[0_2px_8px_rgba(0,0,0,0.5)] ring-2 ring-white/80">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-sidebar text-xs font-black text-mushroom shadow-[0_2px_8px_rgba(14,6,24,0.55)] ring-2 ring-mushroom/70">
             D
           </span>
           {dealerName ? (

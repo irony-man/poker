@@ -132,7 +132,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
         <main
           className={`flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain ${
             isHome
-              ? 'px-4 py-4 sm:px-8 sm:py-5 lg:px-12 xl:px-16'
+              ? 'px-5 py-6 sm:px-10 sm:py-8 lg:px-14 lg:py-10 xl:px-20'
               : 'px-4 py-4 sm:px-8 sm:py-5 lg:px-12'
           }`}
         >

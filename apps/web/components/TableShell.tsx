@@ -10,7 +10,7 @@ import {
   type ActionPlacement,
 } from './FloatingActionDock';
 import { MobileQuickReactions } from './MobileQuickReactions';
-import { TableActionToast } from './TableActionToast';
+import { TableActionToast, useSeatActionAutoClear } from './TableActionToast';
 import { useSession } from '@/lib/store';
 import { useIsNarrow } from '@/lib/tableLayout';
 
@@ -57,6 +57,7 @@ export function TableShell({
   const [actionPlacement, setActionPlacement] = useState<ActionPlacement>('float');
   const mobileOpen = chatOpen ?? internalMobileOpen;
   const setMobileOpen = onChatOpenChange ?? setInternalMobileOpen;
+  useSeatActionAutoClear();
 
   useEffect(() => {
     try {

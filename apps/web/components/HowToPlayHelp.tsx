@@ -146,9 +146,14 @@ function RankingExample({
   cards: { code: string; dimmed?: boolean }[];
 }) {
   return (
-    <div className="flex items-center gap-0.5" aria-hidden>
+    <div className="flex w-full items-stretch gap-1.5 sm:gap-2" aria-hidden>
       {cards.map(({ code, dimmed }) => (
-        <PlayingCard key={`${code}-${dimmed ? 'd' : 'h'}`} code={code} size="xs" dimmed={dimmed} />
+        <div
+          key={`${code}-${dimmed ? 'd' : 'h'}`}
+          className="flex min-w-0 flex-1 justify-center [&>div]:!h-[4.5rem] [&>div]:!w-full [&>div]:!max-w-none sm:[&>div]:!h-[5.25rem]"
+        >
+          <PlayingCard code={code} size="sm" dimmed={dimmed} />
+        </div>
       ))}
     </div>
   );
@@ -240,9 +245,9 @@ export function HowToPlayHelp({ className = '' }: { className?: string }) {
             ))}
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
             {tab === 'basics' ? (
-              <>
+              <div className="px-3 py-3 sm:px-4">
                 <ul className="space-y-2.5">
                   {TIPS.map((tip) => (
                     <li key={tip.title}>
@@ -259,19 +264,19 @@ export function HowToPlayHelp({ className = '' }: { className?: string }) {
                   Texas Hold&apos;em · highest hand wins · use your two cards + five community
                   cards
                 </p>
-              </>
+              </div>
             ) : (
               <>
-                <p className="mb-3 text-[11px] leading-relaxed text-ink-strong-muted">
+                <p className="px-3 pb-2 pt-3 text-[11px] leading-relaxed text-ink-strong-muted sm:px-4">
                   Strongest at the top. Dimmed cards are kickers (not part of the core hand).
                 </p>
-                <ol className="space-y-3">
+                <ol className="divide-y divide-sidebar/10 border-y border-sidebar/10">
                   {HAND_RANKINGS.map((hand, i) => (
                     <li
                       key={hand.name}
-                      className="rounded-lg border border-sidebar/10 bg-mushroom/40 px-2.5 py-2"
+                      className="w-full bg-mushroom/40 px-3 py-2.5 sm:px-4"
                     >
-                      <div className="flex items-start gap-2">
+                      <div className="flex w-full items-start gap-2.5">
                         <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sidebar text-[9px] font-display font-bold text-mushroom">
                           {i + 1}
                         </span>
@@ -282,7 +287,7 @@ export function HowToPlayHelp({ className = '' }: { className?: string }) {
                           <p className="mt-0.5 text-[11px] leading-snug text-ink-strong-muted">
                             {hand.desc}
                           </p>
-                          <div className="mt-1.5">
+                          <div className="mt-2 w-full">
                             <RankingExample cards={hand.cards} />
                           </div>
                         </div>
@@ -290,7 +295,7 @@ export function HowToPlayHelp({ className = '' }: { className?: string }) {
                     </li>
                   ))}
                 </ol>
-                <p className="mt-3 border-t border-sidebar/10 pt-2 text-[10px] leading-snug text-ink-strong-muted">
+                <p className="px-3 py-3 text-[10px] leading-snug text-ink-strong-muted sm:px-4">
                   Texas Hold&apos;em · best 5-card hand from 2 hole cards + board
                 </p>
               </>

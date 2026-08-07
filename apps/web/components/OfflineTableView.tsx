@@ -28,6 +28,7 @@ import { CommunityBoard } from './CommunityBoard';
 import { DealerPotZone } from './DealerPotZone';
 import { SeatView } from './SeatView';
 import { HowToPlayHelp } from './HowToPlayHelp';
+import { isSeatActionLabel } from '@/lib/seatAction';
 import {
   LeaderboardToggle,
   TableLeaderboard,
@@ -197,6 +198,7 @@ export function OfflineTableView({
   const syncChat = useCallback(
     (next: HandState, events: EngineEvent[]) => {
       announceEvents(next, events, pushChat, (seat, label) => {
+        if (!isSeatActionLabel(label)) return;
         setActionBurst({ seat, label, at: Date.now() });
       });
     },

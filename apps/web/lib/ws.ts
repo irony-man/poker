@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { emitSocketMessage } from './socketMessages';
 import { WS_URL } from './api';
+import { isSeatActionLabel } from '@/lib/seatAction';
 import { useSession, type PrivateView, type PublicTable } from './store';
 
 const RECONNECT_DELAY_MS = 2_000;
@@ -75,13 +76,19 @@ export function usePokerSocket(
             setEmoji({ emoji: msg.emoji, name: msg.name, at: msg.at });
             setTimeout(() => setEmoji(null), 1800);
             break;
-          case 'seat_action':
-            setActionBurst({
-              seat: msg.seat,
-              label: typeof msg.label === 'string' ? msg.label : String(msg.action ?? ''),
-              at: typeof msg.at === 'number' ? msg.at : Date.now(),
-            });
+          case 'seat_action': {
+            const label =
+              typeof msg.label === 'string' ? msg.label : String(msg.action ?? '');
+            // Seat popup only (fold/check/call/bet/raise/all-in).
+            if (isSeatActionLabel(label)) {
+              setActionBurst({
+                seat: msg.seat,
+                label,
+                at: typeof msg.at === 'number' ? msg.at : Date.now(),
+              });
+            }
             break;
+          }
           case 'error':
             setError(
               typeof msg.message === 'string' ? msg.message : 'Error',

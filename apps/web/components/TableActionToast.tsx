@@ -1,173 +1,113 @@
 'use client';
 
-import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import { PlayerAvatar } from './PlayerAvatar';
+import { isSeatActionLabel } from '@/lib/seatAction';
 import { useSession } from '@/lib/store';
 
-/** How long seat-action notifications stay visible before auto-dismiss. */
-export const TABLE_ACTION_TOAST_MS = 5_000;
+/** Info/error toasts (sitting out, seat taken, disconnect, …). */
+export const TABLE_INFO_TOAST_MS = 5_000;
+
+/** Seat Call/Fold/Bet bubbles stay on the player this long. */
+export const SEAT_ACTION_POPUP_MS = 5_000;
 
 const EXIT_MS = 280;
 
-function toneForLabel(label: string): {
-  ring: string;
-  bar: string;
-  badge: string;
-  accent: string;
-} {
-  const t = label.toLowerCase();
-  if (t.startsWith('fold')) {
-    return {
-      ring: 'border-danger/40',
-      bar: 'bg-danger',
-      badge: 'text-danger',
-      accent: 'bg-danger/12',
-    };
-  }
-  if (t.startsWith('all-in') || t.startsWith('allin')) {
-    return {
-      ring: 'border-brass/55',
-      bar: 'bg-brass',
-      badge: 'text-brass-dim',
-      accent: 'bg-brass/15',
-    };
-  }
-  if (t.startsWith('raise') || t.startsWith('bet') || t.startsWith('call')) {
-    return {
-      ring: 'border-sidebar/35',
-      bar: 'bg-sidebar',
-      badge: 'text-sidebar',
-      accent: 'bg-sidebar/10',
-    };
-  }
-  return {
-    ring: 'border-sidebar/20',
-    bar: 'bg-sidebar/75',
-    badge: 'text-ink-strong',
-    accent: 'bg-sidebar/8',
-  };
+/** @deprecated use {@link isSeatActionLabel} from `@/lib/seatAction` */
+export { isSeatActionLabel };
+
+/**
+ * Clears seat action bursts after the popup animation window so the next
+ * action can fire cleanly.
+ */
+export function useSeatActionAutoClear() {
+  const burst = useSession((s) => s.actionBurst);
+  const setActionBurst = useSession((s) => s.setActionBurst);
+
+  useEffect(() => {
+    if (!burst) return;
+    const t = window.setTimeout(() => setActionBurst(null), SEAT_ACTION_POPUP_MS);
+    return () => window.clearTimeout(t);
+  }, [burst, setActionBurst]);
 }
 
 /**
- * Heads-up system-style notification for the last table action.
- * Slides in from the top and auto-clears after {@link TABLE_ACTION_TOAST_MS}.
+ * Top-right notification for table info/errors (from {@link useSession} lastError).
+ * Poker Call/Fold labels stay on the seat — not here.
  */
 export function TableActionToast() {
-  const burst = useSession((s) => s.actionBurst);
-  const players = useSession((s) => s.table?.players);
-  const setActionBurst = useSession((s) => s.setActionBurst);
+  const lastError = useSession((s) => s.lastError);
+  const lastErrorCode = useSession((s) => s.lastErrorCode);
+  const setError = useSession((s) => s.setError);
   const [leaving, setLeaving] = useState(false);
+  const [shownAt, setShownAt] = useState<number | null>(null);
 
-  const player = burst
-    ? players?.find((p) => p.seat === burst.seat) ?? null
-    : null;
-  const playerName = player?.name?.trim() || (burst ? `Seat ${burst.seat + 1}` : '');
+  // Critical codes are handled by leave/redirect flows — skip the toast.
+  const suppress =
+    lastErrorCode === 'not_found' || lastErrorCode === 'kicked' || !lastError;
+  const message = suppress ? null : lastError;
 
   useEffect(() => {
-    if (!burst) {
+    if (!message) {
       setLeaving(false);
+      setShownAt(null);
       return;
     }
     setLeaving(false);
+    setShownAt(Date.now());
 
-    const elapsed = Math.max(0, Date.now() - burst.at);
-    const remaining = Math.max(0, TABLE_ACTION_TOAST_MS - elapsed);
-    if (remaining === 0) {
-      setActionBurst(null);
-      return;
-    }
-
-    const fadeMs = Math.min(EXIT_MS, remaining);
-    const fadeTimer = window.setTimeout(() => setLeaving(true), remaining - fadeMs);
-    const clearTimer = window.setTimeout(() => setActionBurst(null), remaining);
+    const fadeTimer = window.setTimeout(
+      () => setLeaving(true),
+      TABLE_INFO_TOAST_MS - EXIT_MS,
+    );
+    const clearTimer = window.setTimeout(() => setError(null), TABLE_INFO_TOAST_MS);
 
     return () => {
       window.clearTimeout(fadeTimer);
       window.clearTimeout(clearTimer);
     };
-  }, [burst, setActionBurst]);
+  }, [message, setError]);
 
-  if (!burst) return null;
-
-  const tone = toneForLabel(burst.label);
-  const progressDuration = Math.max(
-    0,
-    TABLE_ACTION_TOAST_MS - Math.max(0, Date.now() - burst.at),
-  );
+  if (!message || shownAt == null) return null;
 
   function dismiss() {
     setLeaving(true);
-    window.setTimeout(() => setActionBurst(null), EXIT_MS);
+    window.setTimeout(() => setError(null), EXIT_MS);
   }
 
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 top-0 z-[55] flex justify-center px-3 pt-[max(0.65rem,env(safe-area-inset-top))] sm:px-4 sm:pt-3"
+      className="pointer-events-none fixed inset-x-0 top-0 z-[55] flex justify-end px-3 pt-[max(0.65rem,env(safe-area-inset-top))] sm:px-4 sm:pt-3"
       role="status"
       aria-live="polite"
       aria-atomic="true"
     >
       <div
-        key={burst.at}
-        className={`table-action-toast pointer-events-auto w-full max-w-[22rem] overflow-hidden rounded-[1.15rem] border bg-[rgb(255_252_250_/0.97)] shadow-[0_10px_36px_rgb(29_4_50/0.28),0_1px_0_rgb(255_255_255/0.7)_inset] backdrop-blur-xl ${tone.ring} ${
+        key={shownAt}
+        className={`table-action-toast pointer-events-auto w-full max-w-[17.5rem] overflow-hidden rounded-xl border border-danger/35 bg-[rgb(255_252_250_/0.97)] shadow-[0_10px_32px_rgb(29_4_50/0.24),0_1px_0_rgb(255_255_255/0.65)_inset] backdrop-blur-xl ${
           leaving ? 'table-action-toast-out' : 'table-action-toast-in'
         }`}
       >
-        {/* App chrome — reads like a push banner */}
-        <div className="flex items-center gap-2 border-b border-sidebar/8 px-3 py-1.5">
-          <span className="flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-[5px] bg-sidebar shadow-sm">
-            <Image
-              src="/icon-192.png"
-              alt=""
-              width={20}
-              height={20}
-              className="h-full w-full object-cover"
-            />
-          </span>
-          <p className="min-w-0 flex-1 text-[11px] font-display font-bold uppercase tracking-[0.14em] text-ink-strong">
-            POKR
-          </p>
-          <p className="shrink-0 text-[10px] font-medium tabular-nums text-ink-strong-muted">
-            now
-          </p>
+        <div className="flex items-start gap-2.5 bg-danger/10 px-3 py-2.5">
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-display font-bold uppercase tracking-[0.14em] text-danger">
+              Notice
+            </p>
+            <p className="mt-0.5 text-sm font-semibold leading-snug text-ink-strong">{message}</p>
+          </div>
           <button
             type="button"
             onClick={dismiss}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-base leading-none text-ink-strong-muted transition hover:bg-sidebar/10 hover:text-sidebar"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-base leading-none text-ink-strong-muted transition hover:bg-white/70 hover:text-sidebar"
             aria-label="Dismiss notification"
           >
             ×
           </button>
         </div>
-
-        <div className={`flex items-center gap-3 px-3 py-2.5 ${tone.accent}`}>
-          <div className="shrink-0 rounded-full ring-2 ring-white shadow-sm">
-            <PlayerAvatar
-              userId={player?.userId ?? `seat-${burst.seat}`}
-              avatarId={player?.avatarId}
-              size={40}
-              title={playerName}
-            />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold leading-snug text-ink-strong">
-              {playerName}
-            </p>
-            <p
-              className={`mt-0.5 font-display text-[15px] font-bold uppercase leading-tight tracking-wide ${tone.badge}`}
-            >
-              {burst.label}
-            </p>
-          </div>
-        </div>
-
-        {/* Auto-dismiss countdown */}
         <div className="h-0.5 w-full bg-sidebar/10">
           <div
-            key={`bar-${burst.at}`}
-            className={`table-action-toast-bar h-full origin-left ${tone.bar}`}
-            style={{ animationDuration: `${progressDuration}ms` }}
+            key={`bar-${shownAt}`}
+            className="table-action-toast-bar h-full origin-left bg-danger"
+            style={{ animationDuration: `${TABLE_INFO_TOAST_MS}ms` }}
           />
         </div>
       </div>

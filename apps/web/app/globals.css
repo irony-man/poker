@@ -489,32 +489,59 @@ body > * {
       0 0 0 1px rgb(var(--sidebar) / 0.35),
       0 16px 40px rgb(29 4 50 / 0.18);
   }
+
+  /* Seat Call/Fold floating label over the player. */
+  .seat-action-popup {
+    animation: seat-action-pop 5s var(--ease-out) both;
+  }
 }
 
-/* Heads-up table action notification (spring in, fade up-out). */
+@keyframes seat-action-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.8);
+  }
+  4% {
+    opacity: 1;
+    transform: translateY(0) scale(1.08);
+  }
+  8% {
+    transform: translateY(0) scale(1);
+  }
+  85% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.96);
+  }
+}
+
+/* Heads-up table info notification — slides in from top-right. */
 @keyframes table-action-toast-in {
   from {
     opacity: 0;
-    transform: translateY(-120%) scale(0.94);
+    transform: translate(18px, -12px) scale(0.96);
   }
   60% {
     opacity: 1;
-    transform: translateY(4px) scale(1.01);
+    transform: translate(-2px, 2px) scale(1.01);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate(0, 0) scale(1);
   }
 }
 
 @keyframes table-action-toast-out {
   from {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate(0, 0) scale(1);
   }
   to {
     opacity: 0;
-    transform: translateY(-110%) scale(0.96);
+    transform: translate(14px, -8px) scale(0.96);
   }
 }
 

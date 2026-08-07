@@ -40,7 +40,6 @@ export function TableView({
   const priv = useSession((s) => s.private);
   const userId = useSession((s) => s.userId);
   const connection = useSession((s) => s.connection);
-  const lastError = useSession((s) => s.lastError);
   const lastErrorCode = useSession((s) => s.lastErrorCode);
   const setError = useSession((s) => s.setError);
   const clearTable = useSession((s) => s.clearTable);
@@ -533,16 +532,6 @@ export function TableView({
             </div>
           )}
         </div>
-
-        {lastError && (
-          <button
-            type="button"
-            onClick={() => setError(null)}
-            className="mb-2 rounded-md bg-red-950/80 border border-red-800 px-3 py-1 text-sm text-left"
-          >
-            {lastError} (dismiss)
-          </button>
-        )}
 
         {table?.tournament && (
           <div className="mb-2 flex flex-wrap items-center gap-2">

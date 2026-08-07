@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { nanoid } from 'nanoid';
 import type { AuthStore, User } from './auth.js';
+import type { PgPool } from './db.js';
 
 export type FriendRequestStatus = 'pending' | 'accepted' | 'declined';
 
@@ -77,7 +78,7 @@ function pairKey(a: string, b: string): [string, string] {
   return a < b ? [a, b] : [b, a];
 }
 
-/** File-backed friend requests, friendships, groups, and challenges. */
+/** Social graph — Postgres (social_store) when pool is set, else data/social.json. */
 export class FriendsStore {
   private requests: FriendRequest[] = [];
   private friendships = new Set<string>();
@@ -85,34 +86,36 @@ export class FriendsStore {
   private groups: FriendGroup[] = [];
   private loaded = false;
   private readonly filePath: string;
+  private pool: PgPool | null = null;
 
-  constructor(dataDir = path.join(process.cwd(), 'data')) {
+  constructor(dataDir = path.join(process.cwd(), 'data'), pool: PgPool | null = null) {
     this.filePath = path.join(dataDir, 'social.json');
+    this.pool = pool;
+  }
+
+  setPool(pool: PgPool | null): void {
+    this.pool = pool;
   }
 
   private async ensureLoaded(): Promise<void> {
     if (this.loaded) return;
-    await mkdir(path.dirname(this.filePath), { recursive: true });
-    try {
-      const raw = await readFile(this.filePath, 'utf8');
-      const snap = JSON.parse(raw) as SocialSnapshot;
-      this.requests = snap.requests ?? [];
-      this.friendships = new Set(
-        (snap.friendships ?? []).map(([a, b]) => `${a}:${b}`),
-      );
-      this.challenges = snap.challenges ?? [];
-      this.groups = snap.groups ?? [];
-    } catch {
-      this.requests = [];
-      this.friendships = new Set();
-      this.challenges = [];
-      this.groups = [];
+    if (this.pool) {
+      await this.loadFromPostgres();
+    } else {
+      await this.loadFromFile();
     }
     this.loaded = true;
   }
 
-  private async persist(): Promise<void> {
-    const snap: SocialSnapshot = {
+  private applySnapshot(snap: SocialSnapshot): void {
+    this.requests = snap.requests ?? [];
+    this.friendships = new Set((snap.friendships ?? []).map(([a, b]) => `${a}:${b}`));
+    this.challenges = snap.challenges ?? [];
+    this.groups = snap.groups ?? [];
+  }
+
+  private snapshot(): SocialSnapshot {
+    return {
       requests: this.requests,
       friendships: [...this.friendships].map((k) => {
         const [a, b] = k.split(':');
@@ -121,6 +124,46 @@ export class FriendsStore {
       challenges: this.challenges,
       groups: this.groups,
     };
+  }
+
+  private async loadFromFile(): Promise<void> {
+    await mkdir(path.dirname(this.filePath), { recursive: true });
+    try {
+      const raw = await readFile(this.filePath, 'utf8');
+      this.applySnapshot(JSON.parse(raw) as SocialSnapshot);
+    } catch {
+      this.applySnapshot({ requests: [], friendships: [], challenges: [], groups: [] });
+    }
+  }
+
+  private async loadFromPostgres(): Promise<void> {
+    if (!this.pool) return;
+    const res = await this.pool.query(
+      `SELECT payload FROM social_store WHERE id = 'default'`,
+    );
+    const row = (res.rows[0] as { payload?: SocialSnapshot } | undefined);
+    if (row?.payload) {
+      this.applySnapshot(row.payload);
+    } else {
+      this.applySnapshot({ requests: [], friendships: [], challenges: [], groups: [] });
+      await this.persist();
+    }
+  }
+
+  private async persist(): Promise<void> {
+    const snap = this.snapshot();
+    if (this.pool) {
+      await this.pool.query(
+        `INSERT INTO social_store (id, payload, updated_at)
+         VALUES ('default', $1::jsonb, NOW())
+         ON CONFLICT (id) DO UPDATE SET
+           payload = EXCLUDED.payload,
+           updated_at = NOW()`,
+        [JSON.stringify(snap)],
+      );
+      return;
+    }
+    await mkdir(path.dirname(this.filePath), { recursive: true });
     await writeFile(this.filePath, JSON.stringify(snap, null, 2), 'utf8');
   }
 

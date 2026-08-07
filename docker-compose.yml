@@ -1,4 +1,22 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: poker
+      POSTGRES_PASSWORD: poker
+      POSTGRES_DB: poker
+    volumes:
+      - poker-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U poker -d poker"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
   server:
     build:
       context: .
@@ -9,8 +27,12 @@ services:
       PORT: "4000"
       WEB_ORIGIN: "http://localhost:3000"
       DATA_DIR: /app/data
+      DATABASE_URL: postgres://poker:poker@postgres:5432/poker
     volumes:
       - poker-data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test:
@@ -43,3 +65,4 @@ services:
 
 volumes:
   poker-data:
+  poker-pg:

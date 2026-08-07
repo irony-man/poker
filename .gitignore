@@ -9,6 +9,9 @@ coverage/
 *.log
 .turbo/
 data/
+.pgdata/
+.pg-run/
+.pg-log/
 docker-compose.override.yml
 bin/cloudflared
 

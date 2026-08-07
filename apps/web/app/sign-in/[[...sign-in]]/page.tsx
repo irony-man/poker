@@ -38,13 +38,10 @@ function SignInForm() {
   }
 
   return (
-    <div className="relative mx-auto w-full max-w-md px-1 pt-10 pb-8">
-      <div className="pointer-events-none absolute -top-6 left-1/2 h-40 w-[20rem] -translate-x-1/2 rounded-full bg-gold/10 blur-3xl" />
+    <div className="relative mx-auto w-full max-w-md pt-4 pb-8 sm:pt-8">
       <div className="relative text-center">
-        <h1 className="font-display text-4xl font-extrabold tracking-[0.06em] text-transparent bg-clip-text bg-gradient-to-br from-gold-light via-gold to-gold-dim uppercase">
-          Felt
-        </h1>
-        <p className="mt-2 text-cream/60 text-sm">Sign in with your username</p>
+        <h1 className="font-serif text-3xl tracking-tight text-ink-strong sm:text-4xl">Sign in</h1>
+        <p className="mt-2 text-sm text-ink-strong-muted">Sign in with your username</p>
       </div>
       <form onSubmit={onSubmit} className="hud-panel mt-8 space-y-4 p-5 sm:p-6">
         <label className="block">
@@ -81,9 +78,9 @@ function SignInForm() {
         <button disabled={busy} type="submit" className="btn-primary min-h-11 w-full">
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
-        <p className="text-center text-sm text-cream/50">
+        <p className="text-center text-sm text-ink-strong-muted">
           No account?{' '}
-          <Link href="/sign-up" className="text-gold hover:underline">
+          <Link href="/sign-up" className="text-sidebar font-semibold hover:underline">
             Sign up
           </Link>
         </p>
@@ -94,7 +91,7 @@ function SignInForm() {
 
 export default function SignInPage() {
   return (
-    <Suspense fallback={<p className="text-cream/60 pt-10 text-center">Loading…</p>}>
+    <Suspense fallback={<p className="text-ink-strong-muted pt-10 text-center">Loading…</p>}>
       <SignInForm />
     </Suspense>
   );

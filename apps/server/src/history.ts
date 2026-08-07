@@ -83,7 +83,7 @@ export class FileHistoryStore implements HandHistoryStore {
   }
 }
 
-/** Postgres-backed store when DATABASE_URL is set (uses pg via dynamic import). */
+/** Postgres-backed store when DATABASE_URL is set (uses shared pool). */
 export class PostgresHistoryStore implements HandHistoryStore {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private pool: any;
@@ -93,24 +93,13 @@ export class PostgresHistoryStore implements HandHistoryStore {
     this.pool = pool;
   }
 
-  static async create(databaseUrl: string): Promise<PostgresHistoryStore | null> {
-    try {
-      const mod = (await import('pg')) as unknown as {
-        default?: { Pool?: new (o: { connectionString: string }) => { query: (s: string, p?: unknown[]) => Promise<{ rows: unknown[] }> } };
-        Pool?: new (o: { connectionString: string }) => { query: (s: string, p?: unknown[]) => Promise<{ rows: unknown[] }> };
-      };
-      const PoolCtor = mod.Pool ?? mod.default?.Pool;
-      if (!PoolCtor) throw new Error('pg.Pool not found');
-      const pool = new PoolCtor({ connectionString: databaseUrl });
-      await pool.query(POSTGRES_DDL);
-      return new PostgresHistoryStore(pool);
-    } catch (err) {
-      console.warn('[history] Postgres unavailable:', err);
-      return null;
-    }
-  }
-
   async recordTable(meta: TableMeta): Promise<void> {
+    // Ensure host exists so FK (if present on older DBs) never blocks history.
+    await this.pool.query(
+      `INSERT INTO users (id, name) VALUES ($1, $2)
+       ON CONFLICT (id) DO NOTHING`,
+      [meta.hostUserId, meta.hostUserId],
+    );
     await this.pool.query(
       `INSERT INTO tables (id, invite_code, name, small_blind, big_blind, min_buy_in, max_buy_in, turn_time_ms, max_seats, is_private, host_user_id)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
@@ -162,11 +151,12 @@ export class PostgresHistoryStore implements HandHistoryStore {
   }
 }
 
-export async function createHistoryStore(): Promise<HandHistoryStore> {
-  const url = process.env.DATABASE_URL;
-  if (url) {
-    const pg = await PostgresHistoryStore.create(url);
-    if (pg) return pg;
+export async function createHistoryStore(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  pool?: any | null,
+): Promise<HandHistoryStore> {
+  if (pool) {
+    return new PostgresHistoryStore(pool);
   }
   return new FileHistoryStore(process.env.DATA_DIR ?? path.join(process.cwd(), 'data'));
 }

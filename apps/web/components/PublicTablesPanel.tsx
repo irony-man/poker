@@ -60,16 +60,11 @@ export function PublicTablesPanel({
   }
 
   return (
-    <div className="hud-panel flex flex-col gap-4 p-5 sm:col-span-2 sm:p-6">
+    <div className="hud-panel flex flex-col gap-4 p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="font-display text-xl font-bold uppercase tracking-wider text-brass">
-            Public tables
-          </h2>
-          <p className="mt-1 text-sm text-cream-muted font-medium">
-            Pick your stakes · 6-max ring games
-          </p>
-        </div>
+        <p className="text-sm text-ink-strong-muted font-medium">
+          Pick your stakes · 6-max ring games
+        </p>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -78,14 +73,12 @@ export function PublicTablesPanel({
           >
             Refresh
           </button>
-          <span className="status-chip border-patina/30 bg-patina/10 text-patina shrink-0">
-            Quick join
-          </span>
+          <span className="status-chip shrink-0">Quick join</span>
         </div>
       </div>
 
       {fetchError && (
-        <p role="alert" className="status-chip border-red-500/40 bg-red-950/50 text-red-300 text-xs">
+        <p role="alert" className="status-chip border-danger/30 bg-danger/10 text-danger text-xs">
           {fetchError} — try Refresh
         </p>
       )}
@@ -100,24 +93,24 @@ export function PublicTablesPanel({
           return (
             <div
               key={stake.id}
-              className="flex flex-col gap-3 rounded-lg border border-brass/15 bg-ink-raised/40 p-4"
+              className="flex flex-col gap-3 rounded-lg border border-sidebar/12 bg-mushroom/45 p-4"
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="font-display text-lg font-bold uppercase tracking-wider text-brass">
+                  <p className="font-display text-lg font-bold uppercase tracking-wider text-sidebar">
                     {stake.label}
                   </p>
-                  <p className="mt-0.5 text-xs text-cream-muted font-medium">
+                  <p className="mt-0.5 text-xs text-ink-strong-muted font-medium">
                     Blinds {stake.smallBlind}/{stake.bigBlind}
                   </p>
                 </div>
-                <span className="text-[10px] font-display uppercase tracking-widest text-patina">
+                <span className="text-[10px] font-display uppercase tracking-widest text-ink-strong-muted">
                   {loading ? '…' : `${seated}/${max}`}
                 </span>
               </div>
-              <p className="text-sm text-cream/80">
+              <p className="text-sm text-ink-strong-muted">
                 Buy-in{' '}
-                <span className="font-medium text-cream">{formatMoney(stake.buyIn)}</span>
+                <span className="font-medium text-ink-strong">{formatMoney(stake.buyIn)}</span>
               </p>
               <button
                 type="button"
@@ -141,7 +134,7 @@ export function PublicTablesPanel({
       </div>
 
       {error && (
-        <p role="alert" className="status-chip border-red-500/40 bg-red-950/50 text-red-300 text-xs">
+        <p role="alert" className="status-chip border-danger/30 bg-danger/10 text-danger text-xs">
           {error}
         </p>
       )}

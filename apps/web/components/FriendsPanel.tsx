@@ -203,12 +203,12 @@ export function FriendsPanel({
     <div className="hud-panel flex flex-col gap-4 p-5 sm:col-span-2 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="font-display text-xl font-bold uppercase tracking-wider text-gold">Friends</h2>
-          <p className="mt-1 text-sm text-cream/45 font-medium">
+          <h2 className="font-display text-xl font-bold uppercase tracking-wider text-sidebar">Friends</h2>
+          <p className="mt-1 text-sm text-ink-strong-muted font-medium">
             Groups · quick table invite · heads-up challenge
           </p>
         </div>
-        <span className="status-chip border-gold/30 bg-gold/10 text-gold shrink-0">Social</span>
+        <span className="status-chip shrink-0">Social</span>
       </div>
 
       <label className="block">
@@ -224,11 +224,11 @@ export function FriendsPanel({
       </label>
 
       {searchResults.length > 0 && (
-        <ul className="divide-y divide-cyan/10 rounded border border-cyan/15 bg-ink-raised/50">
+        <ul className="divide-y divide-sidebar/10 rounded border border-sidebar/15 bg-mushroom/50">
           {searchResults.map((u) => (
             <li key={u.userId} className="flex items-center gap-3 px-3 py-2.5">
               <PlayerAvatar userId={u.userId} avatarId={u.avatarId} size={36} title={u.name} />
-              <span className="min-w-0 flex-1 truncate font-medium text-cream">{u.name}</span>
+              <span className="min-w-0 flex-1 truncate font-medium text-ink-strong">{u.name}</span>
               <button
                 type="button"
                 disabled={disabled || busy === u.userId}
@@ -249,7 +249,7 @@ export function FriendsPanel({
             {incoming.map((req) => (
               <li
                 key={req.id}
-                className="flex flex-wrap items-center gap-2 rounded border border-cyan/15 bg-ink-raised/40 px-3 py-2"
+                className="flex flex-wrap items-center gap-2 rounded border border-sidebar/15 bg-mushroom/40 px-3 py-2"
               >
                 <PlayerAvatar
                   userId={req.from.userId}
@@ -287,7 +287,7 @@ export function FriendsPanel({
             {challenges.map((c) => (
               <li
                 key={c.id}
-                className="flex flex-wrap items-center gap-2 rounded border border-felt-neon/25 bg-felt-neon/5 px-3 py-2"
+                className="flex flex-wrap items-center gap-2 rounded border border-sidebar/20 bg-sidebar/5 px-3 py-2"
               >
                 <PlayerAvatar
                   userId={c.challenger.userId}
@@ -296,21 +296,21 @@ export function FriendsPanel({
                   title={c.challenger.name}
                 />
                 <span className="min-w-0 flex-1 truncate text-sm">
-                  <span className="font-medium text-felt-neon">{c.challenger.name}</span>
+                  <span className="font-medium text-sidebar">{c.challenger.name}</span>
                   {c.groupName ? (
-                    <span className="text-cream/50">
+                    <span className="text-ink-strong-muted">
                       {' '}
-                      invited you · <span className="text-gold/80">{c.groupName}</span>
+                      invited you · <span className="text-sidebar/80">{c.groupName}</span>
                     </span>
                   ) : (
-                    <span className="text-cream/50"> challenged you</span>
+                    <span className="text-ink-strong-muted"> challenged you</span>
                   )}
                 </span>
                 <button
                   type="button"
                   disabled={disabled}
                   onClick={() => void onJoinChallenge(c)}
-                  className="rounded border border-felt-neon/40 bg-felt-neon/15 px-3 py-1.5 text-xs font-display font-semibold uppercase tracking-wider text-felt-neon hover:bg-felt-neon/25"
+                  className="rounded border border-sidebar/25 bg-sidebar/8 px-3 py-1.5 text-xs font-display font-semibold uppercase tracking-wider text-sidebar hover:bg-sidebar/12"
                 >
                   Join table
                 </button>
@@ -337,7 +337,7 @@ export function FriendsPanel({
         {showCreateGroup && (
           <form
             onSubmit={(e) => void onCreateGroup(e)}
-            className="mt-2 space-y-3 rounded border border-gold/20 bg-ink-raised/40 p-3"
+            className="mt-2 space-y-3 rounded border border-sidebar/15 bg-mushroom/40 p-3"
           >
             <label className="block">
               <span className="hud-label">Group name</span>
@@ -353,7 +353,7 @@ export function FriendsPanel({
             <div>
               <span className="hud-label">Add friends ({selectedMembers.size}/8)</span>
               {friends.length === 0 ? (
-                <p className="mt-1 text-xs text-cream/40">Add friends first, then build a group.</p>
+                <p className="mt-1 text-xs text-ink-strong-muted">Add friends first, then build a group.</p>
               ) : (
                 <ul className="mt-2 max-h-40 space-y-1.5 overflow-y-auto">
                   {friends.map((f) => {
@@ -365,8 +365,8 @@ export function FriendsPanel({
                           onClick={() => toggleMember(f.userId)}
                           className={`flex w-full items-center gap-2 rounded border px-2 py-1.5 text-left text-sm transition ${
                             on
-                              ? 'border-gold/40 bg-gold/10 text-gold'
-                              : 'border-cyan/10 bg-ink/40 text-cream/80 hover:border-cyan/25'
+                              ? 'border-sidebar/30 bg-sidebar/10 text-sidebar'
+                              : 'border-sidebar/12 bg-mushroom/40 text-ink-strong hover:border-sidebar/25'
                           }`}
                         >
                           <PlayerAvatar
@@ -397,7 +397,7 @@ export function FriendsPanel({
         )}
 
         {groups.length === 0 && !showCreateGroup ? (
-          <p className="mt-2 text-sm text-cream/40">
+          <p className="mt-2 text-sm text-ink-strong-muted">
             Create a group of friends for one-tap table invites.
           </p>
         ) : (
@@ -405,14 +405,14 @@ export function FriendsPanel({
             {groups.map((g) => (
               <li
                 key={g.id}
-                className="rounded border border-cyan/15 bg-ink-raised/30 px-3 py-3"
+                className="rounded border border-sidebar/15 bg-mushroom/35 px-3 py-3"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="font-display font-semibold uppercase tracking-wider text-gold truncate">
+                    <p className="font-display font-semibold uppercase tracking-wider text-sidebar truncate">
                       {g.name}
                     </p>
-                    <p className="mt-0.5 text-xs text-cream/45">
+                    <p className="mt-0.5 text-xs text-ink-strong-muted">
                       {g.members.length} member{g.members.length === 1 ? '' : 's'}
                       {!g.isOwner ? ' · shared' : ''}
                     </p>
@@ -422,7 +422,7 @@ export function FriendsPanel({
                       type="button"
                       disabled={disabled || busy === `invite-${g.id}` || g.members.length === 0}
                       onClick={() => void onInviteGroup(g.id)}
-                      className="rounded border border-gold/35 bg-gold/10 px-3 py-1.5 text-xs font-display font-semibold uppercase tracking-wider text-gold transition hover:bg-gold/20 disabled:opacity-40"
+                      className="rounded border border-sidebar/25 bg-sidebar/5 px-3 py-1.5 text-xs font-display font-semibold uppercase tracking-wider text-sidebar transition hover:bg-sidebar/10 disabled:opacity-40"
                     >
                       Invite to game
                     </button>
@@ -443,7 +443,7 @@ export function FriendsPanel({
                     {g.members.map((m) => (
                       <span
                         key={m.userId}
-                        className="inline-flex items-center gap-1.5 rounded border border-cyan/10 bg-ink/50 px-2 py-1 text-xs text-cream/80"
+                        className="inline-flex items-center gap-1.5 rounded border border-sidebar/12 bg-mushroom/50 px-2 py-1 text-xs text-ink-strong"
                       >
                         <PlayerAvatar
                           userId={m.userId}
@@ -465,13 +465,13 @@ export function FriendsPanel({
       <div>
         <span className="hud-label">Your friends ({friends.length})</span>
         {friends.length === 0 ? (
-          <p className="mt-2 text-sm text-cream/40">No friends yet — search for players above.</p>
+          <p className="mt-2 text-sm text-ink-strong-muted">No friends yet — search for players above.</p>
         ) : (
           <ul className="mt-2 space-y-2">
             {friends.map((f) => (
               <li
                 key={f.userId}
-                className="flex items-center gap-3 rounded border border-cyan/10 bg-ink-raised/30 px-3 py-2.5"
+                className="flex items-center gap-3 rounded border border-sidebar/12 bg-mushroom/35 px-3 py-2.5"
               >
                 <PlayerAvatar userId={f.userId} avatarId={f.avatarId} size={36} title={f.name} />
                 <span className="min-w-0 flex-1 truncate font-medium">{f.name}</span>
@@ -479,7 +479,7 @@ export function FriendsPanel({
                   type="button"
                   disabled={disabled || busy === `challenge-${f.userId}`}
                   onClick={() => void onChallenge(f.userId)}
-                  className="rounded border border-gold/35 bg-gold/10 px-3 py-1.5 text-xs font-display font-semibold uppercase tracking-wider text-gold transition hover:bg-gold/20 disabled:opacity-40"
+                  className="rounded border border-sidebar/25 bg-sidebar/5 px-3 py-1.5 text-xs font-display font-semibold uppercase tracking-wider text-sidebar transition hover:bg-sidebar/10 disabled:opacity-40"
                 >
                   Challenge
                 </button>
@@ -492,13 +492,13 @@ export function FriendsPanel({
       {(error || loadError) && (
         <p
           role="alert"
-          className="status-chip border-red-500/40 bg-red-950/50 text-red-300 text-xs"
+          className="status-chip border-danger/30 bg-danger/10 text-danger text-xs"
         >
           {error ?? loadError}
         </p>
       )}
       {!userId && (
-        <p className="text-sm text-cream/45">Sign in to use friends and groups.</p>
+        <p className="text-sm text-ink-strong-muted">Sign in to use friends and groups.</p>
       )}
     </div>
   );

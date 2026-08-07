@@ -39,13 +39,12 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="relative mx-auto w-full max-w-md px-1 pt-10 pb-8">
-      <div className="pointer-events-none absolute -top-6 left-1/2 h-40 w-[20rem] -translate-x-1/2 rounded-full bg-gold/10 blur-3xl" />
+    <div className="relative mx-auto w-full max-w-md pt-4 pb-8 sm:pt-8">
       <div className="relative text-center">
-        <h1 className="font-display text-4xl font-extrabold tracking-[0.06em] text-transparent bg-clip-text bg-gradient-to-br from-gold-light via-gold to-gold-dim uppercase">
-          Felt
+        <h1 className="font-serif text-3xl tracking-tight text-ink-strong sm:text-4xl">
+          Create account
         </h1>
-        <p className="mt-2 text-cream/60 text-sm">Create a username and password</p>
+        <p className="mt-2 text-sm text-ink-strong-muted">Create a username and password</p>
       </div>
       <form onSubmit={onSubmit} className="hud-panel mt-8 space-y-4 p-5 sm:p-6">
         <label className="block">
@@ -90,9 +89,9 @@ export default function SignUpPage() {
         <button disabled={busy} type="submit" className="btn-primary min-h-11 w-full">
           {busy ? 'Creating…' : 'Create account'}
         </button>
-        <p className="text-center text-sm text-cream/50">
+        <p className="text-center text-sm text-ink-strong-muted">
           Already have an account?{' '}
-          <Link href="/sign-in" className="text-gold hover:underline">
+          <Link href="/sign-in" className="text-sidebar font-semibold hover:underline">
             Sign in
           </Link>
         </p>

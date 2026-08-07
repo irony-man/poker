@@ -1,4 +1,7 @@
 import http from 'node:http';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { config as loadEnv } from 'dotenv';
 import express from 'express';
 import cors from 'cors';
 import { WebSocketServer, WebSocket } from 'ws';
@@ -16,13 +19,18 @@ import {
   UpdateFriendGroupBodySchema,
 } from '@poker/protocol';
 import { AuthError, AuthStore, bearerToken } from './auth.js';
+import { initDatabase } from './db.js';
 import { FriendsStore } from './friends.js';
 import { createHistoryStore, writeSchemaDoc } from './history.js';
 import { createKv } from './kv.js';
 import { ensurePublicTables } from './publicTables.js';
 import { RoomManager } from './room.js';
 import { TournamentManager } from './tournament.js';
-import path from 'node:path';
+
+// Load monorepo root .env then apps/server/.env (later wins).
+const serverDir = path.dirname(fileURLToPath(import.meta.url));
+loadEnv({ path: path.resolve(serverDir, '../../../.env') });
+loadEnv({ path: path.resolve(serverDir, '../.env') });
 
 const PORT = Number(process.env.PORT ?? 4000);
 /** Comma-separated allowlist; empty entries ignored. Defaults include local Next.js. */
@@ -55,34 +63,20 @@ function createRateLimiter(max: number, windowMs: number) {
   };
 }
 
-async function tryAttachPostgres(auth: AuthStore): Promise<void> {
-  const url = process.env.DATABASE_URL?.trim();
-  if (!url) return;
-  try {
-    const mod = (await import('pg')) as unknown as {
-      default?: { Pool?: new (o: { connectionString: string }) => { query: (s: string, p?: unknown[]) => Promise<unknown> } };
-      Pool?: new (o: { connectionString: string }) => { query: (s: string, p?: unknown[]) => Promise<unknown> };
-    };
-    const Pool = mod.Pool ?? mod.default?.Pool;
-    if (!Pool) return;
-    const pool = new Pool({ connectionString: url });
-    auth.setPool(pool);
-  } catch (err) {
-    console.warn('[poker-server] could not attach Postgres for auth', err);
-  }
-}
-
 async function main() {
   const dataDir = process.env.DATA_DIR ?? path.join(process.cwd(), 'data');
+  const pool = await initDatabase();
+
   const auth = new AuthStore(dataDir);
-  await tryAttachPostgres(auth);
+  auth.setPool(pool);
   await auth.init();
+
   const kv = await createKv();
-  const history = await createHistoryStore();
+  const history = await createHistoryStore(pool);
   await writeSchemaDoc(dataDir);
   const rooms = new RoomManager(kv, history);
   const tournaments = new TournamentManager(rooms);
-  const friends = new FriendsStore(dataDir);
+  const friends = new FriendsStore(dataDir, pool);
   ensurePublicTables(rooms);
 
   const loginLimit = createRateLimiter(20, 60_000);

@@ -13,7 +13,11 @@ export default {
           panel: token('ink-panel'),
           raised: token('ink-raised'),
           overlay: token('ink-overlay'),
+          strong: token('ink-strong'),
+          'strong-muted': token('ink-strong-muted'),
         },
+        sidebar: token('sidebar'),
+        mushroom: token('mushroom'),
         felt: {
           DEFAULT: token('felt'),
           deep: token('felt-deep'),

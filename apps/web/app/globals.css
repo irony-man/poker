@@ -15,6 +15,12 @@
   --ink-raised: 38 33 25;
   --ink-overlay: 10 9 8;
 
+  /* Lobby shell (POKR brand) */
+  --sidebar: 29 4 50;
+  --mushroom: 230 217 215;
+  --ink-strong: 29 4 50;
+  --ink-strong-muted: 90 70 95;
+
   /* Table */
   --felt: 30 91 67;
   --felt-deep: 18 58 43;
@@ -91,6 +97,173 @@ body::before {
 body > * {
   position: relative;
   z-index: 1;
+}
+
+/* Lobby: purple sidebar + mushroom main — no dark vignette. */
+body:has(.lobby-shell) {
+  background-color: rgb(var(--mushroom));
+  background-image: none;
+  color: rgb(var(--ink-strong));
+}
+
+body:has(.lobby-shell)::before {
+  display: none;
+}
+
+.lobby-shell {
+  @apply min-h-dvh flex w-full;
+  background-color: rgb(var(--mushroom));
+  color: rgb(var(--ink-strong));
+}
+
+.lobby-sidebar {
+  background-color: rgb(var(--sidebar));
+  color: rgb(var(--mushroom));
+}
+
+.lobby-main {
+  background-color: rgb(var(--mushroom));
+  color: rgb(var(--ink-strong));
+}
+
+@keyframes lobby-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.lobby-fade-up {
+  animation: lobby-fade-up 0.55s var(--ease-out) both;
+}
+
+.lobby-fade-up-delay-1 {
+  animation-delay: 80ms;
+}
+
+.lobby-fade-up-delay-2 {
+  animation-delay: 160ms;
+}
+
+.lobby-fade-up-delay-3 {
+  animation-delay: 240ms;
+}
+
+/*
+ * Lobby cards: light surfaces + purple brand accents.
+ * Play tables keep the dark hud-* rules above (no .lobby-shell).
+ */
+.lobby-shell .hud-panel {
+  border-color: rgb(var(--sidebar) / 0.12);
+  background-color: rgb(255 252 250 / 0.92);
+  box-shadow:
+    0 1px 0 0 rgb(255 255 255 / 0.65) inset,
+    0 14px 36px rgb(29 4 50 / 0.08);
+  color: rgb(var(--ink-strong));
+  backdrop-filter: none;
+}
+
+.lobby-shell .hud-panel::before {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(var(--sidebar) / 0.28),
+    transparent
+  );
+}
+
+.lobby-shell .hud-input {
+  border-color: rgb(var(--sidebar) / 0.15);
+  background-color: rgb(var(--mushroom) / 0.55);
+  color: rgb(var(--ink-strong));
+}
+
+.lobby-shell .hud-input::placeholder {
+  color: rgb(var(--ink-strong-muted) / 0.65);
+}
+
+.lobby-shell .hud-input:focus {
+  border-color: rgb(var(--sidebar) / 0.45);
+  box-shadow: 0 0 0 3px rgb(var(--sidebar) / 0.1);
+}
+
+.lobby-shell .hud-label {
+  color: rgb(var(--ink-strong-muted));
+}
+
+.lobby-shell .choice-chip {
+  border-color: rgb(var(--sidebar) / 0.14);
+  background-color: rgb(var(--mushroom) / 0.5);
+  color: rgb(var(--ink-strong) / 0.85);
+}
+
+.lobby-shell .choice-chip:hover {
+  border-color: rgb(var(--sidebar) / 0.3);
+  color: rgb(var(--ink-strong));
+}
+
+.lobby-shell .choice-chip-selected {
+  border-color: rgb(var(--sidebar));
+  background-color: rgb(var(--sidebar) / 0.1);
+  color: rgb(var(--sidebar));
+}
+
+.lobby-shell .choice-chip-selected:hover {
+  border-color: rgb(var(--sidebar));
+  color: rgb(var(--sidebar));
+}
+
+.lobby-shell .btn-primary {
+  border-color: rgb(var(--sidebar) / 0.35);
+  background-image: linear-gradient(
+    to bottom,
+    rgb(52 18 82),
+    rgb(var(--sidebar))
+  );
+  color: rgb(var(--mushroom));
+  box-shadow: 0 8px 20px rgb(var(--sidebar) / 0.22);
+}
+
+.lobby-shell .btn-primary:hover {
+  filter: brightness(1.08);
+}
+
+.lobby-shell .btn-ghost {
+  border-color: rgb(var(--sidebar) / 0.22);
+  background-color: rgb(var(--mushroom) / 0.65);
+  color: rgb(var(--ink-strong));
+}
+
+.lobby-shell .btn-ghost:hover {
+  border-color: rgb(var(--sidebar) / 0.4);
+  background-color: rgb(var(--sidebar) / 0.06);
+}
+
+.lobby-shell .field-select {
+  border-color: rgb(var(--sidebar) / 0.18);
+  background-color: rgb(var(--mushroom) / 0.55);
+  color: rgb(var(--ink-strong));
+  color-scheme: light;
+}
+
+.lobby-shell .field-select:focus {
+  border-color: rgb(var(--sidebar) / 0.45);
+  box-shadow: 0 0 0 3px rgb(var(--sidebar) / 0.1);
+}
+
+.lobby-shell .field-select option {
+  background-color: rgb(255 252 250);
+  color: rgb(var(--ink-strong));
+}
+
+.lobby-shell .status-chip {
+  border-color: rgb(var(--sidebar) / 0.18);
+  background-color: rgb(var(--sidebar) / 0.06);
+  color: rgb(var(--sidebar));
 }
 
 @layer base {

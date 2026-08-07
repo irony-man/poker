@@ -101,12 +101,11 @@ export class AuthStore {
 
   private async ensureLoaded(): Promise<void> {
     if (this.loaded) return;
-    await mkdir(path.dirname(this.filePath), { recursive: true });
 
     if (this.pool) {
-      await this.ensurePgSchema();
       await this.loadFromPostgres();
     } else {
+      await mkdir(path.dirname(this.filePath), { recursive: true });
       await this.loadFromFile();
     }
     this.loaded = true;
@@ -137,27 +136,6 @@ export class AuthStore {
     }
   }
 
-  private async ensurePgSchema(): Promise<void> {
-    if (!this.pool) return;
-    await this.pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        username TEXT,
-        username_lower TEXT,
-        password_hash TEXT,
-        avatar_id INT NOT NULL DEFAULT 0,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS username_lower TEXT;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_id INT NOT NULL DEFAULT 0;
-      CREATE UNIQUE INDEX IF NOT EXISTS users_username_lower_uidx
-        ON users (username_lower) WHERE username_lower IS NOT NULL;
-    `);
-  }
-
   private async loadFromPostgres(): Promise<void> {
     if (!this.pool) return;
     const result = await this.pool.query(
@@ -167,19 +145,9 @@ export class AuthStore {
     );
     this.users.clear();
     this.usernameIndex.clear();
-    // Sessions/tickets stay file-backed even with Postgres users
-    try {
-      const raw = await readFile(this.filePath, 'utf8');
-      const snap = JSON.parse(raw) as PersistedSnapshot;
-      for (const s of snap.sessions ?? []) {
-        if (s.expiresAt > Date.now()) this.sessions.set(s.token, s);
-      }
-      for (const t of snap.tickets ?? []) {
-        if (t.expiresAt > Date.now()) this.tickets.set(t.ticket, t);
-      }
-    } catch {
-      /* no local session file yet */
-    }
+    this.sessions.clear();
+    this.tickets.clear();
+
     for (const row of result.rows as {
       id: string;
       name: string;
@@ -202,6 +170,44 @@ export class AuthStore {
       };
       this.indexUser(user);
     }
+
+    const sessions = await this.pool.query(
+      `SELECT token, user_id, expires_at FROM auth_sessions WHERE expires_at > NOW()`,
+    );
+    for (const row of sessions.rows as {
+      token: string;
+      user_id: string;
+      expires_at: Date | string;
+    }[]) {
+      const expiresAt =
+        row.expires_at instanceof Date
+          ? row.expires_at.getTime()
+          : new Date(row.expires_at).getTime();
+      this.sessions.set(row.token, {
+        token: row.token,
+        userId: row.user_id,
+        expiresAt,
+      });
+    }
+
+    const tickets = await this.pool.query(
+      `SELECT ticket, user_id, expires_at FROM auth_tickets WHERE expires_at > NOW()`,
+    );
+    for (const row of tickets.rows as {
+      ticket: string;
+      user_id: string;
+      expires_at: Date | string;
+    }[]) {
+      const expiresAt =
+        row.expires_at instanceof Date
+          ? row.expires_at.getTime()
+          : new Date(row.expires_at).getTime();
+      this.tickets.set(row.ticket, {
+        ticket: row.ticket,
+        userId: row.user_id,
+        expiresAt,
+      });
+    }
   }
 
   private indexUser(user: User): void {
@@ -211,27 +217,51 @@ export class AuthStore {
 
   private async persist(): Promise<void> {
     const run = async () => {
+      if (this.pool) {
+        await this.persistSessionsAndTicketsToPostgres();
+        return;
+      }
       const snap: PersistedSnapshot = {
         users: [...this.users.values()],
         sessions: [...this.sessions.values()],
         tickets: [...this.tickets.values()],
       };
-
-      if (this.pool) {
-        // Users already upserted on write; keep sessions/tickets in the file.
-        const sessionSnap: PersistedSnapshot = {
-          users: [],
-          sessions: snap.sessions,
-          tickets: snap.tickets,
-        };
-        await this.writeAtomic(sessionSnap);
-        return;
-      }
-
       await this.writeAtomic(snap);
     };
     this.writeChain = this.writeChain.then(run, run);
     await this.writeChain;
+  }
+
+  private async persistSessionsAndTicketsToPostgres(): Promise<void> {
+    if (!this.pool) return;
+    await this.pool.query(`DELETE FROM auth_sessions`);
+    await this.pool.query(`DELETE FROM auth_tickets`);
+
+    for (const s of this.sessions.values()) {
+      if (s.expiresAt <= Date.now()) continue;
+      await this.pool.query(
+        `INSERT INTO auth_sessions (token, user_id, expires_at)
+         VALUES ($1, $2, to_timestamp($3 / 1000.0))
+         ON CONFLICT (token) DO UPDATE SET
+           user_id = EXCLUDED.user_id,
+           expires_at = EXCLUDED.expires_at`,
+        [s.token, s.userId, s.expiresAt],
+      );
+    }
+    for (const t of this.tickets.values()) {
+      if (t.expiresAt <= Date.now()) continue;
+      await this.pool.query(
+        `INSERT INTO auth_tickets (ticket, user_id, expires_at)
+         VALUES ($1, $2, to_timestamp($3 / 1000.0))
+         ON CONFLICT (ticket) DO UPDATE SET
+           user_id = EXCLUDED.user_id,
+           expires_at = EXCLUDED.expires_at`,
+        [t.ticket, t.userId, t.expiresAt],
+      );
+    }
+    // Best-effort cleanup of expired rows
+    await this.pool.query(`DELETE FROM auth_sessions WHERE expires_at <= NOW()`);
+    await this.pool.query(`DELETE FROM auth_tickets WHERE expires_at <= NOW()`);
   }
 
   private async writeAtomic(snap: PersistedSnapshot): Promise<void> {

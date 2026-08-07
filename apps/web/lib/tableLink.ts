@@ -8,5 +8,5 @@ export function buildTableJoinLink(tableId: string, inviteCode: string, origin?:
 /** Plain-text blurb for clipboard / native share sheets. */
 export function buildTableJoinShareText(tableId: string, inviteCode: string, origin?: string): string {
   const link = buildTableJoinLink(tableId, inviteCode, origin);
-  return `Join my Felt poker table\nCode: ${inviteCode}\n${link}`;
+  return `Join my POKR poker table\nCode: ${inviteCode}\n${link}`;
 }

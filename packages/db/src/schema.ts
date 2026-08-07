@@ -1,6 +1,6 @@
 /**
- * Schema definitions for PostgreSQL (Drizzle).
- * MVP can also use the file-backed store in the server when DATABASE_URL is unset.
+ * Schema definitions for PostgreSQL.
+ * Server applies this DDL on boot when DATABASE_URL is set.
  */
 export interface UserRow {
   id: string;
@@ -60,6 +60,23 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE UNIQUE INDEX IF NOT EXISTS users_username_lower_uidx
   ON users (username_lower) WHERE username_lower IS NOT NULL;
 
+CREATE TABLE IF NOT EXISTS auth_sessions (
+  token TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS auth_sessions_user_idx ON auth_sessions(user_id);
+CREATE INDEX IF NOT EXISTS auth_sessions_expires_idx ON auth_sessions(expires_at);
+
+CREATE TABLE IF NOT EXISTS auth_tickets (
+  ticket TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS auth_tickets_user_idx ON auth_tickets(user_id);
+CREATE INDEX IF NOT EXISTS auth_tickets_expires_idx ON auth_tickets(expires_at);
 
 CREATE TABLE IF NOT EXISTS tables (
   id TEXT PRIMARY KEY,
@@ -72,7 +89,7 @@ CREATE TABLE IF NOT EXISTS tables (
   turn_time_ms INT NOT NULL,
   max_seats INT NOT NULL,
   is_private BOOLEAN NOT NULL DEFAULT TRUE,
-  host_user_id TEXT NOT NULL REFERENCES users(id),
+  host_user_id TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -87,7 +104,7 @@ CREATE TABLE IF NOT EXISTS hand_history (
 
 CREATE TABLE IF NOT EXISTS chip_ledger (
   id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES users(id),
+  user_id TEXT NOT NULL,
   table_id TEXT NOT NULL,
   delta INT NOT NULL,
   reason TEXT NOT NULL,
@@ -96,4 +113,11 @@ CREATE TABLE IF NOT EXISTS chip_ledger (
 
 CREATE INDEX IF NOT EXISTS hand_history_table_idx ON hand_history(table_id);
 CREATE INDEX IF NOT EXISTS chip_ledger_user_idx ON chip_ledger(user_id);
+
+-- Full social graph as one JSON document (simple durable store).
+CREATE TABLE IF NOT EXISTS social_store (
+  id TEXT PRIMARY KEY DEFAULT 'default',
+  payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 `;

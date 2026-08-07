@@ -67,13 +67,29 @@ For a public URL (Vercel/Railway/Fly), you’ll need accounts + `NEXT_PUBLIC_API
 |----------|---------|---------|
 | `PORT` | `4000` | Game server port |
 | `WEB_ORIGIN` | `http://localhost:3000` | CORS origin |
+| `DATABASE_URL` | unset → file stores | **Postgres** for users, sessions, social, hand history |
 | `REDIS_URL` | unset | Optional Redis for table snapshots/pubsub |
-| `DATABASE_URL` | unset | Optional Postgres for hand history |
-| `DATA_DIR` | `./data` | File-backed history when no Postgres |
+| `DATA_DIR` | `./data` | File fallback when Postgres is unset; also schema.sql dump |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:4000` | Browser → API |
 | `NEXT_PUBLIC_WS_URL` | `ws://localhost:4000/ws` | Browser → WebSocket |
 
-Without Redis/Postgres the server uses in-memory KV and JSONL history under `data/`.
+### Local Postgres
+
+```bash
+# Start Postgres 16 (docker)
+npm run db:up
+
+# Copy env if needed (DATABASE_URL already points at local docker)
+cp .env.example .env
+
+# Server + web
+npm run dev:server
+npm run dev:web
+```
+
+Default URL: `postgres://poker:poker@127.0.0.1:5432/poker`
+
+With `DATABASE_URL` set the server uses Postgres for accounts, sessions/tickets, friends/groups, and hand history. Without it, those fall back to JSON files under `DATA_DIR`.
 
 ## Android
 
@@ -90,7 +106,7 @@ See [apps/android/README.md](apps/android/README.md).
 
 - Authoritative server: clients send action intents; hole cards are private per seat.
 - Identity: unique username + password (argon2 hash), opaque session Bearer tokens for HTTP, short-lived WS tickets.
-- User accounts persist under `DATA_DIR/users.json` (or Postgres `users` when `DATABASE_URL` is set).
+- Persistence: Postgres when `DATABASE_URL` is set (users, auth sessions/tickets, social, hand history); otherwise files under `DATA_DIR`.
 - Action messages require `handId` + monotonic `actionSeq`.
 - Turn timeouts auto-check or auto-fold.
 - Contests are orchestrated in-memory by `TournamentManager` on top of cash `Room`s (no rebuy; auto-deal between hands).

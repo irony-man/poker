@@ -115,15 +115,10 @@ export function ContestsPanel({
   return (
     <div className="hud-panel flex h-full flex-col gap-3 p-4 sm:gap-3.5 sm:p-6 sm:col-span-2">
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h2 className="font-display text-xl font-bold uppercase tracking-wider text-gold">
-            Contests
-          </h2>
-          <p className="mt-1 text-sm text-cream/45 font-medium">
-            Knockout brackets · table match (chip elimination)
-          </p>
-        </div>
-        <span className="status-chip border-cyan/30 bg-cyan/10 text-cyan shrink-0">Tournament</span>
+        <p className="text-sm text-ink-strong-muted font-medium">
+          Knockout brackets · table match (chip elimination)
+        </p>
+        <span className="status-chip shrink-0">Tournament</span>
       </div>
 
       <form onSubmit={onCreate} className="grid gap-3 sm:grid-cols-2 sm:gap-4">
@@ -193,10 +188,10 @@ export function ContestsPanel({
                   type="button"
                   disabled={disabled || busy}
                   onClick={() => onOpenContest(c.id)}
-                  className="flex w-full items-center justify-between gap-2 rounded-lg border border-cream/10 bg-ink/40 px-3 py-2.5 text-left text-sm transition hover:border-gold/30 hover:bg-gold/5"
+                  className="flex w-full items-center justify-between gap-2 rounded-lg border border-sidebar/12 bg-mushroom/45 px-3 py-2.5 text-left text-sm transition hover:border-sidebar/30 hover:bg-sidebar/5"
                 >
-                  <span className="font-medium text-cream/90">{c.name}</span>
-                  <span className="text-xs text-cream/45">
+                  <span className="font-medium text-ink-strong">{c.name}</span>
+                  <span className="text-xs text-ink-strong-muted">
                     {c.mode === 'knockout' ? 'KO' : 'TM'} · {c.entrants.length}/{c.fieldSize}
                   </span>
                 </button>
@@ -207,7 +202,7 @@ export function ContestsPanel({
       )}
 
       {error && (
-        <p role="alert" className="text-sm text-red-300">
+        <p role="alert" className="text-sm text-danger">
           {error}
         </p>
       )}

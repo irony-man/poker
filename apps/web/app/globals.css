@@ -1,3 +1,5 @@
+@import url('https://fonts.cdnfonts.com/css/rf-tone');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -65,11 +67,22 @@
   --dur-fast: 120ms;
   --dur-base: 180ms;
   --dur-slow: 240ms;
+
+  /* Headings — RF Tone (loaded via @import above) */
+  --font-heading: 'RF Tone', 'Segoe UI', system-ui, sans-serif;
+  --font-serif: 'RF Tone', 'Segoe UI', system-ui, sans-serif;
+  --font-display: 'RF Tone', 'Segoe UI', system-ui, sans-serif;
 }
 
 html {
   height: 100%;
   background-color: rgb(var(--ink));
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
 }
 
 body {

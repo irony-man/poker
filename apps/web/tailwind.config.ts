@@ -59,9 +59,10 @@ export default {
         },
       },
       fontFamily: {
-        display: ['var(--font-display)', 'Segoe UI', 'sans-serif'],
+        display: ['var(--font-display)', 'RF Tone', 'Segoe UI', 'sans-serif'],
         body: ['var(--font-body)', 'Segoe UI', 'sans-serif'],
-        serif: ['var(--font-serif)', 'Georgia', 'serif'],
+        serif: ['var(--font-serif)', 'RF Tone', 'Segoe UI', 'sans-serif'],
+        heading: ['var(--font-heading)', 'RF Tone', 'Segoe UI', 'sans-serif'],
       },
       borderRadius: {
         xs: 'var(--radius-xs)',

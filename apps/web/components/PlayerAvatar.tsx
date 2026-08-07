@@ -103,19 +103,28 @@ export function PlayerAvatar({
   size = 48,
   className = '',
   title,
+  fill = false,
 }: {
   avatarId?: number | null;
   userId?: string | null;
   size?: number;
   className?: string;
   title?: string;
+  /** Expand to parent size (parent should set dimensions). */
+  fill?: boolean;
 }) {
   const id = resolveAvatarId(userId, avatarId);
   const palette = PALETTES[id]!;
   return (
     <div
-      className={`relative shrink-0 overflow-hidden rounded-full ring-1 ring-white/15 shadow-md ${className}`}
-      style={{ width: size, height: size, background: palette.bg }}
+      className={`relative overflow-hidden rounded-full ring-1 ring-white/15 shadow-md ${
+        fill ? 'h-full w-full' : 'shrink-0'
+      } ${className}`}
+      style={
+        fill
+          ? { background: palette.bg }
+          : { width: size, height: size, background: palette.bg }
+      }
       title={title ?? AVATAR_LABELS[id]}
       aria-hidden={!title}
     >
@@ -134,9 +143,9 @@ export function AvatarPicker({
   onChange: (id: number) => void;
 }) {
   return (
-    <div>
+    <div className="w-full">
       <span className="hud-label">Profile picture</span>
-      <div className="mt-2 flex flex-wrap gap-2">
+      <div className="mt-2 flex w-full gap-1.5 sm:gap-2">
         {Array.from({ length: AVATAR_PRESET_COUNT }, (_, id) => {
           const selected = value === id;
           return (
@@ -144,15 +153,15 @@ export function AvatarPicker({
               key={id}
               type="button"
               onClick={() => onChange(id)}
-              className={`rounded-full p-0.5 transition ${
+              className={`min-w-0 flex-1 aspect-square rounded-full p-[6%] transition ${
                 selected
-                  ? 'ring-2 ring-gold shadow-glow'
-                  : 'ring-1 ring-cream/20 hover:ring-cream/45'
+                  ? 'ring-2 ring-sidebar shadow-[0_0_0_1px_rgb(var(--sidebar)/0.2)]'
+                  : 'ring-1 ring-sidebar/20 hover:ring-sidebar/45'
               }`}
               aria-label={AVATAR_LABELS[id]}
               aria-pressed={selected}
             >
-              <PlayerAvatar avatarId={id} size={40} />
+              <PlayerAvatar avatarId={id} fill />
             </button>
           );
         })}

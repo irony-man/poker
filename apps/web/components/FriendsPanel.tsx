@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 import {
@@ -39,6 +39,7 @@ export function FriendsPanel({
   const [searchResults, setSearchResults] = useState<FriendProfile[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [newGroupName, setNewGroupName] = useState('');
@@ -47,8 +48,15 @@ export function FriendsPanel({
   /** Owner is editing members of this group id. */
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editMembers, setEditMembers] = useState<Set<string>>(new Set());
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const auth = () => ({ sessionToken: sessionToken! });
+  const friendIds = useMemo(() => new Set(friends.map((f) => f.userId)), [friends]);
+
+  const flash = (msg: string) => {
+    setToast(msg);
+    window.setTimeout(() => setToast(null), 3200);
+  };
 
   const refresh = useCallback(async () => {
     if (disabled || !userId || !sessionToken) return;
@@ -106,19 +114,24 @@ export function FriendsPanel({
     });
   }
 
-  function openAddPeople(group: FriendGroup) {
+  function closeMemberEditor() {
+    setEditingGroupId(null);
+    setEditMembers(new Set());
+  }
+
+  function openManageMembers(group: FriendGroup) {
     if (editingGroupId === group.id) {
-      setEditingGroupId(null);
-      setEditMembers(new Set());
+      closeMemberEditor();
       return;
     }
     setShowCreateGroup(false);
+    setConfirmDeleteId(null);
+    setError(null);
     setEditingGroupId(group.id);
-    // Owner is not a selectable invitee — only friends.
     setEditMembers(
       new Set(
         group.members
-          .filter((m) => m.userId !== group.ownerUserId)
+          .filter((m) => m.userId !== group.ownerUserId && friendIds.has(m.userId))
           .map((m) => m.userId),
       ),
     );
@@ -128,12 +141,14 @@ export function FriendsPanel({
     setBusy(`edit-${groupId}`);
     setError(null);
     try {
-      await updateFriendGroup(groupId, { memberUserIds: [...editMembers] }, auth());
-      setEditingGroupId(null);
-      setEditMembers(new Set());
+      // Only friends — drop anyone no longer connected.
+      const memberUserIds = [...editMembers].filter((id) => friendIds.has(id));
+      await updateFriendGroup(groupId, { memberUserIds }, auth());
+      closeMemberEditor();
+      flash('Group updated');
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update group');
+      setError(err instanceof Error ? err.message : 'Could not update group');
     } finally {
       setBusy(null);
     }
@@ -146,6 +161,7 @@ export function FriendsPanel({
       await sendFriendRequest(targetUserId, auth());
       setSearchQuery('');
       setSearchResults([]);
+      flash('Friend request sent');
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add friend');
@@ -159,6 +175,7 @@ export function FriendsPanel({
     setError(null);
     try {
       await respondFriendRequest(requestId, accept, auth());
+      flash(accept ? 'Friend added' : 'Request declined');
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
@@ -196,7 +213,7 @@ export function FriendsPanel({
   async function onCreateGroup(e: React.FormEvent) {
     e.preventDefault();
     if (!newGroupName.trim()) {
-      setError('Enter a group name');
+      setError('Give your group a name');
       return;
     }
     setBusy('create-group');
@@ -212,6 +229,7 @@ export function FriendsPanel({
       setNewGroupName('');
       setSelectedMembers(new Set());
       setShowCreateGroup(false);
+      flash('Group created');
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create group');
@@ -227,7 +245,13 @@ export function FriendsPanel({
       const result = await inviteFriendGroup(groupId, auth());
       onNavigateTable(result.tableId, result.inviteCode);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Group invite failed');
+      const msg = err instanceof Error ? err.message : 'Could not start table';
+      // Friendlier wording for common server error.
+      setError(
+        /invite friends/i.test(msg)
+          ? 'Some people left your friends list. Open Manage and update the group.'
+          : msg,
+      );
     } finally {
       setBusy(null);
     }
@@ -238,6 +262,9 @@ export function FriendsPanel({
     setError(null);
     try {
       await deleteFriendGroup(groupId, auth());
+      setConfirmDeleteId(null);
+      if (editingGroupId === groupId) closeMemberEditor();
+      flash('Group deleted');
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete group');
@@ -246,14 +273,111 @@ export function FriendsPanel({
     }
   }
 
+  /** Friends still linked, for starting a group table. */
+  function playableMembers(g: FriendGroup): FriendProfile[] {
+    return g.members.filter((m) => m.userId !== userId && friendIds.has(m.userId));
+  }
+
+  function MemberAvatarStack({ members }: { members: FriendProfile[] }) {
+    const shown = members.slice(0, 3);
+    const extra = members.length - shown.length;
+    return (
+      <div className="flex shrink-0 items-center">
+        <div className="flex -space-x-2">
+          {shown.map((m, i) => (
+            <span
+              key={m.userId}
+              className="inline-flex rounded-full ring-2 ring-[rgb(255_252_250)]"
+              style={{ zIndex: shown.length - i }}
+            >
+              <PlayerAvatar
+                userId={m.userId}
+                avatarId={m.avatarId}
+                size={28}
+                title={m.userId === userId ? 'You' : m.name}
+              />
+            </span>
+          ))}
+        </div>
+        {extra > 0 && (
+          <span className="ml-1.5 text-[11px] font-medium text-ink-strong-muted">+{extra}</span>
+        )}
+      </div>
+    );
+  }
+
+  function FriendToggleRow({
+    friend,
+    selected,
+    onToggle,
+  }: {
+    friend: FriendProfile;
+    selected: boolean;
+    onToggle: () => void;
+  }) {
+    return (
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`flex w-full items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left transition ${
+          selected
+            ? 'border-sidebar/40 bg-sidebar/[0.08] text-ink-strong'
+            : 'border-transparent bg-mushroom/40 text-ink-strong-muted hover:border-sidebar/15 hover:bg-mushroom/70'
+        }`}
+      >
+        <span
+          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-[10px] font-bold ${
+            selected
+              ? 'border-sidebar bg-sidebar text-mushroom'
+              : 'border-sidebar/25 bg-transparent text-transparent'
+          }`}
+          aria-hidden
+        >
+          ✓
+        </span>
+        <PlayerAvatar userId={friend.userId} avatarId={friend.avatarId} size={28} title={friend.name} />
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">{friend.name}</span>
+      </button>
+    );
+  }
+
   return (
     <LobbySplitCard imageSrc="/home-cards.png" imageAlt="Friendly home-game cards and chips">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <p className="text-sm font-medium text-ink-strong-muted">
-          Search players · accept requests · challenge to a table
-        </p>
-        <span className="status-chip shrink-0">Social</span>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h1 className="font-display text-xl font-bold tracking-tight text-ink-strong sm:text-2xl">
+            Social
+          </h1>
+          <p className="mt-0.5 text-sm text-ink-strong-muted">
+            Friends, groups, and private tables
+          </p>
+        </div>
       </div>
+
+      {(error || loadError || toast) && (
+        <div
+          role={error || loadError ? 'alert' : 'status'}
+          className={`flex items-start justify-between gap-2 rounded-xl border px-3 py-2 text-sm ${
+            error || loadError
+              ? 'border-danger/25 bg-danger/10 text-danger'
+              : 'border-sidebar/20 bg-sidebar/8 text-sidebar'
+          }`}
+        >
+          <p className="min-w-0 flex-1 leading-snug">{error ?? loadError ?? toast}</p>
+          {(error || loadError) && (
+            <button
+              type="button"
+              className="shrink-0 text-xs font-semibold opacity-70 hover:opacity-100"
+              onClick={() => {
+                setError(null);
+                setLoadError(null);
+              }}
+            >
+              Dismiss
+            </button>
+          )}
+        </div>
+      )}
 
       <label className="block w-full">
         <span className="hud-label">Find player</span>
@@ -261,6 +385,7 @@ export function FriendsPanel({
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="hud-input"
+          placeholder="Search by username…"
           maxLength={32}
           disabled={disabled}
           autoComplete="off"
@@ -268,9 +393,9 @@ export function FriendsPanel({
       </label>
 
       {searchResults.length > 0 && (
-        <ul className="divide-y divide-sidebar/10 rounded-lg border border-sidebar/12">
+        <ul className="divide-y divide-sidebar/10 overflow-hidden rounded-xl border border-sidebar/12">
           {searchResults.map((u) => (
-            <li key={u.userId} className="flex items-center gap-3 px-3 py-2.5">
+            <li key={u.userId} className="flex items-center gap-3 bg-mushroom/40 px-3 py-2.5">
               <PlayerAvatar userId={u.userId} avatarId={u.avatarId} size={32} title={u.name} />
               <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink-strong">
                 {u.name}
@@ -281,7 +406,7 @@ export function FriendsPanel({
                 onClick={() => void onAddFriend(u.userId)}
                 className="btn-ghost py-1.5 px-3 text-xs"
               >
-                Add
+                Add friend
               </button>
             </li>
           ))}
@@ -290,12 +415,12 @@ export function FriendsPanel({
 
       {incoming.length > 0 && (
         <section>
-          <h2 className="hud-label">Requests</h2>
+          <h2 className="hud-label">Friend requests</h2>
           <ul className="mt-2 grid gap-2 sm:grid-cols-2">
             {incoming.map((req) => (
               <li
                 key={req.id}
-                className="flex flex-wrap items-center gap-2 rounded-lg border border-sidebar/12 bg-mushroom/45 px-3 py-2.5"
+                className="flex flex-wrap items-center gap-2 rounded-xl border border-sidebar/12 bg-mushroom/50 px-3 py-2.5"
               >
                 <PlayerAvatar
                   userId={req.from.userId}
@@ -330,12 +455,12 @@ export function FriendsPanel({
 
       {challenges.length > 0 && (
         <section>
-          <h2 className="hud-label">Game invites</h2>
+          <h2 className="hud-label">Table invites</h2>
           <ul className="mt-2 grid gap-2 sm:grid-cols-2">
             {challenges.map((c) => (
               <li
                 key={c.id}
-                className="flex flex-col gap-2 rounded-lg border border-sidebar/12 bg-mushroom/45 px-3 py-3"
+                className="flex flex-col gap-2.5 rounded-xl border border-sidebar/15 bg-gradient-to-b from-mushroom/70 to-mushroom/40 px-3 py-3"
               >
                 <div className="flex items-center gap-2">
                   <PlayerAvatar
@@ -349,7 +474,7 @@ export function FriendsPanel({
                     {c.groupName ? (
                       <span className="text-ink-strong-muted"> · {c.groupName}</span>
                     ) : (
-                      <span className="text-ink-strong-muted"> challenged you</span>
+                      <span className="text-ink-strong-muted"> wants to play</span>
                     )}
                   </span>
                 </div>
@@ -367,16 +492,18 @@ export function FriendsPanel({
         </section>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section>
+      <div className="grid gap-8 lg:grid-cols-2 lg:gap-10">
+        {/* ——— Groups ——— */}
+        <section className="min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="hud-label">Groups ({groups.length})</h2>
+            <h2 className="hud-label">Groups</h2>
             <button
               type="button"
               disabled={disabled || friends.length === 0}
+              title={friends.length === 0 ? 'Add a friend before creating a group' : undefined}
               onClick={() => {
-                setEditingGroupId(null);
-                setEditMembers(new Set());
+                closeMemberEditor();
+                setConfirmDeleteId(null);
                 setShowCreateGroup((v) => !v);
               }}
               className="btn-ghost py-1.5 px-3 text-xs"
@@ -388,250 +515,311 @@ export function FriendsPanel({
           {showCreateGroup && (
             <form
               onSubmit={(e) => void onCreateGroup(e)}
-              className="mt-2 space-y-3 rounded-lg border border-sidebar/12 bg-mushroom/45 p-3 sm:p-4"
+              className="mt-3 space-y-3 rounded-2xl border border-sidebar/15 bg-mushroom/55 p-3.5 sm:p-4"
             >
               <label className="block">
-                <span className="hud-label">Group name</span>
+                <span className="hud-label">Name</span>
                 <input
                   value={newGroupName}
                   onChange={(e) => setNewGroupName(e.target.value)}
                   className="hud-input"
+                  placeholder="e.g. Friday night"
                   maxLength={40}
                   required
                   autoComplete="off"
+                  autoFocus
                 />
               </label>
               <div>
-                <span className="hud-label">Members ({selectedMembers.size}/8)</span>
-                {friends.length === 0 ? (
-                  <p className="mt-1 text-sm text-ink-strong-muted">Add friends first.</p>
-                ) : (
-                  <ul className="mt-2 max-h-40 space-y-1.5 overflow-y-auto">
-                    {friends.map((f) => {
-                      const on = selectedMembers.has(f.userId);
-                      return (
-                        <li key={f.userId}>
-                          <button
-                            type="button"
-                            onClick={() => toggleMember(f.userId)}
-                            className={`flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-sm transition ${
-                              on
-                                ? 'border-sidebar/35 bg-sidebar/10 text-ink-strong'
-                                : 'border-sidebar/12 bg-transparent text-ink-strong-muted hover:border-sidebar/25'
-                            }`}
-                          >
-                            <PlayerAvatar
-                              userId={f.userId}
-                              avatarId={f.avatarId}
-                              size={24}
-                              title={f.name}
-                            />
-                            <span className="min-w-0 flex-1 truncate">{f.name}</span>
-                            <span className="text-[10px] font-display uppercase tracking-wider opacity-70">
-                              {on ? 'In' : 'Add'}
-                            </span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="hud-label">Friends to include</span>
+                  <span className="text-[11px] text-ink-strong-muted">{selectedMembers.size}/8</span>
+                </div>
+                <p className="mt-1 text-xs text-ink-strong-muted">
+                  You are always in the group. Pick who else sits with you.
+                </p>
+                <ul className="mt-2 max-h-44 space-y-1 overflow-y-auto">
+                  {friends.map((f) => (
+                    <li key={f.userId}>
+                      <FriendToggleRow
+                        friend={f}
+                        selected={selectedMembers.has(f.userId)}
+                        onToggle={() => toggleMember(f.userId)}
+                      />
+                    </li>
+                  ))}
+                </ul>
               </div>
               <button
                 type="submit"
                 disabled={disabled || busy === 'create-group' || !newGroupName.trim()}
                 className="btn-primary min-h-10 w-full text-xs"
               >
-                Create group
+                {busy === 'create-group' ? 'Creating…' : 'Create group'}
               </button>
             </form>
           )}
 
           {groups.length === 0 && !showCreateGroup ? (
-            <p className="mt-2 text-sm text-ink-strong-muted">
-              Create a group for one-tap table invites.
-            </p>
+            <div className="mt-3 rounded-2xl border border-dashed border-sidebar/20 bg-mushroom/35 px-4 py-6 text-center">
+              <p className="text-sm font-medium text-ink-strong">No groups yet</p>
+              <p className="mt-1 text-xs leading-relaxed text-ink-strong-muted">
+                Make a crew of friends, then start a private table for everyone in one tap.
+              </p>
+              {friends.length > 0 && (
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => setShowCreateGroup(true)}
+                  className="btn-primary mt-4 py-2 px-4 text-xs"
+                >
+                  Create your first group
+                </button>
+              )}
+            </div>
           ) : (
-            <ul className="mt-2 space-y-2">
+            <ul className="mt-3 space-y-3">
               {groups.map((g) => {
                 const editing = editingGroupId === g.id;
-                const canAddMore = g.isOwner && friends.length > 0;
-                const otherMembers = g.members.filter((m) => m.userId !== userId);
-                const canInviteTable = otherMembers.length > 0;
-                return (
-                <li
-                  key={g.id}
-                  className="rounded-lg border border-sidebar/12 bg-mushroom/45 p-3 sm:p-4"
-                >
-                  <div className="flex items-start gap-3">
-                    {/* Folder icon with member avatar stack (includes you) */}
-                    <div
-                      className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-sidebar/15 bg-sidebar/8"
-                      aria-hidden
+                const playable = playableMembers(g);
+                const canManage = g.isOwner && friends.length > 0;
+                const dirty =
+                  editing &&
+                  (() => {
+                    const original = new Set(
+                      g.members
+                        .filter((m) => m.userId !== g.ownerUserId && friendIds.has(m.userId))
+                        .map((m) => m.userId),
+                    );
+                    if (original.size !== editMembers.size) return true;
+                    for (const id of editMembers) if (!original.has(id)) return true;
+                    return false;
+                  })();
+
+                if (editing) {
+                  return (
+                    <li
+                      key={g.id}
+                      className="rounded-2xl border border-sidebar/25 bg-mushroom/60 p-3.5 shadow-[0_8px_24px_rgb(29_4_50/0.06)] sm:p-4"
                     >
-                      <svg
-                        viewBox="0 0 24 24"
-                        className="absolute inset-1.5 h-[calc(100%-0.75rem)] w-[calc(100%-0.75rem)] text-sidebar/35"
-                        fill="currentColor"
-                      >
-                        <path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z" />
-                      </svg>
-                      {g.members.length > 0 ? (
-                        <div className="relative z-[1] flex -space-x-1.5">
-                          {g.members.slice(0, 3).map((m, i) => (
-                            <span
-                              key={m.userId}
-                              className="inline-flex rounded-full ring-1 ring-mushroom/80"
-                              style={{ zIndex: 3 - i }}
-                            >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-display text-sm font-semibold uppercase tracking-wider text-sidebar">
+                            {g.name}
+                          </p>
+                          <p className="mt-0.5 text-xs text-ink-strong-muted">Edit who’s in this group</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={closeMemberEditor}
+                          className="btn-ghost shrink-0 py-1 px-2.5 text-xs"
+                        >
+                          Close
+                        </button>
+                      </div>
+
+                      <div className="mt-3 flex items-center gap-2.5 rounded-xl border border-sidebar/10 bg-mushroom/70 px-2.5 py-2">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-sidebar/30 bg-sidebar/10 text-[10px] text-sidebar">
+                          ·
+                        </span>
+                        {g.members
+                          .filter((m) => m.userId === g.ownerUserId)
+                          .map((m) => (
+                            <div key={m.userId} className="flex min-w-0 flex-1 items-center gap-2">
                               <PlayerAvatar
                                 userId={m.userId}
                                 avatarId={m.avatarId}
-                                size={18}
-                                title={m.userId === userId ? 'You' : m.name}
+                                size={28}
+                                title="You"
                               />
-                            </span>
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-medium text-ink-strong">You</p>
+                                <p className="text-[10px] uppercase tracking-wide text-ink-strong-muted">
+                                  Owner · always included
+                                </p>
+                              </div>
+                            </div>
                           ))}
+                      </div>
+
+                      <div className="mt-3">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="hud-label">Friends</span>
+                          <span className="text-[11px] text-ink-strong-muted">{editMembers.size}/8</span>
                         </div>
-                      ) : (
-                        <span className="relative z-[1] flex h-5 w-5 items-center justify-center rounded-full bg-sidebar/15 text-[10px] font-bold text-sidebar">
-                          0
-                        </span>
-                      )}
+                        <ul className="mt-1.5 max-h-48 space-y-1 overflow-y-auto">
+                          {friends.map((f) => (
+                            <li key={f.userId}>
+                              <FriendToggleRow
+                                friend={f}
+                                selected={editMembers.has(f.userId)}
+                                onToggle={() => toggleEditMember(f.userId)}
+                              />
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          type="button"
+                          onClick={closeMemberEditor}
+                          className="btn-ghost min-h-10 flex-1 text-xs"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={disabled || busy === `edit-${g.id}` || !dirty}
+                          onClick={() => void onSaveGroupMembers(g.id)}
+                          className="btn-primary min-h-10 flex-[1.4] text-xs"
+                        >
+                          {busy === `edit-${g.id}` ? 'Saving…' : 'Save'}
+                        </button>
+                      </div>
+                    </li>
+                  );
+                }
+
+                return (
+                  <li
+                    key={g.id}
+                    className="rounded-2xl border border-sidebar/12 bg-mushroom/50 p-3.5 sm:p-4"
+                  >
+                    <div className="flex items-center gap-3">
+                      <MemberAvatarStack members={g.members} />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-display text-sm font-semibold uppercase tracking-wider text-sidebar">
+                          {g.name}
+                        </p>
+                        <p className="mt-0.5 text-xs text-ink-strong-muted">
+                          {g.members.length} member{g.members.length === 1 ? '' : 's'}
+                          {g.isOwner ? '' : ' · shared with you'}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-display text-sm font-semibold uppercase tracking-wider text-sidebar">
-                        {g.name}
-                      </p>
-                      <p className="mt-0.5 text-xs text-ink-strong-muted">
-                        {g.members.length} member{g.members.length === 1 ? '' : 's'}
-                        {!g.isOwner ? ' · shared' : ''}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      disabled={disabled || busy === `invite-${g.id}` || !canInviteTable}
-                      onClick={() => void onInviteGroup(g.id)}
-                      className="btn-primary py-1.5 px-3 text-xs"
-                    >
-                      Invite
-                    </button>
-                    {canAddMore && (
-                      <button
-                        type="button"
-                        disabled={disabled}
-                        onClick={() => openAddPeople(g)}
-                        className="btn-ghost py-1.5 px-3 text-xs"
-                      >
-                        {editing ? 'Cancel' : 'Add people'}
-                      </button>
-                    )}
-                    {g.isOwner && (
-                      <button
-                        type="button"
-                        disabled={disabled || busy === `delete-${g.id}`}
-                        onClick={() => void onDeleteGroup(g.id)}
-                        className="btn-ghost py-1.5 px-3 text-xs"
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </div>
-                  {g.members.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1.5">
+
+                    <ul className="mt-3 flex flex-wrap gap-1.5">
                       {g.members.map((m) => {
                         const isYou = m.userId === userId;
+                        const isOwner = m.userId === g.ownerUserId;
                         return (
-                          <span
+                          <li
                             key={m.userId}
-                            className="inline-flex items-center gap-1.5 rounded-md border border-sidebar/12 px-2 py-0.5 text-xs text-ink-strong-muted"
+                            className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs ${
+                              isYou
+                                ? 'border-sidebar/25 bg-sidebar/10 text-sidebar'
+                                : 'border-sidebar/10 bg-mushroom/80 text-ink-strong-muted'
+                            }`}
                           >
                             <PlayerAvatar
                               userId={m.userId}
                               avatarId={m.avatarId}
-                              size={18}
+                              size={16}
                               title={isYou ? 'You' : m.name}
                             />
-                            {isYou ? 'You' : m.name}
-                            {m.userId === g.ownerUserId && !isYou ? (
-                              <span className="text-[9px] uppercase tracking-wide opacity-60">
-                                owner
+                            <span className="max-w-[6.5rem] truncate font-medium">
+                              {isYou ? 'You' : m.name}
+                            </span>
+                            {isOwner && (
+                              <span className="text-[9px] font-display uppercase tracking-wide opacity-55">
+                                host
                               </span>
-                            ) : null}
-                          </span>
+                            )}
+                          </li>
                         );
                       })}
-                    </div>
-                  )}
-                  {editing && (
-                    <div className="mt-3 space-y-2 rounded-md border border-sidebar/12 bg-mushroom/30 p-2.5">
-                      <p className="text-[10px] font-display uppercase tracking-wider text-ink-strong-muted">
-                        Select friends ({editMembers.size}/8)
-                      </p>
-                      {friends.length === 0 ? (
-                        <p className="text-sm text-ink-strong-muted">Add friends first.</p>
-                      ) : (
-                        <ul className="max-h-40 space-y-1 overflow-y-auto">
-                          {friends.map((f) => {
-                            const on = editMembers.has(f.userId);
-                            return (
-                              <li key={f.userId}>
-                                <button
-                                  type="button"
-                                  onClick={() => toggleEditMember(f.userId)}
-                                  className={`flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-sm transition ${
-                                    on
-                                      ? 'border-sidebar/35 bg-sidebar/10 text-ink-strong'
-                                      : 'border-sidebar/12 bg-transparent text-ink-strong-muted hover:border-sidebar/25'
-                                  }`}
-                                >
-                                  <PlayerAvatar
-                                    userId={f.userId}
-                                    avatarId={f.avatarId}
-                                    size={24}
-                                    title={f.name}
-                                  />
-                                  <span className="min-w-0 flex-1 truncate">{f.name}</span>
-                                  <span className="text-[10px] font-display uppercase tracking-wider opacity-70">
-                                    {on ? 'In' : 'Add'}
-                                  </span>
-                                </button>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      )}
+                    </ul>
+
+                    <div className="mt-3 flex flex-col gap-2">
                       <button
                         type="button"
-                        disabled={disabled || busy === `edit-${g.id}`}
-                        onClick={() => void onSaveGroupMembers(g.id)}
-                        className="btn-primary min-h-9 w-full text-xs"
+                        disabled={disabled || busy === `invite-${g.id}` || playable.length === 0}
+                        title={
+                          playable.length === 0
+                            ? 'Add friends to this group to start a table'
+                            : `Start a table with ${playable.length} friend${playable.length === 1 ? '' : 's'}`
+                        }
+                        onClick={() => void onInviteGroup(g.id)}
+                        className="btn-primary min-h-10 w-full text-xs"
                       >
-                        {busy === `edit-${g.id}` ? 'Saving…' : 'Save members'}
+                        {busy === `invite-${g.id}`
+                          ? 'Opening table…'
+                          : playable.length === 0
+                            ? 'Add friends to play'
+                            : 'Invite to table'}
                       </button>
+
+                      {g.isOwner && (
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-0.5">
+                          {canManage && (
+                            <button
+                              type="button"
+                              disabled={disabled}
+                              onClick={() => openManageMembers(g)}
+                              className="text-xs font-semibold text-sidebar underline-offset-2 hover:underline"
+                            >
+                              Manage members
+                            </button>
+                          )}
+                          {confirmDeleteId === g.id ? (
+                            <span className="flex flex-wrap items-center gap-2 text-xs">
+                              <span className="text-ink-strong-muted">Delete this group?</span>
+                              <button
+                                type="button"
+                                disabled={disabled || busy === `delete-${g.id}`}
+                                onClick={() => void onDeleteGroup(g.id)}
+                                className="font-semibold text-danger hover:underline"
+                              >
+                                Yes, delete
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteId(null)}
+                                className="font-semibold text-ink-strong-muted hover:underline"
+                              >
+                                Keep
+                              </button>
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={disabled}
+                              onClick={() => setConfirmDeleteId(g.id)}
+                              className="text-xs font-medium text-ink-strong-muted hover:text-danger"
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </li>
+                  </li>
                 );
               })}
             </ul>
           )}
         </section>
 
-        <section>
-          <h2 className="hud-label">Friends ({friends.length})</h2>
+        {/* ——— Friends ——— */}
+        <section className="min-w-0">
+          <h2 className="hud-label">Friends · {friends.length}</h2>
           {friends.length === 0 ? (
-            <p className="mt-2 text-sm text-ink-strong-muted">No friends yet — search above.</p>
+            <div className="mt-3 rounded-2xl border border-dashed border-sidebar/20 bg-mushroom/35 px-4 py-6 text-center">
+              <p className="text-sm font-medium text-ink-strong">No friends yet</p>
+              <p className="mt-1 text-xs leading-relaxed text-ink-strong-muted">
+                Search by username above to send a request, then challenge them or add them to a
+                group.
+              </p>
+            </div>
           ) : (
-            <ul className="mt-2 space-y-2">
+            <ul className="mt-3 space-y-2">
               {friends.map((f) => (
                 <li
                   key={f.userId}
-                  className="flex items-center gap-3 rounded-lg border border-sidebar/12 bg-mushroom/45 px-3 py-2.5"
+                  className="flex items-center gap-3 rounded-2xl border border-sidebar/12 bg-mushroom/50 px-3 py-2.5"
                 >
-                  <PlayerAvatar userId={f.userId} avatarId={f.avatarId} size={32} title={f.name} />
+                  <PlayerAvatar userId={f.userId} avatarId={f.avatarId} size={36} title={f.name} />
                   <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink-strong">
                     {f.name}
                   </span>
@@ -639,7 +827,7 @@ export function FriendsPanel({
                     type="button"
                     disabled={disabled || busy === `challenge-${f.userId}`}
                     onClick={() => void onChallenge(f.userId)}
-                    className="btn-primary py-1.5 px-3 text-xs"
+                    className="btn-primary shrink-0 py-1.5 px-3 text-xs"
                   >
                     Challenge
                   </button>
@@ -650,14 +838,6 @@ export function FriendsPanel({
         </section>
       </div>
 
-      {(error || loadError) && (
-        <p
-          role="alert"
-          className="status-chip border-danger/30 bg-danger/10 text-danger text-xs"
-        >
-          {error ?? loadError}
-        </p>
-      )}
       {!userId && (
         <p className="text-sm text-ink-strong-muted">Sign in to use friends and groups.</p>
       )}

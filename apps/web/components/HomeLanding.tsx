@@ -20,7 +20,7 @@ const FEATURES: Feature[] = [
     cta: 'Contests',
     href: '/contests',
     image: '/home-knockout.png',
-    imageAlt: 'Player holding cards behind colorful chip stacks',
+    imageAlt: 'Stylish player holding pocket cards at a green felt table',
     imageFirst: true,
   },
   {
@@ -29,7 +29,7 @@ const FEATURES: Feature[] = [
     cta: 'Contests',
     href: '/contests',
     image: '/home-rounds.png',
-    imageAlt: 'Stacks of colorful poker chips',
+    imageAlt: 'Colorful stacks of poker chips on felt',
     imageFirst: false,
   },
   {
@@ -38,7 +38,7 @@ const FEATURES: Feature[] = [
     cta: 'Host',
     href: '/host',
     image: '/home-host.png',
-    imageAlt: 'Hand holding a poker chip',
+    imageAlt: 'Gloved hand holding a branded poker chip',
     imageFirst: true,
   },
   {

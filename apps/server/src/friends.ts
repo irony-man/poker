@@ -450,18 +450,15 @@ export class FriendsStore {
     if (!isInGroup) throw new Error('You are not in this group');
 
     const targets = [...new Set(inviteeIds)].filter((id) => id !== hostUserId);
-    if (targets.length === 0) throw new Error('Select at least one friend to invite');
+    if (targets.length === 0) throw new Error('Add friends to this group before starting a table');
 
     const created: Challenge[] = [];
     for (const targetId of targets) {
-      if (!this.areFriends(hostUserId, targetId)) {
-        throw new Error('Can only invite friends');
-      }
+      // Skip stale entries (unfriended / removed) instead of failing the whole group invite.
+      if (!this.areFriends(hostUserId, targetId)) continue;
       const inGroup =
         group.ownerUserId === targetId || group.memberUserIds.includes(targetId);
-      if (!inGroup) {
-        throw new Error('Invitees must be group members');
-      }
+      if (!inGroup) continue;
       const challenge: Challenge = {
         id: nanoid(10),
         challengerId: hostUserId,
@@ -475,6 +472,9 @@ export class FriendsStore {
       };
       this.challenges.push(challenge);
       created.push(challenge);
+    }
+    if (created.length === 0) {
+      throw new Error('No friends available to invite — update group members first');
     }
     await this.persist();
     return created;

@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { authHref } from '@/lib/authRedirect';
 
 export function LobbyPageShell({
   title,
@@ -16,6 +18,8 @@ export function LobbyPageShell({
   error?: string | null;
   children: ReactNode;
 }) {
+  const pathname = usePathname();
+
   return (
     <div className="lobby-fade-up flex w-full flex-col justify-start">
       <header className="mb-4 shrink-0 sm:mb-5">
@@ -26,14 +30,14 @@ export function LobbyPageShell({
           <p className="mt-2 text-sm text-ink-strong-muted">
             You&apos;ll need an account for this —{' '}
             <Link
-              href="/sign-in"
+              href={authHref('sign-in', pathname)}
               className="font-semibold text-sidebar underline-offset-2 hover:underline"
             >
               sign in
             </Link>{' '}
             or{' '}
             <Link
-              href="/sign-up"
+              href={authHref('sign-up', pathname)}
               className="font-semibold text-sidebar underline-offset-2 hover:underline"
             >
               create one

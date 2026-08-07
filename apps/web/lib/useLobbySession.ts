@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { authHref, currentPathWithQuery } from '@/lib/authRedirect';
 import {
   clearStoredSession,
   readStoredSession,
@@ -77,7 +78,7 @@ export function useLobbySession() {
       clearStoredSession();
       clearSession();
       setSignedIn(false);
-      router.push('/sign-in');
+      router.push(authHref('sign-in', currentPathWithQuery()));
       throw new Error('Sign in required');
     }
     applyStored(setSession, stored);

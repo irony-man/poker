@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, Suspense, useState } from 'react';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { login } from '@/lib/api';
+import { authHref, safeReturnPath } from '@/lib/authRedirect';
 import { loadSavedAvatarId, saveAvatarId } from '@/lib/avatars';
 import { writeStoredSession } from '@/lib/session';
 import { useSession } from '@/lib/store';
@@ -17,6 +18,7 @@ function SignInForm() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const returnTo = safeReturnPath(search.get('next'));
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -29,8 +31,7 @@ function SignInForm() {
       setSession(stored);
       writeStoredSession(stored);
       saveAvatarId(avatarId);
-      const next = search.get('next') || '/';
-      router.replace(next);
+      router.replace(returnTo);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
@@ -83,7 +84,10 @@ function SignInForm() {
           </button>
           <p className="text-sm text-ink-strong-muted">
             No account?{' '}
-            <Link href="/sign-up" className="font-semibold text-sidebar hover:underline">
+            <Link
+              href={authHref('sign-up', returnTo)}
+              className="font-semibold text-sidebar hover:underline"
+            >
               Sign up
             </Link>
           </p>

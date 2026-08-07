@@ -1,17 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { FormEvent, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { FormEvent, Suspense, useState } from 'react';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { AvatarPicker } from '@/components/PlayerAvatar';
 import { signup } from '@/lib/api';
+import { authHref, safeReturnPath } from '@/lib/authRedirect';
 import { loadSavedAvatarId, saveAvatarId } from '@/lib/avatars';
 import { writeStoredSession } from '@/lib/session';
 import { useSession } from '@/lib/store';
 
-export default function SignUpPage() {
+function SignUpForm() {
   const router = useRouter();
+  const search = useSearchParams();
   const setSession = useSession((s) => s.setSession);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -20,6 +22,7 @@ export default function SignUpPage() {
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const returnTo = safeReturnPath(search.get('next'));
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -31,7 +34,7 @@ export default function SignUpPage() {
       setSession(stored);
       writeStoredSession(stored);
       saveAvatarId(stored.avatarId);
-      router.replace('/');
+      router.replace(returnTo);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Signup failed');
     } finally {
@@ -96,12 +99,23 @@ export default function SignUpPage() {
           </button>
           <p className="text-sm text-ink-strong-muted">
             Already have an account?{' '}
-            <Link href="/sign-in" className="font-semibold text-sidebar hover:underline">
+            <Link
+              href={authHref('sign-in', returnTo)}
+              className="font-semibold text-sidebar hover:underline"
+            >
               Sign in
             </Link>
           </p>
         </LobbySplitCard>
       </form>
     </div>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={<p className="text-ink-strong-muted pt-4">Loading…</p>}>
+      <SignUpForm />
+    </Suspense>
   );
 }

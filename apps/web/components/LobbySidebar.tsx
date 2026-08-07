@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { authHref } from '@/lib/authRedirect';
 import { LOBBY_NAV, isLobbyNavActive } from '@/lib/lobbyNav';
 
 export function LobbySidebar({
@@ -68,14 +69,14 @@ export function LobbySidebar({
       ) : (
         <div className="flex flex-col gap-2">
           <Link
-            href="/sign-in"
+            href={authHref('sign-in', pathname)}
             onClick={onClose}
             className="rounded-md border border-mushroom/25 bg-mushroom/10 px-3 py-2.5 text-center text-xs font-display font-bold uppercase tracking-wider text-mushroom transition hover:bg-mushroom/20"
           >
             Sign in
           </Link>
           <Link
-            href="/sign-up"
+            href={authHref('sign-up', pathname)}
             onClick={onClose}
             className="rounded-md px-3 py-2 text-center text-xs font-display font-semibold uppercase tracking-wider text-mushroom/60 transition hover:text-mushroom"
           >

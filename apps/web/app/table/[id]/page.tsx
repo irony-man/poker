@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { TableView } from '@/components/TableView';
+import { authHref } from '@/lib/authRedirect';
 import { clearStoredSession, readStoredSession } from '@/lib/session';
 import { useSession } from '@/lib/store';
 
@@ -79,9 +80,9 @@ function TablePageInner() {
   }
 
   if (needsAuth) {
-    const next = encodeURIComponent(
-      `/table/${tableId}${invite ? `?invite=${invite}` : ''}${spectate ? `${invite ? '&' : '?'}mode=spectate` : ''}`,
-    );
+    const returnTo = `/table/${tableId}${invite ? `?invite=${invite}` : ''}${
+      spectate ? `${invite ? '&' : '?'}mode=spectate` : ''
+    }`;
     return (
       <div className="hud-panel mx-auto max-w-md space-y-4 p-6">
         <h2 className="font-display text-xl uppercase tracking-wider text-mushroom">Sign in to join</h2>
@@ -92,10 +93,10 @@ function TablePageInner() {
           </p>
         )}
         <div className="flex flex-col gap-2">
-          <Link href={`/sign-in?next=${next}`} className="btn-primary min-h-11 text-center">
+          <Link href={authHref('sign-in', returnTo)} className="btn-primary min-h-11 text-center">
             Sign in
           </Link>
-          <Link href={`/sign-up`} className="btn-ghost min-h-11 text-center">
+          <Link href={authHref('sign-up', returnTo)} className="btn-ghost min-h-11 text-center">
             Create account
           </Link>
         </div>

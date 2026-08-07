@@ -25,6 +25,13 @@ services:
         value: /opt/render/project/src/data
       - key: WEB_ORIGIN
         value: https://felt-web.onrender.com
+      # Required. Prefer Supabase Session pooler URI (IPv4) if using Supabase —
+      # direct db.<ref>.supabase.co is IPv6-only and fails on Render free.
+      - key: DATABASE_URL
+        sync: false
+      # Optional override when auto-region detect fails (e.g. ap-southeast-1)
+      - key: SUPABASE_REGION
+        sync: false
       - key: CLERK_SECRET_KEY
         sync: false
 

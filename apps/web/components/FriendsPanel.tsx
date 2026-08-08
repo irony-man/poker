@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 import {
   challengeFriend,
   createFriendGroup,
+  declineFriendChallenge,
   deleteFriendGroup,
   inviteFriendGroup,
   joinFriendChallenge,
@@ -226,6 +227,21 @@ export function FriendsPanel({
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to join challenge');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function onDeclineChallenge(challengeId: string) {
+    setBusy(`decline-${challengeId}`);
+    setError(null);
+    try {
+      await declineFriendChallenge(challengeId, auth());
+      setChallenges((list) => list.filter((c) => c.id !== challengeId));
+      flash('Invite declined');
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not decline invite');
     } finally {
       setBusy(null);
     }
@@ -467,22 +483,24 @@ export function FriendsPanel({
                 <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink-strong">
                   {req.from.name}
                 </span>
-                <button
-                  type="button"
-                  disabled={disabled || busy === req.id}
-                  onClick={() => void onRespond(req.id, true)}
-                  className="btn-primary py-1.5 px-3 text-xs"
-                >
-                  Accept
-                </button>
-                <button
-                  type="button"
-                  disabled={disabled || busy === req.id}
-                  onClick={() => void onRespond(req.id, false)}
-                  className="btn-ghost py-1.5 px-3 text-xs"
-                >
-                  Decline
-                </button>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <IconAction
+                    label="Accept friend request"
+                    disabled={disabled || busy === req.id}
+                    tone="primary"
+                    onClick={() => void onRespond(req.id, true)}
+                  >
+                    <CheckIcon className="h-4 w-4" />
+                  </IconAction>
+                  <IconAction
+                    label="Decline friend request"
+                    disabled={disabled || busy === req.id}
+                    tone="ghost"
+                    onClick={() => void onRespond(req.id, false)}
+                  >
+                    <XIcon className="h-4 w-4" />
+                  </IconAction>
+                </div>
               </li>
             ))}
           </ul>
@@ -495,12 +513,12 @@ export function FriendsPanel({
           <ul className="mt-2 grid gap-2 sm:grid-cols-2">
             {challenges.map((c) => {
               const isContest = c.kind === 'contest' || Boolean(c.contestId);
+              const actionBusy = busy === `join-${c.id}` || busy === `decline-${c.id}`;
               return (
-              <li
-                key={c.id}
-                className="flex flex-col gap-2.5 rounded-xl border border-sidebar/15 bg-gradient-to-b from-mushroom/70 to-mushroom/40 px-3 py-3"
-              >
-                <div className="flex items-center gap-2">
+                <li
+                  key={c.id}
+                  className="flex items-center gap-2 rounded-xl border border-sidebar/15 bg-gradient-to-b from-mushroom/70 to-mushroom/40 px-3 py-2.5"
+                >
                   <PlayerAvatar
                     userId={c.challenger.userId}
                     avatarId={c.challenger.avatarId}
@@ -517,16 +535,25 @@ export function FriendsPanel({
                       <span className="text-ink-strong-muted"> wants to play</span>
                     )}
                   </span>
-                </div>
-                <button
-                  type="button"
-                  disabled={disabled || busy === `join-${c.id}`}
-                  onClick={() => void onJoinChallenge(c)}
-                  className="btn-primary min-h-10 w-full text-xs"
-                >
-                  {isContest ? 'Join contest' : 'Join table'}
-                </button>
-              </li>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <IconAction
+                      label={isContest ? 'Join contest' : 'Join table'}
+                      disabled={disabled || actionBusy}
+                      tone="primary"
+                      onClick={() => void onJoinChallenge(c)}
+                    >
+                      <JoinTableIcon className="h-4 w-4" />
+                    </IconAction>
+                    <IconAction
+                      label="Decline invite"
+                      disabled={disabled || actionBusy}
+                      tone="ghost"
+                      onClick={() => void onDeclineChallenge(c.id)}
+                    >
+                      <XIcon className="h-4 w-4" />
+                    </IconAction>
+                  </div>
+                </li>
               );
             })}
           </ul>
@@ -773,23 +800,34 @@ export function FriendsPanel({
                     </ul>
 
                     <div className="mt-3 flex flex-col gap-2">
-                      <button
-                        type="button"
-                        disabled={disabled || busy === `invite-${g.id}` || playable.length === 0}
-                        title={
-                          playable.length === 0
-                            ? 'Add friends to this group to start a table'
-                            : `Start a table with ${playable.length} friend${playable.length === 1 ? '' : 's'}`
-                        }
-                        onClick={() => void onInviteGroup(g.id)}
-                        className="btn-primary min-h-10 w-full text-xs"
-                      >
-                        {busy === `invite-${g.id}`
-                          ? 'Opening table…'
-                          : playable.length === 0
+                      <div className="flex items-center gap-2">
+                        <IconAction
+                          label={
+                            playable.length === 0
+                              ? 'Add friends to this group to start a table'
+                              : `Invite group to table (${playable.length} friend${playable.length === 1 ? '' : 's'})`
+                          }
+                          disabled={disabled || busy === `invite-${g.id}` || playable.length === 0}
+                          tone="primary"
+                          className="min-h-10 min-w-10"
+                          onClick={() => void onInviteGroup(g.id)}
+                        >
+                          {busy === `invite-${g.id}` ? (
+                            <span className="text-[10px] font-display font-bold uppercase tracking-wider">
+                              …
+                            </span>
+                          ) : (
+                            <InviteTableIcon className="h-4 w-4" />
+                          )}
+                        </IconAction>
+                        <span className="min-w-0 text-xs text-ink-strong-muted">
+                          {playable.length === 0
                             ? 'Add friends to play'
-                            : 'Invite to table'}
-                      </button>
+                            : busy === `invite-${g.id}`
+                              ? 'Opening table…'
+                              : 'Invite to table'}
+                        </span>
+                      </div>
 
                       {g.isOwner && (
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-0.5">
@@ -864,14 +902,24 @@ export function FriendsPanel({
                   <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink-strong">
                     {f.name}
                   </span>
-                  <button
-                    type="button"
+                  <IconAction
+                    label={
+                      busy === `challenge-${f.userId}`
+                        ? 'Starting challenge…'
+                        : `Challenge ${f.name}`
+                    }
                     disabled={disabled || busy === `challenge-${f.userId}`}
+                    tone="primary"
                     onClick={() => void onChallenge(f.userId)}
-                    className="btn-primary shrink-0 py-1.5 px-3 text-xs"
                   >
-                    Challenge
-                  </button>
+                    {busy === `challenge-${f.userId}` ? (
+                      <span className="text-[10px] font-display font-bold uppercase tracking-wider">
+                        …
+                      </span>
+                    ) : (
+                      <ChallengeIcon className="h-4 w-4" />
+                    )}
+                  </IconAction>
                 </li>
               ))}
             </ul>
@@ -883,5 +931,108 @@ export function FriendsPanel({
         <p className="text-sm text-ink-strong-muted">Sign in to use friends and groups.</p>
       )}
     </LobbySplitCard>
+  );
+}
+
+function IconAction({
+  label,
+  disabled,
+  tone,
+  onClick,
+  children,
+  className = '',
+}: {
+  label: string;
+  disabled?: boolean;
+  tone: 'primary' | 'ghost';
+  onClick: () => void;
+  children: ReactNode;
+  className?: string;
+}) {
+  const base =
+    'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border text-sm transition disabled:opacity-50 disabled:pointer-events-none';
+  const tones =
+    tone === 'primary'
+      ? 'btn-primary !min-h-0 !w-9 !px-0 !py-0 shadow-sm'
+      : 'btn-ghost !min-h-0 !w-9 !px-0 !py-0';
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className={`${base} ${tones} ${className}`.trim()}
+    >
+      {children}
+    </button>
+  );
+}
+
+function iconProps(className?: string) {
+  return {
+    viewBox: '0 0 24 24',
+    fill: 'none' as const,
+    stroke: 'currentColor',
+    strokeWidth: 2,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    className,
+    'aria-hidden': true as const,
+  };
+}
+
+function CheckIcon({ className }: { className?: string }) {
+  return (
+    <svg {...iconProps(className)}>
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+
+function XIcon({ className }: { className?: string }) {
+  return (
+    <svg {...iconProps(className)}>
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  );
+}
+
+/** Enter / join a shared table or contest. */
+function JoinTableIcon({ className }: { className?: string }) {
+  return (
+    <svg {...iconProps(className)}>
+      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+      <path d="M10 17 15 12 10 7" />
+      <path d="M15 12H3" />
+    </svg>
+  );
+}
+
+/** 1v1 challenge — crossed swords. */
+function ChallengeIcon({ className }: { className?: string }) {
+  return (
+    <svg {...iconProps(className)}>
+      <path d="M14.5 17.5 3 6V3h3l11.5 11.5" />
+      <path d="m13 19 6-6" />
+      <path d="m16 16 4 4" />
+      <path d="m19 21 2-2" />
+      <path d="M14.5 6.5 18 3h3v3l-3.5 3.5" />
+      <path d="m5 14 4 4" />
+      <path d="m7 17-3 3" />
+      <path d="m3 19 2 2" />
+    </svg>
+  );
+}
+
+/** Invite group of friends around a table. */
+function InviteTableIcon({ className }: { className?: string }) {
+  return (
+    <svg {...iconProps(className)}>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
   );
 }

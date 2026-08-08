@@ -57,6 +57,10 @@ describe('FriendsStore', () => {
     const pending = await friends.listPendingChallenges(auth, 'user-bob');
     expect(pending).toHaveLength(1);
     expect(pending[0]!.challenger.name).toBe('Alice');
+
+    const declined = await friends.declineChallenge(challenge.id, 'user-bob');
+    expect(declined.ok).toBe(true);
+    expect(await friends.listPendingChallenges(auth, 'user-bob')).toHaveLength(0);
   });
 
   it('finds users by exact username only', () => {

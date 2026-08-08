@@ -364,6 +364,14 @@ export async function joinFriendChallenge(challengeId: string, options: AuthOpti
   });
 }
 
+export async function declineFriendChallenge(challengeId: string, options: AuthOptions) {
+  return authedFetch(`/api/friends/challenges/${challengeId}/decline`, {
+    ...options,
+    method: 'POST',
+    body: {},
+  }) as Promise<{ ok: boolean }>;
+}
+
 export type ContestMode = 'rounds' | 'chips';
 export type ContestStatus = 'registering' | 'running' | 'completed' | 'cancelled';
 

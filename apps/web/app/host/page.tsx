@@ -26,6 +26,10 @@ export default function HostPage() {
 
   const maxBots = Math.max(0, maxSeats - 1);
   const maxFriendInvites = Math.min(8, Math.max(0, maxSeats - botCount - 1));
+  const codePreview = customRoomCode.trim();
+  const moreSummary =
+    `${botCount === 0 ? 'No bots' : `${botCount} bot${botCount === 1 ? '' : 's'}`}` +
+    ` · ${codePreview ? `code ${codePreview}` : 'auto code'}`;
 
   useEffect(() => {
     if (botCount > maxBots) setBotCount(maxBots);
@@ -87,14 +91,6 @@ export default function HostPage() {
     >
       <form onSubmit={onCreate}>
         <LobbySplitCard imageSrc="/host-table.png" imageAlt="Host a private table for your group">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="font-display text-xl font-bold uppercase tracking-wider text-sidebar">
-              Create table
-            </h2>
-            <span className="text-[10px] font-display uppercase tracking-[0.2em] text-ink-strong-muted">
-              Online
-            </span>
-          </div>
           <ChoiceRow
             label="Stakes"
             name="host-stakes"
@@ -120,29 +116,52 @@ export default function HostPage() {
             options={SEAT_OPTIONS}
             onSelect={setMaxSeats}
           />
-          <ChoiceRow
-            label="Starting bots"
-            name="host-bots"
-            selected={botCount}
-            options={Array.from({ length: maxBots + 1 }, (_, n) => n)}
-            onSelect={setBotCount}
-            format={(n) => (n === 0 ? 'None' : String(n))}
-          />
-          <label className="block">
-            <span className="hud-label">Room code (optional)</span>
-            <input
-              value={customRoomCode}
-              onChange={(e) => setCustomRoomCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
-              className="hud-input font-mono tracking-[0.2em]"
-              inputMode="numeric"
-              pattern="\d{4,8}"
-              maxLength={8}
-              autoComplete="off"
-            />
-            <span className="field-help">
-              Leave blank to auto-generate, or enter 4–8 digits
-            </span>
-          </label>
+
+          <details className="group rounded-xl border border-sidebar/12 bg-mushroom/40 open:bg-mushroom/55">
+            <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm outline-none marker:content-none [&::-webkit-details-marker]:hidden focus-visible:ring-2 focus-visible:ring-sidebar/30">
+              <span className="min-w-0 flex-1">
+                <span className="hud-label block">Bots & room code</span>
+                <span className="mt-0.5 block text-xs text-ink-strong-muted">{moreSummary}</span>
+              </span>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-4 w-4 shrink-0 text-ink-strong-muted transition-transform duration-200 group-open:rotate-180"
+                aria-hidden
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </summary>
+            <div className="space-y-4 border-t border-sidebar/10 px-3 py-3.5">
+              <ChoiceRow
+                label="Starting bots"
+                name="host-bots"
+                selected={botCount}
+                options={Array.from({ length: maxBots + 1 }, (_, n) => n)}
+                onSelect={setBotCount}
+                format={(n) => (n === 0 ? 'None' : String(n))}
+              />
+              <label className="block">
+                <span className="hud-label">Room code (optional)</span>
+                <input
+                  value={customRoomCode}
+                  onChange={(e) => setCustomRoomCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                  className="hud-input font-mono tracking-[0.2em]"
+                  inputMode="numeric"
+                  pattern="\d{4,8}"
+                  maxLength={8}
+                  autoComplete="off"
+                />
+                <span className="field-help">
+                  Leave blank to auto-generate, or enter 4–8 digits
+                </span>
+              </label>
+            </div>
+          </details>
 
           <FriendInvitePicker
             sessionToken={sessionToken}

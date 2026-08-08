@@ -557,6 +557,17 @@ async function main() {
     res.json({ ok: true });
   });
 
+  app.post('/api/friends/challenges/:id/decline', async (req, res) => {
+    const userId = requireUserId(req, res);
+    if (!userId) return;
+    const result = await friends.declineChallenge(req.params.id!, userId);
+    if (!result.ok) {
+      res.status(404).json({ error: result.error });
+      return;
+    }
+    res.json({ ok: true });
+  });
+
   app.post('/api/contests', async (req, res) => {
     const body = CreateContestBodySchema.safeParse(req.body);
     if (!body.success) {

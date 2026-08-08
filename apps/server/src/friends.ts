@@ -27,7 +27,7 @@ export interface Challenge {
   inviteCode: string;
   /** Defaults to table when omitted (legacy snapshots). */
   kind?: ChallengeKind;
-  status: 'pending' | 'joined' | 'expired';
+  status: 'pending' | 'joined' | 'expired' | 'declined';
   createdAt: number;
   /** Present when this challenge was created via a group quick-invite. */
   groupId?: string;
@@ -387,6 +387,24 @@ export class FriendsStore {
     if (!c || c.challengedId !== userId) return;
     c.status = 'joined';
     await this.persist();
+  }
+
+  /** Challenged player declines a pending table/contest invite. */
+  async declineChallenge(
+    challengeId: string,
+    userId: string,
+  ): Promise<{ ok: true } | { ok: false; error: string }> {
+    await this.ensureLoaded();
+    const c = this.challenges.find((x) => x.id === challengeId);
+    if (!c || c.challengedId !== userId) {
+      return { ok: false, error: 'Invite not found' };
+    }
+    if (c.status !== 'pending') {
+      return { ok: false, error: 'Invite is no longer pending' };
+    }
+    c.status = 'declined';
+    await this.persist();
+    return { ok: true };
   }
 
   private groupView(auth: AuthStore, group: FriendGroup, viewerId: string): FriendGroupView {

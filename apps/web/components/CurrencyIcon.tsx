@@ -1,6 +1,6 @@
 'use client';
 
-import { formatMoneyAmount } from '@/lib/currency';
+import { coerceMoney, formatMoneyAmount } from '@/lib/currency';
 
 /**
  * In-app money unit mark (public/currency.svg). Sits after amounts like the old "chips" label.
@@ -64,7 +64,8 @@ export function MoneyAmount({
   showChips = false,
   chipsClassName = '',
 }: {
-  amount: number;
+  /** Accepts null/undefined from incomplete API payloads. */
+  amount: number | null | undefined;
   className?: string;
   /** Classes on the trailing currency.svg (unit mark). */
   iconClassName?: string;
@@ -76,7 +77,7 @@ export function MoneyAmount({
   showChips?: boolean;
   chipsClassName?: string;
 }) {
-  const n = Math.max(0, Math.floor(amount));
+  const n = coerceMoney(amount);
   const text = compact ? formatMoneyAmount(n) : n.toLocaleString();
 
   return (

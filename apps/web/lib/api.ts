@@ -132,7 +132,18 @@ export async function fetchMe(sessionToken: string): Promise<MeProfile> {
     headers: sessionHeaders(sessionToken),
   });
   if (!res.ok) throw new Error(await parseError(res, 'Could not load profile'));
-  return res.json() as Promise<MeProfile>;
+  const data = (await res.json()) as MeProfile;
+  return {
+    ...data,
+    chipBalance:
+      typeof data.chipBalance === 'number' && Number.isFinite(data.chipBalance)
+        ? Math.max(0, Math.floor(data.chipBalance))
+        : 0,
+    avatarId:
+      typeof data.avatarId === 'number' && Number.isFinite(data.avatarId)
+        ? Math.max(0, Math.floor(data.avatarId))
+        : 0,
+  };
 }
 
 export async function updateMe(
@@ -145,7 +156,18 @@ export async function updateMe(
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(await parseError(res, 'Could not update profile'));
-  return res.json() as Promise<MeProfile>;
+  const data = (await res.json()) as MeProfile;
+  return {
+    ...data,
+    chipBalance:
+      typeof data.chipBalance === 'number' && Number.isFinite(data.chipBalance)
+        ? Math.max(0, Math.floor(data.chipBalance))
+        : 0,
+    avatarId:
+      typeof data.avatarId === 'number' && Number.isFinite(data.avatarId)
+        ? Math.max(0, Math.floor(data.avatarId))
+        : 0,
+  };
 }
 
 export async function createTable(

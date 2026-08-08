@@ -40,8 +40,8 @@ export class AuthWalletStore implements WalletStore {
   getBalance(userId: string): number {
     if (isBotUserId(userId)) return Number.MAX_SAFE_INTEGER;
     const bal = this.owner.getChipBalance(userId);
-    if (bal === undefined) return 0;
-    return bal;
+    if (typeof bal !== 'number' || !Number.isFinite(bal)) return 0;
+    return Math.max(0, Math.floor(bal));
   }
 
   async ensureStartingBalance(userId: string): Promise<number> {

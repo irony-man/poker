@@ -7,12 +7,15 @@ import { authHref } from '@/lib/authRedirect';
 
 export function LobbyPageShell({
   title,
+  subtitle,
   requireAuth = true,
   signedIn,
   error,
   children,
 }: {
   title: string;
+  /** Optional supporting line under the H1 (full-width page header). */
+  subtitle?: string;
   requireAuth?: boolean;
   signedIn: boolean;
   error?: string | null;
@@ -22,10 +25,15 @@ export function LobbyPageShell({
 
   return (
     <div className="lobby-fade-up flex w-full flex-col justify-start">
-      <header className="mb-4 shrink-0 sm:mb-5">
+      <header className="mb-4 w-full shrink-0 sm:mb-5">
         <h1 className="font-display text-3xl font-bold tracking-tight text-ink-strong sm:text-4xl">
           {title}
         </h1>
+        {subtitle && (
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-strong-muted sm:mt-2.5 sm:text-base">
+            {subtitle}
+          </p>
+        )}
         {requireAuth && !signedIn && (
           <p className="mt-2 text-sm text-ink-strong-muted">
             You&apos;ll need an account for this —{' '}

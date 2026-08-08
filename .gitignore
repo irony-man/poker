@@ -27,3 +27,5 @@ apps/android/local.properties
 apps/android/build-apk.log
 
 /.idea/
+/.local-pg/
+.tmp-screenshots/

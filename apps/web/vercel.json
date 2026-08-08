@@ -1,0 +1,5 @@
+{
+  "installCommand": "cd ../.. && npm ci",
+  "buildCommand": "cd ../.. && npm run build -w @poker/web",
+  "framework": "nextjs"
+}

@@ -1,5 +1,5 @@
 {
   "installCommand": "npm ci",
-  "buildCommand": "npm run build:web",
+  "buildCommand": "npm run build -w @poker/web",
   "framework": "nextjs"
 }

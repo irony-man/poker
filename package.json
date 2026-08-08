@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "build": "npm run build -w @poker/engine -w @poker/protocol -w @poker/db -w @poker/server -w @poker/web",
-    "build:web": "npm run build -w @poker/engine -w @poker/protocol && npm run build -w @poker/web",
+    "build:web": "npm run build -w @poker/web",
     "dev": "npm run dev -w @poker/server & npm run dev -w @poker/web",
     "dev:server": "npm run dev -w @poker/server",
     "dev:web": "npm run dev -w @poker/web",

@@ -114,6 +114,13 @@ export function ContestsPanel({
 
   const maxBots = Math.max(0, fieldSize - 1);
   const maxFriendInvites = Math.min(8, Math.max(0, fieldSize - 1));
+  const moreSummary =
+    `${botCount === 0 ? 'No fill bots' : `Up to ${botCount} fill bot${botCount === 1 ? '' : 's'}`}` +
+    ` · ${
+      inviteFriendIds.length === 0
+        ? 'no invites'
+        : `${inviteFriendIds.length} invite${inviteFriendIds.length === 1 ? '' : 's'}`
+    }`;
 
   useEffect(() => {
     if (botCount > maxBots) setBotCount(maxBots);
@@ -224,18 +231,6 @@ export function ContestsPanel({
 
   return (
     <LobbySplitCard imageSrc="/home-knockout.png" imageAlt="Multi-seat tournament table ready to fill">
-      <header className="min-w-0">
-        <p className="font-display text-[0.68rem] font-bold uppercase tracking-[0.18em] text-ink-strong/45">
-          Competitive play
-        </p>
-        <h2 className="mt-1.5 font-display text-2xl font-bold leading-tight tracking-tight text-ink-strong sm:text-[1.7rem]">
-          Host a contest
-        </h2>
-        <p className="mt-2 text-sm leading-relaxed text-ink-strong-muted">
-          Set a max table size, invite friends, then start — leftover seats can fill with bots.
-        </p>
-      </header>
-
       {joined.length > 0 && (
         <div className="rounded-xl border border-sidebar/12 bg-mushroom/45 p-3.5 sm:p-4">
           <div className="mb-2.5 flex items-baseline justify-between gap-2">
@@ -348,18 +343,6 @@ export function ContestsPanel({
           <p className="field-help mt-2.5">{sizeBlurb(fieldSize)}</p>
         </div>
 
-        <div className="min-w-0">
-          <ChoiceRow
-            label="Fill bots if empty"
-            name="contest-bots"
-            selected={botCount}
-            options={Array.from({ length: maxBots + 1 }, (_, n) => n)}
-            onSelect={setBotCount}
-            format={(n) => (n === 0 ? 'None' : String(n))}
-          />
-          <p className="field-help mt-2.5">{botsBlurb(botCount, fieldSize)}</p>
-        </div>
-
         {mode === 'rounds' && (
           <div className="min-w-0">
             <ChoiceRow
@@ -374,15 +357,48 @@ export function ContestsPanel({
           </div>
         )}
 
-        <FriendInvitePicker
-          sessionToken={sessionToken}
-          selectedIds={inviteFriendIds}
-          onChange={setInviteFriendIds}
-          disabled={disabled || busy}
-          maxSelect={Math.max(0, maxFriendInvites)}
-          title="Invite friends"
-          help="They get a contest invite in Friends. Start later and empty seats can fill with bots."
-        />
+        <details className="group rounded-xl border border-sidebar/12 bg-mushroom/40 open:bg-mushroom/55">
+          <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm outline-none marker:content-none [&::-webkit-details-marker]:hidden focus-visible:ring-2 focus-visible:ring-sidebar/30">
+            <span className="min-w-0 flex-1">
+              <span className="hud-label block">Bots & friends</span>
+              <span className="mt-0.5 block text-xs text-ink-strong-muted">{moreSummary}</span>
+            </span>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-4 w-4 shrink-0 text-ink-strong-muted transition-transform duration-200 group-open:rotate-180"
+              aria-hidden
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </summary>
+          <div className="space-y-4 border-t border-sidebar/10 px-3 py-3.5">
+            <div className="min-w-0">
+              <ChoiceRow
+                label="Fill bots if empty"
+                name="contest-bots"
+                selected={botCount}
+                options={Array.from({ length: maxBots + 1 }, (_, n) => n)}
+                onSelect={setBotCount}
+                format={(n) => (n === 0 ? 'None' : String(n))}
+              />
+              <p className="field-help mt-2.5">{botsBlurb(botCount, fieldSize)}</p>
+            </div>
+            <FriendInvitePicker
+              sessionToken={sessionToken}
+              selectedIds={inviteFriendIds}
+              onChange={setInviteFriendIds}
+              disabled={disabled || busy}
+              maxSelect={Math.max(0, maxFriendInvites)}
+              title="Invite friends"
+              help="They get a contest invite in Friends. Start later and empty seats can fill with bots."
+            />
+          </div>
+        </details>
 
         <div>
           <button

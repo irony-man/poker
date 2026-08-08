@@ -27,7 +27,7 @@ export default function ContestsListPage() {
 
   return (
     <LobbyPageShell
-      title="Contests"
+      title="Host Contests"
       subtitle="Host a room for friends in chip freezeout or a fixed run of hands, set the max table size, invite people, and start when the seats look right."
       signedIn={signedIn}
       error={error}

@@ -24,9 +24,7 @@ export function LobbySplitCard({
 }) {
   return (
     <div
-      className={`grid w-full items-start gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-10 xl:gap-14 ${
-        mediaHeader ? 'lg:items-start' : 'lg:items-center'
-      }`}
+      className='grid w-full items-start gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-10 xl:gap-14'
     >
       <div
         className={`relative mx-auto flex w-full max-w-md flex-col gap-4 lg:max-w-none ${

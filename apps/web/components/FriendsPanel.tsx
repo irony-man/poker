@@ -47,6 +47,7 @@ export function FriendsPanel({
   const [toast, setToast] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  const [socialTab, setSocialTab] = useState<'friends' | 'groups'>('friends');
   const [newGroupName, setNewGroupName] = useState('');
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
   const [showCreateGroup, setShowCreateGroup] = useState(false);
@@ -560,11 +561,50 @@ export function FriendsPanel({
         </section>
       )}
 
-      <div className="grid gap-8 lg:grid-cols-2 lg:gap-10">
-        {/* ——— Groups ——— */}
-        <section className="min-w-0">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="hud-label">Groups</h2>
+      <div className="min-w-0">
+        <div
+          role="tablist"
+          aria-label="Friends and groups"
+          className="flex rounded-xl border border-sidebar/15 bg-mushroom/50 p-1"
+        >
+          {(
+            [
+              { id: 'friends' as const, label: 'Friends' },
+              { id: 'groups' as const, label: 'Groups' },
+            ] as const
+          ).map((tab) => {
+            const selected = socialTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                id={`social-tab-${tab.id}`}
+                aria-selected={selected}
+                aria-controls={`social-panel-${tab.id}`}
+                disabled={disabled}
+                onClick={() => setSocialTab(tab.id)}
+                className={[
+                  'relative min-h-10 flex-1 rounded-lg px-3 py-2 text-center font-display text-xs font-bold uppercase tracking-[0.14em] transition',
+                  selected
+                    ? 'bg-sidebar text-mushroom shadow-[0_4px_14px_rgb(29_4_50/0.18)]'
+                    : 'text-ink-strong-muted hover:bg-sidebar/[0.06] hover:text-sidebar',
+                ].join(' ')}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {socialTab === 'groups' && (
+        <section
+          role="tabpanel"
+          id="social-panel-groups"
+          aria-labelledby="social-tab-groups"
+          className="mt-3 min-w-0"
+        >
+          <div className="flex items-center justify-end gap-2">
             <button
               type="button"
               disabled={disabled || friends.length === 0}
@@ -879,12 +919,17 @@ export function FriendsPanel({
             </ul>
           )}
         </section>
+        )}
 
-        {/* ——— Friends ——— */}
-        <section className="min-w-0">
-          <h2 className="hud-label">Friends · {friends.length}</h2>
+        {socialTab === 'friends' && (
+        <section
+          role="tabpanel"
+          id="social-panel-friends"
+          aria-labelledby="social-tab-friends"
+          className="mt-3 min-w-0"
+        >
           {friends.length === 0 ? (
-            <div className="mt-3 rounded-2xl border border-dashed border-sidebar/20 bg-mushroom/35 px-4 py-6 text-center">
+            <div className="rounded-2xl border border-dashed border-sidebar/20 bg-mushroom/35 px-4 py-6 text-center">
               <p className="text-sm font-medium text-ink-strong">No friends yet</p>
               <p className="mt-1 text-xs leading-relaxed text-ink-strong-muted">
                 Enter someone&apos;s exact username under Find player to send a request, then
@@ -892,7 +937,7 @@ export function FriendsPanel({
               </p>
             </div>
           ) : (
-            <ul className="mt-3 space-y-2">
+            <ul className="space-y-2">
               {friends.map((f) => (
                 <li
                   key={f.userId}
@@ -925,6 +970,7 @@ export function FriendsPanel({
             </ul>
           )}
         </section>
+        )}
       </div>
 
       {!userId && (

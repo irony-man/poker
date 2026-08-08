@@ -132,6 +132,9 @@ function optionsFromUrl(connectionString: string, connectHost: string, servernam
 
 /**
  * Build pool options that dial IPv4 when possible.
+ *
+ * Supabase `db.<ref>.supabase.co` is often IPv6-only. Render (and similar PaaS)
+ * has no IPv6 egress — never dial AAAA for those hosts; rewrite to the session pooler first.
  */
 async function buildPoolOptions(connectionString: string): Promise<PoolOptions> {
   let url = connectionString;
@@ -142,6 +145,8 @@ async function buildPoolOptions(connectionString: string): Promise<PoolOptions> 
     return { connectionString: url, connectionTimeoutMillis: 15_000 };
   }
 
+  const isSupabaseDirect = /^db\.[a-z0-9]+\.supabase\.co$/i.test(hostname);
+
   // Prefer IPv4 to the configured host.
   try {
     const { address } = await dnsLookup(hostname, { family: 4 });
@@ -151,37 +156,36 @@ async function buildPoolOptions(connectionString: string): Promise<PoolOptions> 
     /* no A record */
   }
 
-  // Local / dual-stack hosts can reach Supabase direct over IPv6. Prefer that before
-  // rewriting to the session pooler (which needs the correct region + pooler user).
-  try {
-    const { address } = await dnsLookup(hostname, { family: 6 });
-    console.log(`[db] connecting via IPv6 ${address} (${hostname})`);
-    return optionsFromUrl(url, address, hostname);
-  } catch {
-    /* no AAAA record */
-  }
-
-  // Supabase direct (`db.<ref>.supabase.co`) → session pooler over IPv4.
-  const pooler = await supabasePoolerUrl(url);
-  if (pooler) {
-    url = pooler;
-    hostname = new URL(url).hostname;
-    try {
-      const { address } = await dnsLookup(hostname, { family: 4 });
-      console.log(`[db] connecting via IPv4 ${address} (${hostname})`);
-      return optionsFromUrl(url, address, hostname);
-    } catch {
-      return optionsFromUrl(url, hostname);
+  // Supabase direct without an A record → session pooler (IPv4), never raw AAAA.
+  if (isSupabaseDirect) {
+    const pooler = await supabasePoolerUrl(url);
+    if (pooler) {
+      url = pooler;
+      hostname = new URL(url).hostname;
+      try {
+        const { address } = await dnsLookup(hostname, { family: 4 });
+        console.log(`[db] connecting via IPv4 ${address} (${hostname})`);
+        return optionsFromUrl(url, address, hostname);
+      } catch {
+        console.log(`[db] connecting to pooler hostname ${hostname}`);
+        return optionsFromUrl(url, hostname);
+      }
     }
-  }
-
-  if (/^db\.[a-z0-9]+\.supabase\.co$/i.test(hostname)) {
     throw new Error(
       'Supabase direct host is IPv6-only and this host has no IPv6 route. ' +
         'Set DATABASE_URL to the Session pooler URI from Supabase → Connect ' +
         '(aws-0-<region>.pooler.supabase.com:5432, user postgres.<project-ref>), ' +
         'or set SUPABASE_REGION (e.g. ap-southeast-1).',
     );
+  }
+
+  // Non-Supabase: dual-stack IPv6 when no A record exists.
+  try {
+    const { address } = await dnsLookup(hostname, { family: 6 });
+    console.log(`[db] connecting via IPv6 ${address} (${hostname})`);
+    return optionsFromUrl(url, address, hostname);
+  } catch {
+    /* no AAAA record */
   }
 
   console.log(`[db] IPv4 lookup failed for ${hostname}; using hostname as-is`);

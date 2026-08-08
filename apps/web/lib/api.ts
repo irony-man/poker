@@ -265,6 +265,8 @@ export interface FriendProfile {
   /** Present on friend search results. */
   username?: string;
   avatarId: number;
+  /** True when they recently used the app (for invite UX). */
+  online?: boolean;
 }
 
 export interface PendingRequest {
@@ -323,6 +325,15 @@ export async function listFriends(options: AuthOptions) {
   }>;
 }
 
+/** Keep lobby session "online" for friend invite filters. */
+export async function pingPresence(options: AuthOptions) {
+  return authedFetch('/api/presence', {
+    ...options,
+    method: 'POST',
+    body: {},
+  }) as Promise<{ ok: true; onlineMs: number }>;
+}
+
 export async function searchUsers(query: string, options: AuthOptions) {
   const params = new URLSearchParams({ q: query });
   return authedFetch(`/api/friends/search?${params}`, options) as Promise<{
@@ -347,6 +358,13 @@ export async function respondFriendRequest(
     ...options,
     method: 'POST',
     body: { accept },
+  });
+}
+
+export async function removeFriend(friendUserId: string, options: AuthOptions) {
+  return authedFetch(`/api/friends/${encodeURIComponent(friendUserId)}`, {
+    ...options,
+    method: 'DELETE',
   });
 }
 

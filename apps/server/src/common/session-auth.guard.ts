@@ -9,12 +9,16 @@ import type { Request } from 'express';
 import { AuthService } from '../auth/auth.service.js';
 import type { User } from '../auth/auth.types.js';
 import { bearerToken } from '../auth/bearer.js';
+import { PresenceService } from '../presence/presence.service.js';
 
 export const SESSION_USER_KEY = 'feltUser';
 
 @Injectable()
 export class SessionAuthGuard implements CanActivate {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly presence: PresenceService,
+  ) {}
 
   canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest<Request & { [SESSION_USER_KEY]?: User }>();
@@ -27,6 +31,7 @@ export class SessionAuthGuard implements CanActivate {
       throw new UnauthorizedException({ error: 'Session expired or invalid' });
     }
     req[SESSION_USER_KEY] = user;
+    this.presence.touch(user.id);
     return true;
   }
 }

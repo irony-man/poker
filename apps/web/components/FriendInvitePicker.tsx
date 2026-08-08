@@ -30,14 +30,26 @@ export function FriendInvitePicker({
   const [groups, setGroups] = useState<FriendGroup[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [onlineOnly, setOnlineOnly] = useState(false);
 
   const selected = useMemo(() => new Set(selectedIds), [selectedIds]);
   const excluded = useMemo(() => new Set(excludeUserIds), [excludeUserIds]);
 
-  const visibleFriends = useMemo(
-    () => friends.filter((f) => !excluded.has(f.userId)),
+  const onlineFriends = useMemo(
+    () => friends.filter((f) => !excluded.has(f.userId) && f.online),
     [friends, excluded],
   );
+
+  const visibleFriends = useMemo(() => {
+    const base = friends.filter((f) => !excluded.has(f.userId));
+    const list = onlineOnly ? base.filter((f) => f.online) : base;
+    return [...list].sort((a, b) => {
+      const oa = a.online ? 1 : 0;
+      const ob = b.online ? 1 : 0;
+      if (oa !== ob) return ob - oa;
+      return a.name.localeCompare(b.name);
+    });
+  }, [friends, excluded, onlineOnly]);
 
   const refresh = useCallback(async () => {
     if (!sessionToken) {
@@ -61,6 +73,15 @@ export function FriendInvitePicker({
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  // Refresh online status while picker is open.
+  useEffect(() => {
+    if (!sessionToken) return;
+    const id = window.setInterval(() => {
+      void refresh();
+    }, 20_000);
+    return () => window.clearInterval(id);
+  }, [sessionToken, refresh]);
 
   // Drop selections that became excluded (joined).
   useEffect(() => {
@@ -91,6 +112,16 @@ export function FriendInvitePicker({
     onChange([...next]);
   }
 
+  function selectOnline() {
+    if (disabled) return;
+    const next = new Set(selected);
+    for (const f of onlineFriends) {
+      if (next.size >= maxSelect) break;
+      next.add(f.userId);
+    }
+    onChange([...next]);
+  }
+
   if (!sessionToken) {
     return (
       <div className="rounded-xl border border-dashed border-sidebar/20 bg-mushroom/35 px-3 py-3">
@@ -113,13 +144,43 @@ export function FriendInvitePicker({
           'Selected friends get a notification to join. Optional — you can also share the code.'}
       </p>
 
+      <div className="mt-2.5 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={onlineOnly}
+          disabled={disabled}
+          onClick={() => setOnlineOnly((v) => !v)}
+          className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition disabled:opacity-50 ${
+            onlineOnly
+              ? 'border-sidebar/40 bg-sidebar text-mushroom'
+              : 'border-sidebar/15 bg-mushroom/50 text-sidebar hover:border-sidebar/30'
+          }`}
+        >
+          Online only
+          {onlineFriends.length > 0 ? (
+            <span className="ml-1 tabular-nums opacity-80">· {onlineFriends.length}</span>
+          ) : null}
+        </button>
+        {onlineFriends.length > 0 ? (
+          <button
+            type="button"
+            disabled={disabled || selectedIds.length >= maxSelect}
+            onClick={selectOnline}
+            className="rounded-full border border-sidebar/15 bg-mushroom/50 px-2.5 py-1 text-[11px] font-semibold text-sidebar transition hover:border-sidebar/30 hover:bg-sidebar/8 disabled:opacity-50"
+          >
+            Select online
+          </button>
+        ) : null}
+      </div>
+
       {loadError && (
         <p role="alert" className="mt-2 text-xs text-danger">
           {loadError}
         </p>
       )}
 
-      {groups.length > 0 && (
+      {groups.length > 0 && !onlineOnly && (
         <div className="mt-2.5 flex flex-wrap gap-1.5">
           {groups.map((g) => (
             <button
@@ -142,7 +203,9 @@ export function FriendInvitePicker({
         <p className="mt-2.5 rounded-xl border border-dashed border-sidebar/20 bg-mushroom/35 px-3 py-2.5 text-xs text-ink-strong-muted">
           {friends.length === 0
             ? 'No friends yet. Add people from Friends, then invite them here.'
-            : 'Everyone on your list already joined.'}
+            : onlineOnly
+              ? 'No online friends right now. Turn off “Online only” to invite anyone on your list.'
+              : 'Everyone on your list already joined.'}
         </p>
       ) : (
         <ul className="mt-2.5 max-h-44 space-y-1 overflow-y-auto pr-0.5">
@@ -171,13 +234,27 @@ export function FriendInvitePicker({
                   >
                     ✓
                   </span>
-                  <PlayerAvatar
-                    userId={f.userId}
-                    avatarId={f.avatarId}
-                    size={28}
-                    title={f.name}
-                  />
+                  <span className="relative shrink-0">
+                    <PlayerAvatar
+                      userId={f.userId}
+                      avatarId={f.avatarId}
+                      size={28}
+                      title={f.name}
+                    />
+                    <span
+                      className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white ${
+                        f.online ? 'bg-emerald-500' : 'bg-sidebar/25'
+                      }`}
+                      title={f.online ? 'Online' : 'Offline'}
+                      aria-hidden
+                    />
+                  </span>
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">{f.name}</span>
+                  {f.online ? (
+                    <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-emerald-700/80">
+                      Online
+                    </span>
+                  ) : null}
                 </button>
               </li>
             );

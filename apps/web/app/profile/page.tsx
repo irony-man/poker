@@ -132,11 +132,6 @@ function ProfilePageInner() {
       .sort((a, b) => b.playedAt - a.playedAt);
   }, [contests, profile]);
 
-  const contestCurrencyWon = useMemo(
-    () => contestHistory.reduce((sum, row) => sum + row.prizeWuffies, 0),
-    [contestHistory],
-  );
-
   const openAvatarEditor = () => {
     if (!profile) return;
     setDraftAvatarId(profile.avatarId);

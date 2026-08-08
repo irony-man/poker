@@ -5,6 +5,7 @@ import { DataSource } from 'typeorm';
 import { AuthService } from '../auth/auth.service.js';
 import type { AuthStore } from '../auth/auth.store.js';
 import { dataSourceAsQueryable } from '../database/queryable.js';
+import { PresenceService } from '../presence/presence.service.js';
 import { FriendsStore } from './friends.store.js';
 
 @Injectable()
@@ -14,6 +15,7 @@ export class FriendsService implements OnModuleInit {
   constructor(
     private readonly config: ConfigService,
     private readonly auth: AuthService,
+    private readonly presence: PresenceService,
     @InjectDataSource() private readonly dataSource: DataSource,
   ) {
     const dataDir = this.config.get<string>('DATA_DIR') ?? `${process.cwd()}/data`;
@@ -33,8 +35,12 @@ export class FriendsService implements OnModuleInit {
     return this.store;
   }
 
-  listFriends(userId: string) {
-    return this.store.listFriends(this.authStore(), userId);
+  async listFriends(userId: string) {
+    const list = await this.store.listFriends(this.authStore(), userId);
+    return list.map((p) => ({
+      ...p,
+      online: this.presence.isOnline(p.userId),
+    }));
   }
 
   listIncomingRequests(userId: string) {
@@ -59,6 +65,10 @@ export class FriendsService implements OnModuleInit {
 
   respondRequest(userId: string, requestId: string, accept: boolean) {
     return this.store.respondRequest(userId, requestId, accept);
+  }
+
+  removeFriend(userId: string, friendUserId: string) {
+    return this.store.removeFriend(userId, friendUserId);
   }
 
   createChallenge(

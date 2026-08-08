@@ -9,6 +9,7 @@ import { ClientMessageSchema } from '@poker/protocol';
 import type { RawData, WebSocket } from 'ws';
 import { AuthService } from '../auth/auth.service.js';
 import { ContestsService } from '../contests/contests.service.js';
+import { PresenceService } from '../presence/presence.service.js';
 import { RoomsService } from '../rooms/rooms.service.js';
 import { WalletService } from '../wallet/wallet.service.js';
 
@@ -30,6 +31,7 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly wallet: WalletService,
     private readonly rooms: RoomsService,
     private readonly contests: ContestsService,
+    private readonly presence: PresenceService,
   ) {}
 
   handleConnection(@ConnectedSocket() client: WebSocket): void {
@@ -102,6 +104,7 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
       st.userId = user.id;
       st.name = user.name;
       void this.wallet.ensureStartingBalance(user.id);
+      this.presence.touch(user.id);
       send({
         type: 'auth_ok',
         userId: user.id,
@@ -118,6 +121,7 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     const userId = st.userId;
+    this.presence.touch(userId);
     const name = st.name;
 
     if (msg.type === 'join_contest') {

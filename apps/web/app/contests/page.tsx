@@ -26,7 +26,12 @@ export default function ContestsListPage() {
   }
 
   return (
-    <LobbyPageShell title="Contests" signedIn={signedIn} error={error}>
+    <LobbyPageShell
+      title="Contests"
+      subtitle="Host a room for friends in chip freezeout or a fixed run of hands, set the table size, invite people, and start when the seats look right."
+      signedIn={signedIn}
+      error={error}
+    >
       <ContestsPanel
         disabled={busy}
         sessionToken={sessionToken}

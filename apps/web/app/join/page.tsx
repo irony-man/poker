@@ -48,7 +48,12 @@ export default function JoinPage() {
   }
 
   return (
-    <LobbyPageShell title="Join" signedIn={signedIn} error={error}>
+    <LobbyPageShell
+      title="Join a table"
+      subtitle="Enter the invite code you were sent to take a seat or watch the hand, whether it is a private table or a contest."
+      signedIn={signedIn}
+      error={error}
+    >
       <form
         onSubmit={(e) => {
           e.preventDefault();

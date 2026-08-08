@@ -383,14 +383,9 @@ export function FriendsPanel({
       imageSrc="/home-host.png"
       imageAlt="Invite friends to your table"
     >
-      <div>
-        <h1 className="font-display text-xl font-bold tracking-tight text-ink-strong sm:text-2xl">
-          Social
-        </h1>
-        <p className="mt-0.5 text-sm text-ink-strong-muted">
-          Friends, groups, and private tables
-        </p>
-      </div>
+      <h2 className="font-display text-xl font-bold tracking-tight text-ink-strong sm:text-2xl">
+        Social
+      </h2>
 
       {(error || loadError || toast) && (
         <div

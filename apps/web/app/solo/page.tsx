@@ -32,7 +32,12 @@ export default function SoloPage() {
   }
 
   return (
-    <LobbyPageShell title="Offline" signedIn={signedIn} requireAuth={false}>
+    <LobbyPageShell
+      title="Offline"
+      subtitle="Train against bots on this device with the same Hold'em rules as live tables, no connection or lobby, and a seat count you choose before the first deal."
+      signedIn={signedIn}
+      requireAuth={false}
+    >
       <form onSubmit={onOffline}>
         <LobbySplitCard
           imageSrc="/home-offline.png"

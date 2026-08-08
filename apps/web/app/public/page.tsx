@@ -32,7 +32,12 @@ export default function PublicTablesPage() {
   }
 
   return (
-    <LobbyPageShell title="Public Tables" signedIn={signedIn} error={error}>
+    <LobbyPageShell
+      title="Public tables"
+      subtitle="Open Hold'em at the stakes you choose; sit down when a seat is free or spectate if you would rather watch."
+      signedIn={signedIn}
+      error={error}
+    >
       <PublicTablesPanel disabled={busy} onJoin={joinPublicTable} />
     </LobbyPageShell>
   );

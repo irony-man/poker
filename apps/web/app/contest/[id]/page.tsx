@@ -245,7 +245,7 @@ export default function ContestPage() {
     );
   }
 
-  const seatsLabel = `${contest.entrants.length}/${contest.fieldSize}`;
+  const seatsLabel = `${contest.entrants.length}/${contest.fieldSize} max`;
   const blinds = contest.blinds
     ? `${contest.blinds.smallBlind}/${contest.blinds.bigBlind}`
     : `${contest.smallBlind}/${contest.bigBlind}`;
@@ -341,54 +341,6 @@ export default function ContestPage() {
         </div>
       )}
 
-      {contest.status === 'registering' && isHost && sessionToken && (
-        <section className="hud-panel mt-6 flex flex-col gap-3 p-5 sm:p-6">
-          <FriendInvitePicker
-            sessionToken={sessionToken}
-            selectedIds={inviteFriendIds}
-            onChange={setInviteFriendIds}
-            disabled={busy}
-            maxSelect={Math.min(8, Math.max(0, contest.fieldSize - contest.entrants.length))}
-            title="Invite friends"
-            help="Send a contest invite. Friends can accept from Friends → Invites."
-          />
-          {inviteToast && (
-            <p className="text-sm font-medium text-sidebar" role="status">
-              {inviteToast}
-            </p>
-          )}
-          <button
-            type="button"
-            disabled={busy || inviteFriendIds.length === 0}
-            onClick={() => void onInviteFriends()}
-            className="btn-primary min-h-10 w-full sm:w-auto sm:min-w-[12rem]"
-          >
-            {busy
-              ? 'Sending…'
-              : inviteFriendIds.length > 0
-                ? `Send ${inviteFriendIds.length} invite${inviteFriendIds.length === 1 ? '' : 's'}`
-                : 'Select friends to invite'}
-          </button>
-        </section>
-      )}
-
-      {contest.status === 'running' && contest.mode === 'rounds' && contest.handLimit && (
-        <section className="hud-panel mt-6 p-5 sm:p-6">
-          <h2 className="hud-label">Progress</h2>
-          <p className="mt-2 text-sm font-medium text-ink-strong">
-            Hand {Math.min(contest.handsPlayed, contest.handLimit)} of {contest.handLimit}
-          </p>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-sidebar/10">
-            <div
-              className="h-full rounded-full bg-sidebar transition-all duration-500"
-              style={{
-                width: `${Math.min(100, (contest.handsPlayed / contest.handLimit) * 100)}%`,
-              }}
-            />
-          </div>
-        </section>
-      )}
-
       <section className="hud-panel mt-6 p-5 sm:p-6">
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="hud-label">Entrants</h2>
@@ -429,6 +381,55 @@ export default function ContestPage() {
           </ul>
         )}
       </section>
+
+      {contest.status === 'registering' && isHost && sessionToken && (
+        <section className="hud-panel mt-4 flex flex-col gap-3 p-5 sm:p-6">
+          <FriendInvitePicker
+            sessionToken={sessionToken}
+            selectedIds={inviteFriendIds}
+            onChange={setInviteFriendIds}
+            disabled={busy}
+            excludeUserIds={contest.entrants.map((e) => e.userId)}
+            maxSelect={Math.min(8, Math.max(0, contest.fieldSize - contest.entrants.length))}
+            title="Invite friends"
+            help="Send a contest invite. Friends already seated are hidden. Empty seats can fill with bots when you start."
+          />
+          {inviteToast && (
+            <p className="text-sm font-medium text-sidebar" role="status">
+              {inviteToast}
+            </p>
+          )}
+          <button
+            type="button"
+            disabled={busy || inviteFriendIds.length === 0}
+            onClick={() => void onInviteFriends()}
+            className="btn-primary min-h-10 w-full sm:w-auto sm:min-w-[12rem]"
+          >
+            {busy
+              ? 'Sending…'
+              : inviteFriendIds.length > 0
+                ? `Send ${inviteFriendIds.length} invite${inviteFriendIds.length === 1 ? '' : 's'}`
+                : 'Select friends to invite'}
+          </button>
+        </section>
+      )}
+
+      {contest.status === 'running' && contest.mode === 'rounds' && contest.handLimit && (
+        <section className="hud-panel mt-6 p-5 sm:p-6">
+          <h2 className="hud-label">Progress</h2>
+          <p className="mt-2 text-sm font-medium text-ink-strong">
+            Hand {Math.min(contest.handsPlayed, contest.handLimit)} of {contest.handLimit}
+          </p>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-sidebar/10">
+            <div
+              className="h-full rounded-full bg-sidebar transition-all duration-500"
+              style={{
+                width: `${Math.min(100, (contest.handsPlayed / contest.handLimit) * 100)}%`,
+              }}
+            />
+          </div>
+        </section>
+      )}
 
       {contest.placements.length > 0 && (
         <section className="hud-panel mt-4 p-5 sm:p-6">

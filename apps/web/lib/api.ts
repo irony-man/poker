@@ -459,6 +459,10 @@ export async function listPublicContests() {
   return res.json() as Promise<{ contests: ContestView[] }>;
 }
 
+export async function listMyContests(options: AuthOptions) {
+  return authedFetch('/api/contests/mine', options) as Promise<{ contests: ContestView[] }>;
+}
+
 export async function resolveContestInvite(code: string) {
   const res = await fetch(`${API_URL}/api/contests/invite/${code}`);
   if (!res.ok) throw new Error('Contest not found');

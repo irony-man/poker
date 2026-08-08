@@ -102,13 +102,16 @@ export type ContestView = z.infer<typeof ContestViewSchema>;
 export const CreateContestBodySchema = z.object({
   name: z.string().min(1).max(64).default('Contest'),
   mode: ContestModeSchema,
-  /** Table size: 2–9 seats. */
+  /** Table max seats: 2–9. */
   fieldSize: z.number().int().min(2).max(9),
   startingStack: z.number().int().positive().default(1000),
   smallBlind: z.number().int().positive().default(5),
   bigBlind: z.number().int().positive().default(10),
   turnTimeMs: z.number().int().positive().default(20000),
-  /** Pre-seat bot entrants when created (register fill at start too). */
+  /**
+   * Max bot seats to fill when starting if human friends leave empty spots.
+   * Bots are not seated until the host starts (or the field fills with humans).
+   */
   botCount: z.number().int().min(0).max(8).default(0),
   isPrivate: z.boolean().default(true),
   inviteCode: z

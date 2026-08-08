@@ -44,6 +44,8 @@ export interface ContestState {
   status: ContestStatus;
   hostUserId: string;
   fieldSize: number;
+  /** Max bots to seat when starting if seats are still open. */
+  botFillMax: number;
   startingStack: number;
   smallBlind: number;
   bigBlind: number;
@@ -96,6 +98,7 @@ export class TournamentManager {
 
     const handLimit = resolveHandLimit(opts.mode, opts.handLimit);
     const id = nanoid(10);
+    const botFillMax = Math.max(0, Math.min(opts.botCount, opts.fieldSize - 1));
     const contest: ContestState = {
       id,
       inviteCode,
@@ -104,6 +107,7 @@ export class TournamentManager {
       status: 'registering',
       hostUserId: opts.hostUserId,
       fieldSize: opts.fieldSize,
+      botFillMax,
       startingStack: opts.startingStack,
       smallBlind: opts.smallBlind,
       bigBlind: opts.bigBlind,
@@ -125,7 +129,7 @@ export class TournamentManager {
       tableIds: new Set(),
     };
 
-    // Host auto-registers
+    // Host auto-registers. Bots fill empty seats only when the contest starts.
     contest.entrants.push({
       userId: opts.hostUserId,
       name: opts.hostName,
@@ -133,26 +137,8 @@ export class TournamentManager {
       registeredAt: Date.now(),
     });
 
-    // Pre-fill bots as registered entrants
-    const botSlots = Math.max(0, Math.min(opts.botCount, opts.fieldSize - 1));
-    const takenNames = new Set([opts.hostName]);
-    for (let i = 0; i < botSlots; i++) {
-      const name = pickBotName(takenNames);
-      takenNames.add(name);
-      contest.entrants.push({
-        userId: makeBotUserId(nanoid(8)),
-        name,
-        isBot: true,
-        registeredAt: Date.now(),
-      });
-    }
-
     this.contests.set(id, contest);
     this.byInvite.set(inviteCode, id);
-
-    if (contest.autoStart && contest.entrants.length >= contest.fieldSize) {
-      this.startContest(contest);
-    }
 
     return this.toView(contest);
   }
@@ -203,7 +189,14 @@ export class TournamentManager {
     if (!c) return { ok: false, error: 'Contest not found' };
     if (userId !== c.hostUserId) return { ok: false, error: 'Only host can start' };
     if (c.status !== 'registering') return { ok: false, error: 'Already started' };
-    if (c.entrants.length < 2) return { ok: false, error: 'Need at least 2 entrants' };
+
+    this.fillEmptySeatsWithBots(c);
+    if (c.entrants.length < 2) {
+      return {
+        ok: false,
+        error: 'Need at least 2 entrants — invite friends or add fill bots',
+      };
+    }
     if (c.entrants.length > 9) return { ok: false, error: 'Contest needs 2–9 entrants' };
 
     this.startContest(c);
@@ -223,6 +216,24 @@ export class TournamentManager {
   listPublic(): ContestView[] {
     return [...this.contests.values()]
       .filter((c) => !c.isPrivate && c.status === 'registering')
+      .map((c) => this.toView(c));
+  }
+
+  /** Contests the user hosts or is registered in (active first). */
+  listForUser(userId: string): ContestView[] {
+    return [...this.contests.values()]
+      .filter(
+        (c) =>
+          c.status !== 'cancelled' &&
+          (c.hostUserId === userId || c.entrants.some((e) => e.userId === userId)),
+      )
+      .sort((a, b) => {
+        const rank = (s: ContestStatus) =>
+          s === 'registering' ? 0 : s === 'running' ? 1 : 2;
+        const d = rank(a.status) - rank(b.status);
+        if (d !== 0) return d;
+        return b.createdAt - a.createdAt;
+      })
       .map((c) => this.toView(c));
   }
 
@@ -281,6 +292,30 @@ export class TournamentManager {
     });
     this.openTable(c);
     this.broadcast(c.id);
+  }
+
+  /**
+   * Seat bots into remaining spots up to botFillMax when the host starts
+   * without a full human field.
+   */
+  private fillEmptySeatsWithBots(c: ContestState): void {
+    const open = Math.max(0, c.fieldSize - c.entrants.length);
+    if (open === 0 || c.botFillMax <= 0) return;
+    const existingBots = c.entrants.filter((e) => e.isBot).length;
+    const botsToAdd = Math.min(open, Math.max(0, c.botFillMax - existingBots));
+    if (botsToAdd <= 0) return;
+
+    const takenNames = new Set(c.entrants.map((e) => e.name));
+    for (let i = 0; i < botsToAdd; i++) {
+      const name = pickBotName(takenNames);
+      takenNames.add(name);
+      c.entrants.push({
+        userId: makeBotUserId(nanoid(8)),
+        name,
+        isBot: true,
+        registeredAt: Date.now(),
+      });
+    }
   }
 
   private openTable(c: ContestState): void {

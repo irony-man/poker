@@ -658,6 +658,12 @@ async function main() {
     res.json({ contests: tournaments.listPublic() });
   });
 
+  app.get('/api/contests/mine', (req, res) => {
+    const userId = requireUserId(req, res);
+    if (!userId) return;
+    res.json({ contests: tournaments.listForUser(userId) });
+  });
+
   app.get('/api/contests/invite/:code', (req, res) => {
     const contest = tournaments.getByInvite(req.params.code!);
     if (!contest) {

@@ -24,7 +24,7 @@ describe('TournamentManager', () => {
   });
 
   it('creates chips contest with equal stacks and no top-up', () => {
-    const view = tournaments.create({
+    const created = tournaments.create({
       name: 'SNG',
       mode: 'chips',
       hostUserId: 'host',
@@ -38,7 +38,12 @@ describe('TournamentManager', () => {
       isPrivate: true,
       autoStart: true,
     });
+    expect(created.status).toBe('registering');
+    expect(created.entrants).toHaveLength(1);
 
+    const started = tournaments.start(created.id, 'host');
+    expect(started.ok).toBe(true);
+    const view = started.contest!;
     expect(view.status).toBe('running');
     expect(view.mode).toBe('chips');
     expect(view.handLimit).toBeNull();
@@ -60,7 +65,7 @@ describe('TournamentManager', () => {
   });
 
   it('places players in chip-elimination order (last standing wins)', () => {
-    const view = tournaments.create({
+    const created = tournaments.create({
       name: 'Freezeout',
       mode: 'chips',
       hostUserId: 'host',
@@ -74,6 +79,7 @@ describe('TournamentManager', () => {
       isPrivate: true,
       autoStart: true,
     });
+    const view = tournaments.start(created.id, 'host').contest!;
 
     const bots = view.entrants.filter((e) => e.userId !== 'host');
     tournaments.forceEliminate(view.id, bots[0]!.userId);
@@ -90,7 +96,7 @@ describe('TournamentManager', () => {
   });
 
   it('creates rounds contest with hand limit and allows top-up', () => {
-    const view = tournaments.create({
+    const created = tournaments.create({
       name: 'Session',
       mode: 'rounds',
       hostUserId: 'host',
@@ -105,6 +111,7 @@ describe('TournamentManager', () => {
       autoStart: true,
       handLimit: 10,
     });
+    const view = tournaments.start(created.id, 'host').contest!;
 
     expect(view.status).toBe('running');
     expect(view.mode).toBe('rounds');
@@ -121,7 +128,7 @@ describe('TournamentManager', () => {
   });
 
   it('finishes rounds contest by chip leader after hand limit', () => {
-    const view = tournaments.create({
+    const created = tournaments.create({
       name: 'Short session',
       mode: 'rounds',
       hostUserId: 'host',
@@ -136,6 +143,7 @@ describe('TournamentManager', () => {
       autoStart: true,
       handLimit: 2,
     });
+    const view = tournaments.start(created.id, 'host').contest!;
 
     const room = rooms.get(view.tableId!)!;
     // Give host a clear chip lead
@@ -158,7 +166,7 @@ describe('TournamentManager', () => {
   });
 
   it('auto-tops bots during rounds contests', () => {
-    const view = tournaments.create({
+    const created = tournaments.create({
       name: 'Bot rebuy',
       mode: 'rounds',
       hostUserId: 'host',
@@ -173,6 +181,7 @@ describe('TournamentManager', () => {
       autoStart: true,
       handLimit: 5,
     });
+    const view = tournaments.start(created.id, 'host').contest!;
 
     const room = rooms.get(view.tableId!)!;
     const bot = room.seatedPlayersSnapshot().find((p) => p.userId !== 'host')!;
@@ -202,5 +211,41 @@ describe('TournamentManager', () => {
     tournaments.register(view.id, 'p3', 'Carol');
     expect(tournaments.get(view.id)!.status).toBe('running');
     expect(tournaments.listPublic()).toHaveLength(0);
+  });
+
+  it('lists contests the user has joined', () => {
+    const a = tournaments.create({
+      name: 'Mine',
+      mode: 'chips',
+      hostUserId: 'host',
+      hostName: 'Host',
+      fieldSize: 3,
+      startingStack: 1000,
+      smallBlind: 5,
+      bigBlind: 10,
+      turnTimeMs: 20_000,
+      botCount: 0,
+      isPrivate: true,
+      autoStart: false,
+    });
+    tournaments.register(a.id, 'friend', 'Friend');
+    const other = tournaments.create({
+      name: 'Other',
+      mode: 'chips',
+      hostUserId: 'other-host',
+      hostName: 'Other',
+      fieldSize: 3,
+      startingStack: 1000,
+      smallBlind: 5,
+      bigBlind: 10,
+      turnTimeMs: 20_000,
+      botCount: 0,
+      isPrivate: true,
+      autoStart: false,
+    });
+    void other;
+    const mine = tournaments.listForUser('friend');
+    expect(mine.map((c) => c.id)).toEqual([a.id]);
+    expect(tournaments.listForUser('host').map((c) => c.id)).toContain(a.id);
   });
 });

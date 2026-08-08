@@ -11,6 +11,7 @@ export function FriendInvitePicker({
   onChange,
   disabled,
   maxSelect = 8,
+  excludeUserIds = [],
   title = 'Invite friends',
   help,
 }: {
@@ -19,6 +20,8 @@ export function FriendInvitePicker({
   onChange: (ids: string[]) => void;
   disabled?: boolean;
   maxSelect?: number;
+  /** Hide users already at the table / contest. */
+  excludeUserIds?: string[];
   title?: string;
   help?: string;
 }) {
@@ -28,6 +31,12 @@ export function FriendInvitePicker({
   const [loading, setLoading] = useState(false);
 
   const selected = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const excluded = useMemo(() => new Set(excludeUserIds), [excludeUserIds]);
+
+  const visibleFriends = useMemo(
+    () => friends.filter((f) => !excluded.has(f.userId)),
+    [friends, excluded],
+  );
 
   const refresh = useCallback(async () => {
     if (!sessionToken) {
@@ -52,8 +61,16 @@ export function FriendInvitePicker({
     void refresh();
   }, [refresh]);
 
+  // Drop selections that became excluded (joined).
+  useEffect(() => {
+    if (selectedIds.length === 0 || excluded.size === 0) return;
+    const next = selectedIds.filter((id) => !excluded.has(id));
+    if (next.length !== selectedIds.length) onChange(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-filter when exclusion/selection set changes
+  }, [excluded, selectedIds]);
+
   function toggle(id: string) {
-    if (disabled) return;
+    if (disabled || excluded.has(id)) return;
     const next = new Set(selected);
     if (next.has(id)) next.delete(id);
     else if (next.size < maxSelect) next.add(id);
@@ -64,7 +81,7 @@ export function FriendInvitePicker({
     if (disabled) return;
     const memberIds = group.members
       .map((m) => m.userId)
-      .filter((id) => friends.some((f) => f.userId === id));
+      .filter((id) => friends.some((f) => f.userId === id) && !excluded.has(id));
     const next = new Set(selected);
     for (const id of memberIds) {
       if (next.size >= maxSelect) break;
@@ -120,13 +137,15 @@ export function FriendInvitePicker({
 
       {loading && friends.length === 0 ? (
         <p className="mt-2.5 text-xs text-ink-strong-muted">Loading friends…</p>
-      ) : friends.length === 0 ? (
+      ) : visibleFriends.length === 0 ? (
         <p className="mt-2.5 rounded-xl border border-dashed border-sidebar/20 bg-mushroom/35 px-3 py-2.5 text-xs text-ink-strong-muted">
-          No friends yet. Add people from Friends, then invite them here.
+          {friends.length === 0
+            ? 'No friends yet. Add people from Friends, then invite them here.'
+            : 'Everyone on your list already joined.'}
         </p>
       ) : (
         <ul className="mt-2.5 max-h-44 space-y-1 overflow-y-auto pr-0.5">
-          {friends.map((f) => {
+          {visibleFriends.map((f) => {
             const isOn = selected.has(f.userId);
             const atCap = !isOn && selectedIds.length >= maxSelect;
             return (

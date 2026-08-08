@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChoiceRow } from '@/components/ChoiceRow';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
+import { LoadingScreen } from '@/components/LoadingScreen';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { useLobbySession } from '@/lib/useLobbySession';
@@ -17,7 +18,7 @@ export default function SoloPage() {
   const [offlineSeats, setOfflineSeats] = useState(6);
 
   if (!authReady) {
-    return <p className="pt-4 text-ink-strong-muted">Loading…</p>;
+    return <LoadingScreen label="Loading…" />;
   }
 
   const bots = offlineSeats - 1;

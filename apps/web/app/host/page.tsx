@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ChoiceRow } from '@/components/ChoiceRow';
 import { FriendInvitePicker } from '@/components/FriendInvitePicker';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
+import { LoadingScreen } from '@/components/LoadingScreen';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { createTable } from '@/lib/api';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
@@ -17,7 +18,7 @@ export default function HostPage() {
   const router = useRouter();
   const { authReady, signedIn, sessionToken, ensureSession } = useLobbySession();
   const [maxSeats, setMaxSeats] = useState(6);
-  const [botCount, setBotCount] = useState(2);
+  const [botCount, setBotCount] = useState(0);
   const [hostStakeId, setHostStakeId] = useState(DEFAULT_STAKE_ID);
   const [customRoomCode, setCustomRoomCode] = useState('');
   const [inviteFriendIds, setInviteFriendIds] = useState<string[]>([]);
@@ -79,7 +80,7 @@ export default function HostPage() {
   }
 
   if (!authReady) {
-    return <p className="pt-4 text-ink-strong-muted">Loading…</p>;
+    return <LoadingScreen label="Loading…" />;
   }
 
   return (

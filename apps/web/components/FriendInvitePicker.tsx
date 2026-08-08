@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
+import { LoadingScreen } from '@/components/LoadingScreen';
 import { listFriends, type FriendGroup, type FriendProfile } from '@/lib/api';
 
 /** Multi-select friends list for hosting tables / contests. */
@@ -136,7 +137,7 @@ export function FriendInvitePicker({
       )}
 
       {loading && friends.length === 0 ? (
-        <p className="mt-2.5 text-xs text-ink-strong-muted">Loading friends…</p>
+        <LoadingScreen compact label="Loading friends…" className="!py-3" />
       ) : visibleFriends.length === 0 ? (
         <p className="mt-2.5 rounded-xl border border-dashed border-sidebar/20 bg-mushroom/35 px-3 py-2.5 text-xs text-ink-strong-muted">
           {friends.length === 0

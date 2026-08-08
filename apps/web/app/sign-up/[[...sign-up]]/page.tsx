@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, Suspense, useState } from 'react';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
+import { LoadingScreen } from '@/components/LoadingScreen';
 import { AvatarPicker } from '@/components/PlayerAvatar';
 import { signup } from '@/lib/api';
 import { authHref, safeReturnPath } from '@/lib/authRedirect';
@@ -114,7 +115,7 @@ function SignUpForm() {
 
 export default function SignUpPage() {
   return (
-    <Suspense fallback={<p className="text-ink-strong-muted pt-4">Loading…</p>}>
+    <Suspense fallback={<LoadingScreen compact label="Loading…" />}>
       <SignUpForm />
     </Suspense>
   );

@@ -3,6 +3,7 @@
 import { Suspense, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { OfflineTableView } from '@/components/OfflineTableView';
+import { LoadingScreen } from '@/components/LoadingScreen';
 import type { TableConfig } from '@poker/engine';
 
 function OfflineInner() {
@@ -26,7 +27,7 @@ function OfflineInner() {
 
 export default function OfflinePage() {
   return (
-    <Suspense fallback={<p className="text-cream/60">Loading offline table…</p>}>
+    <Suspense fallback={<LoadingScreen compact label="Loading offline table…" />}>
       <OfflineInner />
     </Suspense>
   );

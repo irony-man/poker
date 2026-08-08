@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { TableView } from '@/components/TableView';
+import { LoadingScreen } from '@/components/LoadingScreen';
 import { authHref } from '@/lib/authRedirect';
 import { clearStoredSession, readStoredSession } from '@/lib/session';
 import { useSession } from '@/lib/store';
@@ -76,7 +77,7 @@ function TablePageInner() {
   }, [tableId, needsAuth]);
 
   if (needsAuth === null) {
-    return <p className="text-ink-strong-muted">Loading…</p>;
+    return <LoadingScreen label="Loading…" compact />;
   }
 
   if (needsAuth) {
@@ -106,7 +107,10 @@ function TablePageInner() {
 
   if (!ready) {
     return (
-      <p className="text-ink-strong-muted">{booting ? 'Connecting…' : 'Loading table…'}</p>
+      <LoadingScreen
+        compact
+        label={booting ? 'Connecting…' : 'Loading table…'}
+      />
     );
   }
 
@@ -115,7 +119,7 @@ function TablePageInner() {
 
 export default function TablePage() {
   return (
-    <Suspense fallback={<p className="text-ink-strong-muted">Loading…</p>}>
+    <Suspense fallback={<LoadingScreen compact label="Loading…" />}>
       <TablePageInner />
     </Suspense>
   );

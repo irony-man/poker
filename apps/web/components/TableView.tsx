@@ -7,6 +7,7 @@ import { ActionControls } from './ActionControls';
 import { CommunityBoard } from './CommunityBoard';
 import { DealerPotZone } from './DealerPotZone';
 import { HowToPlayHelp } from './HowToPlayHelp';
+import { LoadingScreen } from './LoadingScreen';
 import { SeatView } from './SeatView';
 import { CopyRoomLink } from './CopyRoomLink';
 import { TableOverflowMenu, type OverflowItem } from './TableOverflowMenu';
@@ -273,9 +274,10 @@ export function TableView({
   if (!table && (connection === 'connecting' || connection === 'open')) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-ink-strong-muted">
-          {connection === 'connecting' ? 'Connecting…' : 'Loading table…'}
-        </p>
+        <LoadingScreen
+          compact
+          label={connection === 'connecting' ? 'Connecting…' : 'Loading table…'}
+        />
       </div>
     );
   }

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ContestsPanel } from '@/components/ContestsPanel';
+import { LoadingScreen } from '@/components/LoadingScreen';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
 import { resolveContestInvite } from '@/lib/api';
 import { useLobbySession } from '@/lib/useLobbySession';
@@ -22,7 +23,7 @@ export default function ContestsListPage() {
   }
 
   if (!authReady) {
-    return <p className="pt-12 text-center text-ink-strong-muted">Loading…</p>;
+    return <LoadingScreen label="Loading…" />;
   }
 
   return (

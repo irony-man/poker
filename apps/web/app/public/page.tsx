@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
+import { LoadingScreen } from '@/components/LoadingScreen';
 import { PublicTablesPanel } from '@/components/PublicTablesPanel';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { useLobbySession } from '@/lib/useLobbySession';
@@ -28,7 +29,7 @@ export default function PublicTablesPage() {
   }
 
   if (!authReady) {
-    return <p className="pt-12 text-center text-ink-strong-muted">Loading…</p>;
+    return <LoadingScreen label="Loading…" />;
   }
 
   return (

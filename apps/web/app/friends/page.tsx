@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { FriendsPanel } from '@/components/FriendsPanel';
+import { LoadingScreen } from '@/components/LoadingScreen';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { useLobbySession } from '@/lib/useLobbySession';
@@ -11,7 +12,7 @@ export default function FriendsPage() {
   const { authReady, signedIn } = useLobbySession();
 
   if (!authReady) {
-    return <p className="pt-12 text-center text-ink-strong-muted">Loading…</p>;
+    return <LoadingScreen label="Loading…" />;
   }
 
   return (

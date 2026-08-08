@@ -13,6 +13,7 @@ import {
   WS_URL,
 } from '@/lib/api';
 import { FriendInvitePicker } from '@/components/FriendInvitePicker';
+import { LoadingScreen } from '@/components/LoadingScreen';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { useSession } from '@/lib/store';
 
@@ -240,9 +241,7 @@ export default function ContestPage() {
   }
 
   if (!contest) {
-    return (
-      <div className="lobby-fade-up py-12 text-center text-ink-strong-muted">Loading contest…</div>
-    );
+    return <LoadingScreen label="Loading contest…" />;
   }
 
   const seatsLabel = `${contest.entrants.length}/${contest.fieldSize} max`;

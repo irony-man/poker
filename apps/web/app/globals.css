@@ -225,6 +225,27 @@ body > * {
   animation-delay: 240ms;
 }
 
+@keyframes loading-chip-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(2deg);
+  }
+}
+
+.loading-chip-shuffle {
+  animation: loading-chip-bob 1.35s ease-in-out infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-chip-shuffle {
+    animation: none;
+  }
+}
+
 /*
  * Lobby cards: light surfaces + purple brand accents.
  * Play routes (table / offline / contest) keep dark hud-* with brand purple.

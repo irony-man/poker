@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
+import { LoadingScreen } from '@/components/LoadingScreen';
 import { listPublicTables, type PublicTableSummary } from '@/lib/api';
 import { STAKE_PRESETS } from '@poker/protocol';
 
@@ -72,6 +73,9 @@ export function PublicTablesPanel({
         </p>
       )}
 
+      {loading && tables.length === 0 ? (
+        <LoadingScreen compact label="Loading tables…" className="!py-4" />
+      ) : (
       <div className="grid gap-3 sm:grid-cols-2">
         {STAKE_PRESETS.map((stake) => {
           const table = byStake.get(stake.id);
@@ -121,6 +125,7 @@ export function PublicTablesPanel({
           );
         })}
       </div>
+      )}
 
       {error && (
         <p role="alert" className="status-chip border-danger/30 bg-danger/10 text-danger text-xs">

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
+import { LoadingScreen } from '@/components/LoadingScreen';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { resolveContestInvite, resolveInvite } from '@/lib/api';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
@@ -44,7 +45,7 @@ export default function JoinPage() {
   }
 
   if (!authReady) {
-    return <p className="pt-4 text-ink-strong-muted">Loading…</p>;
+    return <LoadingScreen label="Loading…" />;
   }
 
   return (

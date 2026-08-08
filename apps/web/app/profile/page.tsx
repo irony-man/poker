@@ -179,6 +179,8 @@ function ProfilePageInner() {
 
   return (
     <LobbyPageShell
+      title="Profile"
+      subtitle="Your avatar, display name, and Wuffies bankroll."
       signedIn={signedIn}
       requireAuth
     >

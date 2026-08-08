@@ -49,7 +49,7 @@ export default function JoinPage() {
 
   return (
     <LobbyPageShell
-      title="Join a table"
+      title="Join a Table"
       subtitle="Enter the invite code you were sent to take a seat or watch the hand, whether it is a private table or a contest."
       signedIn={signedIn}
       error={error}
@@ -61,14 +61,6 @@ export default function JoinPage() {
         }}
       >
         <LobbySplitCard imageSrc="/join-table.png" imageAlt="Enter a table with an invite code">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="font-display text-xl font-bold uppercase tracking-wider text-sidebar">
-              Invite
-            </h2>
-            <span className="text-[10px] font-display uppercase tracking-[0.2em] text-ink-strong-muted">
-              Table or contest
-            </span>
-          </div>
           <label className="block">
             <span className="hud-label">Invite code</span>
             <input

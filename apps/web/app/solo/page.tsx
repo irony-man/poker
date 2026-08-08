@@ -33,7 +33,7 @@ export default function SoloPage() {
 
   return (
     <LobbyPageShell
-      title="Offline"
+      title="Offline Arena"
       subtitle="Train against bots on this device with the same Hold'em rules as live tables, no connection or lobby, and a seat count you choose before the first deal."
       signedIn={signedIn}
       requireAuth={false}
@@ -43,32 +43,6 @@ export default function SoloPage() {
           imageSrc="/home-offline.png"
           imageAlt="You versus a bot at a private practice table"
         >
-          <header className="min-w-0">
-            <p className="font-display text-[0.68rem] font-bold uppercase tracking-[0.18em] text-ink-strong/45">
-              Practice · on device
-            </p>
-            <h2 className="mt-1.5 font-display text-2xl font-bold leading-tight tracking-tight text-ink-strong sm:text-[1.7rem]">
-              Train against bots
-            </h2>
-            <p className="mt-2 max-w-sm text-sm leading-relaxed text-ink-strong-muted">
-              Same Hold&apos;em engine as live tables. No connection, no wait —
-              deal when you&apos;re ready.
-            </p>
-          </header>
-
-          <label className="block">
-            <span className="hud-label">Your name at the table</span>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="hud-input"
-              maxLength={32}
-              placeholder="Player"
-              autoComplete="nickname"
-              spellCheck={false}
-            />
-          </label>
-
           <div className="min-w-0">
             <ChoiceRow
               label="Table size"

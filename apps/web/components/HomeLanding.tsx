@@ -63,7 +63,7 @@ const FEATURES: Feature[] = [
 
 export function HomeLanding() {
   return (
-    <div className="mx-auto w-full max-w-5xl pb-12 pt-2 sm:pb-20 sm:pt-4 lg:pt-6">
+    <div className="mx-auto w-full mt-32 max-w-5xl pb-12 pt-2 sm:pb-20 sm:pt-4 lg:pt-6">
       <div className="flex flex-col gap-16 sm:gap-20 lg:gap-28">
         {FEATURES.map((feature, i) => (
           <FeatureRow key={feature.title} feature={feature} index={i} />

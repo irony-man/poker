@@ -230,7 +230,11 @@ export function ContestsPanel({
       : ctaLabel;
 
   return (
-    <LobbySplitCard imageSrc="/home-knockout.png" imageAlt="Multi-seat tournament table ready to fill">
+    <LobbySplitCard
+      imageSrc="/home-knockout.png"
+      imageAlt="Multi-seat tournament table ready to fill"
+      alignTop
+    >
       {joined.length > 0 && (
         <div className="rounded-xl border border-sidebar/12 bg-mushroom/45 p-3.5 sm:p-4">
           <div className="mb-2.5 flex items-baseline justify-between gap-2">
@@ -414,37 +418,6 @@ export function ContestsPanel({
         </div>
       </form>
 
-      <div
-        className="border-t border-sidebar/10 pt-5"
-        role="group"
-        aria-label="Join with a code"
-      >
-        <p className="font-display text-[0.68rem] font-bold uppercase tracking-[0.18em] text-ink-strong/45">
-          Or join with a code
-        </p>
-        <form onSubmit={onJoin} className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
-          <label className="block min-w-0 flex-1">
-            <span className="hud-label">Contest code</span>
-            <input
-              value={invite}
-              onChange={(e) => setInvite(e.target.value.replace(/\D/g, '').slice(0, 8))}
-              className="hud-input font-mono tracking-[0.2em]"
-              inputMode="numeric"
-              maxLength={8}
-              placeholder="••••"
-              autoComplete="off"
-            />
-            <span className="field-help">4–8 digits from the host</span>
-          </label>
-          <button
-            disabled={disabled || busy || invite.trim().length < 4}
-            type="submit"
-            className="btn-ghost min-h-11 shrink-0 sm:min-w-[8.5rem]"
-          >
-            Join
-          </button>
-        </form>
-      </div>
 
       {open.length > 0 && (
         <div className="border-t border-sidebar/10 pt-5">

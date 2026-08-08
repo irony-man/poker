@@ -382,7 +382,7 @@ export function FriendsPanel({
   const playerSearch = (
     <div className="flex w-full flex-col gap-3">
       <label className="block w-full">
-        <span className="hud-label">Find player</span>
+        <span className="hud-label !font-bold">Find a Friend</span>
         <input
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -437,10 +437,6 @@ export function FriendsPanel({
       imageAlt="Invite friends to your table"
       mediaHeader={playerSearch}
     >
-      <h2 className="font-display text-xl font-bold tracking-tight text-ink-strong sm:text-2xl">
-        Social
-      </h2>
-
       {(error || loadError || toast) && (
         <div
           role={error || loadError ? 'alert' : 'status'}

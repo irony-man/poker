@@ -13,6 +13,7 @@ export function LobbySplitCard({
   children,
   imageRight = false,
   mediaHeader,
+  alignTop = false,
 }: {
   imageSrc: string;
   imageAlt: string;
@@ -21,10 +22,14 @@ export function LobbySplitCard({
   imageRight?: boolean;
   /** Optional content above the illustration (e.g. search). */
   mediaHeader?: ReactNode;
+  /** Align the content to the top of the page (e.g. for contests). */
+  alignTop?: boolean;
 }) {
   return (
     <div
-      className='grid w-full items-start gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-10 xl:gap-14'
+      className={`grid w-full items-start gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-10 xl:gap-14 ${
+        mediaHeader || alignTop ? 'lg:items-start' : 'lg:items-center'
+      }`}
     >
       <div
         className={`relative mx-auto flex w-full max-w-md flex-col gap-4 lg:max-w-none ${

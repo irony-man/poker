@@ -104,13 +104,10 @@ export function LobbySidebar({
             <p className="text-[10px] font-display uppercase tracking-[0.16em] text-mushroom/45">
               Signed in
             </p>
-            <p className="truncate font-display text-sm font-semibold text-mushroom">
-              {displayName || 'Player'}
-            </p>
             {handle ? (
-              <div className="mt-1.5 flex min-w-0 items-center gap-1">
-                <p className="min-w-0 flex-1 truncate text-xs text-mushroom/55" title={handle}>
-                  {handle}
+              <div className="flex min-w-0 items-center gap-1">
+                <p className="min-w-0 flex-1 truncate font-display font-semibold text-mushroom" title={handle}>
+                  {handle || 'Player'}
                 </p>
                 <button
                   type="button"

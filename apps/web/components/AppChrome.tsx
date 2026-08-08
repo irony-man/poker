@@ -17,8 +17,8 @@ import { attachPlayFullscreen } from '@/lib/mobileFullscreen';
 export function AppChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const tablePlay = pathname.startsWith('/table/') || pathname === '/offline';
-  const playRoute = tablePlay || pathname.startsWith('/contest/');
-  const immersive = playRoute;
+  /** Full-bleed play only — contest lobby uses sidebar + scrollable main like other tools. */
+  const immersive = tablePlay;
   const isHome = pathname === '/';
 
   // Mobile: enter browser fullscreen on table routes (gesture-retry + clean exit).

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -25,6 +26,21 @@ function modeDescription(contest: ContestView): string {
     return `Play ${limit} hands with top-ups. Highest stack when the session ends wins.`;
   }
   return 'Equal stacks, no top-ups. Last player with chips wins.';
+}
+
+function statusLabel(status: ContestView['status']): string {
+  switch (status) {
+    case 'registering':
+      return 'Registering';
+    case 'running':
+      return 'Running';
+    case 'completed':
+      return 'Completed';
+    case 'cancelled':
+      return 'Cancelled';
+    default:
+      return status;
+  }
 }
 
 export default function ContestPage() {
@@ -211,102 +227,133 @@ export default function ContestPage() {
 
   if (error && !contest) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-12 text-center">
-        <p className="text-red-300">{error}</p>
-        <button type="button" className="btn-ghost mt-4" onClick={() => router.push('/')}>
-          Back to lobby
-        </button>
+      <div className="lobby-fade-up mx-auto max-w-lg py-12 text-center">
+        <p className="text-danger">{error}</p>
+        <Link
+          href="/contests"
+          className="btn-ghost mt-4 inline-flex min-h-10 items-center justify-center px-5 text-xs"
+        >
+          Back to contests
+        </Link>
       </div>
     );
   }
 
   if (!contest) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-12 text-center text-ink-strong-muted">Loading contest…</div>
+      <div className="lobby-fade-up py-12 text-center text-ink-strong-muted">Loading contest…</div>
     );
   }
 
-  return (
-    <div className="mx-auto w-full max-w-3xl px-3 py-6 sm:px-4 sm:py-10">
-      <button
-        type="button"
-        onClick={() => router.push('/')}
-        className="text-xs font-display uppercase tracking-wider text-sidebar/70 hover:text-sidebar"
-      >
-        ← Lobby
-      </button>
+  const seatsLabel = `${contest.entrants.length}/${contest.fieldSize}`;
+  const blinds = contest.blinds
+    ? `${contest.blinds.smallBlind}/${contest.blinds.bigBlind}`
+    : `${contest.smallBlind}/${contest.bigBlind}`;
+  const handMeta =
+    contest.mode === 'rounds' && contest.handLimit
+      ? ` · hand ${Math.min(contest.handsPlayed, contest.handLimit)}/${contest.handLimit}`
+      : '';
 
-      <header className="mt-3 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="status-chip border-sidebar/25 bg-sidebar/8 text-sidebar w-fit">
-            {modeLabel(contest.mode)} · {contest.status}
-          </p>
-          <h1 className="mt-2 font-display text-3xl font-bold text-sidebar uppercase tracking-wide">
-            {contest.name}
-          </h1>
-          <p className="mt-1 text-sm text-ink-strong-muted">
-            Code <span className="font-mono text-ink-strong tracking-widest">{contest.inviteCode}</span>
-            {' · '}
-            {contest.entrants.length}/{contest.fieldSize} · stack {contest.startingStack} · blinds{' '}
-            {contest.blinds
-              ? `${contest.blinds.smallBlind}/${contest.blinds.bigBlind}`
-              : `${contest.smallBlind}/${contest.bigBlind}`}
-            {contest.mode === 'rounds' && contest.handLimit
-              ? ` · hand ${Math.min(contest.handsPlayed, contest.handLimit)}/${contest.handLimit}`
-              : ''}
-          </p>
-          <p className="mt-2 max-w-lg text-sm text-ink-strong-muted">{modeDescription(contest)}</p>
-        </div>
-        {myAssignment?.tableId && contest.status === 'running' && (
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() => {
-              enterMobileFullscreen();
-              router.push(`/table/${myAssignment.tableId}?contest=${contestId}`);
-            }}
-          >
-            Go to table
-          </button>
-        )}
+  return (
+    <div className="lobby-fade-up mx-auto w-full max-w-3xl">
+      <Link
+        href="/contests"
+        className="inline-flex items-center gap-1.5 text-xs font-display font-semibold uppercase tracking-[0.14em] text-ink-strong-muted transition hover:text-sidebar"
+      >
+        <span aria-hidden>←</span> Contests
+      </Link>
+
+      <header className="mt-4 w-full sm:mt-5">
+        <p className="status-chip w-fit border-sidebar/18 bg-sidebar/6 text-sidebar">
+          {modeLabel(contest.mode)} · {statusLabel(contest.status)}
+        </p>
+        <h1 className="mt-3 font-display text-3xl font-bold tracking-tight text-ink-strong sm:text-4xl">
+          {contest.name}
+        </h1>
+        <p className="mt-2 text-sm leading-relaxed text-ink-strong-muted sm:text-base">
+          Code{' '}
+          <span className="font-mono font-semibold tracking-widest text-ink-strong">
+            {contest.inviteCode}
+          </span>
+          {' · '}
+          {seatsLabel} · stack {contest.startingStack} · blinds {blinds}
+          {handMeta}
+        </p>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-strong-muted sm:text-base">
+          {modeDescription(contest)}
+        </p>
       </header>
 
-      {contest.status === 'registering' && (
-        <div className="mt-6 flex flex-wrap gap-2">
-          {!isRegistered && (
-            <button disabled={busy} type="button" className="btn-primary" onClick={onRegister}>
+      {error && (
+        <p
+          role="alert"
+          className="mt-4 status-chip border-danger/30 bg-danger/10 text-danger text-xs"
+        >
+          {error}
+        </p>
+      )}
+
+      {(contest.status === 'registering' ||
+        (myAssignment?.tableId && contest.status === 'running')) && (
+        <div className="mt-5 flex flex-wrap gap-2.5">
+          {contest.status === 'registering' && !isRegistered && (
+            <button
+              disabled={busy}
+              type="button"
+              className="btn-primary min-h-11 px-6"
+              onClick={onRegister}
+            >
               Register
             </button>
           )}
-          {isRegistered && !isHost && (
-            <button disabled={busy} type="button" className="btn-ghost" onClick={onUnregister}>
+          {contest.status === 'registering' && isRegistered && !isHost && (
+            <button
+              disabled={busy}
+              type="button"
+              className="btn-ghost min-h-11 px-6"
+              onClick={onUnregister}
+            >
               Unregister
             </button>
           )}
-          {isHost && (
-            <button disabled={busy} type="button" className="btn-primary" onClick={onStart}>
+          {contest.status === 'registering' && isHost && (
+            <button
+              disabled={busy}
+              type="button"
+              className="btn-primary min-h-11 px-6"
+              onClick={onStart}
+            >
               Start now
+            </button>
+          )}
+          {myAssignment?.tableId && contest.status === 'running' && (
+            <button
+              type="button"
+              className="btn-primary min-h-11 px-6"
+              onClick={() => {
+                enterMobileFullscreen();
+                router.push(`/table/${myAssignment.tableId}?contest=${contestId}`);
+              }}
+            >
+              Go to table
             </button>
           )}
         </div>
       )}
 
       {contest.status === 'registering' && isHost && sessionToken && (
-        <section className="hud-panel mt-6 p-4 sm:p-5">
+        <section className="hud-panel mt-6 flex flex-col gap-3 p-5 sm:p-6">
           <FriendInvitePicker
             sessionToken={sessionToken}
             selectedIds={inviteFriendIds}
             onChange={setInviteFriendIds}
             disabled={busy}
-            maxSelect={Math.min(
-              8,
-              Math.max(0, contest.fieldSize - contest.entrants.length),
-            )}
+            maxSelect={Math.min(8, Math.max(0, contest.fieldSize - contest.entrants.length))}
             title="Invite friends"
             help="Send a contest invite. Friends can accept from Friends → Invites."
           />
           {inviteToast && (
-            <p className="mt-2 text-sm text-sidebar" role="status">
+            <p className="text-sm font-medium text-sidebar" role="status">
               {inviteToast}
             </p>
           )}
@@ -314,7 +361,7 @@ export default function ContestPage() {
             type="button"
             disabled={busy || inviteFriendIds.length === 0}
             onClick={() => void onInviteFriends()}
-            className="btn-primary mt-3 min-h-10 w-full sm:w-auto"
+            className="btn-primary min-h-10 w-full sm:w-auto sm:min-w-[12rem]"
           >
             {busy
               ? 'Sending…'
@@ -326,11 +373,9 @@ export default function ContestPage() {
       )}
 
       {contest.status === 'running' && contest.mode === 'rounds' && contest.handLimit && (
-        <div className="hud-panel mt-6 p-4 sm:p-5">
-          <h2 className="font-display text-sm font-bold uppercase tracking-wider text-sidebar">
-            Progress
-          </h2>
-          <p className="mt-2 text-sm text-ink-strong">
+        <section className="hud-panel mt-6 p-5 sm:p-6">
+          <h2 className="hud-label">Progress</h2>
+          <p className="mt-2 text-sm font-medium text-ink-strong">
             Hand {Math.min(contest.handsPlayed, contest.handLimit)} of {contest.handLimit}
           </p>
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-sidebar/10">
@@ -341,62 +386,69 @@ export default function ContestPage() {
               }}
             />
           </div>
-        </div>
+        </section>
       )}
 
-      <section className="hud-panel mt-6 p-4 sm:p-5">
-        <h2 className="font-display text-sm font-bold uppercase tracking-wider text-sidebar">
-          Entrants
-        </h2>
-        <ul className="mt-3 grid gap-1.5 sm:grid-cols-2">
-          {contest.entrants.map((e) => (
-            <li
-              key={e.userId}
-              className="flex items-center justify-between rounded-md border border-cream/10 px-3 py-2 text-sm"
-            >
-              <span>
-                {e.name}
-                {e.isBot ? (
-                  <span className="ml-1.5 text-[10px] uppercase text-ink-strong-muted">bot</span>
-                ) : null}
-                {e.userId === contest.hostUserId ? (
-                  <span className="ml-1.5 text-[10px] uppercase text-brass-light/80">host</span>
-                ) : null}
-              </span>
-              {contest.placements.find((p) => p.userId === e.userId) && (
-                <span className="text-xs text-brass-light">
-                  #{contest.placements.find((p) => p.userId === e.userId)!.place}
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
+      <section className="hud-panel mt-6 p-5 sm:p-6">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="hud-label">Entrants</h2>
+          <span className="text-xs font-medium tabular text-ink-strong-muted">{seatsLabel}</span>
+        </div>
+        {contest.entrants.length === 0 ? (
+          <p className="mt-3 text-sm text-ink-strong-muted">No one registered yet.</p>
+        ) : (
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+            {contest.entrants.map((e) => {
+              const place = contest.placements.find((p) => p.userId === e.userId)?.place;
+              return (
+                <li
+                  key={e.userId}
+                  className="flex items-center justify-between gap-2 rounded-xl border border-sidebar/12 bg-mushroom/55 px-3 py-2.5"
+                >
+                  <span className="min-w-0 truncate text-sm font-medium text-ink-strong">
+                    {e.name}
+                    {e.isBot ? (
+                      <span className="ml-1.5 text-[10px] font-display font-semibold uppercase tracking-wide text-ink-strong-muted">
+                        bot
+                      </span>
+                    ) : null}
+                    {e.userId === contest.hostUserId ? (
+                      <span className="ml-1.5 text-[10px] font-display font-semibold uppercase tracking-wide text-sidebar/70">
+                        host
+                      </span>
+                    ) : null}
+                  </span>
+                  {place != null && (
+                    <span className="shrink-0 font-mono text-xs font-semibold text-sidebar">
+                      #{place}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </section>
 
       {contest.placements.length > 0 && (
-        <section className="hud-panel mt-4 p-4 sm:p-5">
-          <h2 className="font-display text-sm font-bold uppercase tracking-wider text-sidebar">
-            Standings
-          </h2>
-          <ol className="mt-3 space-y-1">
+        <section className="hud-panel mt-4 p-5 sm:p-6">
+          <h2 className="hud-label">Standings</h2>
+          <ol className="mt-3 space-y-1.5">
             {[...contest.placements]
               .sort((a, b) => a.place - b.place)
               .map((p) => (
-                <li key={p.userId} className="flex justify-between text-sm">
-                  <span>
-                    <span className="text-brass-light font-mono mr-2">#{p.place}</span>
-                    {p.name}
+                <li
+                  key={p.userId}
+                  className="flex items-center justify-between gap-2 rounded-xl border border-sidebar/12 bg-mushroom/55 px-3 py-2 text-sm"
+                >
+                  <span className="min-w-0 truncate font-medium text-ink-strong">{p.name}</span>
+                  <span className="shrink-0 font-mono text-xs font-semibold text-sidebar">
+                    #{p.place}
                   </span>
                 </li>
               ))}
           </ol>
         </section>
-      )}
-
-      {error && (
-        <p role="alert" className="mt-4 text-sm text-red-300">
-          {error}
-        </p>
       )}
     </div>
   );

@@ -16,7 +16,8 @@ services:
     region: oregon
     branch: main
     buildCommand: npm ci && npm run build -w @poker/engine -w @poker/protocol -w @poker/db -w @poker/server
-    startCommand: node apps/server/dist/index.js
+    # Use package start so entry stays correct across Nest/Express entry renames
+    startCommand: npm run start -w @poker/server
     healthCheckPath: /health
     envVars:
       - key: NODE_VERSION

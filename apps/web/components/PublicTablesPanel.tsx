@@ -6,8 +6,10 @@ import { LoadingScreen } from '@/components/LoadingScreen';
 import { listPublicTables, type PublicTableSummary } from '@/lib/api';
 import { STAKE_PRESETS } from '@poker/protocol';
 
+import { formatMoneyLabel } from '@/lib/currency';
+
 function formatMoney(n: number): string {
-  return n.toLocaleString();
+  return formatMoneyLabel(n);
 }
 
 export function PublicTablesPanel({

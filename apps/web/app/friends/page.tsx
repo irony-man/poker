@@ -16,7 +16,7 @@ export default function FriendsPage() {
 
   return (
     <LobbyPageShell
-      title="Friends"
+      title="Community and Social"
       subtitle="Find people by username, build groups for the tables you play together, invite a group to sit down, or challenge a friend to heads-up."
       signedIn={signedIn}
       requireAuth

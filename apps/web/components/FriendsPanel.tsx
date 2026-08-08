@@ -378,10 +378,63 @@ export function FriendsPanel({
     );
   }
 
+  const playerSearch = (
+    <div className="flex w-full flex-col gap-3">
+      <label className="block w-full">
+        <span className="hud-label">Find player</span>
+        <input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="hud-input"
+          placeholder="Enter exact username…"
+          maxLength={32}
+          disabled={disabled}
+          autoComplete="off"
+          spellCheck={false}
+        />
+        <p className="mt-1 text-xs text-ink-strong-muted">
+          Matches the full username only (case-insensitive).
+        </p>
+      </label>
+
+      {searchResults.length > 0 && (
+        <ul className="divide-y divide-sidebar/10 overflow-hidden rounded-xl border border-sidebar/12 bg-white/80">
+          {searchResults.map((u) => {
+            const handle = u.username ?? u.name;
+            return (
+              <li key={u.userId} className="flex items-center gap-3 bg-mushroom/40 px-3 py-2.5">
+                <PlayerAvatar userId={u.userId} avatarId={u.avatarId} size={32} title={handle} />
+                <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink-strong">
+                  {handle}
+                </span>
+                <button
+                  type="button"
+                  disabled={disabled || busy === u.userId}
+                  onClick={() => void onAddFriend(u.userId)}
+                  className="btn-ghost py-1.5 px-3 text-xs"
+                >
+                  Add friend
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {searchLookedUp && searchQuery.trim() && searchResults.length === 0 && (
+        <p className="rounded-xl border border-dashed border-sidebar/20 bg-mushroom/35 px-3 py-2.5 text-sm text-ink-strong-muted">
+          No user named{' '}
+          <span className="font-medium text-ink-strong">{searchQuery.trim()}</span>
+        </p>
+      )}
+    </div>
+  );
+
   return (
     <LobbySplitCard
       imageSrc="/home-host.png"
       imageAlt="Invite friends to your table"
+      mediaHeader={playerSearch}
     >
       <h2 className="font-display text-xl font-bold tracking-tight text-ink-strong sm:text-2xl">
         Social
@@ -410,54 +463,6 @@ export function FriendsPanel({
             </button>
           )}
         </div>
-      )}
-
-      <label className="block w-full">
-        <span className="hud-label">Find player</span>
-        <input
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="hud-input"
-          placeholder="Enter exact username…"
-          maxLength={32}
-          disabled={disabled}
-          autoComplete="off"
-          spellCheck={false}
-        />
-        <p className="mt-1 text-xs text-ink-strong-muted">
-          Matches the full username only (case-insensitive).
-        </p>
-      </label>
-
-      {searchResults.length > 0 && (
-        <ul className="divide-y divide-sidebar/10 overflow-hidden rounded-xl border border-sidebar/12">
-          {searchResults.map((u) => {
-            const handle = u.username ?? u.name;
-            return (
-              <li key={u.userId} className="flex items-center gap-3 bg-mushroom/40 px-3 py-2.5">
-                <PlayerAvatar userId={u.userId} avatarId={u.avatarId} size={32} title={handle} />
-                <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink-strong">
-                  {handle}
-                </span>
-                <button
-                  type="button"
-                  disabled={disabled || busy === u.userId}
-                  onClick={() => void onAddFriend(u.userId)}
-                  className="btn-ghost py-1.5 px-3 text-xs"
-                >
-                  Add friend
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      {searchLookedUp && searchQuery.trim() && searchResults.length === 0 && (
-        <p className="rounded-xl border border-dashed border-sidebar/20 bg-mushroom/35 px-3 py-2.5 text-sm text-ink-strong-muted">
-          No user named{' '}
-          <span className="font-medium text-ink-strong">{searchQuery.trim()}</span>
-        </p>
       )}
 
       {incoming.length > 0 && (
@@ -882,8 +887,8 @@ export function FriendsPanel({
             <div className="mt-3 rounded-2xl border border-dashed border-sidebar/20 bg-mushroom/35 px-4 py-6 text-center">
               <p className="text-sm font-medium text-ink-strong">No friends yet</p>
               <p className="mt-1 text-xs leading-relaxed text-ink-strong-muted">
-                Enter someone&apos;s exact username above to send a request, then challenge them or
-                add them to a group.
+                Enter someone&apos;s exact username under Find player to send a request, then
+                challenge them or add them to a group.
               </p>
             </div>
           ) : (

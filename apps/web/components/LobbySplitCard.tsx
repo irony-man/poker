@@ -12,20 +12,28 @@ export function LobbySplitCard({
   imageAlt,
   children,
   imageRight = false,
+  mediaHeader,
 }: {
   imageSrc: string;
   imageAlt: string;
   children: ReactNode;
   /** Put the image on the right (desktop). */
   imageRight?: boolean;
+  /** Optional content above the illustration (e.g. search). */
+  mediaHeader?: ReactNode;
 }) {
   return (
-    <div className="grid w-full items-start gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center lg:gap-10 xl:gap-14">
+    <div
+      className={`grid w-full items-start gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-10 xl:gap-14 ${
+        mediaHeader ? 'lg:items-start' : 'lg:items-center'
+      }`}
+    >
       <div
-        className={`relative mx-auto w-full max-w-md lg:max-w-none ${
+        className={`relative mx-auto flex w-full max-w-md flex-col gap-4 lg:max-w-none ${
           imageRight ? 'order-first lg:order-last' : ''
         }`}
       >
+        {mediaHeader}
         <div className="relative aspect-[4/3] w-full sm:aspect-[5/4]">
           <Image
             src={imageSrc}

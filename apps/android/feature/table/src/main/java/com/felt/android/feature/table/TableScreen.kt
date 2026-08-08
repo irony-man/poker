@@ -365,9 +365,11 @@ private fun TableFooterControls(
         if (isTournament) {
             Text(
                 text = buildString {
-                    append(if (table.tournament?.mode == "knockout") "Knockout" else "Table match")
+                    append(if (table.tournament?.mode == "rounds") "Rounds" else "Chips")
                     append(" · blinds ${table.config.smallBlind}/${table.config.bigBlind}")
-                    if (table.tournament?.frozen == true) append(" · match over")
+                    if (table.tournament?.noTopUp == true) append(" · no rebuy")
+                    else append(" · top-ups on")
+                    if (table.tournament?.frozen == true) append(" · over")
                 },
                 color = FeltColors.Gold,
                 fontSize = 12.sp,

@@ -24,6 +24,8 @@ data class CreateTableRequest(
     val isPrivate: Boolean = true,
     /** Optional custom numerical invite / room code (4–8 digits). */
     val inviteCode: String? = null,
+    /** Friend user ids to notify when the table is created. */
+    val inviteFriendIds: List<String> = emptyList(),
 )
 
 @Serializable
@@ -33,6 +35,7 @@ data class CreateTableResponse(
     val name: String,
     val config: TableConfig,
     val botsAdded: Int = 0,
+    val inviteCount: Int = 0,
 )
 
 @Serializable

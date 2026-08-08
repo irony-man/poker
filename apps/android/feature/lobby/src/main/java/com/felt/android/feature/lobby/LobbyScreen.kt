@@ -264,25 +264,32 @@ fun LobbyScreen(
                         StatusChip(text = "Tournament", accent = FeltColors.Cyan)
                     }
                     Text(
-                        "Knockout brackets · table match (chip elimination)",
+                        "Chips freezeout · rounds with top-ups",
                         color = FeltColors.Cream.copy(alpha = 0.5f),
                         style = MaterialTheme.typography.bodySmall,
                     )
-                    val contestSizes =
-                        if (state.contestMode == "knockout") listOf(4, 8, 16) else (2..9).toList()
+                    val contestSizes = (2..9).toList()
                     val contestMaxBots = (state.contestFieldSize - 1).coerceAtLeast(0)
                     ChoiceRowString(
                         label = "Mode",
                         selected = state.contestMode,
-                        options = listOf("table_match", "knockout"),
+                        options = listOf("chips", "rounds"),
                         onSelect = viewModel::onContestModeChange,
-                    ) { if (it == "knockout") "Knockout" else "Table match" }
+                    ) { if (it == "rounds") "Rounds" else "Chips" }
                     ChoiceRow(
-                        label = if (state.contestMode == "knockout") "Field" else "Players",
+                        label = "Players",
                         selected = state.contestFieldSize,
                         options = contestSizes,
                         onSelect = viewModel::onContestFieldSizeChange,
                     )
+                    if (state.contestMode == "rounds") {
+                        ChoiceRow(
+                            label = "Hands",
+                            selected = state.contestHandLimit,
+                            options = listOf(10, 15, 20, 30, 50),
+                            onSelect = viewModel::onContestHandLimitChange,
+                        )
+                    }
                     ChoiceRow(
                         label = "Fill bots",
                         selected = state.contestBotCount.coerceAtMost(contestMaxBots),

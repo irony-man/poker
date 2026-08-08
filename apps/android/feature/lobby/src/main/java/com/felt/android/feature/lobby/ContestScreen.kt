@@ -70,7 +70,7 @@ fun ContestScreen(
         }
 
         StatusChip(
-            text = "${if (contest.mode == "knockout") "Knockout" else "Table match"} · ${contest.status}",
+            text = "${if (contest.mode == "rounds") "Rounds" else "Chips"} · ${contest.status}",
             accent = FeltColors.Gold,
         )
         Text(
@@ -80,9 +80,23 @@ fun ContestScreen(
             fontWeight = FontWeight.Bold,
         )
         Text(
-            text = "Code ${contest.inviteCode} · ${contest.entrants.size}/${contest.fieldSize} · stack ${contest.startingStack}",
+            text = buildString {
+                append("Code ${contest.inviteCode} · ${contest.entrants.size}/${contest.fieldSize} · stack ${contest.startingStack}")
+                if (contest.mode == "rounds" && contest.handLimit != null) {
+                    append(" · hand ${minOf(contest.handsPlayed, contest.handLimit)}/${contest.handLimit}")
+                }
+            },
             color = FeltColors.Cream.copy(0.55f),
             fontSize = 13.sp,
+        )
+        Text(
+            text = if (contest.mode == "rounds") {
+                "Fixed hands with top-ups. Chip leader wins when the session ends."
+            } else {
+                "Equal stacks, no top-ups. Last player with chips wins."
+            },
+            color = FeltColors.Cream.copy(0.45f),
+            fontSize = 12.sp,
         )
 
         val isHost = contest.hostUserId == userId
@@ -122,6 +136,19 @@ fun ContestScreen(
             )
         }
 
+        if (contest.status == "running" && contest.mode == "rounds" && contest.handLimit != null) {
+            HudPanel(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("PROGRESS", color = FeltColors.Cream.copy(0.7f), fontWeight = FontWeight.Bold)
+                    Text(
+                        "Hand ${minOf(contest.handsPlayed, contest.handLimit)} of ${contest.handLimit}",
+                        color = FeltColors.Cream,
+                        fontSize = 14.sp,
+                    )
+                }
+            }
+        }
+
         HudPanel(modifier = Modifier.fillMaxWidth()) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("ENTRANTS", color = FeltColors.Cream.copy(0.7f), fontWeight = FontWeight.Bold)
@@ -145,34 +172,6 @@ fun ContestScreen(
                             Text("#$place", color = FeltColors.Gold, fontSize = 13.sp)
                         }
                     }
-                }
-            }
-        }
-
-        if (contest.mode == "knockout" && contest.matches.isNotEmpty()) {
-            HudPanel(modifier = Modifier.fillMaxWidth()) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("BRACKET", color = FeltColors.Cream.copy(0.7f), fontWeight = FontWeight.Bold)
-                    contest.matches
-                        .groupBy { it.round }
-                        .toSortedMap()
-                        .forEach { (round, matches) ->
-                            Text(
-                                "Round ${round + 1}",
-                                color = FeltColors.Cyan.copy(0.7f),
-                                fontSize = 11.sp,
-                            )
-                            matches.sortedBy { it.index }.forEach { m ->
-                                val a = contest.entrants.find { it.userId == m.playerA }?.name ?: "—"
-                                val b = contest.entrants.find { it.userId == m.playerB }?.name ?: "—"
-                                val winner = contest.entrants.find { it.userId == m.winnerId }?.name
-                                Text(
-                                    "$a vs $b · ${m.status}${if (winner != null) " · $winner" else ""}",
-                                    color = FeltColors.Cream.copy(0.85f),
-                                    fontSize = 13.sp,
-                                )
-                            }
-                        }
                 }
             }
         }

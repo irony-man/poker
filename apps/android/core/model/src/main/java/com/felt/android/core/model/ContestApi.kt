@@ -18,18 +18,6 @@ data class ContestPlacement(
 )
 
 @Serializable
-data class KnockoutMatchDto(
-    val id: String,
-    val round: Int,
-    val index: Int,
-    val playerA: String? = null,
-    val playerB: String? = null,
-    val winnerId: String? = null,
-    val tableId: String? = null,
-    val status: String,
-)
-
-@Serializable
 data class ContestBlindInfo(
     val levelIndex: Int,
     val smallBlind: Int,
@@ -63,9 +51,10 @@ data class ContestView(
     val isPrivate: Boolean = true,
     val entrants: List<ContestEntrant> = emptyList(),
     val placements: List<ContestPlacement> = emptyList(),
-    val matches: List<KnockoutMatchDto> = emptyList(),
     val tableId: String? = null,
     val blinds: ContestBlindInfo? = null,
+    val handsPlayed: Int = 0,
+    val handLimit: Int? = null,
     val assignments: List<ContestPlayerAssignment> = emptyList(),
     val createdAt: Long = 0,
     val startedAt: Long? = null,
@@ -86,11 +75,14 @@ data class CreateContestRequest(
     val isPrivate: Boolean = true,
     val inviteCode: String? = null,
     val autoStart: Boolean = true,
+    val handLimit: Int? = null,
+    val inviteFriendIds: List<String> = emptyList(),
 )
 
 @Serializable
 data class ContestResponse(
     val contest: ContestView,
+    val inviteCount: Int = 0,
 )
 
 @Serializable

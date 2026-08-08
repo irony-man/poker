@@ -22,6 +22,10 @@ export default function FriendsPage() {
           enterMobileFullscreen();
           router.push(`/table/${tableId}?invite=${inviteCode}`);
         }}
+        onNavigateContest={(contestId) => {
+          enterMobileFullscreen();
+          router.push(`/contest/${contestId}`);
+        }}
       />
     </LobbyPageShell>
   );

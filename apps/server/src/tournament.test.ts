@@ -23,80 +23,10 @@ describe('TournamentManager', () => {
     tournaments = new TournamentManager(rooms);
   });
 
-  it('creates knockout with host + bots and builds first-round matches', () => {
-    const view = tournaments.create({
-      name: 'KO 4',
-      mode: 'knockout',
-      hostUserId: 'host',
-      hostName: 'Host',
-      fieldSize: 4,
-      startingStack: 1000,
-      smallBlind: 5,
-      bigBlind: 10,
-      turnTimeMs: 20_000,
-      botCount: 3,
-      isPrivate: true,
-      autoStart: true,
-    });
-
-    expect(view.status).toBe('running');
-    expect(view.entrants).toHaveLength(4);
-    expect(view.matches.filter((m) => m.round === 0)).toHaveLength(2);
-    expect(view.matches.filter((m) => m.status === 'active')).toHaveLength(2);
-    for (const m of view.matches.filter((m) => m.round === 0)) {
-      expect(m.tableId).toBeTruthy();
-      expect(m.playerA).toBeTruthy();
-      expect(m.playerB).toBeTruthy();
-      const room = rooms.get(m.tableId!);
-      expect(room).toBeTruthy();
-      expect(room!.isTournament()).toBe(true);
-      expect(room!.playersWithChips()).toHaveLength(2);
-    }
-  });
-
-  it('advances knockout bracket and crowns a champion', () => {
-    const view = tournaments.create({
-      name: 'KO Adv',
-      mode: 'knockout',
-      hostUserId: 'host',
-      hostName: 'Host',
-      fieldSize: 4,
-      startingStack: 1000,
-      smallBlind: 5,
-      bigBlind: 10,
-      turnTimeMs: 20_000,
-      botCount: 3,
-      isPrivate: true,
-      autoStart: true,
-    });
-
-    const round0 = view.matches.filter((m) => m.round === 0);
-    expect(round0).toHaveLength(2);
-
-    const m0 = round0[0]!;
-    const m1 = round0[1]!;
-    tournaments.forceCompleteMatch(view.id, m0.id, m0.playerA!);
-    tournaments.forceCompleteMatch(view.id, m1.id, m1.playerA!);
-
-    let c = tournaments.get(view.id)!;
-    const final = c.matches.find((m) => m.round === 1);
-    expect(final).toBeTruthy();
-    expect(final!.status).toBe('active');
-    expect(final!.playerA).toBe(m0.playerA);
-    expect(final!.playerB).toBe(m1.playerA);
-    expect(c.placements).toHaveLength(2); // two R1 losers
-
-    tournaments.forceCompleteMatch(view.id, final!.id, final!.playerA!);
-    c = tournaments.get(view.id)!;
-    expect(c.status).toBe('completed');
-    expect(c.placements.find((p) => p.place === 1)?.userId).toBe(final!.playerA);
-    expect(c.placements).toHaveLength(4);
-  });
-
-  it('creates table-match and places players in elimination order', () => {
+  it('creates chips contest with equal stacks and no top-up', () => {
     const view = tournaments.create({
       name: 'SNG',
-      mode: 'table_match',
+      mode: 'chips',
       hostUserId: 'host',
       hostName: 'Host',
       fieldSize: 4,
@@ -110,9 +40,40 @@ describe('TournamentManager', () => {
     });
 
     expect(view.status).toBe('running');
+    expect(view.mode).toBe('chips');
+    expect(view.handLimit).toBeNull();
     expect(view.tableId).toBeTruthy();
     const room = rooms.get(view.tableId!);
+    expect(room?.isTournament()).toBe(true);
     expect(room?.playersWithChips()).toHaveLength(4);
+    expect(room?.meta.tournament?.allowTopUp).toBeFalsy();
+
+    for (const p of room!.seatedPlayersSnapshot()) {
+      expect(p.stack).toBe(500);
+    }
+
+    const hostSeat = room!.seatedPlayersSnapshot().find((p) => p.userId === 'host')!.seat;
+    room!.state.players[hostSeat]!.stack = 0;
+    const result = room!.doTopUp('host', hostSeat, 500);
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/top-up/i);
+  });
+
+  it('places players in chip-elimination order (last standing wins)', () => {
+    const view = tournaments.create({
+      name: 'Freezeout',
+      mode: 'chips',
+      hostUserId: 'host',
+      hostName: 'Host',
+      fieldSize: 4,
+      startingStack: 500,
+      smallBlind: 5,
+      bigBlind: 10,
+      turnTimeMs: 20_000,
+      botCount: 3,
+      isPrivate: true,
+      autoStart: true,
+    });
 
     const bots = view.entrants.filter((e) => e.userId !== 'host');
     tournaments.forceEliminate(view.id, bots[0]!.userId);
@@ -123,16 +84,83 @@ describe('TournamentManager', () => {
     expect(c.status).toBe('completed');
     expect(c.placements.find((p) => p.place === 1)?.userId).toBe('host');
     expect(c.placements).toHaveLength(4);
-    // First eliminated gets worst place (4)
     expect(c.placements.find((p) => p.userId === bots[0]!.userId)?.place).toBe(4);
     expect(c.placements.find((p) => p.userId === bots[1]!.userId)?.place).toBe(3);
     expect(c.placements.find((p) => p.userId === bots[2]!.userId)?.place).toBe(2);
   });
 
-  it('rejects top-up on tournament tables', () => {
+  it('creates rounds contest with hand limit and allows top-up', () => {
     const view = tournaments.create({
-      name: 'No rebuy',
-      mode: 'table_match',
+      name: 'Session',
+      mode: 'rounds',
+      hostUserId: 'host',
+      hostName: 'Host',
+      fieldSize: 3,
+      startingStack: 1000,
+      smallBlind: 5,
+      bigBlind: 10,
+      turnTimeMs: 20_000,
+      botCount: 2,
+      isPrivate: true,
+      autoStart: true,
+      handLimit: 10,
+    });
+
+    expect(view.status).toBe('running');
+    expect(view.mode).toBe('rounds');
+    expect(view.handLimit).toBe(10);
+    expect(view.handsPlayed).toBe(0);
+    const room = rooms.get(view.tableId!)!;
+    expect(room.meta.tournament?.allowTopUp).toBe(true);
+
+    const hostSeat = room.seatedPlayersSnapshot().find((p) => p.userId === 'host')!.seat;
+    room.state.players[hostSeat]!.stack = 0;
+    const result = room.doTopUp('host', hostSeat, 1000);
+    expect(result.ok).toBe(true);
+    expect(room.state.players[hostSeat]!.stack).toBe(1000);
+  });
+
+  it('finishes rounds contest by chip leader after hand limit', () => {
+    const view = tournaments.create({
+      name: 'Short session',
+      mode: 'rounds',
+      hostUserId: 'host',
+      hostName: 'Host',
+      fieldSize: 3,
+      startingStack: 1000,
+      smallBlind: 5,
+      bigBlind: 10,
+      turnTimeMs: 20_000,
+      botCount: 2,
+      isPrivate: true,
+      autoStart: true,
+      handLimit: 2,
+    });
+
+    const room = rooms.get(view.tableId!)!;
+    // Give host a clear chip lead
+    for (const p of room.state.players) {
+      if (!p.userId) continue;
+      p.stack = p.userId === 'host' ? 2500 : 250;
+    }
+
+    tournaments.forceHandEnded(view.id);
+    expect(tournaments.get(view.id)!.status).toBe('running');
+    expect(tournaments.get(view.id)!.handsPlayed).toBe(1);
+
+    tournaments.forceHandEnded(view.id);
+    const c = tournaments.get(view.id)!;
+    expect(c.status).toBe('completed');
+    expect(c.handsPlayed).toBe(2);
+    expect(c.placements.find((p) => p.place === 1)?.userId).toBe('host');
+    expect(c.placements).toHaveLength(3);
+    expect(room.meta.tournament?.frozen).toBe(true);
+  });
+
+  it('auto-tops bots during rounds contests', () => {
+    const view = tournaments.create({
+      name: 'Bot rebuy',
+      mode: 'rounds',
       hostUserId: 'host',
       hostName: 'Host',
       fieldSize: 2,
@@ -143,21 +171,20 @@ describe('TournamentManager', () => {
       botCount: 1,
       isPrivate: true,
       autoStart: true,
+      handLimit: 5,
     });
+
     const room = rooms.get(view.tableId!)!;
-    const hostSeat = room.seatedPlayersSnapshot().find((p) => p.userId === 'host')!.seat;
-    // Force host broke
-    const player = room.state.players[hostSeat]!;
-    player.stack = 0;
-    const result = room.doTopUp('host', hostSeat, 1000);
-    expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/top-up/i);
+    const bot = room.seatedPlayersSnapshot().find((p) => p.userId !== 'host')!;
+    room.state.players[bot.seat]!.stack = 0;
+    expect(room.autoTopUpBrokeBots()).toBe(1);
+    expect(room.state.players[bot.seat]!.stack).toBe(1000);
   });
 
   it('registers players until field is full then auto-starts', () => {
     const view = tournaments.create({
       name: 'Reg',
-      mode: 'table_match',
+      mode: 'chips',
       hostUserId: 'host',
       hostName: 'Host',
       fieldSize: 3,
@@ -174,6 +201,6 @@ describe('TournamentManager', () => {
     expect(tournaments.get(view.id)!.status).toBe('registering');
     tournaments.register(view.id, 'p3', 'Carol');
     expect(tournaments.get(view.id)!.status).toBe('running');
-    expect(tournaments.listPublic()).toHaveLength(0); // no longer registering
+    expect(tournaments.listPublic()).toHaveLength(0);
   });
 });

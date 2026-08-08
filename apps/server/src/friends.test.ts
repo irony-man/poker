@@ -99,5 +99,27 @@ describe('FriendsStore', () => {
     expect(bobPending).toHaveLength(1);
     expect(bobPending[0]!.groupName).toBe('Crew');
     expect(bobPending[0]!.inviteCode).toBe('1234');
+    expect(bobPending[0]!.kind).toBe('table');
+  });
+
+  it('invites friends to a contest', async () => {
+    const req = await friends.sendRequest('user-alice', 'user-bob');
+    await friends.respondRequest('user-bob', req.id, true);
+
+    const challenges = await friends.createFriendInvites(
+      'user-alice',
+      ['user-bob', 'user-carol'],
+      { kind: 'contest', contestId: 'contest-1', inviteCode: '5555' },
+    );
+    // Carol is not a friend — only Bob
+    expect(challenges).toHaveLength(1);
+    expect(challenges[0]!.kind).toBe('contest');
+    expect(challenges[0]!.contestId).toBe('contest-1');
+
+    const pending = await friends.listPendingChallenges(auth, 'user-bob');
+    expect(pending).toHaveLength(1);
+    expect(pending[0]!.kind).toBe('contest');
+    expect(pending[0]!.contestId).toBe('contest-1');
+    expect(pending[0]!.tableId).toBeNull();
   });
 });

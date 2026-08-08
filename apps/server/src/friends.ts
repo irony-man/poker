@@ -14,12 +14,19 @@ export interface FriendRequest {
   createdAt: number;
 }
 
+export type ChallengeKind = 'table' | 'contest';
+
 export interface Challenge {
   id: string;
   challengerId: string;
   challengedId: string;
+  /** Cash/private table id (empty string for pure contest invites). */
   tableId: string;
+  /** Contest registration invite target. */
+  contestId?: string;
   inviteCode: string;
+  /** Defaults to table when omitted (legacy snapshots). */
+  kind?: ChallengeKind;
   status: 'pending' | 'joined' | 'expired';
   createdAt: number;
   /** Present when this challenge was created via a group quick-invite. */
@@ -58,7 +65,9 @@ export interface PendingRequestView {
 export interface PendingChallengeView {
   id: string;
   challenger: FriendProfile;
-  tableId: string;
+  kind: ChallengeKind;
+  tableId: string | null;
+  contestId: string | null;
   inviteCode: string;
   createdAt: number;
   groupId?: string;
@@ -276,6 +285,7 @@ export class FriendsStore {
       challengedId,
       tableId,
       inviteCode,
+      kind: 'table',
       status: 'pending',
       createdAt: Date.now(),
       groupId: extra?.groupId,
@@ -284,6 +294,64 @@ export class FriendsStore {
     this.challenges.push(challenge);
     await this.persist();
     return challenge;
+  }
+
+  /**
+   * Notify friends of a private table or contest. Skips non-friends / self.
+   * Replaces an existing pending invite to the same target for the same friend.
+   */
+  async createFriendInvites(
+    hostUserId: string,
+    friendUserIds: string[],
+    target:
+      | { kind: 'table'; tableId: string; inviteCode: string }
+      | { kind: 'contest'; contestId: string; inviteCode: string },
+  ): Promise<Challenge[]> {
+    await this.ensureLoaded();
+    const unique = [...new Set(friendUserIds)].filter((id) => id !== hostUserId);
+    const created: Challenge[] = [];
+    for (const targetId of unique) {
+      if (!this.areFriends(hostUserId, targetId)) continue;
+
+      // Drop older pending invite from this host for the same destination.
+      this.challenges = this.challenges.filter((c) => {
+        if (c.challengerId !== hostUserId || c.challengedId !== targetId || c.status !== 'pending') {
+          return true;
+        }
+        if (target.kind === 'table') {
+          return !(c.kind !== 'contest' && c.tableId === target.tableId);
+        }
+        return c.contestId !== target.contestId;
+      });
+
+      const challenge: Challenge =
+        target.kind === 'table'
+          ? {
+              id: nanoid(10),
+              challengerId: hostUserId,
+              challengedId: targetId,
+              tableId: target.tableId,
+              inviteCode: target.inviteCode,
+              kind: 'table',
+              status: 'pending',
+              createdAt: Date.now(),
+            }
+          : {
+              id: nanoid(10),
+              challengerId: hostUserId,
+              challengedId: targetId,
+              tableId: '',
+              contestId: target.contestId,
+              inviteCode: target.inviteCode,
+              kind: 'contest',
+              status: 'pending',
+              createdAt: Date.now(),
+            };
+      this.challenges.push(challenge);
+      created.push(challenge);
+    }
+    if (created.length > 0) await this.persist();
+    return created;
   }
 
   async listPendingChallenges(
@@ -296,10 +364,14 @@ export class FriendsStore {
       if (c.challengedId !== userId || c.status !== 'pending') continue;
       const challenger = this.profile(auth, c.challengerId);
       if (!challenger) continue;
+      const kind: ChallengeKind =
+        c.kind ?? (c.contestId ? 'contest' : 'table');
       out.push({
         id: c.id,
         challenger,
-        tableId: c.tableId,
+        kind,
+        tableId: c.tableId || null,
+        contestId: c.contestId ?? null,
         inviteCode: c.inviteCode,
         createdAt: c.createdAt,
         ...(c.groupId ? { groupId: c.groupId } : {}),
@@ -465,6 +537,7 @@ export class FriendsStore {
         challengedId: targetId,
         tableId,
         inviteCode,
+        kind: 'table',
         status: 'pending',
         createdAt: Date.now(),
         groupId: group.id,

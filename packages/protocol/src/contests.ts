@@ -1,7 +1,11 @@
 import { z } from 'zod';
 
-/** Contest play mode. */
-export const ContestModeSchema = z.enum(['knockout', 'table_match']);
+/**
+ * Contest play mode:
+ * - `rounds`: fixed hand count, equal start stacks, top-ups allowed; chip leader wins.
+ * - `chips`: equal start stacks, no top-ups; last player with chips wins.
+ */
+export const ContestModeSchema = z.enum(['rounds', 'chips']);
 export type ContestMode = z.infer<typeof ContestModeSchema>;
 
 export const ContestStatusSchema = z.enum([
@@ -48,18 +52,6 @@ export const ContestPlacementSchema = z.object({
 });
 export type ContestPlacement = z.infer<typeof ContestPlacementSchema>;
 
-export const KnockoutMatchSchema = z.object({
-  id: z.string(),
-  round: z.number().int().nonnegative(),
-  index: z.number().int().nonnegative(),
-  playerA: z.string().nullable(),
-  playerB: z.string().nullable(),
-  winnerId: z.string().nullable(),
-  tableId: z.string().nullable(),
-  status: z.enum(['pending', 'active', 'completed']),
-});
-export type KnockoutMatch = z.infer<typeof KnockoutMatchSchema>;
-
 export const ContestBlindInfoSchema = z.object({
   levelIndex: z.number().int().nonnegative(),
   smallBlind: z.number().int().positive(),
@@ -93,11 +85,13 @@ export const ContestViewSchema = z.object({
   isPrivate: z.boolean(),
   entrants: z.array(ContestEntrantSchema),
   placements: z.array(ContestPlacementSchema),
-  /** Knockout bracket matches (empty for table_match). */
-  matches: z.array(KnockoutMatchSchema),
-  /** Active table for table_match, or null. */
+  /** Active contest table, or null before start. */
   tableId: z.string().nullable(),
   blinds: ContestBlindInfoSchema.nullable(),
+  /** Hands completed so far (both modes). */
+  handsPlayed: z.number().int().nonnegative(),
+  /** Fixed hand budget for rounds mode; null for chips. */
+  handLimit: z.number().int().positive().nullable(),
   assignments: z.array(ContestPlayerAssignmentSchema),
   createdAt: z.number(),
   startedAt: z.number().nullable(),
@@ -108,14 +102,14 @@ export type ContestView = z.infer<typeof ContestViewSchema>;
 export const CreateContestBodySchema = z.object({
   name: z.string().min(1).max(64).default('Contest'),
   mode: ContestModeSchema,
-  /** Knockout: 4 | 8 | 16. Table match: 2–9. */
-  fieldSize: z.number().int().min(2).max(16),
+  /** Table size: 2–9 seats. */
+  fieldSize: z.number().int().min(2).max(9),
   startingStack: z.number().int().positive().default(1000),
   smallBlind: z.number().int().positive().default(5),
   bigBlind: z.number().int().positive().default(10),
   turnTimeMs: z.number().int().positive().default(20000),
   /** Pre-seat bot entrants when created (register fill at start too). */
-  botCount: z.number().int().min(0).max(15).default(0),
+  botCount: z.number().int().min(0).max(8).default(0),
   isPrivate: z.boolean().default(true),
   inviteCode: z
     .string()
@@ -123,16 +117,26 @@ export const CreateContestBodySchema = z.object({
     .optional(),
   /** Auto-start when field is full. Default true. */
   autoStart: z.boolean().default(true),
+  /**
+   * Hands to play in rounds mode (ignored for chips).
+   * Defaults to 20 when mode is rounds.
+   */
+  handLimit: z.number().int().min(5).max(100).optional(),
+  /** Friends to receive a contest invite when created. */
+  inviteFriendIds: z.array(z.string().min(1).max(128)).max(8).default([]),
 });
 export type CreateContestBody = z.infer<typeof CreateContestBodySchema>;
 
-export function validateContestFieldSize(mode: ContestMode, fieldSize: number): string | null {
-  if (mode === 'knockout') {
-    if (![4, 8, 16].includes(fieldSize)) {
-      return 'Knockout field size must be 4, 8, or 16';
-    }
-  } else if (fieldSize < 2 || fieldSize > 9) {
-    return 'Table match field size must be 2–9';
+export const DEFAULT_ROUNDS_HAND_LIMIT = 20;
+
+export function validateContestFieldSize(_mode: ContestMode, fieldSize: number): string | null {
+  if (fieldSize < 2 || fieldSize > 9) {
+    return 'Contest field size must be 2–9';
   }
   return null;
+}
+
+export function resolveHandLimit(mode: ContestMode, handLimit?: number): number | null {
+  if (mode !== 'rounds') return null;
+  return handLimit ?? DEFAULT_ROUNDS_HAND_LIMIT;
 }

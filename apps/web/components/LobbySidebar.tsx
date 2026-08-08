@@ -2,9 +2,46 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { useCallback, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { authHref } from '@/lib/authRedirect';
 import { LOBBY_NAV, isLobbyNavActive } from '@/lib/lobbyNav';
+import { useSession } from '@/lib/store';
+
+function CopyIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <rect x="9" y="9" width="13" height="13" rx="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+
+function CheckIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
 
 export function LobbySidebar({
   open,
@@ -20,6 +57,20 @@ export function LobbySidebar({
   onLogout: () => void;
 }) {
   const pathname = usePathname();
+  const username = useSession((s) => s.username);
+  const [copied, setCopied] = useState(false);
+
+  const onCopyUsername = useCallback(async () => {
+    const handle = (username ?? '').trim();
+    if (!handle) return;
+    try {
+      await navigator.clipboard.writeText(handle);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      /* ignore */
+    }
+  }, [username]);
 
   const navLinks = (
     <nav className="flex flex-1 flex-col gap-1 px-3 py-4" aria-label="Lobby">
@@ -43,17 +94,39 @@ export function LobbySidebar({
     </nav>
   );
 
+  const handle = (username ?? '').trim();
+
   const footer = (
     <div className="mt-auto border-t border-mushroom/10 px-4 py-4">
       {signedIn ? (
         <div className="space-y-2">
-          <div>
+          <div className="min-w-0">
             <p className="text-[10px] font-display uppercase tracking-[0.16em] text-mushroom/45">
               Signed in
             </p>
             <p className="truncate font-display text-sm font-semibold text-mushroom">
               {displayName || 'Player'}
             </p>
+            {handle ? (
+              <div className="mt-1.5 flex min-w-0 items-center gap-1">
+                <p className="min-w-0 flex-1 truncate text-xs text-mushroom/55" title={handle}>
+                  {handle}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void onCopyUsername()}
+                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-mushroom/55 transition hover:bg-mushroom/10 hover:text-mushroom"
+                  aria-label={copied ? 'Username copied' : 'Copy username'}
+                  title={copied ? 'Copied' : 'Copy username'}
+                >
+                  {copied ? (
+                    <CheckIcon className="h-3.5 w-3.5 text-positive" />
+                  ) : (
+                    <CopyIcon className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              </div>
+            ) : null}
           </div>
           <button
             type="button"

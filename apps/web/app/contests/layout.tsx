@@ -3,12 +3,12 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Contests & tournaments',
   description:
-    "Enter knockout tournaments and fixed-round Texas Hold'em contests. Free competitive play on pokr.site.",
+    "Enter chip freezeouts and fixed-round Texas Hold'em contests. Free competitive play on pokr.site.",
   alternates: { canonical: '/contests' },
   openGraph: {
     title: 'Contests & tournaments | pokr.site',
     description:
-      "Enter knockout tournaments and fixed-round Texas Hold'em contests. Free competitive play.",
+      "Enter chip freezeouts and fixed-round Texas Hold'em contests. Free competitive play.",
     url: '/contests',
   },
 };

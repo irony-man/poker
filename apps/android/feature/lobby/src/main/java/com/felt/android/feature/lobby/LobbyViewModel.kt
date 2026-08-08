@@ -31,9 +31,10 @@ data class LobbyUiState(
     val customRoomCode: String = "",
     val inviteCode: String = "",
     val offlineSeats: Int = 6,
-    val contestMode: String = "table_match",
+    val contestMode: String = "chips",
     val contestFieldSize: Int = 6,
     val contestBotCount: Int = 3,
+    val contestHandLimit: Int = 20,
     val contestInvite: String = "",
     val busy: Boolean = false,
     val error: String? = null,
@@ -99,12 +100,10 @@ class LobbyViewModel @Inject constructor(
         _uiState.update { it.copy(inviteCode = value.trim().take(8)) }
     fun onOfflineSeatsChange(value: Int) = _uiState.update { it.copy(offlineSeats = value) }
     fun onContestModeChange(value: String) {
-        val size = if (value == "knockout") 4 else 6
         _uiState.update {
             it.copy(
                 contestMode = value,
-                contestFieldSize = size,
-                contestBotCount = it.contestBotCount.coerceAtMost(size - 1),
+                contestBotCount = it.contestBotCount.coerceAtMost(it.contestFieldSize - 1),
             )
         }
     }
@@ -116,6 +115,7 @@ class LobbyViewModel @Inject constructor(
             )
         }
     fun onContestBotCountChange(value: Int) = _uiState.update { it.copy(contestBotCount = value) }
+    fun onContestHandLimitChange(value: Int) = _uiState.update { it.copy(contestHandLimit = value) }
     fun onContestInviteChange(value: String) =
         _uiState.update { it.copy(contestInvite = value.filter { ch -> ch.isDigit() }.take(8)) }
     fun clearError() = _uiState.update { it.copy(error = null) }
@@ -239,15 +239,17 @@ class LobbyViewModel @Inject constructor(
                 val session = requireSession()
                 val mode = state.contestMode
                 val field = state.contestFieldSize
+                val modeLabel = if (mode == "rounds") "Rounds" else "Chips"
                 feltApi.createContest(
                     CreateContestRequest(
                         userId = session.userId,
-                        name = "${session.name}'s ${if (mode == "knockout") "Knockout" else "Table Match"}",
+                        name = "${session.name}'s $modeLabel Contest",
                         mode = mode,
                         fieldSize = field,
                         botCount = state.contestBotCount.coerceAtMost(field - 1),
                         isPrivate = true,
                         autoStart = true,
+                        handLimit = if (mode == "rounds") state.contestHandLimit else null,
                     ),
                 ).contest.id
             }.onSuccess { id ->

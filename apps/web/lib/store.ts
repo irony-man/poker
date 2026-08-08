@@ -41,7 +41,7 @@ export interface PublicTable {
   /** Present on tournament tables. */
   tournament?: {
     contestId: string;
-    mode: 'knockout' | 'table_match';
+    mode: 'rounds' | 'chips';
     matchId: string | null;
     frozen: boolean;
     noTopUp: boolean;

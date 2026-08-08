@@ -486,11 +486,12 @@ export function TableView({
         {table?.tournament && (
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <span className="status-chip border-sidebar/25 bg-sidebar/8 text-sidebar">
-              {table.tournament.mode === 'knockout' ? 'Knockout' : 'Table match'}
-              {table.tournament.frozen ? ' · match over' : ''}
+              {table.tournament.mode === 'rounds' ? 'Rounds' : 'Chips'}
+              {table.tournament.frozen ? ' · over' : ''}
             </span>
             <span className="text-xs text-ink-strong-muted">
-              Blinds {table.config.smallBlind}/{table.config.bigBlind} · no rebuy
+              Blinds {table.config.smallBlind}/{table.config.bigBlind}
+              {table.tournament.noTopUp ? ' · no rebuy' : ' · top-ups on'}
             </span>
             {table.tournament.contestId && (
               <a

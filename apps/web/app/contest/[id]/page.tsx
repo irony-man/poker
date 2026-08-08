@@ -1,21 +1,30 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   type ContestView,
   getContest,
+  inviteContestFriends,
   registerContest,
   startContest,
   unregisterContest,
   WS_URL,
 } from '@/lib/api';
+import { FriendInvitePicker } from '@/components/FriendInvitePicker';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { useSession } from '@/lib/store';
 
-function nameOf(contest: ContestView, userId: string | null): string {
-  if (!userId) return '—';
-  return contest.entrants.find((e) => e.userId === userId)?.name ?? userId.slice(0, 6);
+function modeLabel(mode: ContestView['mode']): string {
+  return mode === 'rounds' ? 'Rounds' : 'Chips';
+}
+
+function modeDescription(contest: ContestView): string {
+  if (contest.mode === 'rounds') {
+    const limit = contest.handLimit ?? 20;
+    return `Play ${limit} hands with top-ups. Highest stack when the session ends wins.`;
+  }
+  return 'Equal stacks, no top-ups. Last player with chips wins.';
 }
 
 export default function ContestPage() {
@@ -29,6 +38,8 @@ export default function ContestPage() {
   const [contest, setContest] = useState<ContestView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [inviteFriendIds, setInviteFriendIds] = useState<string[]>([]);
+  const [inviteToast, setInviteToast] = useState<string | null>(null);
   const navigatedTable = useRef<string | null>(null);
 
   useEffect(() => {
@@ -136,16 +147,6 @@ export default function ContestPage() {
   const isRegistered = contest?.entrants.some((e) => e.userId === userId);
   const myAssignment = contest?.assignments.find((a) => a.userId === userId);
 
-  const bracketByRound = useMemo(() => {
-    if (!contest) return [];
-    const maxRound = Math.max(0, ...contest.matches.map((m) => m.round));
-    const rounds: ContestView['matches'][] = [];
-    for (let r = 0; r <= maxRound; r++) {
-      rounds.push(contest.matches.filter((m) => m.round === r).sort((a, b) => a.index - b.index));
-    }
-    return rounds;
-  }, [contest]);
-
   async function onRegister() {
     if (!sessionToken) {
       setError('Sign in from the lobby first');
@@ -188,6 +189,26 @@ export default function ContestPage() {
     }
   }
 
+  async function onInviteFriends() {
+    if (!sessionToken || inviteFriendIds.length === 0) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await inviteContestFriends(contestId, inviteFriendIds, { sessionToken });
+      setInviteFriendIds([]);
+      setInviteToast(
+        result.inviteCount > 0
+          ? `Invited ${result.inviteCount} friend${result.inviteCount === 1 ? '' : 's'}`
+          : 'No friends were invited',
+      );
+      window.setTimeout(() => setInviteToast(null), 3200);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Invite failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (error && !contest) {
     return (
       <div className="mx-auto max-w-lg px-4 py-12 text-center">
@@ -218,7 +239,7 @@ export default function ContestPage() {
       <header className="mt-3 flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="status-chip border-sidebar/25 bg-sidebar/8 text-sidebar w-fit">
-            {contest.mode === 'knockout' ? 'Knockout' : 'Table match'} · {contest.status}
+            {modeLabel(contest.mode)} · {contest.status}
           </p>
           <h1 className="mt-2 font-display text-3xl font-bold text-sidebar uppercase tracking-wide">
             {contest.name}
@@ -230,7 +251,11 @@ export default function ContestPage() {
             {contest.blinds
               ? `${contest.blinds.smallBlind}/${contest.blinds.bigBlind}`
               : `${contest.smallBlind}/${contest.bigBlind}`}
+            {contest.mode === 'rounds' && contest.handLimit
+              ? ` · hand ${Math.min(contest.handsPlayed, contest.handLimit)}/${contest.handLimit}`
+              : ''}
           </p>
+          <p className="mt-2 max-w-lg text-sm text-ink-strong-muted">{modeDescription(contest)}</p>
         </div>
         {myAssignment?.tableId && contest.status === 'running' && (
           <button
@@ -266,6 +291,59 @@ export default function ContestPage() {
         </div>
       )}
 
+      {contest.status === 'registering' && isHost && sessionToken && (
+        <section className="hud-panel mt-6 p-4 sm:p-5">
+          <FriendInvitePicker
+            sessionToken={sessionToken}
+            selectedIds={inviteFriendIds}
+            onChange={setInviteFriendIds}
+            disabled={busy}
+            maxSelect={Math.min(
+              8,
+              Math.max(0, contest.fieldSize - contest.entrants.length),
+            )}
+            title="Invite friends"
+            help="Send a contest invite. Friends can accept from Friends → Invites."
+          />
+          {inviteToast && (
+            <p className="mt-2 text-sm text-sidebar" role="status">
+              {inviteToast}
+            </p>
+          )}
+          <button
+            type="button"
+            disabled={busy || inviteFriendIds.length === 0}
+            onClick={() => void onInviteFriends()}
+            className="btn-primary mt-3 min-h-10 w-full sm:w-auto"
+          >
+            {busy
+              ? 'Sending…'
+              : inviteFriendIds.length > 0
+                ? `Send ${inviteFriendIds.length} invite${inviteFriendIds.length === 1 ? '' : 's'}`
+                : 'Select friends to invite'}
+          </button>
+        </section>
+      )}
+
+      {contest.status === 'running' && contest.mode === 'rounds' && contest.handLimit && (
+        <div className="hud-panel mt-6 p-4 sm:p-5">
+          <h2 className="font-display text-sm font-bold uppercase tracking-wider text-sidebar">
+            Progress
+          </h2>
+          <p className="mt-2 text-sm text-ink-strong">
+            Hand {Math.min(contest.handsPlayed, contest.handLimit)} of {contest.handLimit}
+          </p>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-sidebar/10">
+            <div
+              className="h-full rounded-full bg-sidebar transition-all duration-500"
+              style={{
+                width: `${Math.min(100, (contest.handsPlayed / contest.handLimit) * 100)}%`,
+              }}
+            />
+          </div>
+        </div>
+      )}
+
       <section className="hud-panel mt-6 p-4 sm:p-5">
         <h2 className="font-display text-sm font-bold uppercase tracking-wider text-sidebar">
           Entrants
@@ -294,51 +372,6 @@ export default function ContestPage() {
           ))}
         </ul>
       </section>
-
-      {contest.mode === 'knockout' && contest.matches.length > 0 && (
-        <section className="hud-panel mt-4 p-4 sm:p-5">
-          <h2 className="font-display text-sm font-bold uppercase tracking-wider text-sidebar">
-            Bracket
-          </h2>
-          <div className="mt-3 space-y-4">
-            {bracketByRound.map((round, ri) => (
-              <div key={ri}>
-                <p className="text-[10px] font-display uppercase tracking-widest text-ink-strong-muted">
-                  Round {ri + 1}
-                </p>
-                <ul className="mt-1.5 space-y-1.5">
-                  {round.map((m) => (
-                    <li
-                      key={m.id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-cream/10 px-3 py-2 text-sm"
-                    >
-                      <span>
-                        {nameOf(contest, m.playerA)} vs {nameOf(contest, m.playerB)}
-                      </span>
-                      <span className="text-xs text-ink-strong-muted">
-                        {m.status}
-                        {m.winnerId ? ` · ${nameOf(contest, m.winnerId)} wins` : ''}
-                        {m.tableId && m.status === 'active' ? (
-                          <button
-                            type="button"
-                            className="ml-2 text-sidebar underline"
-                            onClick={() => {
-                              enterMobileFullscreen();
-                              router.push(`/table/${m.tableId}?contest=${contestId}`);
-                            }}
-                          >
-                            Table
-                          </button>
-                        ) : null}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
 
       {contest.placements.length > 0 && (
         <section className="hud-panel mt-4 p-4 sm:p-5">

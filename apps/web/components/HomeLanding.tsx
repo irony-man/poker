@@ -15,8 +15,8 @@ type Feature = {
 
 const FEATURES: Feature[] = [
   {
-    title: 'Knockout Tournaments',
-    body: "Fixed buy-in Texas Hold'em on 4- or 8-player tables. Last player standing takes it all.",
+    title: 'Chip contests',
+    body: "Equal stacks for everyone, no top-ups. Survive the table — last player standing takes first place.",
     cta: 'Contests',
     href: '/contests',
     image: '/home-knockout.png',
@@ -24,8 +24,8 @@ const FEATURES: Feature[] = [
     imageFirst: true,
   },
   {
-    title: 'Fixed round table plays',
-    body: "Fixed-round Hold'em with a clear buy-in. Play the session; add chips when you need them and finish when the rounds end.",
+    title: 'Round sessions',
+    body: "Play a fixed number of hands with top-ups allowed. When the last hand ends, the chip leader wins.",
     cta: 'Contests',
     href: '/contests',
     image: '/poker-chip-shuffle.svg',

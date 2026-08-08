@@ -1,6 +1,7 @@
 import { nanoid } from 'nanoid';
 import {
   buildBlindSchedule,
+  resolveHandLimit,
   type BlindLevel,
   type ContestBlindInfo,
   type ContestEntrant,
@@ -9,7 +10,6 @@ import {
   type ContestPlayerAssignment,
   type ContestStatus,
   type ContestView,
-  type KnockoutMatch,
   validateContestFieldSize,
 } from '@poker/protocol';
 import { isBotUserId, makeBotUserId, pickBotName } from './bot.js';
@@ -29,6 +29,7 @@ export interface CreateContestOpts {
   isPrivate: boolean;
   inviteCode?: string;
   autoStart: boolean;
+  handLimit?: number;
 }
 
 export interface ContestEntrantInternal extends ContestEntrant {
@@ -49,10 +50,11 @@ export interface ContestState {
   turnTimeMs: number;
   isPrivate: boolean;
   autoStart: boolean;
+  /** Fixed hands for rounds mode; null for chips. */
+  handLimit: number | null;
+  handsPlayed: number;
   entrants: ContestEntrantInternal[];
   placements: ContestPlacement[];
-  matches: KnockoutMatch[];
-  /** Single table for table_match. */
   tableId: string | null;
   levelIndex: number;
   handsAtLevel: number;
@@ -60,7 +62,7 @@ export interface ContestState {
   createdAt: number;
   startedAt: number | null;
   completedAt: number | null;
-  /** userId → current table (active match). */
+  /** userId → current table. */
   activeTableByUser: Map<string, string>;
   /** Tables owned by this contest. */
   tableIds: Set<string>;
@@ -92,6 +94,7 @@ export class TournamentManager {
       throw new Error('Room code already in use');
     }
 
+    const handLimit = resolveHandLimit(opts.mode, opts.handLimit);
     const id = nanoid(10);
     const contest: ContestState = {
       id,
@@ -107,9 +110,10 @@ export class TournamentManager {
       turnTimeMs: opts.turnTimeMs,
       isPrivate: opts.isPrivate,
       autoStart: opts.autoStart,
+      handLimit,
+      handsPlayed: 0,
       entrants: [],
       placements: [],
-      matches: [],
       tableId: null,
       levelIndex: 0,
       handsAtLevel: 0,
@@ -200,26 +204,7 @@ export class TournamentManager {
     if (userId !== c.hostUserId) return { ok: false, error: 'Only host can start' };
     if (c.status !== 'registering') return { ok: false, error: 'Already started' };
     if (c.entrants.length < 2) return { ok: false, error: 'Need at least 2 entrants' };
-    if (c.mode === 'knockout') {
-      const sizeErr = validateContestFieldSize('knockout', c.entrants.length);
-      if (sizeErr && c.entrants.length !== c.fieldSize) {
-        // Allow start only when field is full for knockout (bracket needs exact power-of-2)
-        if (c.entrants.length !== c.fieldSize) {
-          return {
-            ok: false,
-            error: `Knockout needs exactly ${c.fieldSize} players (have ${c.entrants.length})`,
-          };
-        }
-      }
-      if (c.entrants.length !== c.fieldSize) {
-        return {
-          ok: false,
-          error: `Knockout needs exactly ${c.fieldSize} players (have ${c.entrants.length})`,
-        };
-      }
-    } else if (c.entrants.length < 2 || c.entrants.length > 9) {
-      return { ok: false, error: 'Table match needs 2–9 entrants' };
-    }
+    if (c.entrants.length > 9) return { ok: false, error: 'Contest needs 2–9 entrants' };
 
     this.startContest(c);
     return { ok: true, contest: this.toView(c) };
@@ -263,23 +248,25 @@ export class TournamentManager {
     }
   }
 
-  /** Test helper: complete a knockout match by winner user id. */
-  forceCompleteMatch(contestId: string, matchId: string, winnerId: string): void {
-    const c = this.contests.get(contestId);
-    if (!c) return;
-    this.completeKnockoutMatch(c, matchId, winnerId);
-  }
-
-  /** Test helper: eliminate a user from table-match contest. */
+  /** Test helper: eliminate a user from a chips contest. */
   forceEliminate(contestId: string, userId: string): void {
     const c = this.contests.get(contestId);
-    if (!c || c.mode !== 'table_match') return;
+    if (!c || c.mode !== 'chips') return;
     this.eliminatePlayers(c, [userId]);
     const alive = this.aliveEntrants(c);
     if (alive.length <= 1) {
       if (alive[0]) this.placePlayer(c, alive[0].userId, 1);
       this.finishContest(c);
     }
+  }
+
+  /** Test helper: run post-hand contest bookkeeping as if a room hand ended. */
+  forceHandEnded(contestId: string): void {
+    const c = this.contests.get(contestId);
+    if (!c?.tableId) return;
+    const room = this.rooms.get(c.tableId);
+    if (!room) return;
+    this.onRoomHandEnded(room);
   }
 
   private startContest(c: ContestState): void {
@@ -292,19 +279,14 @@ export class TournamentManager {
       event: 'contest_started',
       message: 'Contest started',
     });
-
-    if (c.mode === 'knockout') {
-      this.startKnockout(c);
-    } else {
-      this.startTableMatch(c);
-    }
+    this.openTable(c);
     this.broadcast(c.id);
   }
 
-  private startTableMatch(c: ContestState): void {
-    // Field may be smaller than fieldSize if host starts early
+  private openTable(c: ContestState): void {
     const n = c.entrants.length;
     const level = c.schedule[0]!;
+    const allowTopUp = c.mode === 'rounds';
     const meta = this.rooms.create({
       name: `${c.name} — Table`,
       hostUserId: c.hostUserId,
@@ -318,7 +300,8 @@ export class TournamentManager {
       },
       tournament: {
         contestId: c.id,
-        mode: 'table_match',
+        mode: c.mode,
+        allowTopUp,
       },
     });
     c.tableId = meta.id;
@@ -328,81 +311,7 @@ export class TournamentManager {
       room.forceSeat(e.userId, e.name, i, c.startingStack);
       c.activeTableByUser.set(e.userId, meta.id);
     });
-    this.emitMatchAssigned(c, meta.id, null, c.entrants.map((e) => e.userId));
-    room.scheduleTournamentAutoStart();
-  }
-
-  private startKnockout(c: ContestState): void {
-    const shuffled = [...c.entrants];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j]!, shuffled[i]!];
-    }
-
-    const rounds = Math.log2(c.fieldSize);
-    const matches: KnockoutMatch[] = [];
-    // Round 0: fieldSize/2 matches
-    for (let r = 0; r < rounds; r++) {
-      const count = c.fieldSize / Math.pow(2, r + 1);
-      for (let i = 0; i < count; i++) {
-        matches.push({
-          id: nanoid(8),
-          round: r,
-          index: i,
-          playerA: r === 0 ? shuffled[i * 2]!.userId : null,
-          playerB: r === 0 ? shuffled[i * 2 + 1]!.userId : null,
-          winnerId: null,
-          tableId: null,
-          status: 'pending',
-        });
-      }
-    }
-    c.matches = matches;
-    this.launchKnockoutRound(c, 0);
-  }
-
-  private launchKnockoutRound(c: ContestState, round: number): void {
-    const roundMatches = c.matches.filter((m) => m.round === round && m.status === 'pending');
-    for (const match of roundMatches) {
-      if (!match.playerA || !match.playerB) continue;
-      this.openKnockoutMatch(c, match);
-    }
-  }
-
-  private openKnockoutMatch(c: ContestState, match: KnockoutMatch): void {
-    const a = c.entrants.find((e) => e.userId === match.playerA);
-    const b = c.entrants.find((e) => e.userId === match.playerB);
-    if (!a || !b) return;
-
-    const level = c.schedule[Math.min(c.levelIndex, c.schedule.length - 1)]!;
-    const meta = this.rooms.create({
-      name: `${c.name} — R${match.round + 1} M${match.index + 1}`,
-      hostUserId: c.hostUserId,
-      isPrivate: true,
-      config: {
-        maxSeats: 2,
-        smallBlind: level.smallBlind,
-        bigBlind: level.bigBlind,
-        buyIn: c.startingStack,
-        turnTimeMs: c.turnTimeMs,
-      },
-      tournament: {
-        contestId: c.id,
-        mode: 'knockout',
-        matchId: match.id,
-      },
-    });
-    match.tableId = meta.id;
-    match.status = 'active';
-    c.tableIds.add(meta.id);
-
-    const room = this.rooms.get(meta.id)!;
-    room.forceSeat(a.userId, a.name, 0, c.startingStack);
-    room.forceSeat(b.userId, b.name, 1, c.startingStack);
-    c.activeTableByUser.set(a.userId, meta.id);
-    c.activeTableByUser.set(b.userId, meta.id);
-
-    this.emitMatchAssigned(c, meta.id, match.id, [a.userId, b.userId]);
+    this.emitMatchAssigned(c, meta.id, c.entrants.map((e) => e.userId));
     room.scheduleTournamentAutoStart();
   }
 
@@ -412,7 +321,7 @@ export class TournamentManager {
     const c = this.contests.get(t.contestId);
     if (!c || c.status !== 'running') return;
 
-    // Advance blind level bookkeeping for table matches (and multi-hand knockout tables)
+    c.handsPlayed += 1;
     c.handsAtLevel += 1;
     const level = c.schedule[c.levelIndex];
     if (level && c.handsAtLevel >= level.durationHands && c.levelIndex < c.schedule.length - 1) {
@@ -421,42 +330,23 @@ export class TournamentManager {
       const next = c.schedule[c.levelIndex]!;
       room.applyBlindLevel(next.smallBlind, next.bigBlind);
     } else if (level) {
-      // Keep current level blinds on config
       room.applyBlindLevel(
         c.schedule[c.levelIndex]!.smallBlind,
         c.schedule[c.levelIndex]!.bigBlind,
       );
     }
 
-    if (t.mode === 'knockout' && t.matchId) {
-      this.processKnockoutHand(c, room, t.matchId);
-    } else if (t.mode === 'table_match') {
-      this.processTableMatchHand(c, room);
+    if (c.mode === 'chips') {
+      this.processChipsHand(c, room);
+    } else {
+      this.processRoundsHand(c, room);
     }
     this.broadcast(c.id);
   }
 
-  private processKnockoutHand(c: ContestState, room: Room, matchId: string): void {
-    const withChips = room.playersWithChips();
-    if (withChips.length > 1) {
-      // Continue — auto next hand
-      room.scheduleTournamentAutoStart();
-      return;
-    }
-    if (withChips.length === 1) {
-      this.completeKnockoutMatch(c, matchId, withChips[0]!.userId);
-      return;
-    }
-    // No chips? shouldn't happen — use highest stack including zeros from last state
-    const seated = room.seatedPlayersSnapshot();
-    seated.sort((a, b) => b.stack - a.stack);
-    if (seated[0]) this.completeKnockoutMatch(c, matchId, seated[0].userId);
-  }
-
-  private processTableMatchHand(c: ContestState, room: Room): void {
+  private processChipsHand(c: ContestState, room: Room): void {
     const busted = room.playersBusted();
     if (busted.length > 0) {
-      // Worse places for earlier seat order among simultaneous busts
       const ordered = [...busted].sort((a, b) => a.seat - b.seat);
       this.eliminatePlayers(
         c,
@@ -473,6 +363,7 @@ export class TournamentManager {
         this.placePlayer(c, alive[0].userId, 1);
         room.systemChatPublic('Dealer', `${alive[0].name ?? 'Player'} wins the contest!`);
       }
+      room.freezeTournamentMatch();
       this.finishContest(c);
       return;
     }
@@ -480,61 +371,43 @@ export class TournamentManager {
     room.scheduleTournamentAutoStart();
   }
 
-  private completeKnockoutMatch(c: ContestState, matchId: string, winnerId: string): void {
-    const match = c.matches.find((m) => m.id === matchId);
-    if (!match || match.status === 'completed') return;
+  private processRoundsHand(c: ContestState, room: Room): void {
+    // Bots rebuy automatically so the session keeps moving.
+    room.autoTopUpBrokeBots();
 
-    const loserId = match.playerA === winnerId ? match.playerB : match.playerA;
-    match.winnerId = winnerId;
-    match.status = 'completed';
-
-    if (loserId) {
-      const place = this.knockoutLoserPlace(c.fieldSize, match.round, match.index);
-      this.placePlayer(c, loserId, place);
-      c.activeTableByUser.delete(loserId);
-    }
-    c.activeTableByUser.delete(winnerId);
-
-    // Freeze the room — no more hands
-    if (match.tableId) {
-      const room = this.rooms.get(match.tableId);
-      room?.freezeTournamentMatch();
-    }
-
-    // Feed winner into next round match
-    const rounds = Math.log2(c.fieldSize);
-    const nextRound = match.round + 1;
-    if (nextRound >= rounds) {
-      // Final won
-      this.placePlayer(c, winnerId, 1);
-      this.finishContest(c);
+    const limit = c.handLimit ?? 0;
+    if (c.handsPlayed >= limit) {
+      this.finishByChipLeader(c, room);
       return;
     }
 
-    const nextIndex = Math.floor(match.index / 2);
-    const nextMatch = c.matches.find((m) => m.round === nextRound && m.index === nextIndex);
-    if (nextMatch) {
-      if (match.index % 2 === 0) nextMatch.playerA = winnerId;
-      else nextMatch.playerB = winnerId;
-
-      // Launch next match when both slots filled
-      if (nextMatch.playerA && nextMatch.playerB && nextMatch.status === 'pending') {
-        this.openKnockoutMatch(c, nextMatch);
-      }
+    const withChips = room.playersWithChips();
+    // Not enough funded players and hand budget remains — end by stack order.
+    if (withChips.length < 2) {
+      this.finishByChipLeader(c, room);
+      return;
     }
 
-    this.broadcast(c.id);
+    room.scheduleTournamentAutoStart();
   }
 
-  /**
-   * Assign unique places for losers in a round.
-   * Round 0 of 8: places 5–8; semis: 3–4; final loser handled separately as 2.
-   */
-  private knockoutLoserPlace(fieldSize: number, round: number, matchIndex: number): number {
-    const high = fieldSize / Math.pow(2, round); // e.g. round0/8 → 8
-    const low = fieldSize / Math.pow(2, round + 1) + 1; // → 5
-    // Map match index into [low, high]
-    return low + matchIndex;
+  /** Rank remaining seated stacks; higher chip count places better. */
+  private finishByChipLeader(c: ContestState, room: Room): void {
+    if (c.status !== 'running') return;
+    const seated = room.seatedPlayersSnapshot();
+    seated.sort((a, b) => b.stack - a.stack || a.seat - b.seat);
+    seated.forEach((p, i) => {
+      this.placePlayer(c, p.userId, i + 1);
+    });
+    const winner = seated[0];
+    if (winner) {
+      room.systemChatPublic(
+        'Dealer',
+        `${winner.name ?? 'Player'} wins with ${winner.stack} chips!`,
+      );
+    }
+    room.freezeTournamentMatch();
+    this.finishContest(c);
   }
 
   private eliminatePlayers(c: ContestState, userIds: string[]): void {
@@ -570,6 +443,7 @@ export class TournamentManager {
   }
 
   private finishContest(c: ContestState): void {
+    if (c.status === 'completed') return;
     c.status = 'completed';
     c.completedAt = Date.now();
     // Ensure all non-placed entrants get a place
@@ -593,12 +467,7 @@ export class TournamentManager {
     return c.entrants.filter((e) => !placed.has(e.userId));
   }
 
-  private emitMatchAssigned(
-    c: ContestState,
-    tableId: string,
-    matchId: string | null,
-    userIds: string[],
-  ): void {
+  private emitMatchAssigned(c: ContestState, tableId: string, userIds: string[]): void {
     for (const userId of userIds) {
       const send = this.watchers.get(c.id)?.get(userId);
       send?.({
@@ -606,8 +475,7 @@ export class TournamentManager {
         contestId: c.id,
         event: 'match_assigned',
         tableId,
-        matchId: matchId ?? undefined,
-        message: 'Your match is ready',
+        message: 'Your table is ready',
       });
     }
     this.broadcast(c.id);
@@ -647,11 +515,7 @@ export class TournamentManager {
       return {
         userId: e.userId,
         tableId: c.activeTableByUser.get(e.userId) ?? null,
-        matchId:
-          c.matches.find(
-            (m) =>
-              m.status === 'active' && (m.playerA === e.userId || m.playerB === e.userId),
-          )?.id ?? null,
+        matchId: null,
         eliminated: Boolean(placement) && placement!.place > 1,
         place: placement?.place ?? null,
       };
@@ -677,9 +541,10 @@ export class TournamentManager {
         registeredAt: e.registeredAt,
       })),
       placements: [...c.placements],
-      matches: c.matches.map((m) => ({ ...m })),
       tableId: c.tableId,
       blinds: c.status === 'running' || c.status === 'completed' ? blinds : null,
+      handsPlayed: c.handsPlayed,
+      handLimit: c.handLimit,
       assignments,
       createdAt: c.createdAt,
       startedAt: c.startedAt,

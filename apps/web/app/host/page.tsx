@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChoiceRow } from '@/components/ChoiceRow';
+import { FriendInvitePicker } from '@/components/FriendInvitePicker';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { createTable } from '@/lib/api';
@@ -14,19 +15,27 @@ const SEAT_OPTIONS = [2, 3, 4, 5, 6, 7, 8, 9] as const;
 
 export default function HostPage() {
   const router = useRouter();
-  const { authReady, signedIn, ensureSession } = useLobbySession();
+  const { authReady, signedIn, sessionToken, ensureSession } = useLobbySession();
   const [maxSeats, setMaxSeats] = useState(6);
   const [botCount, setBotCount] = useState(2);
   const [hostStakeId, setHostStakeId] = useState(DEFAULT_STAKE_ID);
   const [customRoomCode, setCustomRoomCode] = useState('');
+  const [inviteFriendIds, setInviteFriendIds] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const maxBots = Math.max(0, maxSeats - 1);
+  const maxFriendInvites = Math.min(8, Math.max(0, maxSeats - botCount - 1));
 
   useEffect(() => {
     if (botCount > maxBots) setBotCount(maxBots);
   }, [maxSeats, botCount, maxBots]);
+
+  useEffect(() => {
+    if (inviteFriendIds.length > maxFriendInvites) {
+      setInviteFriendIds((ids) => ids.slice(0, maxFriendInvites));
+    }
+  }, [maxFriendInvites, inviteFriendIds.length]);
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -53,6 +62,7 @@ export default function HostPage() {
           botCount,
           isPrivate: true,
           ...(code ? { inviteCode: code } : {}),
+          inviteFriendIds,
         },
         session.sessionToken,
       );
@@ -128,8 +138,27 @@ export default function HostPage() {
               Leave blank to auto-generate, or enter 4–8 digits
             </span>
           </label>
+
+          <FriendInvitePicker
+            sessionToken={sessionToken}
+            selectedIds={inviteFriendIds}
+            onChange={setInviteFriendIds}
+            disabled={busy}
+            maxSelect={Math.max(0, maxFriendInvites)}
+            title="Invite friends"
+            help={
+              maxFriendInvites === 0
+                ? 'Free a seat (reduce bots) to invite friends.'
+                : 'They get a table invite in Friends. Optional — share the room code too.'
+            }
+          />
+
           <button disabled={busy} type="submit" className="btn-primary mt-1 min-h-11 w-full">
-            Create private table
+            {busy
+              ? 'Creating…'
+              : inviteFriendIds.length > 0
+                ? `Create table · invite ${inviteFriendIds.length}`
+                : 'Create private table'}
           </button>
         </LobbySplitCard>
       </form>

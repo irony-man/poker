@@ -14,6 +14,7 @@ import {
   FriendRequestBodySchema,
   FriendRespondBodySchema,
   InviteFriendGroupBodySchema,
+  InviteFriendsBodySchema,
   LoginBodySchema,
   SignupBodySchema,
   UpdateFriendGroupBodySchema,
@@ -196,7 +197,7 @@ async function main() {
     });
   });
 
-  app.post('/api/tables', (req, res) => {
+  app.post('/api/tables', async (req, res) => {
     const body = CreateTableBodySchema.safeParse(req.body);
     if (!body.success) {
       res.status(400).json({ error: body.error.message });
@@ -243,12 +244,56 @@ async function main() {
     if (bots > 0) {
       room.addBot(user.id, undefined, d.buyIn, bots);
     }
+
+    let inviteCount = 0;
+    if (d.inviteFriendIds.length > 0) {
+      const invites = await friends.createFriendInvites(user.id, d.inviteFriendIds, {
+        kind: 'table',
+        tableId: meta.id,
+        inviteCode: meta.inviteCode,
+      });
+      inviteCount = invites.length;
+    }
+
     res.json({
       tableId: meta.id,
       inviteCode: meta.inviteCode,
       name: meta.name,
       config: meta.config,
       botsAdded: bots,
+      inviteCount,
+    });
+  });
+
+  app.post('/api/tables/:id/invite-friends', async (req, res) => {
+    const userId = requireUserId(req, res);
+    if (!userId) return;
+    const parsed = InviteFriendsBodySchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const room = rooms.get(req.params.id!);
+    if (!room) {
+      res.status(404).json({ error: 'Table not found' });
+      return;
+    }
+    if (room.meta.hostUserId !== userId) {
+      res.status(403).json({ error: 'Only the host can invite friends' });
+      return;
+    }
+    if (parsed.data.friendUserIds.length === 0) {
+      res.json({ inviteCount: 0, challengeIds: [] as string[] });
+      return;
+    }
+    const challenges = await friends.createFriendInvites(userId, parsed.data.friendUserIds, {
+      kind: 'table',
+      tableId: room.meta.id,
+      inviteCode: room.meta.inviteCode,
+    });
+    res.json({
+      inviteCount: challenges.length,
+      challengeIds: challenges.map((c) => c.id),
     });
   });
 
@@ -512,7 +557,7 @@ async function main() {
     res.json({ ok: true });
   });
 
-  app.post('/api/contests', (req, res) => {
+  app.post('/api/contests', async (req, res) => {
     const body = CreateContestBodySchema.safeParse(req.body);
     if (!body.success) {
       res.status(400).json({ error: body.error.message });
@@ -541,13 +586,61 @@ async function main() {
         isPrivate: d.isPrivate,
         inviteCode: d.inviteCode,
         autoStart: d.autoStart,
+        handLimit: d.handLimit,
       });
-      res.json({ contest });
+
+      let inviteCount = 0;
+      if (d.inviteFriendIds.length > 0) {
+        const invites = await friends.createFriendInvites(user.id, d.inviteFriendIds, {
+          kind: 'contest',
+          contestId: contest.id,
+          inviteCode: contest.inviteCode,
+        });
+        inviteCount = invites.length;
+      }
+
+      res.json({ contest, inviteCount });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create contest';
       const status = message.includes('already in use') ? 409 : 400;
       res.status(status).json({ error: message });
     }
+  });
+
+  app.post('/api/contests/:id/invite-friends', async (req, res) => {
+    const userId = requireUserId(req, res);
+    if (!userId) return;
+    const parsed = InviteFriendsBodySchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const contest = tournaments.get(req.params.id!);
+    if (!contest) {
+      res.status(404).json({ error: 'Contest not found' });
+      return;
+    }
+    if (contest.hostUserId !== userId) {
+      res.status(403).json({ error: 'Only the host can invite friends' });
+      return;
+    }
+    if (contest.status !== 'registering') {
+      res.status(400).json({ error: 'Registration is closed' });
+      return;
+    }
+    if (parsed.data.friendUserIds.length === 0) {
+      res.json({ inviteCount: 0, challengeIds: [] as string[] });
+      return;
+    }
+    const challenges = await friends.createFriendInvites(userId, parsed.data.friendUserIds, {
+      kind: 'contest',
+      contestId: contest.id,
+      inviteCode: contest.inviteCode,
+    });
+    res.json({
+      inviteCount: challenges.length,
+      challengeIds: challenges.map((c) => c.id),
+    });
   });
 
   app.get('/api/contests', (_req, res) => {

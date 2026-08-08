@@ -28,10 +28,11 @@ import { chooseBotAction, isBotUserId, makeBotUserId, pickBotName } from './bot.
 
 export interface TournamentTableRules {
   contestId: string;
-  mode: 'knockout' | 'table_match';
-  matchId?: string;
+  mode: 'rounds' | 'chips';
   /** When true, no more hands will be dealt on this table. */
   frozen?: boolean;
+  /** Rounds contests allow rebuys to the table buy-in. */
+  allowTopUp?: boolean;
 }
 
 export interface TableMeta {
@@ -529,9 +530,9 @@ export class Room {
         ? {
             contestId: this.meta.tournament.contestId,
             mode: this.meta.tournament.mode,
-            matchId: this.meta.tournament.matchId ?? null,
+            matchId: null,
             frozen: Boolean(this.meta.tournament.frozen),
-            noTopUp: true,
+            noTopUp: !this.meta.tournament.allowTopUp,
           }
         : null,
       players: base.players.map((p) => {
@@ -843,8 +844,8 @@ export class Room {
   }
 
   doTopUp(userId: string, seat: number, amount: number): { ok: boolean; error?: string } {
-    if (this.isTournament()) {
-      return { ok: false, error: 'No top-up in tournaments' };
+    if (this.isTournament() && !this.meta.tournament?.allowTopUp) {
+      return { ok: false, error: 'No top-up in this contest' };
     }
     if (this.seatOf(userId) !== seat) return { ok: false, error: 'Not your seat' };
     const result = topUp(this.state, seat, amount, this.config.buyIn);
@@ -852,6 +853,24 @@ export class Room {
     this.state = result.state;
     void this.afterStateChange();
     return { ok: true };
+  }
+
+  /** Between hands: rebuy bots to full buy-in when top-ups are allowed. */
+  autoTopUpBrokeBots(): number {
+    if (!this.meta.tournament?.allowTopUp) return 0;
+    if (this.state.street !== 'waiting' && this.state.street !== 'payout') return 0;
+    let count = 0;
+    for (const p of this.state.players) {
+      if (!p.userId || p.status === 'empty' || p.stack > 0) continue;
+      if (!isBotUserId(p.userId)) continue;
+      const result = topUp(this.state, p.seat, this.config.buyIn, this.config.buyIn);
+      if (result.ok) {
+        this.state = result.state;
+        count += 1;
+      }
+    }
+    if (count > 0) void this.afterStateChange();
+    return count;
   }
 
   action(

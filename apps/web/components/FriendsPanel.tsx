@@ -10,6 +10,7 @@ import {
   inviteFriendGroup,
   joinFriendChallenge,
   listFriends,
+  registerContest,
   respondFriendRequest,
   searchUsers,
   sendFriendRequest,
@@ -25,13 +26,14 @@ import { useSession } from '@/lib/store';
 export function FriendsPanel({
   disabled,
   onNavigateTable,
+  onNavigateContest,
 }: {
   disabled: boolean;
   onNavigateTable: (tableId: string, inviteCode: string) => void;
+  onNavigateContest?: (contestId: string) => void;
 }) {
   const userId = useSession((s) => s.userId);
   const sessionToken = useSession((s) => s.sessionToken);
-  const username = useSession((s) => s.username);
   const [friends, setFriends] = useState<FriendProfile[]>([]);
   const [groups, setGroups] = useState<FriendGroup[]>([]);
   const [incoming, setIncoming] = useState<PendingRequest[]>([]);
@@ -101,47 +103,6 @@ export function FriendsPanel({
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [disabled, searchQuery, userId, sessionToken]);
-
-  async function onShareUsername() {
-    const handle = (username ?? '').trim();
-    if (!handle) {
-      setError('Sign in to share your username');
-      return;
-    }
-    try {
-      if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
-        await navigator.share({
-          title: 'POKR username',
-          text: `Add me on POKR: ${handle}`,
-        });
-        flash('Shared');
-        return;
-      }
-    } catch (err) {
-      // User cancelled share sheet — don't fall through to copy noise.
-      if (err instanceof DOMException && err.name === 'AbortError') return;
-    }
-    try {
-      await navigator.clipboard.writeText(handle);
-      flash('Username copied');
-    } catch {
-      setError('Could not copy username');
-    }
-  }
-
-  async function onCopyUsername() {
-    const handle = (username ?? '').trim();
-    if (!handle) {
-      setError('Sign in to copy your username');
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(handle);
-      flash('Username copied');
-    } catch {
-      setError('Could not copy username');
-    }
-  }
 
   function toggleMember(id: string) {
     setSelectedMembers((prev) => {
@@ -249,7 +210,20 @@ export function FriendsPanel({
     setError(null);
     try {
       await joinFriendChallenge(challenge.id, auth());
-      onNavigateTable(challenge.tableId, challenge.inviteCode);
+      const isContest = challenge.kind === 'contest' || Boolean(challenge.contestId);
+      if (isContest && challenge.contestId) {
+        try {
+          await registerContest(challenge.contestId, auth());
+        } catch {
+          // May already be registered or contest full — still open lobby
+        }
+        if (onNavigateContest) onNavigateContest(challenge.contestId);
+        else window.location.href = `/contest/${challenge.contestId}`;
+      } else if (challenge.tableId) {
+        onNavigateTable(challenge.tableId, challenge.inviteCode);
+      } else {
+        setError('Invite is no longer valid');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to join challenge');
     } finally {
@@ -393,41 +367,13 @@ export function FriendsPanel({
       imageSrc="/home-host.png"
       imageAlt="Invite friends to your table"
     >
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h1 className="font-display text-xl font-bold tracking-tight text-ink-strong sm:text-2xl">
-            Social
-          </h1>
-          <p className="mt-0.5 text-sm text-ink-strong-muted">
-            Friends, groups, and private tables
-          </p>
-        </div>
-        {username && (
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-sidebar/12 bg-mushroom/45 px-3 py-2">
-            <div className="min-w-0">
-              <p className="text-[10px] font-display font-semibold uppercase tracking-[0.14em] text-ink-strong-muted">
-                Your username
-              </p>
-              <p className="truncate text-sm font-medium text-ink-strong">{username}</p>
-            </div>
-            <button
-              type="button"
-              disabled={disabled}
-              onClick={() => void onCopyUsername()}
-              className="btn-ghost py-1.5 px-2.5 text-xs"
-            >
-              Copy
-            </button>
-            <button
-              type="button"
-              disabled={disabled}
-              onClick={() => void onShareUsername()}
-              className="btn-primary py-1.5 px-2.5 text-xs"
-            >
-              Share
-            </button>
-          </div>
-        )}
+      <div>
+        <h1 className="font-display text-xl font-bold tracking-tight text-ink-strong sm:text-2xl">
+          Social
+        </h1>
+        <p className="mt-0.5 text-sm text-ink-strong-muted">
+          Friends, groups, and private tables
+        </p>
       </div>
 
       {(error || loadError || toast) && (
@@ -545,9 +491,11 @@ export function FriendsPanel({
 
       {challenges.length > 0 && (
         <section>
-          <h2 className="hud-label">Table invites</h2>
+          <h2 className="hud-label">Invites</h2>
           <ul className="mt-2 grid gap-2 sm:grid-cols-2">
-            {challenges.map((c) => (
+            {challenges.map((c) => {
+              const isContest = c.kind === 'contest' || Boolean(c.contestId);
+              return (
               <li
                 key={c.id}
                 className="flex flex-col gap-2.5 rounded-xl border border-sidebar/15 bg-gradient-to-b from-mushroom/70 to-mushroom/40 px-3 py-3"
@@ -563,6 +511,8 @@ export function FriendsPanel({
                     <span className="font-medium">{c.challenger.name}</span>
                     {c.groupName ? (
                       <span className="text-ink-strong-muted"> · {c.groupName}</span>
+                    ) : isContest ? (
+                      <span className="text-ink-strong-muted"> invited you to a contest</span>
                     ) : (
                       <span className="text-ink-strong-muted"> wants to play</span>
                     )}
@@ -574,10 +524,11 @@ export function FriendsPanel({
                   onClick={() => void onJoinChallenge(c)}
                   className="btn-primary min-h-10 w-full text-xs"
                 >
-                  Join table
+                  {isContest ? 'Join contest' : 'Join table'}
                 </button>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </section>
       )}
@@ -899,7 +850,7 @@ export function FriendsPanel({
               <p className="text-sm font-medium text-ink-strong">No friends yet</p>
               <p className="mt-1 text-xs leading-relaxed text-ink-strong-muted">
                 Enter someone&apos;s exact username above to send a request, then challenge them or
-                add them to a group. Share your username so friends can find you.
+                add them to a group.
               </p>
             </div>
           ) : (

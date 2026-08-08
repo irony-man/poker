@@ -89,6 +89,7 @@ export async function createTable(
     botCount?: number;
     isPrivate: boolean;
     inviteCode?: string;
+    inviteFriendIds?: string[];
   },
   sessionToken: string,
 ) {
@@ -111,7 +112,20 @@ export async function createTable(
       buyIn: number;
       turnTimeMs: number;
     };
+    inviteCount?: number;
   }>;
+}
+
+export async function inviteTableFriends(
+  tableId: string,
+  friendUserIds: string[],
+  options: AuthOptions,
+) {
+  return authedFetch(`/api/tables/${tableId}/invite-friends`, {
+    ...options,
+    method: 'POST',
+    body: { friendUserIds },
+  }) as Promise<{ inviteCount: number; challengeIds: string[] }>;
 }
 
 export interface PublicTableSummary {
@@ -170,7 +184,10 @@ export interface PendingRequest {
 export interface PendingChallenge {
   id: string;
   challenger: FriendProfile;
-  tableId: string;
+  /** Omitted on very old payloads; treat as table. */
+  kind?: 'table' | 'contest';
+  tableId: string | null;
+  contestId?: string | null;
   inviteCode: string;
   createdAt: number;
   groupId?: string;
@@ -310,7 +327,7 @@ export async function joinFriendChallenge(challengeId: string, options: AuthOpti
   });
 }
 
-export type ContestMode = 'knockout' | 'table_match';
+export type ContestMode = 'rounds' | 'chips';
 export type ContestStatus = 'registering' | 'running' | 'completed' | 'cancelled';
 
 export interface ContestView {
@@ -328,16 +345,6 @@ export interface ContestView {
   isPrivate: boolean;
   entrants: { userId: string; name: string; isBot?: boolean; registeredAt: number }[];
   placements: { userId: string; name: string; place: number }[];
-  matches: {
-    id: string;
-    round: number;
-    index: number;
-    playerA: string | null;
-    playerB: string | null;
-    winnerId: string | null;
-    tableId: string | null;
-    status: 'pending' | 'active' | 'completed';
-  }[];
   tableId: string | null;
   blinds: {
     levelIndex: number;
@@ -346,6 +353,8 @@ export interface ContestView {
     handsAtLevel: number;
     handsUntilNext: number;
   } | null;
+  handsPlayed: number;
+  handLimit: number | null;
   assignments: {
     userId: string;
     tableId: string | null;
@@ -371,6 +380,8 @@ export async function createContest(
     isPrivate?: boolean;
     inviteCode?: string;
     autoStart?: boolean;
+    handLimit?: number;
+    inviteFriendIds?: string[];
   },
   sessionToken: string,
 ) {
@@ -382,7 +393,19 @@ export async function createContest(
   if (!res.ok) {
     throw new Error(await parseError(res, 'Failed to create contest'));
   }
-  return res.json() as Promise<{ contest: ContestView }>;
+  return res.json() as Promise<{ contest: ContestView; inviteCount?: number }>;
+}
+
+export async function inviteContestFriends(
+  contestId: string,
+  friendUserIds: string[],
+  options: AuthOptions,
+) {
+  return authedFetch(`/api/contests/${contestId}/invite-friends`, {
+    ...options,
+    method: 'POST',
+    body: { friendUserIds },
+  }) as Promise<{ inviteCount: number; challengeIds: string[] }>;
 }
 
 export async function listPublicContests() {

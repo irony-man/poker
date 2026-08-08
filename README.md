@@ -35,10 +35,10 @@ Open http://localhost:3000 — sign up or sign in with a username and password, 
 
 Lobby **Contests** tab (web) or Contests panel (Android):
 
-1. **Table match** — 2–9 players, fixed stacks, no rebuy; eliminated when chips hit zero; last player wins. Blinds rise on a fixed hand schedule.
-2. **Knockout** — 4 / 8 / 16 players, heads-up single elimination. Winners advance through the bracket until a champion.
+1. **Chips** — 2–9 players, equal starting stacks, no top-ups; busted players are eliminated; last stack standing wins. Blinds rise on a fixed hand schedule.
+2. **Rounds** — 2–9 players, equal start stacks, top-ups allowed when broke; after a fixed number of hands (or if fewer than two stacks remain), standings are by chip count and the chip leader wins.
 
-Create with optional bot fill, share the contest code, or open from the lobby. Contest page shows registration, bracket/standings, and routes you to your assigned table when play starts.
+Create with optional friend invites and bot fill. Share the contest code, or open from the lobby. Friends see invites under **Friends → Invites**. Contest page shows registration, progress/standings, and routes you to your assigned table when play starts.
 
 ## Tests
 

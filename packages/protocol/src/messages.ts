@@ -198,6 +198,12 @@ export const ServerMessageSchema = z.discriminatedUnion('type', [
 
 export type ServerMessage = z.infer<typeof ServerMessageSchema>;
 
+/** Friend user ids to notify after creating a table or contest (max 8). */
+export const InviteFriendIdsSchema = z
+  .array(z.string().min(1).max(128))
+  .max(8)
+  .default([]);
+
 export const CreateTableBodySchema = z.object({
   name: z.string().min(1).max(64).default('Home Game'),
   smallBlind: z.number().int().positive().default(5),
@@ -213,6 +219,8 @@ export const CreateTableBodySchema = z.object({
     .string()
     .regex(/^\d{4,8}$/, 'Room code must be 4–8 digits')
     .optional(),
+  /** Friends to receive a table invite when the private table is created. */
+  inviteFriendIds: InviteFriendIdsSchema,
 });
 
 export type CreateTableBody = z.infer<typeof CreateTableBodySchema>;
@@ -250,9 +258,15 @@ export const InviteFriendGroupBodySchema = z.object({
   buyIn: z.number().int().positive().optional(),
 });
 
+/** Invite selected friends to an existing table or contest. */
+export const InviteFriendsBodySchema = z.object({
+  friendUserIds: InviteFriendIdsSchema,
+});
+
 export type CreateFriendGroupBody = z.infer<typeof CreateFriendGroupBodySchema>;
 export type UpdateFriendGroupBody = z.infer<typeof UpdateFriendGroupBodySchema>;
 export type InviteFriendGroupBody = z.infer<typeof InviteFriendGroupBodySchema>;
+export type InviteFriendsBody = z.infer<typeof InviteFriendsBodySchema>;
 
 /** Unique login + display name: 3–24 alphanumerics/underscore; not bot:… */
 export const UsernameSchema = z

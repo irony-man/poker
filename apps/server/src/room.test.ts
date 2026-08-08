@@ -233,6 +233,29 @@ describe('RoomManager', () => {
     expect(room.state.players[1]?.stack).toBe(1000);
   });
 
+  it('reseat after kick with zero stack does a fresh buy-in, not stack 0', async () => {
+    const kv = new MemoryKv();
+    const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-kick-zero-${Date.now()}`));
+    const chips = new MemoryTableChipStore();
+    const rooms = new RoomManager(kv, history, chips);
+    const meta = rooms.create({
+      name: 'KickZero',
+      hostUserId: 'host1',
+      isPrivate: true,
+      config: { ...cashConfig() },
+    });
+    const room = rooms.get(meta.id)!;
+    await room.sit('host1', 'Host', 0, 1000);
+    await room.sit('u2', 'Guest', 1, 1000);
+    room.state.players[1]!.stack = 0;
+
+    expect((await room.kickPlayer('host1', 1)).ok).toBe(true);
+    // Legacy / bad data: empty hold would previously re-seat with stack 0.
+    await chips.reserve(meta.id, 'u2', 0);
+    expect((await room.sit('u2', 'Guest', 1, 1000)).ok).toBe(true);
+    expect(room.state.players[1]?.stack).toBe(1000);
+  });
+
   it('start_hand toggles ready on cash tables', async () => {
     const kv = new MemoryKv();
     const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-toggle-${Date.now()}`));

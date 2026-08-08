@@ -776,10 +776,13 @@ export class Room {
     if (!result.ok) return { ok: false, error: result.error };
     this.state = result.state;
     this.announceEngineEvents(result.events);
-    try {
-      await this.chips.reserve(this.meta.id, kickedId, reservedStack);
-    } catch (err) {
-      console.error('[chips] failed to reserve kick stack', err);
+    // Only hold a positive stack for rejoin. Zero means busted — next sit does a fresh buy-in.
+    if (reservedStack > 0) {
+      try {
+        await this.chips.reserve(this.meta.id, kickedId, reservedStack);
+      } catch (err) {
+        console.error('[chips] failed to reserve kick stack', err);
+      }
     }
     if (this.connections.has(kickedId)) {
       const conn = this.connections.get(kickedId)!;
@@ -809,6 +812,12 @@ export class Room {
       reserved = await this.chips.take(this.meta.id, userId);
     } catch (err) {
       console.error('[chips] failed to load reserved stack', err);
+    }
+
+    // A held stack of 0 is not a rebuy credit — clear and debit a full table buy-in instead.
+    // (Previously sit used `reserved ?? buyIn`, so 0 blocked debit and seated empty stacks.)
+    if (reserved != null && reserved <= 0) {
+      reserved = null;
     }
 
     const stack = reserved ?? buyIn;

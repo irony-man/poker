@@ -1,7 +1,13 @@
-/** Number of built-in profile picture presets. */
+/** Number of built-in profile picture presets (see `/public/avatars/avatar-N.png`). */
 export const AVATAR_PRESET_COUNT = 8;
 
 const AVATAR_KEY = 'felt-avatar-id';
+
+/** Public path for a preset index. */
+export function avatarSrc(id: number): string {
+  const n = ((id % AVATAR_PRESET_COUNT) + AVATAR_PRESET_COUNT) % AVATAR_PRESET_COUNT;
+  return `/avatars/avatar-${n}.png`;
+}
 
 /** Stable preset index from a user id (bots + humans). */
 export function avatarIdFromUserId(userId: string | null | undefined): number {
@@ -18,8 +24,8 @@ export function resolveAvatarId(
   userId: string | null | undefined,
   preferred?: number | null,
 ): number {
-  if (preferred != null && preferred >= 0 && preferred < AVATAR_PRESET_COUNT) {
-    return preferred;
+  if (preferred != null && Number.isInteger(preferred) && preferred >= 0) {
+    return preferred % AVATAR_PRESET_COUNT;
   }
   return avatarIdFromUserId(userId);
 }
@@ -29,7 +35,7 @@ export function loadSavedAvatarId(): number {
     const raw = localStorage.getItem(AVATAR_KEY);
     if (raw == null) return 0;
     const n = Number(raw);
-    if (Number.isInteger(n) && n >= 0 && n < AVATAR_PRESET_COUNT) return n;
+    if (Number.isInteger(n) && n >= 0) return n % AVATAR_PRESET_COUNT;
   } catch {
     /* ignore */
   }
@@ -38,19 +44,16 @@ export function loadSavedAvatarId(): number {
 
 export function saveAvatarId(id: number): void {
   try {
-    localStorage.setItem(AVATAR_KEY, String(id % AVATAR_PRESET_COUNT));
+    localStorage.setItem(AVATAR_KEY, String(((id % AVATAR_PRESET_COUNT) + AVATAR_PRESET_COUNT) % AVATAR_PRESET_COUNT));
   } catch {
     /* ignore */
   }
 }
 
 export const AVATAR_LABELS = [
-  'Spade',
-  'Heart',
-  'Diamond',
-  'Club',
-  'Chip',
-  'Crown',
-  'Dice',
-  'Ace',
+  'Avatar 1',
+  'Avatar 2',
+  'Avatar 3',
+  'Avatar 4',
+  'Avatar 5',
 ] as const;

@@ -13,6 +13,27 @@ import { ChoiceRow } from './ChoiceRow';
 const KNOCKOUT_SIZES = [4, 8, 16] as const;
 const TABLE_MATCH_SIZES = [2, 3, 4, 5, 6, 7, 8, 9] as const;
 
+function modeBlurb(mode: ContestMode): string {
+  return mode === 'knockout'
+    ? "Bracket play — lose a table and you're out."
+    : 'One table — last stack standing takes it.';
+}
+
+function fieldBlurb(mode: ContestMode, fieldSize: number): string {
+  if (mode === 'knockout') {
+    return `${fieldSize}-player field · fixed bracket`;
+  }
+  if (fieldSize === 2) return 'Heads-up table match';
+  return `${fieldSize}-handed · chip-elimination match`;
+}
+
+function botsBlurb(botCount: number, fieldSize: number): string {
+  if (botCount === 0) return 'All seats open for humans';
+  const humanSlots = fieldSize - botCount;
+  if (humanSlots <= 1) return `${botCount} bots · just you + filler`;
+  return `${botCount} bots · ${humanSlots} open seats for people`;
+}
+
 export function ContestsPanel({
   disabled,
   sessionToken,
@@ -113,87 +134,126 @@ export function ContestsPanel({
     }
   }
 
-  return (
-    <LobbySplitCard imageSrc="/home-contest.png" imageAlt="Tournament championship scene">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <p className="text-sm font-medium text-ink-strong-muted">
-          Knockout brackets · table match (chip elimination)
-        </p>
-        <span className="status-chip shrink-0">Tournament</span>
-      </div>
+  const ctaLabel =
+    mode === 'knockout' ? `Start ${fieldSize}-player knockout` : `Start ${fieldSize}-handed match`;
 
-      <form onSubmit={onCreate} className="grid gap-3 sm:grid-cols-2 sm:gap-4">
-        <ChoiceRow
-          label="Mode"
-          name="contest-mode"
-          selected={mode}
-          options={['table_match', 'knockout'] as const}
-          onSelect={(m) => setMode(m)}
-          format={(m) => (m === 'knockout' ? 'Knockout' : 'Table match')}
-        />
-        <ChoiceRow
-          label={mode === 'knockout' ? 'Field' : 'Players'}
-          name="contest-size"
-          selected={fieldSize}
-          options={[...sizes]}
-          onSelect={setFieldSize}
-        />
-        <ChoiceRow
-          label="Fill bots"
-          name="contest-bots"
-          selected={botCount}
-          options={Array.from({ length: maxBots + 1 }, (_, n) => n)}
-          onSelect={setBotCount}
-          format={(n) => (n === 0 ? 'None' : String(n))}
-        />
-        <div className="flex items-end">
+  return (
+    <LobbySplitCard imageSrc="/home-knockout.png" imageAlt="Multi-seat tournament table ready to fill">
+      <header className="min-w-0">
+        <p className="font-display text-[0.68rem] font-bold uppercase tracking-[0.18em] text-ink-strong/45">
+          Competitive play
+        </p>
+        <h2 className="mt-1.5 font-display text-2xl font-bold leading-tight tracking-tight text-ink-strong sm:text-[1.7rem]">
+          Host a contest
+        </h2>
+        <p className="mt-2 max-w-sm text-sm leading-relaxed text-ink-strong-muted">
+          Invite friends with a code, or fill empty seats with bots and start when you&apos;re ready.
+        </p>
+      </header>
+
+      <form onSubmit={onCreate} className="flex flex-col gap-5">
+        <div className="min-w-0">
+          <ChoiceRow
+            label="Format"
+            name="contest-mode"
+            selected={mode}
+            options={['table_match', 'knockout'] as const}
+            onSelect={(m) => setMode(m)}
+            format={(m) => (m === 'knockout' ? 'Knockout' : 'Table match')}
+          />
+          <p className="field-help mt-2.5">{modeBlurb(mode)}</p>
+        </div>
+
+        <div className="min-w-0">
+          <ChoiceRow
+            label={mode === 'knockout' ? 'Field size' : 'Table size'}
+            name="contest-size"
+            selected={fieldSize}
+            options={[...sizes]}
+            onSelect={setFieldSize}
+            format={(n) => String(n)}
+          />
+          <p className="field-help mt-2.5">{fieldBlurb(mode, fieldSize)}</p>
+        </div>
+
+        <div className="min-w-0">
+          <ChoiceRow
+            label="Seat bots"
+            name="contest-bots"
+            selected={botCount}
+            options={Array.from({ length: maxBots + 1 }, (_, n) => n)}
+            onSelect={setBotCount}
+            format={(n) => (n === 0 ? 'None' : String(n))}
+          />
+          <p className="field-help mt-2.5">{botsBlurb(botCount, fieldSize)}</p>
+        </div>
+
+        <div>
           <button
             disabled={disabled || busy}
             type="submit"
-            className="btn-primary min-h-11 w-full"
+            className="btn-primary min-h-11 w-full sm:w-auto sm:min-w-[14rem]"
           >
-            Create contest
+            {busy ? 'Starting…' : ctaLabel}
           </button>
+          <p className="field-help mt-2.5">
+            Share the contest code after you create it
+          </p>
         </div>
       </form>
 
-      <form onSubmit={onJoin} className="flex flex-col gap-2 sm:flex-row sm:items-end">
-        <label className="block min-w-0 flex-1">
-          <span className="hud-label">Contest code</span>
-          <input
-            value={invite}
-            onChange={(e) => setInvite(e.target.value.replace(/\D/g, '').slice(0, 8))}
-            className="hud-input font-mono tracking-[0.2em]"
-            inputMode="numeric"
-            maxLength={8}
-            autoComplete="off"
-          />
-          <span className="field-help">4–8 digits</span>
-        </label>
-        <button
-          disabled={disabled || busy || !invite.trim()}
-          type="submit"
-          className="btn-ghost min-h-11 shrink-0"
-        >
-          Join contest
-        </button>
-      </form>
+      <div
+        className="border-t border-sidebar/10 pt-5"
+        role="group"
+        aria-label="Join with a code"
+      >
+        <p className="font-display text-[0.68rem] font-bold uppercase tracking-[0.18em] text-ink-strong/45">
+          Or join with a code
+        </p>
+        <form onSubmit={onJoin} className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+          <label className="block min-w-0 flex-1">
+            <span className="hud-label">Contest code</span>
+            <input
+              value={invite}
+              onChange={(e) => setInvite(e.target.value.replace(/\D/g, '').slice(0, 8))}
+              className="hud-input font-mono tracking-[0.2em]"
+              inputMode="numeric"
+              maxLength={8}
+              placeholder="••••"
+              autoComplete="off"
+            />
+            <span className="field-help">4–8 digits from the host</span>
+          </label>
+          <button
+            disabled={disabled || busy || invite.trim().length < 4}
+            type="submit"
+            className="btn-ghost min-h-11 shrink-0 sm:min-w-[8.5rem]"
+          >
+            Join
+          </button>
+        </form>
+      </div>
 
       {open.length > 0 && (
-        <div className="space-y-2">
-          <p className="hud-label">Open contests</p>
-          <ul className="space-y-1.5">
+        <div className="border-t border-sidebar/10 pt-5">
+          <div className="mb-3 flex items-baseline justify-between gap-2">
+            <p className="font-display text-[0.68rem] font-bold uppercase tracking-[0.18em] text-ink-strong/45">
+              Open now
+            </p>
+            <span className="text-xs tabular-nums text-ink-strong-muted">{open.length}</span>
+          </div>
+          <ul className="max-h-44 space-y-1.5 overflow-y-auto pr-0.5">
             {open.map((c) => (
               <li key={c.id}>
                 <button
                   type="button"
                   disabled={disabled || busy}
                   onClick={() => onOpenContest(c.id)}
-                  className="flex w-full items-center justify-between gap-2 rounded-lg border border-sidebar/12 bg-mushroom/45 px-3 py-2.5 text-left text-sm transition hover:border-sidebar/30 hover:bg-sidebar/5"
+                  className="flex w-full items-center justify-between gap-3 rounded-lg border border-sidebar/10 bg-mushroom/40 px-3 py-2.5 text-left transition hover:border-sidebar/25 hover:bg-sidebar/[0.04] disabled:opacity-50"
                 >
-                  <span className="font-medium text-ink-strong">{c.name}</span>
-                  <span className="text-xs text-ink-strong-muted">
-                    {c.mode === 'knockout' ? 'KO' : 'TM'} · {c.entrants.length}/{c.fieldSize}
+                  <span className="min-w-0 truncate font-medium text-ink-strong">{c.name}</span>
+                  <span className="shrink-0 text-xs tabular-nums text-ink-strong-muted">
+                    {c.mode === 'knockout' ? 'Knockout' : 'Match'} · {c.entrants.length}/{c.fieldSize}
                   </span>
                 </button>
               </li>
@@ -203,7 +263,10 @@ export function ContestsPanel({
       )}
 
       {error && (
-        <p role="alert" className="text-sm text-danger">
+        <p
+          role="alert"
+          className="status-chip border-danger/30 bg-danger/10 text-danger text-xs"
+        >
           {error}
         </p>
       )}

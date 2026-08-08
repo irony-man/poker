@@ -480,17 +480,12 @@ export class FriendsStore {
     return created;
   }
 
-  searchUsers(auth: AuthStore, query: string, excludeUserId: string, limit = 8): User[] {
-    const q = query.trim().toLowerCase();
-    if (q.length < 2) return [];
-    const results: User[] = [];
-    for (const user of auth.listUsers()) {
-      if (user.id === excludeUserId) continue;
-      if (user.name.toLowerCase().includes(q) || user.id.toLowerCase().includes(q)) {
-        results.push(user);
-        if (results.length >= limit) break;
-      }
-    }
-    return results.sort((a, b) => a.name.localeCompare(b.name));
+  /** Exact case-insensitive username match (not partial). */
+  searchUsers(auth: AuthStore, query: string, excludeUserId: string): User[] {
+    const q = query.trim();
+    if (!q) return [];
+    const user = auth.getUserByUsername(q);
+    if (!user || user.id === excludeUserId) return [];
+    return [user];
   }
 }

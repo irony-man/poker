@@ -48,7 +48,7 @@ function SignInForm() {
         <p className="mt-2 text-sm text-ink-strong-muted">Sign in with your username</p>
       </div>
       <form onSubmit={onSubmit}>
-        <LobbySplitCard imageSrc="/home-cards.png" imageAlt="Cards on felt — sign in to play">
+        <LobbySplitCard imageSrc="/home-challenge.png" imageAlt="Sit down and sign in to play">
           <label className="block">
             <span className="hud-label">Username</span>
             <input

@@ -51,7 +51,7 @@ function SignUpForm() {
         <p className="mt-2 text-sm text-ink-strong-muted">Create a username and password</p>
       </div>
       <form onSubmit={onSubmit}>
-        <LobbySplitCard imageSrc="/home-contest.png" imageAlt="High-stakes tournament atmosphere">
+        <LobbySplitCard imageSrc="/home-knockout.png" imageAlt="Join the table — create your account">
           <label className="block">
             <span className="hud-label">Username</span>
             <input

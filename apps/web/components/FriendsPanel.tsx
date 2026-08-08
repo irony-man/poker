@@ -31,12 +31,14 @@ export function FriendsPanel({
 }) {
   const userId = useSession((s) => s.userId);
   const sessionToken = useSession((s) => s.sessionToken);
+  const username = useSession((s) => s.username);
   const [friends, setFriends] = useState<FriendProfile[]>([]);
   const [groups, setGroups] = useState<FriendGroup[]>([]);
   const [incoming, setIncoming] = useState<PendingRequest[]>([]);
   const [challenges, setChallenges] = useState<PendingChallenge[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<FriendProfile[]>([]);
+  const [searchLookedUp, setSearchLookedUp] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -80,21 +82,66 @@ export function FriendsPanel({
   }, [refresh]);
 
   useEffect(() => {
-    if (disabled || searchQuery.trim().length < 2 || !userId || !sessionToken) {
+    const q = searchQuery.trim();
+    if (disabled || !q || !userId || !sessionToken) {
       setSearchResults([]);
+      setSearchLookedUp(false);
       return;
     }
     const t = setTimeout(async () => {
       try {
-        const data = await searchUsers(searchQuery, auth());
+        const data = await searchUsers(q, auth());
         setSearchResults(data.users);
+        setSearchLookedUp(true);
       } catch {
         setSearchResults([]);
+        setSearchLookedUp(true);
       }
     }, 300);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [disabled, searchQuery, userId, sessionToken]);
+
+  async function onShareUsername() {
+    const handle = (username ?? '').trim();
+    if (!handle) {
+      setError('Sign in to share your username');
+      return;
+    }
+    try {
+      if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+        await navigator.share({
+          title: 'POKR username',
+          text: `Add me on POKR: ${handle}`,
+        });
+        flash('Shared');
+        return;
+      }
+    } catch (err) {
+      // User cancelled share sheet — don't fall through to copy noise.
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+    }
+    try {
+      await navigator.clipboard.writeText(handle);
+      flash('Username copied');
+    } catch {
+      setError('Could not copy username');
+    }
+  }
+
+  async function onCopyUsername() {
+    const handle = (username ?? '').trim();
+    if (!handle) {
+      setError('Sign in to copy your username');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(handle);
+      flash('Username copied');
+    } catch {
+      setError('Could not copy username');
+    }
+  }
 
   function toggleMember(id: string) {
     setSelectedMembers((prev) => {
@@ -287,7 +334,7 @@ export function FriendsPanel({
           {shown.map((m, i) => (
             <span
               key={m.userId}
-              className="inline-flex rounded-full ring-2 ring-[rgb(255_252_250)]"
+              className="inline-flex rounded-full"
               style={{ zIndex: shown.length - i }}
             >
               <PlayerAvatar
@@ -342,7 +389,10 @@ export function FriendsPanel({
   }
 
   return (
-    <LobbySplitCard imageSrc="/home-cards.png" imageAlt="Friendly home-game cards and chips">
+    <LobbySplitCard
+      imageSrc="/home-host.png"
+      imageAlt="Invite friends to your table"
+    >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h1 className="font-display text-xl font-bold tracking-tight text-ink-strong sm:text-2xl">
@@ -352,6 +402,32 @@ export function FriendsPanel({
             Friends, groups, and private tables
           </p>
         </div>
+        {username && (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-sidebar/12 bg-mushroom/45 px-3 py-2">
+            <div className="min-w-0">
+              <p className="text-[10px] font-display font-semibold uppercase tracking-[0.14em] text-ink-strong-muted">
+                Your username
+              </p>
+              <p className="truncate text-sm font-medium text-ink-strong">{username}</p>
+            </div>
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => void onCopyUsername()}
+              className="btn-ghost py-1.5 px-2.5 text-xs"
+            >
+              Copy
+            </button>
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => void onShareUsername()}
+              className="btn-primary py-1.5 px-2.5 text-xs"
+            >
+              Share
+            </button>
+          </div>
+        )}
       </div>
 
       {(error || loadError || toast) && (
@@ -385,32 +461,46 @@ export function FriendsPanel({
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="hud-input"
-          placeholder="Search by username…"
+          placeholder="Enter exact username…"
           maxLength={32}
           disabled={disabled}
           autoComplete="off"
+          spellCheck={false}
         />
+        <p className="mt-1 text-xs text-ink-strong-muted">
+          Matches the full username only (case-insensitive).
+        </p>
       </label>
 
       {searchResults.length > 0 && (
         <ul className="divide-y divide-sidebar/10 overflow-hidden rounded-xl border border-sidebar/12">
-          {searchResults.map((u) => (
-            <li key={u.userId} className="flex items-center gap-3 bg-mushroom/40 px-3 py-2.5">
-              <PlayerAvatar userId={u.userId} avatarId={u.avatarId} size={32} title={u.name} />
-              <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink-strong">
-                {u.name}
-              </span>
-              <button
-                type="button"
-                disabled={disabled || busy === u.userId}
-                onClick={() => void onAddFriend(u.userId)}
-                className="btn-ghost py-1.5 px-3 text-xs"
-              >
-                Add friend
-              </button>
-            </li>
-          ))}
+          {searchResults.map((u) => {
+            const handle = u.username ?? u.name;
+            return (
+              <li key={u.userId} className="flex items-center gap-3 bg-mushroom/40 px-3 py-2.5">
+                <PlayerAvatar userId={u.userId} avatarId={u.avatarId} size={32} title={handle} />
+                <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink-strong">
+                  {handle}
+                </span>
+                <button
+                  type="button"
+                  disabled={disabled || busy === u.userId}
+                  onClick={() => void onAddFriend(u.userId)}
+                  className="btn-ghost py-1.5 px-3 text-xs"
+                >
+                  Add friend
+                </button>
+              </li>
+            );
+          })}
         </ul>
+      )}
+
+      {searchLookedUp && searchQuery.trim() && searchResults.length === 0 && (
+        <p className="rounded-xl border border-dashed border-sidebar/20 bg-mushroom/35 px-3 py-2.5 text-sm text-ink-strong-muted">
+          No user named{' '}
+          <span className="font-medium text-ink-strong">{searchQuery.trim()}</span>
+        </p>
       )}
 
       {incoming.length > 0 && (
@@ -808,8 +898,8 @@ export function FriendsPanel({
             <div className="mt-3 rounded-2xl border border-dashed border-sidebar/20 bg-mushroom/35 px-4 py-6 text-center">
               <p className="text-sm font-medium text-ink-strong">No friends yet</p>
               <p className="mt-1 text-xs leading-relaxed text-ink-strong-muted">
-                Search by username above to send a request, then challenge them or add them to a
-                group.
+                Enter someone&apos;s exact username above to send a request, then challenge them or
+                add them to a group. Share your username so friends can find you.
               </p>
             </div>
           ) : (

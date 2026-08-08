@@ -419,7 +419,8 @@ async function main() {
     const q = String(req.query.q ?? '');
     const users = friends.searchUsers(auth, q, userId).map((u) => ({
       userId: u.id,
-      name: u.name,
+      name: u.username || u.name,
+      username: u.username,
       avatarId: u.avatarId,
     }));
     res.json({ users });

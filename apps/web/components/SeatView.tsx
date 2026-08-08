@@ -407,7 +407,7 @@ export function SeatView({
                     avatarId={player.avatarId}
                     userId={player.userId}
                     size={avatarSize}
-                    className="relative z-[1] shadow-md ring-1 ring-black/30"
+                    className="relative z-[1]"
                   />
                 </div>
                 <div className="relative w-full">
@@ -448,7 +448,7 @@ export function SeatView({
                     avatarId={player.avatarId}
                     userId={player.userId}
                     size={avatarSize}
-                    className="relative z-[1] shadow-md ring-1 ring-black/30"
+                    className="relative z-[1]"
                   />
                 </div>
                 <div className="relative flex items-stretch shadow-[0_3px_8px_rgba(0,0,0,0.45)]">

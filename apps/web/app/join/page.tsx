@@ -55,7 +55,7 @@ export default function JoinPage() {
           void enterInvite('play');
         }}
       >
-        <LobbySplitCard imageSrc="/home-cards.png" imageAlt="Playing cards and chips on felt">
+        <LobbySplitCard imageSrc="/join-table.png" imageAlt="Enter a table with an invite code">
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-display text-xl font-bold uppercase tracking-wider text-sidebar">
               Invite

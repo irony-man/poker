@@ -151,6 +151,16 @@ async function buildPoolOptions(connectionString: string): Promise<PoolOptions> 
     /* no A record */
   }
 
+  // Local / dual-stack hosts can reach Supabase direct over IPv6. Prefer that before
+  // rewriting to the session pooler (which needs the correct region + pooler user).
+  try {
+    const { address } = await dnsLookup(hostname, { family: 6 });
+    console.log(`[db] connecting via IPv6 ${address} (${hostname})`);
+    return optionsFromUrl(url, address, hostname);
+  } catch {
+    /* no AAAA record */
+  }
+
   // Supabase direct (`db.<ref>.supabase.co`) → session pooler over IPv4.
   const pooler = await supabasePoolerUrl(url);
   if (pooler) {

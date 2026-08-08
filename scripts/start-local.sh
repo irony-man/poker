@@ -2,14 +2,14 @@
 # Start local API (4000) + web (3000). Safe to re-run.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-export PATH="${HOME}/.nvm/versions/node/v20.20.2/bin:/usr/local/bin:/usr/bin:$PATH"
+export PATH="${HOME}/.nvm/versions/node/v22.23.1/bin:${HOME}/.nvm/versions/node/v20.20.2/bin:/usr/local/bin:/usr/bin:$PATH"
 cd "$ROOT"
 
-# Prefer nvm node if available
+# Prefer nvm node if available (Node 22+ — argon2 prebuild segfaults on Node 20 here)
 if [ -s "$HOME/.nvm/nvm.sh" ]; then
   # shellcheck disable=SC1090
   . "$HOME/.nvm/nvm.sh"
-  nvm use 20 >/dev/null 2>&1 || true
+  nvm use 22 >/dev/null 2>&1 || nvm use 20 >/dev/null 2>&1 || true
 fi
 
 mkdir -p /tmp

@@ -48,7 +48,7 @@ class SessionPreferences @Inject constructor(
 
     suspend fun saveAvatarId(avatarId: Int) {
         dataStore.edit { prefs ->
-            prefs[KEY_AVATAR_ID] = avatarId.coerceIn(0, 7)
+            prefs[KEY_AVATAR_ID] = avatarId.coerceIn(0, 4)
         }
     }
 

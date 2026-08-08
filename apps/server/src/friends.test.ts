@@ -59,9 +59,15 @@ describe('FriendsStore', () => {
     expect(pending[0]!.challenger.name).toBe('Alice');
   });
 
-  it('searches users by name', () => {
-    const results = friends.searchUsers(auth, 'ali', 'user-bob');
-    expect(results.map((u) => u.id)).toEqual(['user-alice']);
+  it('finds users by exact username only', () => {
+    expect(friends.searchUsers(auth, 'ali', 'user-bob')).toEqual([]);
+    expect(friends.searchUsers(auth, 'Alice', 'user-bob').map((u) => u.id)).toEqual([
+      'user-alice',
+    ]);
+    expect(friends.searchUsers(auth, 'alice', 'user-bob').map((u) => u.id)).toEqual([
+      'user-alice',
+    ]);
+    expect(friends.searchUsers(auth, 'Alice', 'user-alice')).toEqual([]);
   });
 
   it('creates friend groups and group game invites', async () => {

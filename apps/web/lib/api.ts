@@ -156,6 +156,8 @@ export async function resolveInvite(code: string) {
 export interface FriendProfile {
   userId: string;
   name: string;
+  /** Present on friend search results. */
+  username?: string;
   avatarId: number;
 }
 

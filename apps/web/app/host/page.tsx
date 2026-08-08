@@ -71,7 +71,7 @@ export default function HostPage() {
   return (
     <LobbyPageShell title="Host" signedIn={signedIn} error={error}>
       <form onSubmit={onCreate}>
-        <LobbySplitCard imageSrc="/home-table.png" imageAlt="Private cash-game table with chips">
+        <LobbySplitCard imageSrc="/host-table.png" imageAlt="Host a private table for your group">
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-display text-xl font-bold uppercase tracking-wider text-sidebar">
               Create table

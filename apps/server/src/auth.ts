@@ -412,12 +412,18 @@ export class AuthStore {
     return this.users.get(id);
   }
 
+  /** Case-insensitive exact username lookup. */
+  getUserByUsername(username: string): User | undefined {
+    const id = this.usernameIndex.get(username.trim().toLowerCase());
+    return id ? this.users.get(id) : undefined;
+  }
+
   getPublicUser(id: string): PublicUser | undefined {
     const u = this.users.get(id);
     return u ? toPublic(u) : undefined;
   }
 
-  /** All registered users (for friend search). */
+  /** All registered users. */
   listUsers(): User[] {
     return [...this.users.values()];
   }

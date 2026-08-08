@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.cos
 import kotlin.math.sin
 
-const val AVATAR_PRESET_COUNT = 8
+const val AVATAR_PRESET_COUNT = 5
 
 private data class AvatarPalette(val bg: Color, val accent: Color)
 
@@ -36,9 +36,6 @@ private val AVATAR_PALETTES = listOf(
     AvatarPalette(Color(0xFF1E2A18), Color(0xFF2AFF9A)),
     AvatarPalette(Color(0xFF2A2410), Color(0xFFE0B43A)),
     AvatarPalette(Color(0xFF1A1A2E), Color(0xFFA78BFA)),
-    AvatarPalette(Color(0xFF241810), Color(0xFFFB923C)),
-    AvatarPalette(Color(0xFF102428), Color(0xFF2DD4BF)),
-    AvatarPalette(Color(0xFF281018), Color(0xFFF472B6)),
 )
 
 fun avatarIdFromUserId(userId: String?): Int {
@@ -72,7 +69,7 @@ fun PlayerAvatar(
             .clip(CircleShape)
             .then(
                 if (selected) Modifier.border(2.dp, FeltColors.Gold, CircleShape)
-                else Modifier.border(1.dp, FeltColors.Cream.copy(alpha = 0.15f), CircleShape),
+                else Modifier,
             ),
         contentAlignment = Alignment.Center,
     ) {

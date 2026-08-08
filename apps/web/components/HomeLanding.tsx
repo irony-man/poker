@@ -28,8 +28,8 @@ const FEATURES: Feature[] = [
     body: "Fixed-round Hold'em with a clear buy-in. Play the session; add chips when you need them and finish when the rounds end.",
     cta: 'Contests',
     href: '/contests',
-    image: '/home-rounds.png',
-    imageAlt: 'Colorful stacks of poker chips on felt',
+    image: '/poker-chip-shuffle.svg',
+    imageAlt: 'POKR poker chips stacking for a fixed-round session',
     imageFirst: false,
   },
   {
@@ -47,7 +47,7 @@ const FEATURES: Feature[] = [
     cta: 'Friends',
     href: '/friends',
     image: '/home-challenge.png',
-    imageAlt: 'Playing cards and gold coins',
+    imageAlt: 'Two players in a heads-up challenge',
     imageFirst: false,
   },
   {
@@ -63,17 +63,7 @@ const FEATURES: Feature[] = [
 
 export function HomeLanding() {
   return (
-    <div className="mx-auto w-full max-w-5xl pb-12 pt-4 sm:pb-20 sm:pt-6 lg:pt-8">
-      <header className="lobby-fade-up mb-12 text-center sm:mb-16 lg:mb-20">
-        <h1 className="font-display text-[clamp(2rem,5vw,3.25rem)] font-bold leading-[1.08] tracking-tight text-ink-strong">
-          Play Texas Hold&apos;em online free
-        </h1>
-        <p className="mx-auto mt-3 max-w-xl text-[0.98rem] leading-relaxed text-ink-strong-muted sm:mt-4 sm:text-lg">
-          Private No-Limit Hold&apos;em for home games—host a table, join contests, or practice offline
-          on pokr.site.
-        </p>
-      </header>
-
+    <div className="mx-auto w-full max-w-5xl pb-12 pt-2 sm:pb-20 sm:pt-4 lg:pt-6">
       <div className="flex flex-col gap-16 sm:gap-20 lg:gap-28">
         {FEATURES.map((feature, i) => (
           <FeatureRow key={feature.title} feature={feature} index={i} />
@@ -108,6 +98,7 @@ function FeatureRow({ feature, index }: { feature: Feature; index: number }) {
             src={feature.image}
             alt={feature.imageAlt}
             fill
+            unoptimized={feature.image.endsWith('.svg')}
             className="object-contain object-center drop-shadow-[0_12px_28px_rgb(29_4_50/0.12)]"
             sizes="(max-width: 1024px) 80vw, 38vw"
             priority={index === 0}

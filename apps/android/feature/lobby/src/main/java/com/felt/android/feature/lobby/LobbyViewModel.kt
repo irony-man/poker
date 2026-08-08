@@ -88,7 +88,7 @@ class LobbyViewModel @Inject constructor(
     fun onAuthModeChange(mode: String) = _uiState.update { it.copy(authMode = mode, error = null) }
     fun onNameChange(value: String) = _uiState.update { it.copy(name = value) }
     fun onAvatarChange(value: Int) {
-        _uiState.update { it.copy(avatarId = value.coerceIn(0, 7)) }
+        _uiState.update { it.copy(avatarId = value.coerceIn(0, 4)) }
         viewModelScope.launch { sessionPreferences.saveAvatarId(value) }
     }
     fun onMaxSeatsChange(value: Int) = _uiState.update { it.copy(maxSeats = value) }
@@ -139,7 +139,7 @@ class LobbyViewModel @Inject constructor(
                     feltApi.signup(SignupRequest(username, password, state.avatarId))
                 } else {
                     feltApi.login(LoginRequest(username, password))
-                }.let { it.copy(avatarId = it.avatarId.takeIf { a -> a in 0..7 } ?: state.avatarId) }
+                }.let { it.copy(avatarId = it.avatarId.takeIf { a -> a in 0..4 } ?: state.avatarId) }
                 persistSession(session)
                 session
             }.onSuccess { session ->

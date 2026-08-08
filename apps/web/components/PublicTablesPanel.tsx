@@ -61,22 +61,10 @@ export function PublicTablesPanel({
   }
 
   return (
-    <LobbySplitCard imageSrc="/home-table.png" imageAlt="Open ring game on the felt">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <p className="text-sm font-medium text-ink-strong-muted">
-          Pick your stakes · 6-max ring games
-        </p>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => void refresh()}
-            className="btn-ghost py-1.5 px-3 text-xs"
-          >
-            Refresh
-          </button>
-          <span className="status-chip shrink-0">Quick join</span>
-        </div>
-      </div>
+    <LobbySplitCard imageSrc="/public-tables.png" imageAlt="Open public ring games ready to join">
+      <p className="text-sm font-medium text-ink-strong-muted">
+        Select the table size and sit down to play
+      </p>
 
       {fetchError && (
         <p role="alert" className="status-chip border-danger/30 bg-danger/10 text-danger text-xs">
@@ -101,7 +89,7 @@ export function PublicTablesPanel({
                   <p className="font-display text-lg font-bold uppercase tracking-wider text-sidebar">
                     {stake.label}
                   </p>
-                  <p className="mt-0.5 text-xs font-medium text-ink-strong-muted">
+                  <p className="text-xs font-medium text-ink-strong-muted">
                     Blinds {stake.smallBlind}/{stake.bigBlind}
                   </p>
                 </div>

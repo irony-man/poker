@@ -331,7 +331,7 @@ fun sitIn(state: HandState, seat: Int): ApplyResult {
         return ApplyResult(state, ok = false, error = "Not sitting out")
     }
     if (p.stack <= 0) {
-        return ApplyResult(state, ok = false, error = "Need chips to sit in")
+        return ApplyResult(state, ok = false, error = "Need Wuffies to sit in")
     }
     val players = s.players.toMutableList()
     players[seat] = p.copy(status = PlayerStatus.Seated)
@@ -352,7 +352,7 @@ fun topUp(state: HandState, seat: Int, amount: Int, buyIn: Int): ApplyResult {
         return ApplyResult(state, ok = false, error = "Empty seat")
     }
     if (p.stack > 0) {
-        return ApplyResult(state, ok = false, error = "Top-up only when out of chips")
+        return ApplyResult(state, ok = false, error = "Top-up only when out of Wuffies")
     }
     if (p.stack + amount > buyIn) {
         return ApplyResult(state, ok = false, error = "Exceeds table buy-in")
@@ -719,7 +719,7 @@ fun applyAction(
             }
             val need = amountTo - p.bet
             if (need <= 0) return ApplyResult(state, events, ok = false, error = "Invalid amount")
-            if (need > p.stack) return ApplyResult(state, events, ok = false, error = "Insufficient chips")
+            if (need > p.stack) return ApplyResult(state, events, ok = false, error = "Insufficient Wuffies")
 
             val isAllIn = need == p.stack
             val raiseSize = amountTo - s.currentBet

@@ -16,7 +16,7 @@ type Feature = {
 const FEATURES: Feature[] = [
   {
     title: 'Play Contests',
-    body: "Knockout tables with no buy-in, where you play until your stack is gone, and fixed-hand games where you choose how many deals run before anyone looks at a card and buy in again whenever you need more chips.",
+    body: "Knockout tables with no buy-in, where you play until your stack is gone, and fixed-hand games where you choose how many deals run before anyone looks at a card and buy in again whenever you need more Wuffies.",
     cta: 'Browse Contests',
     href: '/contests',
     image: '/home-knockout.png',
@@ -25,11 +25,11 @@ const FEATURES: Feature[] = [
   },
   {
     title: 'Open Tables',
-    body: "Hold'em that runs the way a home game does, no set number of hands and no cap on buy-ins, so you can add chips whenever your stack runs low and leave when the night feels done.",
+    body: "Hold'em that runs the way a home game does, no set number of hands and no cap on buy-ins, so you can add Wuffies whenever your stack runs low and leave when the night feels done.",
     cta: 'Join a Table',
     href: '/join',
     image: '/poker-chip-shuffle.svg',
-    imageAlt: 'POKR poker chips stacking for a fixed-round session',
+    imageAlt: 'POKR Wuffies stacking for a fixed-round session',
     imageFirst: false,
   },
   {
@@ -38,7 +38,7 @@ const FEATURES: Feature[] = [
     cta: 'Play with Friends',
     href: '/friends',
     image: '/home-host.png',
-    imageAlt: 'Gloved hand holding a branded poker chip',
+    imageAlt: 'Gloved hand holding a branded Wuffie token',
     imageFirst: true,
   },
   {
@@ -56,7 +56,7 @@ const FEATURES: Feature[] = [
     cta: 'Offline',
     href: '/solo',
     image: '/home-offline.png',
-    imageAlt: 'Stack of red and white poker chips',
+    imageAlt: 'Stack of red and white Wuffies',
     imageFirst: true,
   },
 ];

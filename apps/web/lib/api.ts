@@ -8,6 +8,16 @@ export interface AuthSession {
   ticket: string;
   sessionToken: string;
   avatarId: number;
+  chipBalance?: number;
+}
+
+export interface MeProfile {
+  id: string;
+  username: string;
+  name: string;
+  avatarId: number;
+  createdAt: number;
+  chipBalance: number;
 }
 
 function sessionHeaders(sessionToken?: string | null): HeadersInit {
@@ -105,6 +115,7 @@ export async function refreshTicket(sessionToken: string): Promise<{
   name: string;
   username: string;
   avatarId: number;
+  chipBalance?: number;
 }> {
   const res = await fetch(`${API_URL}/api/ticket`, {
     method: 'POST',
@@ -113,6 +124,28 @@ export async function refreshTicket(sessionToken: string): Promise<{
   });
   if (!res.ok) throw new Error(await parseError(res, 'Session expired'));
   return res.json();
+}
+
+export async function fetchMe(sessionToken: string): Promise<MeProfile> {
+  const res = await fetch(`${API_URL}/api/me`, {
+    method: 'GET',
+    headers: sessionHeaders(sessionToken),
+  });
+  if (!res.ok) throw new Error(await parseError(res, 'Could not load profile'));
+  return res.json() as Promise<MeProfile>;
+}
+
+export async function updateMe(
+  sessionToken: string,
+  body: { avatarId: number },
+): Promise<MeProfile> {
+  const res = await fetch(`${API_URL}/api/me`, {
+    method: 'PATCH',
+    headers: sessionHeaders(sessionToken),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await parseError(res, 'Could not update profile'));
+  return res.json() as Promise<MeProfile>;
 }
 
 export async function createTable(

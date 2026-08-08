@@ -18,6 +18,7 @@ import {
   LoginBodySchema,
   SignupBodySchema,
   UpdateFriendGroupBodySchema,
+  UpdateMeBodySchema,
 } from '@poker/protocol';
 import { AuthError, AuthStore, bearerToken } from './auth.js';
 import { initDatabase } from './db.js';
@@ -28,6 +29,7 @@ import { ensurePublicTables } from './publicTables.js';
 import { RoomManager } from './room.js';
 import { createTableChipStore } from './tableChips.js';
 import { TournamentManager } from './tournament.js';
+import { AuthWalletStore } from './wallet.js';
 
 // Load monorepo root .env then apps/server/.env (later wins).
 const serverDir = path.dirname(fileURLToPath(import.meta.url));
@@ -77,8 +79,10 @@ async function main() {
   const history = await createHistoryStore(pool);
   await writeSchemaDoc(dataDir);
   const chips = await createTableChipStore(pool, dataDir);
-  const rooms = new RoomManager(kv, history, chips);
-  const tournaments = new TournamentManager(rooms);
+  const wallet = new AuthWalletStore(auth);
+  wallet.setPool(pool);
+  const rooms = new RoomManager(kv, history, chips, wallet);
+  const tournaments = new TournamentManager(rooms, wallet);
   const friends = new FriendsStore(dataDir, pool);
   ensurePublicTables(rooms);
 
@@ -194,6 +198,49 @@ async function main() {
       name: user.name,
       username: user.username,
       avatarId: user.avatarId,
+      chipBalance: user.chipBalance,
+    });
+  });
+
+  app.get('/api/me', async (req, res) => {
+    const userId = requireUserId(req, res);
+    if (!userId) return;
+    const user = auth.getUser(userId);
+    if (!user) {
+      res.status(401).json({ error: 'Unknown user' });
+      return;
+    }
+    await wallet.ensureStartingBalance(userId);
+    res.json({
+      id: user.id,
+      username: user.username,
+      name: user.name,
+      avatarId: user.avatarId,
+      createdAt: user.createdAt,
+      chipBalance: wallet.getBalance(userId),
+    });
+  });
+
+  app.patch('/api/me', async (req, res) => {
+    const userId = requireUserId(req, res);
+    if (!userId) return;
+    const parsed = UpdateMeBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const user = await auth.setAvatarId(userId, parsed.data.avatarId);
+    if (!user) {
+      res.status(401).json({ error: 'Unknown user' });
+      return;
+    }
+    res.json({
+      id: user.id,
+      username: user.username,
+      name: user.name,
+      avatarId: user.avatarId,
+      createdAt: user.createdAt,
+      chipBalance: wallet.getBalance(userId),
     });
   });
 
@@ -682,7 +729,7 @@ async function main() {
     res.json({ contest });
   });
 
-  app.post('/api/contests/:id/register', (req, res) => {
+  app.post('/api/contests/:id/register', async (req, res) => {
     const userId = requireUserId(req, res);
     if (!userId) return;
     const user = auth.getUser(userId);
@@ -690,7 +737,7 @@ async function main() {
       res.status(401).json({ error: 'Sign in required' });
       return;
     }
-    const result = tournaments.register(req.params.id!, user.id, user.name);
+    const result = await tournaments.register(req.params.id!, user.id, user.name);
     if (!result.ok) {
       res.status(400).json({ error: result.error });
       return;
@@ -709,10 +756,10 @@ async function main() {
     res.json({ contest: result.contest });
   });
 
-  app.post('/api/contests/:id/start', (req, res) => {
+  app.post('/api/contests/:id/start', async (req, res) => {
     const userId = requireUserId(req, res);
     if (!userId) return;
-    const result = tournaments.start(req.params.id!, userId);
+    const result = await tournaments.start(req.params.id!, userId);
     if (!result.ok) {
       res.status(400).json({ error: result.error });
       return;
@@ -768,7 +815,14 @@ async function main() {
         }
         userId = user.id;
         name = user.name;
-        send({ type: 'auth_ok', userId, name, avatarId: user.avatarId });
+        void wallet.ensureStartingBalance(userId);
+        send({
+          type: 'auth_ok',
+          userId,
+          name,
+          avatarId: user.avatarId,
+          chipBalance: wallet.getBalance(userId),
+        });
         return;
       }
 
@@ -860,7 +914,7 @@ async function main() {
           break;
         }
         case 'top_up': {
-          const result = r.doTopUp(userId, msg.seat, msg.amount);
+          const result = await r.doTopUp(userId, msg.seat, msg.amount);
           if (!result.ok) send({ type: 'error', message: result.error ?? 'Top-up failed' });
           break;
         }

@@ -7,7 +7,7 @@ import { listPublicTables, type PublicTableSummary } from '@/lib/api';
 import { STAKE_PRESETS } from '@poker/protocol';
 
 function formatMoney(n: number): string {
-  return `$${n.toLocaleString()}`;
+  return n.toLocaleString();
 }
 
 export function PublicTablesPanel({

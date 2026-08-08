@@ -18,7 +18,7 @@ import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { useSession } from '@/lib/store';
 
 function modeLabel(mode: ContestView['mode']): string {
-  return mode === 'rounds' ? 'Rounds' : 'Chips';
+  return mode === 'rounds' ? 'Rounds' : 'Wuffies';
 }
 
 function modeDescription(contest: ContestView): string {
@@ -26,7 +26,7 @@ function modeDescription(contest: ContestView): string {
     const limit = contest.handLimit ?? 20;
     return `Play ${limit} hands with top-ups. Highest stack when the session ends wins.`;
   }
-  return 'Equal stacks, no top-ups. Last player with chips wins.';
+  return 'Equal stacks, no top-ups. Last player with Wuffies wins.';
 }
 
 function statusLabel(status: ContestView['status']): string {

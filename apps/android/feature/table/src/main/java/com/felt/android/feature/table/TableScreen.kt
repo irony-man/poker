@@ -365,7 +365,7 @@ private fun TableFooterControls(
         if (isTournament) {
             Text(
                 text = buildString {
-                    append(if (table.tournament?.mode == "rounds") "Rounds" else "Chips")
+                    append(if (table.tournament?.mode == "rounds") "Rounds" else "Wuffies")
                     append(" · blinds ${table.config.smallBlind}/${table.config.bigBlind}")
                     if (table.tournament?.noTopUp == true) append(" · no rebuy")
                     else append(" · top-ups on")

@@ -28,4 +28,9 @@ apps/android/build-apk.log
 
 /.idea/
 /.local-pg/
+.local-pg-data/
+.tools/
+.zig-cache/
+.zig-cache-global/
+.containers/
 .tmp-screenshots/

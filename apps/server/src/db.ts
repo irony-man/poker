@@ -224,6 +224,7 @@ export async function initDatabase(): Promise<PgPool> {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS username_lower TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_id INT NOT NULL DEFAULT 0;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS chip_balance INT NOT NULL DEFAULT 10000;
     `);
     sharedPool = pool;
     console.log('[db] Postgres connected and schema ready');

@@ -106,9 +106,15 @@ export function LobbySidebar({
             </p>
             {handle ? (
               <div className="flex min-w-0 items-center gap-1">
-                <p className="min-w-0 flex-1 truncate font-display font-semibold text-mushroom" title={handle}>
+                <Link
+                  href="/profile"
+                  onClick={onClose}
+                  className="min-w-0 flex-1 truncate font-display font-semibold text-mushroom transition hover:text-mushroom/90"
+                  title={`${handle} — Profile`}
+                  aria-label={`Open profile for ${handle}`}
+                >
                   {handle || 'Player'}
-                </p>
+                </Link>
                 <button
                   type="button"
                   onClick={() => void onCopyUsername()}

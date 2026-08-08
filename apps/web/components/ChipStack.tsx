@@ -1,5 +1,7 @@
 'use client';
 
+import { formatMoneyAmount } from '@/lib/currency';
+
 /** Classic casino colors — no purple clutter at table scale. */
 const CHIP_STYLES = [
   { min: 1000, face: '#1a1a1a', rim: '#e0b43a', ink: '#ffe29a' },
@@ -18,10 +20,9 @@ function styleForAmount(amount: number) {
   return CHIP_STYLES[CHIP_STYLES.length - 1]!;
 }
 
+/** @deprecated Prefer formatMoneyAmount — kept for table stack imports. */
 export function formatChips(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1)}M`;
-  if (n >= 10_000) return `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k`;
-  return n.toLocaleString();
+  return formatMoneyAmount(n);
 }
 
 /** Single polished casino chip (SVG). */

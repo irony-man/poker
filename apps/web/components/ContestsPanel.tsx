@@ -25,13 +25,13 @@ const FORMAT_TABS: {
 }[] = [
   {
     id: 'chips',
-    label: 'Chips',
-    title: 'Chip freezeout',
+    label: 'Wuffies',
+    title: 'Wuffies freezeout',
     body: 'Equal start stack for everyone. No top-ups once play begins.',
     points: [
-      'Same chips for every seat at the start',
+      'Same Wuffies for every seat at the start',
       "Bust out and you're eliminated",
-      'Last player with chips — the chip leader — wins',
+      'Last player with Wuffies wins',
     ],
   },
   {
@@ -67,7 +67,7 @@ function handsBlurb(handLimit: number): string {
 }
 
 function modeLabel(mode: ContestMode): string {
-  return mode === 'rounds' ? 'Rounds' : 'Chips';
+  return mode === 'rounds' ? 'Rounds' : 'Wuffies';
 }
 
 function statusLabel(status: ContestView['status']): string {

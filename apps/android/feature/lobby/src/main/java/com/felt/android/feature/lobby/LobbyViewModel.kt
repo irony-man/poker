@@ -239,7 +239,7 @@ class LobbyViewModel @Inject constructor(
                 val session = requireSession()
                 val mode = state.contestMode
                 val field = state.contestFieldSize
-                val modeLabel = if (mode == "rounds") "Rounds" else "Chips"
+                val modeLabel = if (mode == "rounds") "Rounds" else "Wuffies"
                 feltApi.createContest(
                     CreateContestRequest(
                         userId = session.userId,

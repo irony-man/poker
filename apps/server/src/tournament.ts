@@ -14,6 +14,8 @@ import {
 } from '@poker/protocol';
 import { isBotUserId, makeBotUserId, pickBotName } from './bot.js';
 import { Room, RoomManager } from './room.js';
+import type { WalletStore } from './wallet.js';
+import { UnlimitedWalletStore, WalletError } from './wallet.js';
 
 export interface CreateContestOpts {
   name: string;
@@ -77,9 +79,13 @@ export class TournamentManager {
   private byInvite = new Map<string, string>();
   private watchers = new Map<string, Map<string, SendFn>>(); // contestId → userId → send
   private rooms: RoomManager;
+  private wallet: WalletStore;
+  /** Humans whose entry fee / residual stack has been settled. */
+  private walletSettled = new Map<string, Set<string>>(); // contestId → userIds
 
-  constructor(rooms: RoomManager) {
+  constructor(rooms: RoomManager, wallet: WalletStore = new UnlimitedWalletStore()) {
     this.rooms = rooms;
+    this.wallet = wallet;
     rooms.setTournamentHook((room) => this.onRoomHandEnded(room));
   }
 
@@ -143,11 +149,11 @@ export class TournamentManager {
     return this.toView(contest);
   }
 
-  register(
+  async register(
     contestId: string,
     userId: string,
     name: string,
-  ): { ok: boolean; error?: string; contest?: ContestView } {
+  ): Promise<{ ok: boolean; error?: string; contest?: ContestView }> {
     const c = this.contests.get(contestId);
     if (!c) return { ok: false, error: 'Contest not found' };
     if (c.status !== 'registering') return { ok: false, error: 'Registration closed' };
@@ -165,7 +171,20 @@ export class TournamentManager {
     this.broadcast(c.id);
 
     if (c.autoStart && c.entrants.length >= c.fieldSize) {
-      this.startContest(c);
+      let canPay = true;
+      for (const e of c.entrants) {
+        if (e.isBot || isBotUserId(e.userId)) continue;
+        if (this.wallet.getBalance(e.userId) < c.startingStack) {
+          canPay = false;
+          break;
+        }
+      }
+      if (canPay) {
+        const started = await this.startContest(c);
+        if (!started.ok) {
+          return { ok: true, contest: this.toView(c), error: started.error };
+        }
+      }
     }
 
     return { ok: true, contest: this.toView(c) };
@@ -184,7 +203,10 @@ export class TournamentManager {
     return { ok: true, contest: this.toView(c) };
   }
 
-  start(contestId: string, userId: string): { ok: boolean; error?: string; contest?: ContestView } {
+  async start(
+    contestId: string,
+    userId: string,
+  ): Promise<{ ok: boolean; error?: string; contest?: ContestView }> {
     const c = this.contests.get(contestId);
     if (!c) return { ok: false, error: 'Contest not found' };
     if (userId !== c.hostUserId) return { ok: false, error: 'Only host can start' };
@@ -199,7 +221,19 @@ export class TournamentManager {
     }
     if (c.entrants.length > 9) return { ok: false, error: 'Contest needs 2–9 entrants' };
 
-    this.startContest(c);
+    for (const e of c.entrants) {
+      if (e.isBot || isBotUserId(e.userId)) continue;
+      const bal = this.wallet.getBalance(e.userId);
+      if (bal < c.startingStack) {
+        return {
+          ok: false,
+          error: `${e.name} needs ${c.startingStack} Wuffies (has ${bal})`,
+        };
+      }
+    }
+
+    const started = await this.startContest(c);
+    if (!started.ok) return { ok: false, error: started.error, contest: this.toView(c) };
     return { ok: true, contest: this.toView(c) };
   }
 
@@ -264,6 +298,7 @@ export class TournamentManager {
     const c = this.contests.get(contestId);
     if (!c || c.mode !== 'chips') return;
     this.eliminatePlayers(c, [userId]);
+    this.settleStack(c, userId, 0);
     const alive = this.aliveEntrants(c);
     if (alive.length <= 1) {
       if (alive[0]) this.placePlayer(c, alive[0].userId, 1);
@@ -280,10 +315,36 @@ export class TournamentManager {
     this.onRoomHandEnded(room);
   }
 
-  private startContest(c: ContestState): void {
-    if (c.status !== 'registering') return;
+  private async startContest(c: ContestState): Promise<{ ok: boolean; error?: string }> {
+    if (c.status !== 'registering') return { ok: false, error: 'Already started' };
+
+    const humans = c.entrants.filter((e) => !e.isBot && !isBotUserId(e.userId));
+    const debited: string[] = [];
+    try {
+      for (const e of humans) {
+        await this.wallet.debit(e.userId, c.startingStack, 'buy_in', c.id);
+        debited.push(e.userId);
+      }
+    } catch (err) {
+      for (const userId of debited) {
+        try {
+          await this.wallet.credit(userId, c.startingStack, 'cash_out', c.id);
+        } catch (refundErr) {
+          console.error('[wallet] contest entry refund failed', refundErr);
+        }
+      }
+      const msg =
+        err instanceof WalletError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Could not collect entry fees';
+      return { ok: false, error: msg };
+    }
+
     c.status = 'running';
     c.startedAt = Date.now();
+    this.walletSettled.set(c.id, new Set());
     this.broadcastEvent(c.id, {
       type: 'contest_event',
       contestId: c.id,
@@ -292,6 +353,7 @@ export class TournamentManager {
     });
     this.openTable(c);
     this.broadcast(c.id);
+    return { ok: true };
   }
 
   /**
@@ -350,6 +412,35 @@ export class TournamentManager {
     room.scheduleTournamentAutoStart();
   }
 
+  private settleStack(c: ContestState, userId: string, stack: number): void {
+    if (isBotUserId(userId)) return;
+    let set = this.walletSettled.get(c.id);
+    if (!set) {
+      set = new Set();
+      this.walletSettled.set(c.id, set);
+    }
+    if (set.has(userId)) return;
+    set.add(userId);
+    const amount = Math.max(0, Math.floor(stack));
+    if (amount <= 0) return;
+    void this.wallet.credit(userId, amount, 'cash_out', c.tableId ?? c.id).catch((err) => {
+      console.error('[wallet] contest settle failed', err);
+      set!.delete(userId);
+    });
+  }
+
+  private settleAllRemaining(c: ContestState, room: Room | null): void {
+    for (const e of c.entrants) {
+      if (e.isBot || isBotUserId(e.userId)) continue;
+      let stack = 0;
+      if (room) {
+        const seat = room.state.players.find((p) => p.userId === e.userId);
+        stack = seat?.stack ?? 0;
+      }
+      this.settleStack(c, e.userId, stack);
+    }
+  }
+
   private onRoomHandEnded(room: Room): void {
     const t = room.meta.tournament;
     if (!t) return;
@@ -388,6 +479,8 @@ export class TournamentManager {
         ordered.map((p) => p.userId),
       );
       for (const p of ordered) {
+        // Bust = 0 chips remaining; mark settled so finish won't double-credit.
+        this.settleStack(c, p.userId, 0);
         room.eliminateSeat(p.seat);
       }
     }
@@ -399,7 +492,7 @@ export class TournamentManager {
         room.systemChatPublic('Dealer', `${alive[0].name ?? 'Player'} wins the contest!`);
       }
       room.freezeTournamentMatch();
-      this.finishContest(c);
+      this.finishContest(c, room);
       return;
     }
 
@@ -438,11 +531,11 @@ export class TournamentManager {
     if (winner) {
       room.systemChatPublic(
         'Dealer',
-        `${winner.name ?? 'Player'} wins with ${winner.stack} chips!`,
+        `${winner.name ?? 'Player'} wins with ${winner.stack} Wuffies!`,
       );
     }
     room.freezeTournamentMatch();
-    this.finishContest(c);
+    this.finishContest(c, room);
   }
 
   private eliminatePlayers(c: ContestState, userIds: string[]): void {
@@ -477,7 +570,7 @@ export class TournamentManager {
     c.placements.sort((a, b) => a.place - b.place);
   }
 
-  private finishContest(c: ContestState): void {
+  private finishContest(c: ContestState, room: Room | null = null): void {
     if (c.status === 'completed') return;
     c.status = 'completed';
     c.completedAt = Date.now();
@@ -488,6 +581,10 @@ export class TournamentManager {
         this.placePlayer(c, e.userId, Math.max(1, place));
       }
     }
+    // Credit leftover contest stacks back to each human's wallet once.
+    const tableRoom =
+      room ?? (c.tableId ? this.rooms.get(c.tableId) ?? null : null);
+    this.settleAllRemaining(c, tableRoom);
     this.broadcastEvent(c.id, {
       type: 'contest_event',
       contestId: c.id,

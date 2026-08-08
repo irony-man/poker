@@ -43,7 +43,8 @@ export function PotBanner({
               : 'font-display text-3xl font-extrabold sm:text-4xl'
           }`}
         >
-          ${formatChips(value)}
+          {formatChips(value)}
+
         </span>
       </div>
       {sidePotCount > 1 && (

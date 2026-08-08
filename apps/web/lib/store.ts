@@ -90,12 +90,15 @@ interface SessionState {
   emojiBurst: { emoji: string; name: string; at: number } | null;
   /** Last poker action shown as a seat popup. */
   actionBurst: { seat: number; label: string; at: number } | null;
+  /** Global bankroll (Wuffies) (updated via wallet_update / auth_ok / /api/me). */
+  chipBalance: number | null;
   setSession: (s: {
     userId: string;
     name: string;
     ticket: string;
     username?: string;
     sessionToken?: string;
+    chipBalance?: number;
   }) => void;
   clearSession: () => void;
   setConnection: (c: SessionState['connection']) => void;
@@ -106,6 +109,7 @@ interface SessionState {
   setError: (e: string | null, code?: string | null) => void;
   setEmoji: (e: { emoji: string; name: string; at: number } | null) => void;
   setActionBurst: (e: { seat: number; label: string; at: number } | null) => void;
+  setChipBalance: (balance: number | null) => void;
 }
 
 export const useSession = create<SessionState>((set) => ({
@@ -123,6 +127,7 @@ export const useSession = create<SessionState>((set) => ({
   lastErrorCode: null,
   emojiBurst: null,
   actionBurst: null,
+  chipBalance: null,
   setSession: (s) =>
     set({
       userId: s.userId,
@@ -130,6 +135,7 @@ export const useSession = create<SessionState>((set) => ({
       ticket: s.ticket,
       username: s.username ?? s.name,
       sessionToken: s.sessionToken ?? null,
+      ...(s.chipBalance !== undefined ? { chipBalance: s.chipBalance } : {}),
     }),
   clearSession: () =>
     set({
@@ -138,6 +144,7 @@ export const useSession = create<SessionState>((set) => ({
       name: null,
       ticket: null,
       sessionToken: null,
+      chipBalance: null,
     }),
   setConnection: (connection) => set({ connection }),
   bindTable: (boundTableId) => set({ boundTableId }),
@@ -171,4 +178,5 @@ export const useSession = create<SessionState>((set) => ({
   setError: (lastError, code = null) => set({ lastError, lastErrorCode: lastError ? code : null }),
   setEmoji: (emojiBurst) => set({ emojiBurst }),
   setActionBurst: (actionBurst) => set({ actionBurst }),
+  setChipBalance: (chipBalance) => set({ chipBalance }),
 }));

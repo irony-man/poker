@@ -4,6 +4,7 @@ import path from 'node:path';
 import * as argon2 from 'argon2';
 import { nanoid } from 'nanoid';
 import { avatarIdFromUserId, clampAvatarId } from './avatars.js';
+import { STARTING_CHIP_GRANT } from './wallet.js';
 
 export interface User {
   id: string;
@@ -13,6 +14,8 @@ export interface User {
   name: string;
   avatarId: number;
   passwordHash: string;
+  /** Global play-money balance. */
+  chipBalance: number;
   createdAt: number;
 }
 
@@ -22,6 +25,7 @@ export interface PublicUser {
   name: string;
   avatarId: number;
   createdAt: number;
+  chipBalance: number;
 }
 
 export interface WsTicket {
@@ -43,6 +47,7 @@ export interface AuthSessionPayload {
   ticket: string;
   sessionToken: string;
   avatarId: number;
+  chipBalance: number;
 }
 
 interface PersistedSnapshot {
@@ -70,7 +75,15 @@ function toPublic(u: User): PublicUser {
     name: u.name,
     avatarId: u.avatarId,
     createdAt: u.createdAt,
+    chipBalance: u.chipBalance,
   };
+}
+
+function normalizeChipBalance(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
+    return Math.floor(value);
+  }
+  return STARTING_CHIP_GRANT;
 }
 
 /** File-backed (or Postgres-backed) user + session + ticket store. */
@@ -120,7 +133,10 @@ export class AuthStore {
       this.sessions.clear();
       this.tickets.clear();
       for (const u of snap.users ?? []) {
-        this.indexUser(u);
+        this.indexUser({
+          ...u,
+          chipBalance: normalizeChipBalance((u as User).chipBalance),
+        });
       }
       for (const s of snap.sessions ?? []) {
         if (s.expiresAt > Date.now()) this.sessions.set(s.token, s);
@@ -139,7 +155,7 @@ export class AuthStore {
   private async loadFromPostgres(): Promise<void> {
     if (!this.pool) return;
     const result = await this.pool.query(
-      `SELECT id, name, username, password_hash, avatar_id, created_at
+      `SELECT id, name, username, password_hash, avatar_id, chip_balance, created_at
        FROM users
        WHERE password_hash IS NOT NULL AND username IS NOT NULL`,
     );
@@ -154,6 +170,7 @@ export class AuthStore {
       username: string;
       password_hash: string;
       avatar_id: number;
+      chip_balance?: number | null;
       created_at: Date | string;
     }[]) {
       const createdAt =
@@ -166,6 +183,7 @@ export class AuthStore {
         name: row.username || row.name,
         passwordHash: row.password_hash,
         avatarId: clampAvatarId(row.avatar_id ?? 0),
+        chipBalance: normalizeChipBalance(row.chip_balance),
         createdAt,
       };
       this.indexUser(user);
@@ -291,14 +309,15 @@ export class AuthStore {
   private async persistUserToPostgres(user: User): Promise<void> {
     if (!this.pool) return;
     await this.pool.query(
-      `INSERT INTO users (id, name, username, username_lower, password_hash, avatar_id, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, to_timestamp($7 / 1000.0))
+      `INSERT INTO users (id, name, username, username_lower, password_hash, avatar_id, chip_balance, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, to_timestamp($8 / 1000.0))
        ON CONFLICT (id) DO UPDATE SET
          name = EXCLUDED.name,
          username = EXCLUDED.username,
          username_lower = EXCLUDED.username_lower,
          password_hash = EXCLUDED.password_hash,
-         avatar_id = EXCLUDED.avatar_id`,
+         avatar_id = EXCLUDED.avatar_id,
+         chip_balance = EXCLUDED.chip_balance`,
       [
         user.id,
         user.name,
@@ -306,6 +325,7 @@ export class AuthStore {
         user.username.toLowerCase(),
         user.passwordHash,
         user.avatarId,
+        user.chipBalance,
         user.createdAt,
       ],
     );
@@ -330,10 +350,12 @@ export class AuthStore {
       name: trimmed,
       passwordHash: await argon2.hash(password),
       avatarId: avatarId !== undefined ? clampAvatarId(avatarId) : avatarIdFromUserId(id),
+      chipBalance: STARTING_CHIP_GRANT,
       createdAt: Date.now(),
     };
     this.indexUser(user);
     await this.persistUserToPostgres(user);
+    if (!this.pool) await this.persistFile();
     return this.issueAuthSession(user);
   }
 
@@ -379,6 +401,7 @@ export class AuthStore {
       ticket,
       sessionToken,
       avatarId: user.avatarId,
+      chipBalance: user.chipBalance,
     };
   }
 
@@ -410,6 +433,45 @@ export class AuthStore {
 
   getUser(id: string): User | undefined {
     return this.users.get(id);
+  }
+
+  hasUser(userId: string): boolean {
+    return this.users.has(userId);
+  }
+
+  getChipBalance(userId: string): number | undefined {
+    return this.users.get(userId)?.chipBalance;
+  }
+
+  /** Persist a new global chip balance for an existing user. */
+  async setChipBalance(userId: string, balance: number): Promise<void> {
+    const user = this.users.get(userId);
+    if (!user) return;
+    user.chipBalance = Math.max(0, Math.floor(balance));
+    if (this.pool) {
+      await this.pool.query(`UPDATE users SET chip_balance = $1 WHERE id = $2`, [
+        user.chipBalance,
+        userId,
+      ]);
+    } else {
+      await this.persistFile();
+    }
+  }
+
+  /** Update profile picture preset for an existing user. */
+  async setAvatarId(userId: string, avatarId: number): Promise<User | null> {
+    const user = this.users.get(userId);
+    if (!user) return null;
+    user.avatarId = clampAvatarId(avatarId);
+    if (this.pool) {
+      await this.pool.query(`UPDATE users SET avatar_id = $1 WHERE id = $2`, [
+        user.avatarId,
+        userId,
+      ]);
+    } else {
+      await this.persistFile();
+    }
+    return user;
   }
 
   /** Case-insensitive exact username lookup. */
@@ -480,6 +542,7 @@ export class AuthStore {
       name: username,
       passwordHash: await argon2.hash(password),
       avatarId: clampAvatarId(avatarId),
+      chipBalance: STARTING_CHIP_GRANT,
       createdAt: Date.now(),
     };
     this.indexUser(user);

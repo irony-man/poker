@@ -34,7 +34,7 @@ fun formatChips(n: Int): String = when {
     else -> n.toString()
 }
 
-fun formatMoney(n: Int): String = "$${formatChips(n.coerceAtLeast(0))}"
+fun formatMoney(n: Int): String = formatChips(n.coerceAtLeast(0))
 
 @Composable
 fun HudPanel(

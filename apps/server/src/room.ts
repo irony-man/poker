@@ -25,6 +25,8 @@ import type { TableChipStore } from './tableChips.js';
 import { MemoryTableChipStore } from './tableChips.js';
 import { avatarIdFromUserId, clampAvatarId } from './avatars.js';
 import { chooseBotAction, isBotUserId, makeBotUserId, pickBotName } from './bot.js';
+import type { WalletStore } from './wallet.js';
+import { UnlimitedWalletStore, WalletError } from './wallet.js';
 
 export interface TournamentTableRules {
   contestId: string;
@@ -84,6 +86,7 @@ export class Room {
   private kv: KvStore;
   private history: HandHistoryStore;
   private chips: TableChipStore;
+  private wallet: WalletStore;
   private handStartedAt = 0;
   private tournamentHook: TournamentHandEndedHook | null = null;
   private autoStartTimer: NodeJS.Timeout | null = null;
@@ -96,13 +99,31 @@ export class Room {
     history: HandHistoryStore,
     tournamentHook: TournamentHandEndedHook | null = null,
     chips: TableChipStore = new MemoryTableChipStore(),
+    wallet: WalletStore = new UnlimitedWalletStore(),
   ) {
     this.meta = meta;
     this.state = createEmptyTable(meta.config);
     this.kv = kv;
     this.history = history;
     this.chips = chips;
+    this.wallet = wallet;
     this.tournamentHook = tournamentHook;
+  }
+
+  /** Notify this user of their current wallet balance when connected. */
+  private notifyWallet(userId: string, balance: number): void {
+    if (isBotUserId(userId)) return;
+    this.connections.get(userId)?.send({ type: 'wallet_update', chipBalance: balance });
+  }
+
+  async creditCashOut(userId: string, stack: number): Promise<void> {
+    if (isBotUserId(userId) || stack <= 0) return;
+    try {
+      const result = await this.wallet.credit(userId, stack, 'cash_out', this.meta.id);
+      this.notifyWallet(userId, result.balance);
+    } catch (err) {
+      console.error('[wallet] cash-out failed', err);
+    }
   }
 
   setTournamentHook(hook: TournamentHandEndedHook | null): void {
@@ -317,11 +338,14 @@ export class Room {
     const seat = this.seatOf(userId);
     if (seat !== null) {
       const name = this.state.players[seat]?.name ?? 'Player';
+      const stack = this.state.players[seat]?.stack ?? 0;
       const result = leaveSeat(this.state, seat);
       if (result.ok) {
         this.state = result.state;
         this.announceEngineEvents(result.events);
         this.systemChat('Dealer', `${name} leaves the table`);
+        // Return remaining stack to bankroll (kick path reserves instead and does not call leave/stand cash-out).
+        void this.creditCashOut(userId, stack);
         void this.afterStateChange();
       } else if (result.error?.includes('All-in')) {
         this.systemChat('Dealer', `${name} disconnects (all-in — seat stays until hand ends)`);
@@ -702,7 +726,7 @@ export class Room {
       (p) => p.userId && p.stack > 0 && p.status !== 'sittingOut',
     ).length;
     if (readyCount < 2) {
-      return { ok: false, error: 'Need at least 2 players with chips' };
+      return { ok: false, error: 'Need at least 2 players with Wuffies' };
     }
     this.readyUserIds.clear();
     const handId = nanoid(10);
@@ -792,6 +816,21 @@ export class Room {
       return { ok: false, error: 'Buy-in must match table buy-in' };
     }
 
+    let debited = false;
+    if (reserved == null && !isBotUserId(userId)) {
+      try {
+        const paid = await this.wallet.debit(userId, buyIn, 'buy_in', this.meta.id);
+        debited = true;
+        this.notifyWallet(userId, paid.balance);
+      } catch (err) {
+        if (err instanceof WalletError && err.code === 'insufficient') {
+          return { ok: false, error: err.message };
+        }
+        console.error('[wallet] buy-in debit failed', err);
+        return { ok: false, error: 'Could not process buy-in' };
+      }
+    }
+
     const result = sitDown(this.state, seat, userId, name, stack);
     if (!result.ok) {
       if (reserved != null) {
@@ -799,6 +838,14 @@ export class Room {
           await this.chips.reserve(this.meta.id, userId, reserved);
         } catch (err) {
           console.error('[chips] failed to restore reserved stack after sit failure', err);
+        }
+      }
+      if (debited) {
+        try {
+          const refund = await this.wallet.credit(userId, buyIn, 'cash_out', this.meta.id);
+          this.notifyWallet(userId, refund.balance);
+        } catch (err) {
+          console.error('[wallet] buy-in refund failed', err);
         }
       }
       return { ok: false, error: result.error };
@@ -817,9 +864,11 @@ export class Room {
   stand(userId: string, seat: number): { ok: boolean; error?: string } {
     if (this.seatOf(userId) !== seat) return { ok: false, error: 'Not your seat' };
     this.readyUserIds.delete(userId);
+    const stack = this.state.players[seat]?.stack ?? 0;
     const result = standUp(this.state, seat);
     if (!result.ok) return { ok: false, error: result.error };
     this.state = result.state;
+    void this.creditCashOut(userId, stack);
     void this.afterStateChange();
     return { ok: true };
   }
@@ -843,13 +892,46 @@ export class Room {
     return { ok: true };
   }
 
-  doTopUp(userId: string, seat: number, amount: number): { ok: boolean; error?: string } {
+  async doTopUp(userId: string, seat: number, amount: number): Promise<{ ok: boolean; error?: string }> {
     if (this.isTournament() && !this.meta.tournament?.allowTopUp) {
       return { ok: false, error: 'No top-up in this contest' };
     }
     if (this.seatOf(userId) !== seat) return { ok: false, error: 'Not your seat' };
-    const result = topUp(this.state, seat, amount, this.config.buyIn);
-    if (!result.ok) return { ok: false, error: result.error };
+
+    const n = Math.floor(amount);
+    if (!Number.isFinite(n) || n <= 0) {
+      return { ok: false, error: 'Invalid top-up amount' };
+    }
+
+    if (isBotUserId(userId)) {
+      const result = topUp(this.state, seat, n, this.config.buyIn);
+      if (!result.ok) return { ok: false, error: result.error };
+      this.state = result.state;
+      void this.afterStateChange();
+      return { ok: true };
+    }
+
+    try {
+      const paid = await this.wallet.debit(userId, n, 'top_up', this.meta.id);
+      this.notifyWallet(userId, paid.balance);
+    } catch (err) {
+      if (err instanceof WalletError && err.code === 'insufficient') {
+        return { ok: false, error: err.message };
+      }
+      console.error('[wallet] top-up debit failed', err);
+      return { ok: false, error: 'Could not process top-up' };
+    }
+
+    const result = topUp(this.state, seat, n, this.config.buyIn);
+    if (!result.ok) {
+      try {
+        const refund = await this.wallet.credit(userId, n, 'cash_out', this.meta.id);
+        this.notifyWallet(userId, refund.balance);
+      } catch (err) {
+        console.error('[wallet] top-up refund failed', err);
+      }
+      return { ok: false, error: result.error };
+    }
     this.state = result.state;
     void this.afterStateChange();
     return { ok: true };
@@ -1078,16 +1160,19 @@ export class RoomManager {
   private kv: KvStore;
   private history: HandHistoryStore;
   private chips: TableChipStore;
+  private wallet: WalletStore;
   private tournamentHook: TournamentHandEndedHook | null = null;
 
   constructor(
     kv: KvStore,
     history: HandHistoryStore,
     chips: TableChipStore = new MemoryTableChipStore(),
+    wallet: WalletStore = new UnlimitedWalletStore(),
   ) {
     this.kv = kv;
     this.history = history;
     this.chips = chips;
+    this.wallet = wallet;
   }
 
   setTournamentHook(hook: TournamentHandEndedHook | null): void {
@@ -1123,7 +1208,14 @@ export class RoomManager {
       createdAt: Date.now(),
       tournament: opts.tournament,
     };
-    const room = new Room(meta, this.kv, this.history, this.tournamentHook, this.chips);
+    const room = new Room(
+      meta,
+      this.kv,
+      this.history,
+      this.tournamentHook,
+      this.chips,
+      this.wallet,
+    );
     this.rooms.set(id, room);
     this.byInvite.set(inviteCode, id);
     void this.history.recordTable(meta);

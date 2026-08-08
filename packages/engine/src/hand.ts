@@ -313,7 +313,7 @@ export function sitIn(state: HandState, seat: number): ApplyResult {
   if (!p || p.status !== 'sittingOut') {
     return { state, events: [], ok: false, error: 'Not sitting out' };
   }
-  if (p.stack <= 0) return { state, events: [], ok: false, error: 'Need chips to sit in' };
+  if (p.stack <= 0) return { state, events: [], ok: false, error: 'Need Wuffies to sit in' };
   p.status = 'seated';
   s.version += 1;
   return { state: s, events, ok: true };
@@ -326,7 +326,7 @@ export function topUp(state: HandState, seat: number, amount: number, buyIn: num
   }
   const p = s.players[seat];
   if (!p || p.status === 'empty') return { state, events: [], ok: false, error: 'Empty seat' };
-  if (p.stack > 0) return { state, events: [], ok: false, error: 'Top-up only when out of chips' };
+  if (p.stack > 0) return { state, events: [], ok: false, error: 'Top-up only when out of Wuffies' };
   if (p.stack + amount > buyIn) return { state, events: [], ok: false, error: 'Exceeds table buy-in' };
   p.stack += amount;
   if (p.status === 'sittingOut' && p.stack > 0) p.status = 'seated';
@@ -690,7 +690,7 @@ export function applyAction(
       }
       const need = amountTo - p.bet;
       if (need <= 0) return { state, events, ok: false, error: 'Invalid amount' };
-      if (need > p.stack) return { state, events, ok: false, error: 'Insufficient chips' };
+      if (need > p.stack) return { state, events, ok: false, error: 'Insufficient Wuffies' };
 
       const isAllIn = need === p.stack;
       const raiseSize = amountTo - s.currentBet;

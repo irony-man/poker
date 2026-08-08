@@ -23,7 +23,7 @@ describe('TournamentManager', () => {
     tournaments = new TournamentManager(rooms);
   });
 
-  it('creates chips contest with equal stacks and no top-up', () => {
+  it('creates chips contest with equal stacks and no top-up', async () => {
     const created = tournaments.create({
       name: 'SNG',
       mode: 'chips',
@@ -41,7 +41,7 @@ describe('TournamentManager', () => {
     expect(created.status).toBe('registering');
     expect(created.entrants).toHaveLength(1);
 
-    const started = tournaments.start(created.id, 'host');
+    const started = await tournaments.start(created.id, 'host');
     expect(started.ok).toBe(true);
     const view = started.contest!;
     expect(view.status).toBe('running');
@@ -59,12 +59,12 @@ describe('TournamentManager', () => {
 
     const hostSeat = room!.seatedPlayersSnapshot().find((p) => p.userId === 'host')!.seat;
     room!.state.players[hostSeat]!.stack = 0;
-    const result = room!.doTopUp('host', hostSeat, 500);
+    const result = await room!.doTopUp('host', hostSeat, 500);
     expect(result.ok).toBe(false);
     expect(result.error).toMatch(/top-up/i);
   });
 
-  it('places players in chip-elimination order (last standing wins)', () => {
+  it('places players in chip-elimination order (last standing wins)', async () => {
     const created = tournaments.create({
       name: 'Freezeout',
       mode: 'chips',
@@ -79,7 +79,7 @@ describe('TournamentManager', () => {
       isPrivate: true,
       autoStart: true,
     });
-    const view = tournaments.start(created.id, 'host').contest!;
+    const view = (await tournaments.start(created.id, 'host')).contest!;
 
     const bots = view.entrants.filter((e) => e.userId !== 'host');
     tournaments.forceEliminate(view.id, bots[0]!.userId);
@@ -95,7 +95,7 @@ describe('TournamentManager', () => {
     expect(c.placements.find((p) => p.userId === bots[2]!.userId)?.place).toBe(2);
   });
 
-  it('creates rounds contest with hand limit and allows top-up', () => {
+  it('creates rounds contest with hand limit and allows top-up', async () => {
     const created = tournaments.create({
       name: 'Session',
       mode: 'rounds',
@@ -111,7 +111,7 @@ describe('TournamentManager', () => {
       autoStart: true,
       handLimit: 10,
     });
-    const view = tournaments.start(created.id, 'host').contest!;
+    const view = (await tournaments.start(created.id, 'host')).contest!;
 
     expect(view.status).toBe('running');
     expect(view.mode).toBe('rounds');
@@ -122,12 +122,12 @@ describe('TournamentManager', () => {
 
     const hostSeat = room.seatedPlayersSnapshot().find((p) => p.userId === 'host')!.seat;
     room.state.players[hostSeat]!.stack = 0;
-    const result = room.doTopUp('host', hostSeat, 1000);
+    const result = await room.doTopUp('host', hostSeat, 1000);
     expect(result.ok).toBe(true);
     expect(room.state.players[hostSeat]!.stack).toBe(1000);
   });
 
-  it('finishes rounds contest by chip leader after hand limit', () => {
+  it('finishes rounds contest by chip leader after hand limit', async () => {
     const created = tournaments.create({
       name: 'Short session',
       mode: 'rounds',
@@ -143,7 +143,7 @@ describe('TournamentManager', () => {
       autoStart: true,
       handLimit: 2,
     });
-    const view = tournaments.start(created.id, 'host').contest!;
+    const view = (await tournaments.start(created.id, 'host')).contest!;
 
     const room = rooms.get(view.tableId!)!;
     // Give host a clear chip lead
@@ -165,7 +165,7 @@ describe('TournamentManager', () => {
     expect(room.meta.tournament?.frozen).toBe(true);
   });
 
-  it('auto-tops bots during rounds contests', () => {
+  it('auto-tops bots during rounds contests', async () => {
     const created = tournaments.create({
       name: 'Bot rebuy',
       mode: 'rounds',
@@ -181,7 +181,7 @@ describe('TournamentManager', () => {
       autoStart: true,
       handLimit: 5,
     });
-    const view = tournaments.start(created.id, 'host').contest!;
+    const view = (await tournaments.start(created.id, 'host')).contest!;
 
     const room = rooms.get(view.tableId!)!;
     const bot = room.seatedPlayersSnapshot().find((p) => p.userId !== 'host')!;
@@ -190,7 +190,7 @@ describe('TournamentManager', () => {
     expect(room.state.players[bot.seat]!.stack).toBe(1000);
   });
 
-  it('registers players until field is full then auto-starts', () => {
+  it('registers players until field is full then auto-starts', async () => {
     const view = tournaments.create({
       name: 'Reg',
       mode: 'chips',
@@ -206,14 +206,14 @@ describe('TournamentManager', () => {
       autoStart: true,
     });
     expect(view.status).toBe('registering');
-    tournaments.register(view.id, 'p2', 'Bob');
+    await tournaments.register(view.id, 'p2', 'Bob');
     expect(tournaments.get(view.id)!.status).toBe('registering');
-    tournaments.register(view.id, 'p3', 'Carol');
+    await tournaments.register(view.id, 'p3', 'Carol');
     expect(tournaments.get(view.id)!.status).toBe('running');
     expect(tournaments.listPublic()).toHaveLength(0);
   });
 
-  it('lists contests the user has joined', () => {
+  it('lists contests the user has joined', async () => {
     const a = tournaments.create({
       name: 'Mine',
       mode: 'chips',
@@ -228,7 +228,7 @@ describe('TournamentManager', () => {
       isPrivate: true,
       autoStart: false,
     });
-    tournaments.register(a.id, 'friend', 'Friend');
+    await tournaments.register(a.id, 'friend', 'Friend');
     const other = tournaments.create({
       name: 'Other',
       mode: 'chips',

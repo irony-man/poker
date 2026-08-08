@@ -18,7 +18,7 @@ const TIPS: { title: string; body: string }[] = [
   },
   {
     title: 'Table tools',
-    body: 'Host can Start hand between rounds. Sit out to skip hands. Chat and voice sit in the toolbar. Broke stacks can Top up between hands (cash and rounds contests; chip contests have no rebuy).',
+    body: 'Host can Start hand between rounds. Sit out to skip hands. Chat and voice sit in the toolbar. Broke stacks can Top up between hands from your global Wuffies balance (cash and rounds contests; Wuffies freezeouts have no rebuy).',
   },
 ];
 

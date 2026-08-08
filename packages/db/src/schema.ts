@@ -9,6 +9,8 @@ export interface UserRow {
   usernameLower: string | null;
   passwordHash: string | null;
   avatarId: number;
+  /** Global play-money balance (spent on sit / top-up, restored on cash-out). */
+  chipBalance: number;
   createdAt: Date;
 }
 
@@ -36,12 +38,22 @@ export interface HandHistoryRow {
   resultJson: string;
 }
 
+export type ChipLedgerReason =
+  | 'signup_grant'
+  | 'free_refill'
+  | 'buy_in'
+  | 'cash_out'
+  | 'top_up'
+  | 'hand_win'
+  | 'hand_loss';
+
 export interface ChipLedgerRow {
   id: string;
   userId: string;
+  /** Empty string when not table-scoped (signup / refill). */
   tableId: string;
   delta: number;
-  reason: 'buy_in' | 'cash_out' | 'top_up' | 'hand_win' | 'hand_loss';
+  reason: ChipLedgerReason;
   createdAt: Date;
 }
 
@@ -62,6 +74,7 @@ CREATE TABLE IF NOT EXISTS users (
   username_lower TEXT,
   password_hash TEXT,
   avatar_id INT NOT NULL DEFAULT 0,
+  chip_balance INT NOT NULL DEFAULT 10000,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

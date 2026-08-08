@@ -104,7 +104,7 @@ export default function HostPage() {
                 <span className="inline-flex flex-col items-start leading-tight">
                   <span>{s.label}</span>
                   <span className="text-[10px] font-medium opacity-70">
-                    ${s.buyIn} · {s.smallBlind}/{s.bigBlind}
+                    {s.buyIn.toLocaleString()} · {s.smallBlind}/{s.bigBlind}
                   </span>
                 </span>
               );

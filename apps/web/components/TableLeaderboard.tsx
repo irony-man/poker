@@ -146,7 +146,7 @@ export function TableLeaderboard({
                 ) : null}
               </div>
               <span className="shrink-0 font-mono text-xs font-bold tabular-nums text-sidebar">
-                ${formatChips(row.stack)}
+                {formatChips(row.stack)}
               </span>
             </li>
           ))}

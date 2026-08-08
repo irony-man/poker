@@ -83,24 +83,10 @@ export function TableView({
   const mySeat = table?.players.find((p) => p.userId === userId)?.seat;
   const myPlayer = mySeat !== undefined ? table?.players[mySeat] : undefined;
   const isSpectating = spectating && mySeat === undefined;
-  const canTopUp =
-    !table?.tournament?.noTopUp &&
-    mySeat !== undefined &&
-    !!myPlayer &&
-    myPlayer.stack === 0 &&
-    (table?.street === 'waiting' || table?.street === 'payout');
-
-  /** Instant rebuy to table stake (no modal). Also sits back in if sitting out. */
-  const doTopUp = () => {
-    if (!table || mySeat === undefined || !canTopUp) return;
-    send({
-      type: 'top_up',
-      tableId,
-      seat: mySeat,
-      amount: table.config.buyIn,
-    });
-  };
-
+  const chipBalance = useSession((s) => s.chipBalance);
+  const walletChips = typeof chipBalance === 'number' ? Math.max(0, chipBalance) : 0;
+  const topUpAmount =
+    table != null && walletChips > 0 ? Math.min(table.config.buyIn, walletChips) : 0;
   const sitAtFirstOpenSeat = () => {
     if (!table || isSpectating) return false;
     const empty = table.players.find((p) => p.status === 'empty');
@@ -189,6 +175,26 @@ export function TableView({
     table.handId !== dismissedWinHandId;
   const youWon = !!table?.winners.some((w) => table.players[w.seat]?.userId === userId);
   const betweenHands = table?.street === 'waiting' || table?.street === 'payout';
+  const brokeAtTable =
+    !table?.tournament?.noTopUp &&
+    mySeat !== undefined &&
+    !!myPlayer &&
+    myPlayer.stack === 0 &&
+    betweenHands;
+  const canTopUp = brokeAtTable && topUpAmount > 0;
+  const brokeNoWallet = brokeAtTable && topUpAmount <= 0 && chipBalance !== null;
+
+  /** Instant rebuy funded from global bankroll (partial OK). Also sits back in if sitting out. */
+  const doTopUp = () => {
+    if (!table || mySeat === undefined || !canTopUp || topUpAmount <= 0) return;
+    send({
+      type: 'top_up',
+      tableId,
+      seat: mySeat,
+      amount: topUpAmount,
+    });
+  };
+
   const canSitOut =
     mySeat !== undefined &&
     betweenHands &&
@@ -224,6 +230,7 @@ export function TableView({
       canSitOut ||
       canSitIn ||
       canTopUp ||
+      brokeNoWallet ||
       (!isTournament && !isSpectating && emptySeats > 0) ||
       (!isTournament && !isSpectating && botSeats > 0) ||
       canReady);
@@ -404,8 +411,18 @@ export function TableView({
     if (canTopUp) {
       mobileOverflowItems.push({
         id: 'top-up',
-        label: 'Top up',
+        label: topUpAmount < (table?.config.buyIn ?? 0) ? `Top up ${topUpAmount}` : 'Top up',
         onClick: doTopUp,
+        tone: 'gold',
+      });
+    } else if (brokeNoWallet) {
+      mobileOverflowItems.push({
+        id: 'need-wuffies',
+        label: 'Need Wuffies — Profile',
+        onClick: () => {
+          leaveRoom();
+          router.push('/profile');
+        },
         tone: 'gold',
       });
     }
@@ -488,7 +505,7 @@ export function TableView({
         {table?.tournament && (
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <span className="status-chip border-sidebar/25 bg-sidebar/8 text-sidebar">
-              {table.tournament.mode === 'rounds' ? 'Rounds' : 'Chips'}
+              {table.tournament.mode === 'rounds' ? 'Rounds' : 'Wuffies'}
               {table.tournament.frozen ? ' · over' : ''}
             </span>
             <span className="text-xs text-ink-strong-muted">
@@ -772,8 +789,16 @@ export function TableView({
                   onClick={doTopUp}
                   className="rounded-full border border-sidebar/25 bg-sidebar/8 px-3 py-1.5 text-xs text-sidebar hover:bg-sidebar/12"
                 >
-                  Top up
+                  {topUpAmount < table!.config.buyIn ? `Top up ${topUpAmount}` : 'Top up'}
                 </button>
+              )}
+              {brokeNoWallet && (
+                <a
+                  href="/profile"
+                  className="rounded-full border border-danger/30 bg-danger/10 px-3 py-1.5 text-xs text-danger"
+                >
+                  Need Wuffies — profile
+                </a>
               )}
             </div>
           </div>

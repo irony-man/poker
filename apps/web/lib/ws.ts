@@ -21,6 +21,7 @@ export function usePokerSocket(
   const setError = useSession((s) => s.setError);
   const setEmoji = useSession((s) => s.setEmoji);
   const setActionBurst = useSession((s) => s.setActionBurst);
+  const setChipBalance = useSession((s) => s.setChipBalance);
   const wsRef = useRef<WebSocket | null>(null);
   const intentionalLeaveRef = useRef(false);
   /** Bumps on every effect teardown so stale sockets never reconnect or apply state. */
@@ -70,6 +71,9 @@ export function usePokerSocket(
         switch (msg.type) {
           case 'auth_ok': {
             setConnection('open');
+            if (typeof msg.chipBalance === 'number') {
+              setChipBalance(msg.chipBalance);
+            }
             const id = tableIdRef.current;
             if (!id) return;
             ws!.send(
@@ -79,6 +83,12 @@ export function usePokerSocket(
                 ...(spectateRef.current ? { spectate: true } : {}),
               }),
             );
+            break;
+          }
+          case 'wallet_update': {
+            if (typeof msg.chipBalance === 'number') {
+              setChipBalance(msg.chipBalance);
+            }
             break;
           }
           case 'state_sync': {
@@ -181,6 +191,7 @@ export function usePokerSocket(
     setError,
     setEmoji,
     setActionBurst,
+    setChipBalance,
   ]);
 
   const send = useCallback((payload: unknown): boolean => {

@@ -8,7 +8,7 @@ import { SeatTurnRing } from './TurnTimer';
 import { useSession, type PublicPlayer } from '@/lib/store';
 
 function money(n: number): string {
-  return `$${formatChips(n)}`;
+  return formatChips(n);
 }
 
 function SeatActionPopup({ label, burstKey }: { label: string; burstKey: number }) {

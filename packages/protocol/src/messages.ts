@@ -142,6 +142,12 @@ export const ServerMessageSchema = z.discriminatedUnion('type', [
     type: z.literal('auth_ok'),
     userId: z.string(),
     name: z.string(),
+    avatarId: z.number().int().optional(),
+    chipBalance: z.number().int().nonnegative().optional(),
+  }),
+  z.object({
+    type: z.literal('wallet_update'),
+    chipBalance: z.number().int().nonnegative(),
   }),
   z.object({
     type: z.literal('error'),
@@ -297,11 +303,18 @@ export const AuthSessionSchema = z.object({
   ticket: z.string(),
   sessionToken: z.string(),
   avatarId: z.number().int().min(0).max(4),
+  chipBalance: z.number().int().nonnegative().optional(),
+});
+
+export const UpdateMeBodySchema = z.object({
+  /** Preset profile picture index (0–4). */
+  avatarId: z.number().int().min(0).max(4),
 });
 
 export type SignupBody = z.infer<typeof SignupBodySchema>;
 export type LoginBody = z.infer<typeof LoginBodySchema>;
 export type AuthSession = z.infer<typeof AuthSessionSchema>;
+export type UpdateMeBody = z.infer<typeof UpdateMeBodySchema>;
 
 /** @deprecated Use SignupBodySchema / LoginBodySchema */
 export const RegisterBodySchema = z.object({

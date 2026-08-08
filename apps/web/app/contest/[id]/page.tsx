@@ -13,6 +13,7 @@ import {
   WS_URL,
 } from '@/lib/api';
 import { FriendInvitePicker } from '@/components/FriendInvitePicker';
+import { MoneyAmount } from '@/components/CurrencyIcon';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { useSession } from '@/lib/store';
@@ -442,8 +443,15 @@ export default function ContestPage() {
                   className="flex items-center justify-between gap-2 rounded-xl border border-sidebar/12 bg-mushroom/55 px-3 py-2 text-sm"
                 >
                   <span className="min-w-0 truncate font-medium text-ink-strong">{p.name}</span>
-                  <span className="shrink-0 font-mono text-xs font-semibold text-sidebar">
-                    #{p.place}
+                  <span className="flex shrink-0 items-center gap-2 font-mono text-xs font-semibold text-sidebar">
+                    {(p.prizeWuffies ?? 0) > 0 ? (
+                      <MoneyAmount
+                        amount={p.prizeWuffies ?? 0}
+                        prefix="+"
+                        className="text-brass-dim"
+                      />
+                    ) : null}
+                    <span>#{p.place}</span>
                   </span>
                 </li>
               ))}

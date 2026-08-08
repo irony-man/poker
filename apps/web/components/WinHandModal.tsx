@@ -1,6 +1,7 @@
 'use client';
 
-import { formatChips } from './ChipStack';
+import { MoneyAmount } from './CurrencyIcon';
+import { PlayerAvatar } from './PlayerAvatar';
 import { PlayingCard } from './PlayingCard';
 import { useIsNarrow } from '@/lib/tableLayout';
 
@@ -13,6 +14,15 @@ export type WinLine = {
   isSelf?: boolean;
 };
 
+export type ReadyRosterPlayer = {
+  seat: number;
+  name: string;
+  userId?: string | null;
+  avatarId?: number | null;
+  ready: boolean;
+  isSelf?: boolean;
+};
+
 export function WinHandModal({
   winners,
   youWon,
@@ -20,6 +30,7 @@ export function WinHandModal({
   readyCount,
   readyTotal,
   isReady,
+  readyPlayers,
   canTopUp,
   canSitOut,
   canSitIn,
@@ -35,6 +46,8 @@ export function WinHandModal({
   readyCount?: number;
   readyTotal?: number;
   isReady?: boolean;
+  /** Eligible players for next hand — shown below the sheet with avatar focus. */
+  readyPlayers?: ReadyRosterPlayer[];
   canTopUp?: boolean;
   canSitOut?: boolean;
   canSitIn?: boolean;
@@ -45,177 +58,209 @@ export function WinHandModal({
   onDismiss: () => void;
 }) {
   const narrow = useIsNarrow();
-  const primary = winners[0];
-  const winType =
-    primary?.handName && primary.handName !== 'Uncontested'
-      ? primary.handName
-      : winners.length > 1
-        ? 'Split pot'
-        : 'Won the pot';
+  const roster = readyPlayers ?? [];
+  const showRoster = roster.length > 0;
+  const rCount = readyCount ?? roster.filter((p) => p.ready).length;
+  const rTotal = readyTotal ?? roster.length;
+  const rosterAvatarSize = roster.length > 5 ? (narrow ? 40 : 44) : narrow ? 48 : 56;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-ink-overlay/80 p-3 backdrop-blur-sm sm:items-center sm:p-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="win-hand-title"
-        className="flex max-h-[min(92dvh,40rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-mushroom/30 bg-gradient-to-b from-[#2a0f45] to-[#0e0618] shadow-[0_0_56px_rgba(29,4,50,0.55)]"
-      >
-        <div className="shrink-0 border-b border-mushroom/20 bg-mushroom/10 px-4 py-3 text-center sm:px-5 sm:py-5">
-          <p className="text-[9px] font-display uppercase tracking-[0.28em] text-mushroom/70 sm:text-[10px]">
-            Hand complete
-          </p>
-          <h2
-            id="win-hand-title"
-            className="mt-0.5 font-display text-2xl font-extrabold uppercase tracking-wider text-mushroom sm:mt-1 sm:text-3xl"
-          >
-            {youWon ? 'You won' : 'Winner'}
-          </h2>
-          <p className="mt-1.5 inline-block rounded-full border border-mushroom/35 bg-ink/60 px-2.5 py-0.5 text-xs font-display font-semibold tracking-wide text-brass-light sm:mt-2 sm:px-3 sm:py-1 sm:text-sm">
-            {winType}
-          </p>
-        </div>
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-ink-overlay/55 p-3 backdrop-blur-[3px] sm:items-center sm:p-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="flex w-full max-w-lg flex-col items-stretch gap-3 sm:gap-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="win-hand-title"
+          className="flex max-h-[min(78dvh,36rem)] w-full flex-col overflow-hidden rounded-2xl border border-sidebar/12 bg-white shadow-[0_18px_48px_rgb(29_4_50_/_0.18)]"
+        >
+          <div className="shrink-0 border-b border-sidebar/10 bg-mushroom/40 px-4 py-3 text-center sm:px-5 sm:py-5">
+            <p className="text-[9px] font-display uppercase tracking-[0.28em] text-sidebar/50 sm:text-[10px]">
+              Hand complete
+            </p>
+            <h2
+              id="win-hand-title"
+              className="mt-0.5 font-display text-2xl font-extrabold uppercase tracking-wider text-sidebar sm:mt-1 sm:text-3xl"
+            >
+              {youWon ? 'You won' : 'Winner'}
+            </h2>
+          </div>
 
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-3 py-3 sm:space-y-4 sm:px-5 sm:py-5">
-          {winners.map((w, i) => {
-            const cards = w.cards?.length ? w.cards : [];
-            const type =
-              w.handName && w.handName !== 'Uncontested' ? w.handName : null;
-            return (
-              <div
-                key={`${w.seat}-${i}`}
-                className={`rounded-xl border px-3 py-3 sm:px-4 sm:py-4 ${
-                  w.isSelf
-                    ? 'border-mushroom/45 bg-mushroom/10 shadow-[0_0_24px_rgba(230,217,215,0.08)]'
-                    : 'border-mushroom/12 bg-ink/55'
-                }`}
-              >
-                <div className="flex items-baseline justify-between gap-2">
-                  <span
-                    className={`truncate font-display text-base font-bold sm:text-lg ${
-                      w.isSelf ? 'text-mushroom' : 'text-cream'
-                    }`}
-                  >
-                    {w.name}
-                    {w.isSelf ? ' · you' : ''}
-                  </span>
-                  <span className="shrink-0 font-mono text-sm font-semibold text-brass-light sm:text-base">
-                    +{formatChips(w.amount)}
-                  </span>
-                </div>
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-3 py-3 sm:space-y-4 sm:px-5 sm:py-5">
+            {winners.map((w, i) => {
+              const cards = w.cards?.length ? w.cards : [];
+              const type =
+                w.handName && w.handName !== 'Uncontested' ? w.handName : null;
+              return (
+                <div
+                  key={`${w.seat}-${i}`}
+                  className={`rounded-xl border px-3 py-3 sm:px-4 sm:py-4 ${
+                    w.isSelf
+                      ? 'border-sidebar/25 bg-mushroom/50 shadow-[0_4px_16px_rgb(29_4_50_/_0.05)]'
+                      : 'border-sidebar/10 bg-mushroom/30'
+                  }`}
+                >
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="truncate font-display text-base font-bold text-sidebar sm:text-lg">
+                      {w.name}
+                      {w.isSelf ? ' · you' : ''}
+                    </span>
+                    <MoneyAmount
+                      amount={w.amount}
+                      prefix="+"
+                      compact
+                      className="shrink-0 font-mono text-sm font-semibold text-brass-dim sm:text-base"
+                    />
+                  </div>
 
-                {type && (
-                  <p className="mt-1 text-[11px] font-display font-semibold uppercase tracking-wider text-mushroom/80 sm:mt-1.5 sm:text-sm">
-                    {type}
-                  </p>
-                )}
+                  {type && (
+                    <p className="mt-1 text-[11px] font-display font-semibold uppercase tracking-wider text-sidebar/70 sm:mt-1.5 sm:text-sm">
+                      {type}
+                    </p>
+                  )}
 
-                {cards.length > 0 ? (
-                  narrow ? (
-                    <div className="mt-2.5 flex flex-col items-center gap-1">
-                      <div className="flex justify-center gap-1">
-                        {cards.slice(0, 3).map((code) => (
-                          <PlayingCard
-                            key={`${w.seat}-${code}`}
-                            code={code}
-                            highlight
-                            size="board"
-                          />
-                        ))}
-                      </div>
-                      {cards.length > 3 && (
-                        <div className="flex justify-center gap-1">
-                          {cards.slice(3).map((code) => (
-                            <PlayingCard
-                              key={`${w.seat}-${code}`}
-                              code={code}
-                              highlight
-                              size="board"
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+                  {cards.length > 0 ? (
+                    <div className="mt-2.5 flex w-full flex-nowrap gap-1 sm:mt-3 sm:gap-1.5">
                       {cards.map((code) => (
                         <PlayingCard
                           key={`${w.seat}-${code}`}
                           code={code}
                           highlight
-                          size="sm"
+                          size="board"
+                          className="!h-auto min-w-0 !w-full flex-1 !scale-100 aspect-[2/3]"
                         />
                       ))}
                     </div>
-                  )
-                ) : (
-                  <p className="mt-2 text-center text-xs text-cream/40">
-                    Won without showdown
-                  </p>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                  ) : (
+                    <p className="mt-2 text-center text-xs text-ink-strong-muted">
+                      Won without showdown
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
 
-        <div className="shrink-0 border-t border-mushroom/12 px-3 py-2.5 sm:px-5 sm:py-3">
-          <div className="flex flex-wrap items-center gap-1.5">
-            {canTopUp && onTopUp && (
-              <button
-                type="button"
-                onClick={onTopUp}
-                className="rounded-md border border-brass/40 bg-brass/15 px-2.5 py-1.5 text-[11px] font-display font-semibold text-brass-light hover:bg-brass/25"
-              >
-                Top up
-              </button>
-            )}
-            {canSitOut && onSitOut && (
-              <button
-                type="button"
-                onClick={onSitOut}
-                className="rounded-md border border-amber-400/35 bg-amber-400/10 px-2.5 py-1.5 text-[11px] font-display font-semibold text-amber-200 hover:bg-amber-400/20"
-              >
-                Sit out
-              </button>
-            )}
-            {canSitIn && onSitIn && (
-              <button
-                type="button"
-                onClick={onSitIn}
-                className="rounded-md border border-mushroom/35 bg-mushroom/10 px-2.5 py-1.5 text-[11px] font-display font-semibold text-mushroom hover:bg-mushroom/20"
-              >
-                Sit in
-              </button>
-            )}
-            {canStartNext ? (
-              <div className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center">
+          <div className="shrink-0 border-t border-sidebar/10 bg-mushroom/25 px-3 py-2.5 sm:px-5 sm:py-3">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {canTopUp && onTopUp && (
+                <button
+                  type="button"
+                  onClick={onTopUp}
+                  className="rounded-md border border-brass-dim/40 bg-brass/15 px-2.5 py-1.5 text-[11px] font-display font-semibold text-brass-dim hover:bg-brass/25"
+                >
+                  Top up
+                </button>
+              )}
+              {canSitOut && onSitOut && (
+                <button
+                  type="button"
+                  onClick={onSitOut}
+                  className="rounded-md border border-amber-600/35 bg-amber-50 px-2.5 py-1.5 text-[11px] font-display font-semibold text-amber-800 hover:bg-amber-100"
+                >
+                  Sit out
+                </button>
+              )}
+              {canSitIn && onSitIn && (
+                <button
+                  type="button"
+                  onClick={onSitIn}
+                  className="rounded-md border border-sidebar/25 bg-white px-2.5 py-1.5 text-[11px] font-display font-semibold text-sidebar hover:bg-mushroom/80"
+                >
+                  Sit in
+                </button>
+              )}
+              {canStartNext ? (
                 <button
                   type="button"
                   onClick={onNextHand}
-                  className={`btn-primary min-h-9 flex-1 px-3 py-2 text-xs font-display font-bold uppercase tracking-wide ${
-                    isReady ? 'opacity-90 ring-1 ring-mushroom/50' : ''
+                  className={`btn-primary min-h-9 min-w-0 flex-1 px-3 py-2 text-xs font-display font-bold uppercase tracking-wide ${
+                    isReady ? 'ring-2 ring-sidebar/25 ring-offset-2 ring-offset-white' : ''
                   }`}
                 >
-                  {isReady ? 'Not ready' : 'Ready'}
+                  {isReady ? 'Not ready' : 'Play Next Hand'}
                 </button>
-                {typeof readyCount === 'number' && typeof readyTotal === 'number' && (
-                  <span className="shrink-0 text-center text-[10px] font-display uppercase tracking-wider text-cream/50 sm:px-1">
-                    {readyCount}/{readyTotal}
-                  </span>
-                )}
-              </div>
-            ) : (
-              <p className="flex-1 text-center text-[10px] text-cream/45">Waiting…</p>
-            )}
-            <button
-              type="button"
-              onClick={onDismiss}
-              className="rounded-md border border-cream/20 px-2.5 py-1.5 text-[11px] font-display font-semibold text-cream/70 hover:bg-cream/10 hover:text-cream"
-            >
-              Close
-            </button>
+              ) : (
+                <p className="flex-1 text-center text-[10px] text-ink-strong-muted">Waiting…</p>
+              )}
+              <button
+                type="button"
+                onClick={onDismiss}
+                className="rounded-md border border-sidebar/20 bg-white px-2.5 py-1.5 text-[11px] font-display font-semibold text-sidebar/70 hover:bg-mushroom/60 hover:text-sidebar"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
+
+        {showRoster && (
+          <section
+            aria-label="Players ready for next hand"
+            className="rounded-2xl border border-sidebar/12 bg-white/95 px-3 py-3 shadow-[0_12px_32px_rgb(29_4_50_/_0.12)] sm:px-4 sm:py-3.5"
+          >
+            <div className="mb-2.5 flex items-baseline justify-between gap-2">
+              <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-sidebar/55">
+                Ready for next hand
+              </h3>
+              <p className="font-display text-[10px] font-semibold tabular-nums tracking-wide text-sidebar/50">
+                {rCount}/{rTotal}
+              </p>
+            </div>
+            <ul className="flex flex-nowrap items-end justify-between gap-1 sm:gap-1.5">
+              {roster.map((p) => {
+                const label = p.isSelf ? `${p.name} (you)` : p.name;
+                return (
+                  <li key={p.seat} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+                    <div
+                      className={`relative rounded-full p-[2px] transition sm:p-[3px] ${
+                        p.ready
+                          ? 'bg-gradient-to-b from-sidebar to-sidebar/80 shadow-[0_0_0_2px_rgb(29_4_50_/_0.12),0_6px_16px_rgb(29_4_50_/_0.18)]'
+                          : 'bg-sidebar/10'
+                      }`}
+                    >
+                      <PlayerAvatar
+                        userId={p.userId}
+                        avatarId={p.avatarId}
+                        size={rosterAvatarSize}
+                        title={label}
+                        className={`ring-2 ring-white ${p.ready ? '' : 'opacity-55 grayscale-[0.35]'}`}
+                      />
+                      {p.ready ? (
+                        <span
+                          className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-emerald-500 text-white shadow-sm sm:h-5 sm:w-5"
+                          aria-hidden
+                        >
+                          <svg viewBox="0 0 12 12" className="h-2 w-2 sm:h-2.5 sm:w-2.5" fill="none">
+                            <path
+                              d="M2.5 6.2 5 8.7 9.5 3.5"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </span>
+                      ) : (
+                        <span
+                          className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-2 border-white bg-stone-200 sm:h-5 sm:w-5"
+                          aria-hidden
+                        />
+                      )}
+                    </div>
+                    <span
+                      className={`w-full truncate text-center text-[9px] font-display font-semibold leading-tight sm:text-[10px] ${
+                        p.ready ? 'text-sidebar' : 'text-sidebar/45'
+                      }`}
+                      title={label}
+                    >
+                      {p.isSelf ? 'You' : p.name}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
       </div>
     </div>
   );

@@ -31,4 +31,4 @@ COPY --from=build /app/packages/db ./packages/db
 COPY --from=build /app/apps/server ./apps/server
 EXPOSE 4000
 WORKDIR /app/apps/server
-CMD ["node", "dist/index.js"]
+CMD ["node", "dist/main.js"]

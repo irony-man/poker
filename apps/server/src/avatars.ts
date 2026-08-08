@@ -1,4 +1,5 @@
-export const AVATAR_PRESET_COUNT = 5;
+/** Matches web `/public/avatars/avatar-0.png` … `avatar-7.png`. */
+export const AVATAR_PRESET_COUNT = 8;
 
 export function clampAvatarId(id: number | undefined | null, fallback = 0): number {
   if (id == null || !Number.isInteger(id)) return fallback % AVATAR_PRESET_COUNT;

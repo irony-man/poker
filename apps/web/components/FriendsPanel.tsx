@@ -28,10 +28,15 @@ export function FriendsPanel({
   disabled,
   onNavigateTable,
   onNavigateContest,
+  variant = 'page',
+  onFriendCountChange,
 }: {
   disabled: boolean;
   onNavigateTable: (tableId: string, inviteCode: string) => void;
   onNavigateContest?: (contestId: string) => void;
+  /** Page uses lobby split+art; embedded is a single column for profile tab. */
+  variant?: 'page' | 'embedded';
+  onFriendCountChange?: (count: number) => void;
 }) {
   const userId = useSession((s) => s.userId);
   const sessionToken = useSession((s) => s.sessionToken);
@@ -73,11 +78,12 @@ export function FriendsPanel({
       setIncoming(data.incoming);
       setChallenges(data.pendingChallenges);
       setLoadError(null);
+      onFriendCountChange?.(data.friends.length);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Could not load friends');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- auth is derived from session
-  }, [disabled, userId, sessionToken]);
+  }, [disabled, userId, sessionToken, onFriendCountChange]);
 
   useEffect(() => {
     void refresh();
@@ -431,12 +437,8 @@ export function FriendsPanel({
     </div>
   );
 
-  return (
-    <LobbySplitCard
-      imageSrc="/home-host.png"
-      imageAlt="Invite friends to your table"
-      mediaHeader={playerSearch}
-    >
+  const socialBody = (
+    <>
       {(error || loadError || toast) && (
         <div
           role={error || loadError ? 'alert' : 'status'}
@@ -972,6 +974,25 @@ export function FriendsPanel({
       {!userId && (
         <p className="text-sm text-ink-strong-muted">Sign in to use friends and groups.</p>
       )}
+    </>
+  );
+
+  if (variant === 'embedded') {
+    return (
+      <div className="flex min-w-0 flex-col gap-4 sm:gap-5">
+        {playerSearch}
+        {socialBody}
+      </div>
+    );
+  }
+
+  return (
+    <LobbySplitCard
+      imageSrc="/home-host.png"
+      imageAlt="Invite friends to your table"
+      mediaHeader={playerSearch}
+    >
+      {socialBody}
     </LobbySplitCard>
   );
 }

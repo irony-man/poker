@@ -1,8 +1,11 @@
 import { describe, expect, it, beforeEach } from 'vitest';
-import { MemoryKv } from './kv.js';
-import type { HandHistoryStore } from './history.js';
-import { RoomManager } from './room.js';
-import { TournamentManager } from './tournament.js';
+import { contestPlacementPrize } from '@poker/protocol';
+import { MemoryKv } from './kv/kv.store.js';
+import type { HandHistoryStore } from './history/history.store.js';
+import { RoomManager } from './rooms/room.js';
+import { TournamentManager } from './contests/tournament.js';
+import { UnlimitedWalletStore, type WalletStore } from './wallet/wallet.store.js';
+import type { WalletMutationResult, WalletReason } from './wallet/wallet.constants.js';
 
 function memoryHistory(): HandHistoryStore {
   return {
@@ -14,13 +17,42 @@ function memoryHistory(): HandHistoryStore {
   };
 }
 
+class TrackingWallet extends UnlimitedWalletStore implements WalletStore {
+  credits: { userId: string; amount: number; reason: WalletReason }[] = [];
+  async credit(
+    userId: string,
+    amount: number,
+    reason: WalletReason,
+    tableId?: string,
+  ): Promise<WalletMutationResult> {
+    this.credits.push({ userId, amount, reason });
+    return super.credit(userId, amount, reason, tableId);
+  }
+}
+
+describe('contestPlacementPrize', () => {
+  it('pays top three in multiway fields', () => {
+    expect(contestPlacementPrize(1, 4, 1000)).toBe(200);
+    expect(contestPlacementPrize(2, 4, 1000)).toBe(120);
+    expect(contestPlacementPrize(3, 4, 1000)).toBe(80);
+    expect(contestPlacementPrize(4, 4, 1000)).toBe(0);
+  });
+
+  it('pays both seats heads-up', () => {
+    expect(contestPlacementPrize(1, 2, 1000)).toBe(140);
+    expect(contestPlacementPrize(2, 2, 1000)).toBe(60);
+  });
+});
+
 describe('TournamentManager', () => {
   let rooms: RoomManager;
   let tournaments: TournamentManager;
+  let wallet: TrackingWallet;
 
   beforeEach(() => {
     rooms = new RoomManager(new MemoryKv(), memoryHistory());
-    tournaments = new TournamentManager(rooms);
+    wallet = new TrackingWallet();
+    tournaments = new TournamentManager(rooms, wallet);
   });
 
   it('creates chips contest with equal stacks and no top-up', async () => {
@@ -95,6 +127,40 @@ describe('TournamentManager', () => {
     expect(c.placements.find((p) => p.userId === bots[2]!.userId)?.place).toBe(2);
   });
 
+  it('pays ranking Wuffies prizes to the human winner', async () => {
+    const created = tournaments.create({
+      name: 'Prize freezeout',
+      mode: 'chips',
+      hostUserId: 'host',
+      hostName: 'Host',
+      fieldSize: 4,
+      startingStack: 1000,
+      smallBlind: 5,
+      bigBlind: 10,
+      turnTimeMs: 20_000,
+      botCount: 3,
+      isPrivate: true,
+      autoStart: true,
+    });
+    const view = (await tournaments.start(created.id, 'host')).contest!;
+    const bots = view.entrants.filter((e) => e.userId !== 'host');
+    tournaments.forceEliminate(view.id, bots[0]!.userId);
+    tournaments.forceEliminate(view.id, bots[1]!.userId);
+    tournaments.forceEliminate(view.id, bots[2]!.userId);
+
+    const c = tournaments.get(view.id)!;
+    expect(c.status).toBe('completed');
+    const first = c.placements.find((p) => p.place === 1)!;
+    expect(first.userId).toBe('host');
+    expect(first.prizeWuffies).toBe(contestPlacementPrize(1, 4, 1000));
+
+    await new Promise((r) => setTimeout(r, 0));
+    const prizeCredits = wallet.credits.filter((x) => x.reason === 'contest_prize');
+    expect(prizeCredits).toEqual([
+      { userId: 'host', amount: contestPlacementPrize(1, 4, 1000), reason: 'contest_prize' },
+    ]);
+  });
+
   it('creates rounds contest with hand limit and allows top-up', async () => {
     const created = tournaments.create({
       name: 'Session',
@@ -146,7 +212,6 @@ describe('TournamentManager', () => {
     const view = (await tournaments.start(created.id, 'host')).contest!;
 
     const room = rooms.get(view.tableId!)!;
-    // Give host a clear chip lead
     for (const p of room.state.players) {
       if (!p.userId) continue;
       p.stack = p.userId === 'host' ? 2500 : 250;

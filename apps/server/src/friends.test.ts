@@ -1,8 +1,8 @@
 import { mkdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { AuthStore } from './auth.js';
-import { FriendsStore } from './friends.js';
+import { AuthStore } from './auth/auth.store.js';
+import { FriendsStore } from './friends/friends.store.js';
 
 describe('FriendsStore', () => {
   const dir = path.join(process.cwd(), '.test-social');

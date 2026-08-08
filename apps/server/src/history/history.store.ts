@@ -1,8 +1,8 @@
 import { mkdir, readFile, appendFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { nanoid } from 'nanoid';
-import { POSTGRES_DDL, type HandHistoryRow } from '@poker/db';
-import type { TableMeta } from './room.js';
+import type { HandHistoryRow } from '@poker/db';
+import type { TableMeta } from '../rooms/room.js';
 
 export interface HandHistoryStore {
   recordTable(meta: TableMeta): Promise<void>;
@@ -161,8 +161,12 @@ export async function createHistoryStore(
   return new FileHistoryStore(process.env.DATA_DIR ?? path.join(process.cwd(), 'data'));
 }
 
-/** Ensure DDL file is written for operators. */
+/** Optional schema note for ops (entities now managed by TypeORM). */
 export async function writeSchemaDoc(dir: string): Promise<void> {
   await mkdir(dir, { recursive: true });
-  await writeFile(path.join(dir, 'schema.sql'), POSTGRES_DDL, 'utf8');
+  await writeFile(
+    path.join(dir, 'schema.note'),
+    'Schema is managed by TypeORM entities in @poker/db\n',
+    'utf8',
+  );
 }

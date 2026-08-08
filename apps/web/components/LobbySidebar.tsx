@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCallback, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { authHref } from '@/lib/authRedirect';
 import { LOBBY_NAV, isLobbyNavActive } from '@/lib/lobbyNav';
 import { useSession } from '@/lib/store';
@@ -57,6 +57,7 @@ export function LobbySidebar({
   onLogout: () => void;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const username = useSession((s) => s.username);
   const [copied, setCopied] = useState(false);
 
@@ -75,7 +76,7 @@ export function LobbySidebar({
   const navLinks = (
     <nav className="flex flex-1 flex-col gap-1 px-3 py-4" aria-label="Lobby">
       {LOBBY_NAV.map((t) => {
-        const active = isLobbyNavActive(pathname, t.href);
+        const active = isLobbyNavActive(pathname, t.href, searchParams.toString());
         return (
           <Link
             key={t.href}

@@ -49,8 +49,33 @@ export const ContestPlacementSchema = z.object({
   userId: z.string(),
   name: z.string(),
   place: z.number().int().positive(),
+  /** House-funded Wuffies awarded for this place (0 if none). */
+  prizeWuffies: z.number().int().nonnegative().optional(),
 });
 export type ContestPlacement = z.infer<typeof ContestPlacementSchema>;
+
+/**
+ * Placement bonus in Wuffies (house-funded), independent of residual stack cash-out.
+ * Top 3 (or both heads-up players) share a pool of ~10% of buy-in × field size.
+ */
+export function contestPlacementPrize(
+  place: number,
+  entrantCount: number,
+  startingStack: number,
+): number {
+  if (place < 1 || entrantCount < 2 || startingStack < 1) return 0;
+  const unit = Math.max(50, Math.round(startingStack * 0.1));
+  const pool = Math.min(startingStack * entrantCount, unit * entrantCount);
+  if (entrantCount === 2) {
+    if (place === 1) return Math.round(pool * 0.7);
+    if (place === 2) return Math.round(pool * 0.3);
+    return 0;
+  }
+  if (place === 1) return Math.round(pool * 0.5);
+  if (place === 2) return Math.round(pool * 0.3);
+  if (place === 3) return Math.round(pool * 0.2);
+  return 0;
+}
 
 export const ContestBlindInfoSchema = z.object({
   levelIndex: z.number().int().nonnegative(),

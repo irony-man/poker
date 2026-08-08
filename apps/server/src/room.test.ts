@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { AuthStore } from '../src/auth.js';
-import { MemoryKv } from '../src/kv.js';
-import { FileHistoryStore } from '../src/history.js';
-import { RoomManager } from '../src/room.js';
-import { MemoryTableChipStore } from '../src/tableChips.js';
+import { AuthStore } from './auth/auth.store.js';
+import { MemoryKv } from './kv/kv.store.js';
+import { FileHistoryStore } from './history/history.store.js';
+import { RoomManager } from './rooms/room.js';
+import { MemoryTableChipStore } from './table-chips/table-chips.store.js';
 import path from 'node:path';
 import os from 'node:os';
 

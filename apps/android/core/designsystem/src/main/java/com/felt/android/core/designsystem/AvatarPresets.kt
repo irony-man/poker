@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.cos
 import kotlin.math.sin
 
-const val AVATAR_PRESET_COUNT = 5
+const val AVATAR_PRESET_COUNT = 8
 
 private data class AvatarPalette(val bg: Color, val accent: Color)
 
@@ -36,6 +36,9 @@ private val AVATAR_PALETTES = listOf(
     AvatarPalette(Color(0xFF1E2A18), Color(0xFF2AFF9A)),
     AvatarPalette(Color(0xFF2A2410), Color(0xFFE0B43A)),
     AvatarPalette(Color(0xFF1A1A2E), Color(0xFFA78BFA)),
+    AvatarPalette(Color(0xFF15252A), Color(0xFF5EEAD4)),
+    AvatarPalette(Color(0xFF2A1A10), Color(0xFFF97316)),
+    AvatarPalette(Color(0xFF1A2030), Color(0xFF60A5FA)),
 )
 
 fun avatarIdFromUserId(userId: String?): Int {

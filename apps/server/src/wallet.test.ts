@@ -2,18 +2,20 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { AuthStore } from './auth.js';
-import { MemoryKv } from './kv.js';
-import type { HandHistoryStore } from './history.js';
-import { RoomManager } from './room.js';
-import { MemoryTableChipStore } from './tableChips.js';
+import { AuthStore } from './auth/auth.store.js';
+import { MemoryKv } from './kv/kv.store.js';
+import type { HandHistoryStore } from './history/history.store.js';
+import { RoomManager } from './rooms/room.js';
+import { MemoryTableChipStore } from './table-chips/table-chips.store.js';
 import {
   AuthWalletStore,
+} from './wallet/wallet.store.js';
+import {
   REFILL_GRANT,
   REFILL_THRESHOLD,
   STARTING_CHIP_GRANT,
   WalletError,
-} from './wallet.js';
+} from './wallet/wallet.constants.js';
 
 function memoryHistory(): HandHistoryStore {
   return {

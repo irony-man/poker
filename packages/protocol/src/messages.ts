@@ -287,8 +287,8 @@ export const PasswordSchema = z.string().min(6).max(128);
 export const SignupBodySchema = z.object({
   username: UsernameSchema,
   password: PasswordSchema,
-  /** Preset profile picture index (0–4). */
-  avatarId: z.number().int().min(0).max(4).optional(),
+  /** Preset profile picture index (0–7). */
+  avatarId: z.number().int().min(0).max(7).optional(),
 });
 
 export const LoginBodySchema = z.object({
@@ -302,13 +302,13 @@ export const AuthSessionSchema = z.object({
   name: z.string(),
   ticket: z.string(),
   sessionToken: z.string(),
-  avatarId: z.number().int().min(0).max(4),
+  avatarId: z.number().int().min(0).max(7),
   chipBalance: z.number().int().nonnegative().optional(),
 });
 
 export const UpdateMeBodySchema = z.object({
-  /** Preset profile picture index (0–4). */
-  avatarId: z.number().int().min(0).max(4),
+  /** Preset profile picture index (0–7). */
+  avatarId: z.number().int().min(0).max(7),
 });
 
 export type SignupBody = z.infer<typeof SignupBodySchema>;
@@ -319,6 +319,6 @@ export type UpdateMeBody = z.infer<typeof UpdateMeBodySchema>;
 /** @deprecated Use SignupBodySchema / LoginBodySchema */
 export const RegisterBodySchema = z.object({
   name: z.string().min(1).max(32),
-  avatarId: z.number().int().min(0).max(4).optional(),
+  avatarId: z.number().int().min(0).max(7).optional(),
   userId: z.string().min(1).max(128).optional(),
 });

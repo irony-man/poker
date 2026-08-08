@@ -19,14 +19,14 @@ import {
   type HandState,
   type TableConfig,
 } from '@poker/engine';
-import type { KvStore } from './kv.js';
-import type { HandHistoryStore } from './history.js';
-import type { TableChipStore } from './tableChips.js';
-import { MemoryTableChipStore } from './tableChips.js';
-import { avatarIdFromUserId, clampAvatarId } from './avatars.js';
-import { chooseBotAction, isBotUserId, makeBotUserId, pickBotName } from './bot.js';
-import type { WalletStore } from './wallet.js';
-import { UnlimitedWalletStore, WalletError } from './wallet.js';
+import type { KvStore } from '../kv/kv.store.js';
+import type { HandHistoryStore } from '../history/history.store.js';
+import type { TableChipStore } from '../table-chips/table-chips.store.js';
+import { MemoryTableChipStore } from '../table-chips/table-chips.store.js';
+import { avatarIdFromUserId, clampAvatarId } from '../avatars.js';
+import { chooseBotAction, isBotUserId, makeBotUserId, pickBotName } from '../bot.js';
+import type { WalletStore } from '../wallet/wallet.constants.js';
+import { UnlimitedWalletStore, WalletError } from '../wallet/wallet.store.js';
 
 export interface TournamentTableRules {
   contestId: string;
@@ -111,7 +111,7 @@ export class Room {
   }
 
   /** Notify this user of their current wallet balance when connected. */
-  private notifyWallet(userId: string, balance: number): void {
+  notifyWallet(userId: string, balance: number): void {
     if (isBotUserId(userId)) return;
     this.connections.get(userId)?.send({ type: 'wallet_update', chipBalance: balance });
   }

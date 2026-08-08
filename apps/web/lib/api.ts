@@ -422,7 +422,7 @@ export interface ContestView {
   turnTimeMs: number;
   isPrivate: boolean;
   entrants: { userId: string; name: string; isBot?: boolean; registeredAt: number }[];
-  placements: { userId: string; name: string; place: number }[];
+  placements: { userId: string; name: string; place: number; prizeWuffies?: number }[];
   tableId: string | null;
   blinds: {
     levelIndex: number;

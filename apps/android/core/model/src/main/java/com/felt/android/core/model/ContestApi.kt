@@ -15,6 +15,7 @@ data class ContestPlacement(
     val userId: String,
     val name: String,
     val place: Int,
+    val prizeWuffies: Int? = null,
 )
 
 @Serializable

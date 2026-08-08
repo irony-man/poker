@@ -1,38 +1,13 @@
 /**
- * Shared Postgres pool. DATABASE_URL is required — no file/in-memory fallback.
- *
- * Render (and many PaaS hosts) only have outbound IPv4. Supabase direct hosts
- * (`db.<ref>.supabase.co`) are IPv6-only unless the paid IPv4 add-on is enabled.
- * We dial IPv4 when possible and rewrite Supabase URLs to the session pooler.
+ * Build TypeORM DataSource options from DATABASE_URL.
+ * Keeps Supabase / IPv4-first connection logic used by the previous pg Pool code.
  */
 import dns from 'node:dns';
 import { lookup as dnsLookup } from 'node:dns/promises';
-import { POSTGRES_DDL } from '@poker/db';
+import type { DataSourceOptions } from 'typeorm';
+import { ALL_ENTITIES } from './entities.js';
 
-// Prefer A records over AAAA when both exist.
 dns.setDefaultResultOrder('ipv4first');
-
-export type PgPool = {
-  query: (text: string, params?: unknown[]) => Promise<{ rows: unknown[]; rowCount?: number }>;
-  end: () => Promise<void>;
-};
-
-type PoolOptions = {
-  connectionString?: string;
-  host?: string;
-  port?: number;
-  user?: string;
-  password?: string;
-  database?: string;
-  ssl?: boolean | { rejectUnauthorized: boolean; servername?: string };
-  connectionTimeoutMillis?: number;
-};
-
-let sharedPool: PgPool | null = null;
-
-export function getPool(): PgPool | null {
-  return sharedPool;
-}
 
 function needsSsl(hostname: string, connectionString: string): boolean {
   if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === 'postgres') return false;
@@ -45,10 +20,8 @@ function needsSsl(hostname: string, connectionString: string): boolean {
   return true;
 }
 
-/** Guess AWS region from known public IPv6 prefixes (Supabase direct host AAAA). */
 function regionFromIpv6(addr: string): string | null {
   const a = addr.toLowerCase();
-  // https://docs.aws.amazon.com/vpc/latest/userguide/aws-ipv6-cidr-blocks.html (common)
   if (a.startsWith('2406:da14:') || a.startsWith('2406:da1c:')) return 'ap-southeast-1';
   if (a.startsWith('2406:da1a:')) return 'ap-south-1';
   if (a.startsWith('2406:da12:') || a.startsWith('2406:da16:')) return 'ap-northeast-1';
@@ -67,10 +40,6 @@ function regionFromIpv6(addr: string): string | null {
   return null;
 }
 
-/**
- * Convert IPv6-only Supabase direct URLs to the IPv4 session pooler.
- * Session mode (port 5432) suits a long-lived Node server.
- */
 async function supabasePoolerUrl(connectionString: string): Promise<string | null> {
   let u: URL;
   try {
@@ -101,62 +70,72 @@ async function supabasePoolerUrl(connectionString: string): Promise<string | nul
   const user = rawUser.includes('.') ? rawUser : `postgres.${projectRef}`;
   const password = decodeURIComponent(u.password || '');
   const database = decodeURIComponent((u.pathname || '/').replace(/^\//, '') || 'postgres');
-  // Session pooler — IPv4; transaction mode would be :6543
   const host = `aws-0-${region}.pooler.supabase.com`;
   const port = 5432;
 
-  const next = `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${database}`;
   console.log(`[db] Supabase direct host is IPv6-only; using session pooler ${host} (${region})`);
-  return next;
+  return `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${database}`;
 }
 
-function optionsFromUrl(connectionString: string, connectHost: string, servername?: string): PoolOptions {
+export type ResolvedDbConnection = {
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+  database: string;
+  ssl?: boolean | { rejectUnauthorized: boolean; servername?: string };
+  /** Hostname for TLS SNI when dialling by IP. */
+  servername?: string;
+};
+
+function connectionParts(
+  connectionString: string,
+  connectHost: string,
+  servername?: string,
+): ResolvedDbConnection {
   const u = new URL(connectionString);
   const database = decodeURIComponent((u.pathname || '/').replace(/^\//, '') || 'postgres');
-  const options: PoolOptions = {
-    connectionTimeoutMillis: 15_000,
+  const parts: ResolvedDbConnection = {
     host: connectHost,
     port: Number(u.port || 5432),
-    user: decodeURIComponent(u.username),
+    username: decodeURIComponent(u.username),
     password: decodeURIComponent(u.password),
     database,
   };
   if (needsSsl(servername ?? u.hostname, connectionString)) {
-    options.ssl = {
+    parts.ssl = {
       rejectUnauthorized: false,
       servername: servername ?? u.hostname,
     };
+    parts.servername = servername ?? u.hostname;
   }
-  return options;
+  return parts;
 }
 
 /**
- * Build pool options that dial IPv4 when possible.
- *
- * Supabase `db.<ref>.supabase.co` is often IPv6-only. Render (and similar PaaS)
- * has no IPv6 egress — never dial AAAA for those hosts; rewrite to the session pooler first.
+ * Resolve DATABASE_URL into host/user/ssl options (IPv4-first, Supabase pooler rewrite).
  */
-async function buildPoolOptions(connectionString: string): Promise<PoolOptions> {
+export async function resolveDatabaseConnection(
+  connectionString: string,
+): Promise<ResolvedDbConnection | { url: string; ssl?: { rejectUnauthorized: boolean } }> {
   let url = connectionString;
   let hostname: string;
   try {
     hostname = new URL(url).hostname;
   } catch {
-    return { connectionString: url, connectionTimeoutMillis: 15_000 };
+    return { url };
   }
 
   const isSupabaseDirect = /^db\.[a-z0-9]+\.supabase\.co$/i.test(hostname);
 
-  // Prefer IPv4 to the configured host.
   try {
     const { address } = await dnsLookup(hostname, { family: 4 });
     console.log(`[db] connecting via IPv4 ${address} (${hostname})`);
-    return optionsFromUrl(url, address, hostname);
+    return connectionParts(url, address, hostname);
   } catch {
     /* no A record */
   }
 
-  // Supabase direct without an A record → session pooler (IPv4), never raw AAAA.
   if (isSupabaseDirect) {
     const pooler = await supabasePoolerUrl(url);
     if (pooler) {
@@ -165,10 +144,10 @@ async function buildPoolOptions(connectionString: string): Promise<PoolOptions> 
       try {
         const { address } = await dnsLookup(hostname, { family: 4 });
         console.log(`[db] connecting via IPv4 ${address} (${hostname})`);
-        return optionsFromUrl(url, address, hostname);
+        return connectionParts(url, address, hostname);
       } catch {
         console.log(`[db] connecting to pooler hostname ${hostname}`);
-        return optionsFromUrl(url, hostname);
+        return connectionParts(url, hostname);
       }
     }
     throw new Error(
@@ -179,59 +158,59 @@ async function buildPoolOptions(connectionString: string): Promise<PoolOptions> 
     );
   }
 
-  // Non-Supabase: dual-stack IPv6 when no A record exists.
   try {
     const { address } = await dnsLookup(hostname, { family: 6 });
     console.log(`[db] connecting via IPv6 ${address} (${hostname})`);
-    return optionsFromUrl(url, address, hostname);
+    return connectionParts(url, address, hostname);
   } catch {
-    /* no AAAA record */
+    /* no AAAA */
   }
 
   console.log(`[db] IPv4 lookup failed for ${hostname}; using hostname as-is`);
-  const options: PoolOptions = { connectionString: url, connectionTimeoutMillis: 15_000 };
+  const fallback: { url: string; ssl?: { rejectUnauthorized: boolean } } = { url };
   if (needsSsl(hostname, url)) {
-    options.ssl = { rejectUnauthorized: false };
+    fallback.ssl = { rejectUnauthorized: false };
   }
-  return options;
+  return fallback;
 }
 
-export async function initDatabase(): Promise<PgPool> {
-  const url = process.env.DATABASE_URL?.trim();
-  if (!url) {
-    throw new Error('DATABASE_URL is required');
-  }
+export type BuildTypeOrmOptionsInput = {
+  connectionString: string;
+  /** When true, TypeORM will auto-create schema (dev only). Prefer migrations in production. */
+  synchronize?: boolean;
+  logging?: boolean;
+};
 
-  try {
-    const mod = (await import('pg')) as unknown as {
-      default?: {
-        Pool?: new (o: PoolOptions) => PgPool;
-      };
-      Pool?: new (o: PoolOptions) => PgPool;
+/** Build Nest/TypeORM DataSource options (entities registered). */
+export async function buildTypeOrmOptions(
+  input: BuildTypeOrmOptionsInput,
+): Promise<DataSourceOptions> {
+  const resolved = await resolveDatabaseConnection(input.connectionString);
+  const base = {
+    type: 'postgres' as const,
+    entities: [...ALL_ENTITIES],
+    synchronize: input.synchronize ?? false,
+    logging: input.logging ?? false,
+    // Existing DBs from DDL bootstrap; don't drop on mismatch.
+  };
+
+  if ('url' in resolved) {
+    return {
+      ...base,
+      url: resolved.url,
+      ssl: resolved.ssl,
+      extra: { connectionTimeoutMillis: 15_000 },
     };
-    const PoolCtor = mod.Pool ?? mod.default?.Pool;
-    if (!PoolCtor) {
-      throw new Error('pg.Pool not found — is the pg package installed?');
-    }
-
-    const options = await buildPoolOptions(url);
-    const pool = new PoolCtor(options);
-    await pool.query('SELECT 1');
-    await pool.query(POSTGRES_DDL);
-    // Ensure additive columns on older installs that already have bare users table.
-    await pool.query(`
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS username_lower TEXT;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_id INT NOT NULL DEFAULT 0;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS chip_balance INT NOT NULL DEFAULT 10000;
-    `);
-    sharedPool = pool;
-    console.log('[db] Postgres connected and schema ready');
-    return pool;
-  } catch (err) {
-    sharedPool = null;
-    const message = err instanceof Error ? err.message : String(err);
-    throw new Error(`Postgres unavailable: ${message}`, { cause: err });
   }
+
+  return {
+    ...base,
+    host: resolved.host,
+    port: resolved.port,
+    username: resolved.username,
+    password: resolved.password,
+    database: resolved.database,
+    ssl: resolved.ssl,
+    extra: { connectionTimeoutMillis: 15_000 },
+  };
 }

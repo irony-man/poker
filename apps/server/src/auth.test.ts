@@ -2,7 +2,8 @@ import { mkdir, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { AuthError, AuthStore } from './auth.js';
+import { AuthStore } from './auth/auth.store.js';
+import { AuthError } from './auth/auth.types.js';
 
 describe('AuthStore', () => {
   let dir: string;

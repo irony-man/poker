@@ -214,6 +214,7 @@ export function PlayingCard({
   dimmed = false,
   dealDelay = 0,
   variant = 'deck',
+  className,
 }: {
   code?: string;
   faceDown?: boolean;
@@ -224,6 +225,7 @@ export function PlayingCard({
   dimmed?: boolean;
   dealDelay?: number;
   variant?: 'deck' | 'hand';
+  className?: string;
 }) {
   const resolved: CardSize =
     size ?? (variant === 'hand' ? 'hand' : small ? 'sm' : 'md');
@@ -242,6 +244,7 @@ export function PlayingCard({
     winRing,
     dim,
     'transition-[opacity,transform,box-shadow] duration-300',
+    className,
   ]
     .filter(Boolean)
     .join(' ');

@@ -29,12 +29,6 @@ import { DealerPotZone } from './DealerPotZone';
 import { SeatView } from './SeatView';
 import { HowToPlayHelp } from './HowToPlayHelp';
 import { isSeatActionLabel } from '@/lib/seatAction';
-import {
-  LeaderboardToggle,
-  TableLeaderboard,
-  loadShowLeaderboard,
-  saveShowLeaderboard,
-} from './TableLeaderboard';
 import { TableOverflowMenu, type OverflowItem } from './TableOverflowMenu';
 import { TableShell } from './TableShell';
 import { WinHandModal } from './WinHandModal';
@@ -169,21 +163,8 @@ export function OfflineTableView({
   const [turnEndsAt, setTurnEndsAt] = useState<number | null>(null);
   const [dismissedWinHandId, setDismissedWinHandId] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
-  const [showLeaderboard, setShowLeaderboard] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevVersion = useRef<number | null>(null);
-
-  useEffect(() => {
-    setShowLeaderboard(loadShowLeaderboard());
-  }, []);
-
-  const toggleLeaderboard = () => {
-    setShowLeaderboard((prev) => {
-      const next = !prev;
-      saveShowLeaderboard(next);
-      return next;
-    });
-  };
 
   const clearTimer = () => {
     if (timerRef.current) {
@@ -468,12 +449,6 @@ export function OfflineTableView({
       onClick: () => setChatOpen(true),
       tone: 'accent',
     });
-    offlineOverflow.push({
-      id: 'leaderboard',
-      label: showLeaderboard ? 'Hide leaderboard' : 'Show leaderboard',
-      onClick: toggleLeaderboard,
-      tone: 'accent',
-    });
     if (canSitOut) {
       offlineOverflow.push({
         id: 'sit-out',
@@ -542,7 +517,6 @@ export function OfflineTableView({
             </div>
           ) : (
             <div className="flex shrink-0 items-center gap-2">
-              <LeaderboardToggle open={showLeaderboard} onToggle={toggleLeaderboard} />
               <HowToPlayHelp />
               <a href="/" className="text-[10px] text-sidebar/80 hover:text-sidebar sm:text-xs">
                 ← Lobby
@@ -563,17 +537,6 @@ export function OfflineTableView({
           {!narrow ? (
             <div className="pointer-events-none absolute inset-6 z-[1] rounded-[40%] border border-white/10" />
           ) : null}
-
-          <TableLeaderboard
-            players={publicTable.players}
-            userId={HUMAN_ID}
-            open={showLeaderboard}
-            onClose={() => {
-              setShowLeaderboard(false);
-              saveShowLeaderboard(false);
-            }}
-            compact={narrow}
-          />
 
           <div
             className={`absolute left-1/2 z-20 -translate-x-1/2 -translate-y-1/2 ${
@@ -698,6 +661,19 @@ export function OfflineTableView({
           canTopUp={canTopUp}
           canSitOut={canSitOut}
           canSitIn={canSitIn}
+          readyPlayers={publicTable.players
+            .filter(
+              (p) =>
+                p.userId && p.stack > 0 && p.status !== 'sittingOut' && p.status !== 'empty',
+            )
+            .map((p) => ({
+              seat: p.seat,
+              name: p.name ?? `Seat ${p.seat}`,
+              userId: p.userId,
+              avatarId: p.avatarId,
+              ready: false,
+              isSelf: p.userId === HUMAN_ID,
+            }))}
           winners={(() => {
             const bySeat = new Map<
               number,

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { MemoryKv } from './kv.js';
-import { createHistoryStore } from './history.js';
-import { RoomManager } from './room.js';
-import { ensurePublicTables } from './publicTables.js';
+import { MemoryKv } from './kv/kv.store.js';
+import { createHistoryStore } from './history/history.store.js';
+import { RoomManager } from './rooms/room.js';
+import { ensurePublicTables } from './public-tables/public-tables.js';
 import { STAKE_PRESETS } from '@poker/protocol';
 
 describe('ensurePublicTables', () => {

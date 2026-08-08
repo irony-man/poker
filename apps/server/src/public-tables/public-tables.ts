@@ -1,5 +1,5 @@
 import { STAKE_PRESETS } from '@poker/protocol';
-import type { RoomManager } from './room.js';
+import type { RoomManager } from '../rooms/room.js';
 
 const HOUSE_HOST = 'felt-house';
 

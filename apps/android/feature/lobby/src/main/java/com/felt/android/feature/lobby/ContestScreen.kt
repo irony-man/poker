@@ -181,7 +181,13 @@ fun ContestScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("STANDINGS", color = FeltColors.Cream.copy(0.7f), fontWeight = FontWeight.Bold)
                     contest.placements.sortedBy { it.place }.forEach { p ->
-                        Text("#${p.place}  ${p.name}", color = FeltColors.Cream, fontSize = 14.sp)
+                        val prize = p.prizeWuffies ?: 0
+                        val prizeLabel = if (prize > 0) "  +$prize Wuffies" else ""
+                        Text(
+                            "#${p.place}  ${p.name}$prizeLabel",
+                            color = FeltColors.Cream,
+                            fontSize = 14.sp,
+                        )
                     }
                 }
             }

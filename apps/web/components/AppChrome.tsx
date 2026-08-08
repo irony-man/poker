@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
 import { LobbySidebar } from '@/components/LobbySidebar';
 import {
   clearStoredSession,
@@ -99,13 +99,15 @@ export function AppChrome({ children }: { children: ReactNode }) {
 
   return (
     <div className="lobby-shell">
-      <LobbySidebar
-        open={menuOpen}
-        onClose={() => setMenuOpen(false)}
-        signedIn={signedIn}
-        displayName={displayName}
-        onLogout={() => void onLogout()}
-      />
+      <Suspense fallback={null}>
+        <LobbySidebar
+          open={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          signedIn={signedIn}
+          displayName={displayName}
+          onLogout={() => void onLogout()}
+        />
+      </Suspense>
 
       <div className="lobby-main flex h-full min-h-0 min-w-0 flex-1 flex-col">
         <header className="flex shrink-0 items-center justify-between gap-3 bg-sidebar px-3 py-2.5 md:hidden">

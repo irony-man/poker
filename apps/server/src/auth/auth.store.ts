@@ -3,69 +3,22 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import * as argon2 from 'argon2';
 import { nanoid } from 'nanoid';
-import { avatarIdFromUserId, clampAvatarId } from './avatars.js';
-import { STARTING_CHIP_GRANT } from './wallet.js';
-
-export interface User {
-  id: string;
-  /** Stored with original casing; unique case-insensitively. */
-  username: string;
-  /** Display name — always equals username. */
-  name: string;
-  avatarId: number;
-  passwordHash: string;
-  /** Global play-money balance. */
-  chipBalance: number;
-  createdAt: number;
-}
-
-export interface PublicUser {
-  id: string;
-  username: string;
-  name: string;
-  avatarId: number;
-  createdAt: number;
-  chipBalance: number;
-}
-
-export interface WsTicket {
-  ticket: string;
-  userId: string;
-  expiresAt: number;
-}
-
-export interface Session {
-  token: string;
-  userId: string;
-  expiresAt: number;
-}
-
-export interface AuthSessionPayload {
-  userId: string;
-  username: string;
-  name: string;
-  ticket: string;
-  sessionToken: string;
-  avatarId: number;
-  chipBalance: number;
-}
+import type { Queryable } from '../database/queryable.js';
+import { avatarIdFromUserId, clampAvatarId } from '../avatars.js';
+import { STARTING_CHIP_GRANT } from '../wallet/wallet.constants.js';
+import {
+  AuthError,
+  type AuthSessionPayload,
+  type PublicUser,
+  type Session,
+  type User,
+  type WsTicket,
+} from './auth.types.js';
 
 interface PersistedSnapshot {
   users: User[];
   sessions: Session[];
   tickets: WsTicket[];
-}
-
-export type AuthErrorCode = 'username_taken' | 'invalid_credentials' | 'invalid_username';
-
-export class AuthError extends Error {
-  constructor(
-    public readonly code: AuthErrorCode,
-    message: string,
-  ) {
-    super(message);
-    this.name = 'AuthError';
-  }
 }
 
 function toPublic(u: User): PublicUser {
@@ -86,7 +39,7 @@ function normalizeChipBalance(value: unknown): number {
   return STARTING_CHIP_GRANT;
 }
 
-/** File-backed (or Postgres-backed) user + session + ticket store. */
+/** File-backed (or Postgres-backed via Queryable) user + session + ticket store. */
 export class AuthStore {
   private users = new Map<string, User>();
   private usernameIndex = new Map<string, string>(); // lower -> id
@@ -94,17 +47,16 @@ export class AuthStore {
   private sessions = new Map<string, Session>();
   private loaded = false;
   private readonly filePath: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private pool: any | null = null;
+  private pool: Queryable | null = null;
   private writeChain: Promise<void> = Promise.resolve();
+  private lastExpiredCleanupAt = 0;
+  private static readonly EXPIRED_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 
   constructor(dataDir = path.join(process.cwd(), 'data')) {
     this.filePath = path.join(dataDir, 'users.json');
   }
 
-  /** Attach a pg pool for Postgres user persistence (optional). */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  setPool(pool: any | null): void {
+  setPool(pool: Queryable | null): void {
     this.pool = pool;
   }
 
@@ -233,7 +185,6 @@ export class AuthStore {
     this.usernameIndex.set(user.username.toLowerCase(), user.id);
   }
 
-  /** Full JSON snapshot — file-backed mode only. */
   private async persistFile(): Promise<void> {
     if (this.pool) return;
     const run = async () => {
@@ -248,16 +199,11 @@ export class AuthStore {
     await this.writeChain;
   }
 
-  private lastExpiredCleanupAt = 0;
-  private static readonly EXPIRED_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
-
-  /** Throttled expired-row cleanup so login is not O(table-size). */
   private async maybeCleanupExpiredPostgres(): Promise<void> {
     if (!this.pool) return;
     const now = Date.now();
     if (now - this.lastExpiredCleanupAt < AuthStore.EXPIRED_CLEANUP_INTERVAL_MS) return;
     this.lastExpiredCleanupAt = now;
-    // Drop expired from memory too (cheap; avoids map growth between restarts).
     for (const [token, s] of this.sessions) {
       if (s.expiresAt <= now) this.sessions.delete(token);
     }
@@ -389,7 +335,6 @@ export class AuthStore {
         this.upsertSessionPostgres(session),
         this.upsertTicketPostgres(wsTicket),
       ]);
-      // Fire-and-forget throttled cleanup; do not block login on table scans.
       void this.maybeCleanupExpiredPostgres();
     } else {
       await this.persistFile();
@@ -443,7 +388,6 @@ export class AuthStore {
     return this.users.get(userId)?.chipBalance;
   }
 
-  /** Persist a new global chip balance for an existing user. */
   async setChipBalance(userId: string, balance: number): Promise<void> {
     const user = this.users.get(userId);
     if (!user) return;
@@ -458,7 +402,6 @@ export class AuthStore {
     }
   }
 
-  /** Update profile picture preset for an existing user. */
   async setAvatarId(userId: string, avatarId: number): Promise<User | null> {
     const user = this.users.get(userId);
     if (!user) return null;
@@ -474,7 +417,6 @@ export class AuthStore {
     return user;
   }
 
-  /** Case-insensitive exact username lookup. */
   getUserByUsername(username: string): User | undefined {
     const id = this.usernameIndex.get(username.trim().toLowerCase());
     return id ? this.users.get(id) : undefined;
@@ -485,17 +427,13 @@ export class AuthStore {
     return u ? toPublic(u) : undefined;
   }
 
-  /** All registered users. */
   listUsers(): User[] {
     return [...this.users.values()];
   }
 
-  issueTicket(userId: string, ttlMs = 7 * 24 * 60 * 60 * 1000, persist = true): string {
+  issueTicket(userId: string, ttlMs = 7 * 24 * 60 * 60 * 1000, _persist = true): string {
     const ticket = randomBytes(24).toString('hex');
     this.tickets.set(ticket, { ticket, userId, expiresAt: Date.now() + ttlMs });
-    if (persist) {
-      // Caller may await saveTickets() when needed; sync path for ticket endpoint uses issueTicketAndPersist.
-    }
     return ticket;
   }
 
@@ -521,10 +459,6 @@ export class AuthStore {
     return this.users.get(t.userId) ?? null;
   }
 
-  /**
-   * Seed a user for unit tests (fixed id, known password).
-   * Not for production use.
-   */
   async seedUser(
     id: string,
     username: string,
@@ -550,11 +484,4 @@ export class AuthStore {
     await this.persistFile();
     return user;
   }
-}
-
-/** Parse `Authorization: Bearer <token>`. */
-export function bearerToken(header: string | undefined): string | null {
-  if (!header) return null;
-  const match = /^Bearer\s+(.+)$/i.exec(header.trim());
-  return match?.[1]?.trim() || null;
 }

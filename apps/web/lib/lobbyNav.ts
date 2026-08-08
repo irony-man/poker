@@ -19,7 +19,19 @@ export const LOBBY_NAV: { href: LobbyHref; label: string }[] = [
   { href: '/solo', label: 'Offline' },
 ];
 
-export function isLobbyNavActive(pathname: string, href: LobbyHref): boolean {
+export function isLobbyNavActive(
+  pathname: string,
+  href: LobbyHref,
+  search?: string | null,
+): boolean {
   if (href === '/') return pathname === '/';
+  if (href === '/friends') {
+    if (pathname === '/friends' || pathname.startsWith('/friends/')) return true;
+    if (pathname === '/profile' || pathname.startsWith('/profile/')) {
+      const tab = new URLSearchParams(search?.replace(/^\?/, '') ?? '').get('tab');
+      return tab === 'friends';
+    }
+    return false;
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
 }

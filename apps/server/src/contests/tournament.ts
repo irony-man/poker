@@ -1,6 +1,7 @@
 import { nanoid } from 'nanoid';
 import {
   buildBlindSchedule,
+  contestPlacementPrize,
   resolveHandLimit,
   type BlindLevel,
   type ContestBlindInfo,
@@ -12,10 +13,10 @@ import {
   type ContestView,
   validateContestFieldSize,
 } from '@poker/protocol';
-import { isBotUserId, makeBotUserId, pickBotName } from './bot.js';
-import { Room, RoomManager } from './room.js';
-import type { WalletStore } from './wallet.js';
-import { UnlimitedWalletStore, WalletError } from './wallet.js';
+import { isBotUserId, makeBotUserId, pickBotName } from '../bot.js';
+import { Room, RoomManager } from '../rooms/room.js';
+import type { WalletStore } from '../wallet/wallet.constants.js';
+import { UnlimitedWalletStore, WalletError } from '../wallet/wallet.store.js';
 
 export interface CreateContestOpts {
   name: string;
@@ -82,6 +83,8 @@ export class TournamentManager {
   private wallet: WalletStore;
   /** Humans whose entry fee / residual stack has been settled. */
   private walletSettled = new Map<string, Set<string>>(); // contestId → userIds
+  /** Humans who already received a ranking prize for this contest. */
+  private prizeSettled = new Map<string, Set<string>>(); // contestId → userIds
 
   constructor(rooms: RoomManager, wallet: WalletStore = new UnlimitedWalletStore()) {
     this.rooms = rooms;
@@ -562,12 +565,47 @@ export class TournamentManager {
   private placePlayer(c: ContestState, userId: string, place: number): void {
     if (c.placements.some((p) => p.userId === userId)) return;
     const entrant = c.entrants.find((e) => e.userId === userId);
+    const prizeWuffies = contestPlacementPrize(place, c.entrants.length, c.startingStack);
     c.placements.push({
       userId,
       name: entrant?.name ?? 'Player',
       place,
+      prizeWuffies,
     });
     c.placements.sort((a, b) => a.place - b.place);
+  }
+
+  /** House-funded placement bonuses (separate from residual stack cash-out). */
+  private payPlacementPrizes(c: ContestState, room: Room | null): void {
+    let paid = this.prizeSettled.get(c.id);
+    if (!paid) {
+      paid = new Set();
+      this.prizeSettled.set(c.id, paid);
+    }
+    for (const p of c.placements) {
+      if (isBotUserId(p.userId) || paid.has(p.userId)) continue;
+      const amount = p.prizeWuffies ?? contestPlacementPrize(p.place, c.entrants.length, c.startingStack);
+      p.prizeWuffies = amount;
+      if (amount <= 0) {
+        paid.add(p.userId);
+        continue;
+      }
+      paid.add(p.userId);
+      void this.wallet
+        .credit(p.userId, amount, 'contest_prize', c.tableId ?? c.id)
+        .then((result) => {
+          room?.notifyWallet(p.userId, result.balance);
+          const entrant = c.entrants.find((e) => e.userId === p.userId);
+          room?.systemChatPublic(
+            'Dealer',
+            `${entrant?.name ?? p.name} earned ${amount} Wuffies for ${p.place}${this.ordinalSuffix(p.place)} place`,
+          );
+        })
+        .catch((err) => {
+          console.error('[wallet] contest prize failed', err);
+          paid!.delete(p.userId);
+        });
+    }
   }
 
   private finishContest(c: ContestState, room: Room | null = null): void {
@@ -585,6 +623,7 @@ export class TournamentManager {
     const tableRoom =
       room ?? (c.tableId ? this.rooms.get(c.tableId) ?? null : null);
     this.settleAllRemaining(c, tableRoom);
+    this.payPlacementPrizes(c, tableRoom);
     this.broadcastEvent(c.id, {
       type: 'contest_event',
       contestId: c.id,

@@ -1,8 +1,9 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { nanoid } from 'nanoid';
-import type { AuthStore, User } from './auth.js';
-import type { PgPool } from './db.js';
+import type { AuthStore } from '../auth/auth.store.js';
+import type { User } from '../auth/auth.types.js';
+import type { Queryable } from '../database/queryable.js';
 
 export type FriendRequestStatus = 'pending' | 'accepted' | 'declined';
 
@@ -95,14 +96,14 @@ export class FriendsStore {
   private groups: FriendGroup[] = [];
   private loaded = false;
   private readonly filePath: string;
-  private pool: PgPool | null = null;
+  private pool: Queryable | null = null;
 
-  constructor(dataDir = path.join(process.cwd(), 'data'), pool: PgPool | null = null) {
+  constructor(dataDir = path.join(process.cwd(), 'data'), pool: Queryable | null = null) {
     this.filePath = path.join(dataDir, 'social.json');
     this.pool = pool;
   }
 
-  setPool(pool: PgPool | null): void {
+  setPool(pool: Queryable | null): void {
     this.pool = pool;
   }
 

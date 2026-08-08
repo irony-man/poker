@@ -1,104 +1,105 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { AvatarPicker, PlayerAvatar } from '@/components/PlayerAvatar';
+import { FriendsPanel } from '@/components/FriendsPanel';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
-import { challengeFriend, fetchMe, listFriends, updateMe, type FriendProfile, type MeProfile } from '@/lib/api';
+import {
+  fetchMe,
+  listFriends,
+  listMyContests,
+  updateMe,
+  type ContestView,
+  type MeProfile,
+} from '@/lib/api';
 import { saveAvatarId } from '@/lib/avatars';
-import { formatMoneyLabel, MONEY_TOKEN } from '@/lib/currency';
+import { MoneyAmount } from '@/components/CurrencyIcon';
+import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { readStoredSession, writeStoredSession } from '@/lib/session';
 import { useSession } from '@/lib/store';
 import { useLobbySession } from '@/lib/useLobbySession';
 
-type ProfileTab = 'overview' | 'friends';
+type ProfileTab = 'overview' | 'contests' | 'friends';
 
-/** Flat sticker-style Wuffies stack for profile chrome. */
-function ChipCluster({ className = '' }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 72 40"
-      width="56"
-      height="32"
-      className={`shrink-0 ${className}`}
-      aria-hidden
-    >
-      {/* back chip — teal */}
-      <g transform="translate(22 6)">
-        <circle cx="14" cy="14" r="13.5" fill="#0F766E" stroke="#1A0B2E" strokeWidth="2" />
-        <circle cx="14" cy="14" r="8" fill="none" stroke="#5EEAD4" strokeWidth="1.6" />
-        <circle cx="14" cy="14" r="3.5" fill="#CCFBF1" stroke="#1A0B2E" strokeWidth="1.2" />
-      </g>
-      {/* mid chip — yellow */}
-      <g transform="translate(8 4)">
-        <circle cx="14" cy="14" r="13.5" fill="#EAB308" stroke="#1A0B2E" strokeWidth="2" />
-        <circle cx="14" cy="14" r="8" fill="none" stroke="#FEF08A" strokeWidth="1.6" />
-        <circle cx="14" cy="14" r="3.5" fill="#FEF9C3" stroke="#1A0B2E" strokeWidth="1.2" />
-      </g>
-      {/* front chip — red/white */}
-      <g transform="translate(0 2)">
-        <circle cx="14" cy="14" r="13.5" fill="#C5283D" stroke="#1A0B2E" strokeWidth="2" />
-        <circle cx="14" cy="14" r="9" fill="#FBF7F4" stroke="#1A0B2E" strokeWidth="1.4" />
-        <circle cx="14" cy="14" r="4.5" fill="#C5283D" stroke="#1A0B2E" strokeWidth="1.2" />
-      </g>
-    </svg>
-  );
+type ContestMatchRow = {
+  contest: ContestView;
+  place: number | null;
+  prizeWuffies: number;
+  playedAt: number;
+};
+
+function parseProfileTab(raw: string | null): ProfileTab {
+  if (raw === 'friends' || raw === 'contests') return raw;
+  return 'overview';
 }
 
-function ChallengeIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden
-    >
-      <path d="M6 12h12" />
-      <path d="M12 6v12" />
-      <circle cx="12" cy="12" r="9" />
-    </svg>
-  );
+function modeLabel(mode: ContestView['mode']): string {
+  return mode === 'rounds' ? 'Rounds' : 'Wuffies';
 }
 
-export default function ProfilePage() {
+function placeLabel(place: number | null): string {
+  if (place == null) return '—';
+  return `#${place}`;
+}
+
+function ProfilePageInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { authReady, signedIn } = useLobbySession();
   const sessionToken = useSession((s) => s.sessionToken);
   const setChipBalance = useSession((s) => s.setChipBalance);
   const [profile, setProfile] = useState<MeProfile | null>(null);
-  const [friends, setFriends] = useState<FriendProfile[]>([]);
+  const [friendCount, setFriendCount] = useState(0);
+  const [contests, setContests] = useState<ContestView[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<ProfileTab>('overview');
+  const [tab, setTab] = useState<ProfileTab>(() => parseProfileTab(searchParams.get('tab')));
   const [editingAvatar, setEditingAvatar] = useState(false);
   const [draftAvatarId, setDraftAvatarId] = useState(0);
   const [savingAvatar, setSavingAvatar] = useState(false);
-  const [challengeBusy, setChallengeBusy] = useState<string | null>(null);
 
   const token = sessionToken ?? readStoredSession()?.sessionToken ?? null;
+
+  useEffect(() => {
+    setTab(parseProfileTab(searchParams.get('tab')));
+  }, [searchParams]);
+
+  const selectTab = useCallback(
+    (next: ProfileTab) => {
+      setTab(next);
+      const params = new URLSearchParams(searchParams.toString());
+      if (next === 'overview') params.delete('tab');
+      else params.set('tab', next);
+      const q = params.toString();
+      router.replace(q ? `/profile?${q}` : '/profile', { scroll: false });
+    },
+    [router, searchParams],
+  );
 
   const load = useCallback(async () => {
     if (!token) {
       setProfile(null);
-      setFriends([]);
+      setFriendCount(0);
+      setContests([]);
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      const [me, social] = await Promise.all([
+      const [me, social, mine] = await Promise.all([
         fetchMe(token),
-        listFriends({ sessionToken: token }).catch(() => ({ friends: [] as FriendProfile[] })),
+        listFriends({ sessionToken: token }).catch(() => null),
+        listMyContests({ sessionToken: token }).catch(() => null),
       ]);
       setProfile(me);
       setDraftAvatarId(me.avatarId);
       setChipBalance(me.chipBalance);
-      setFriends(social.friends ?? []);
+      setFriendCount(social?.friends.length ?? 0);
+      setContests(mine?.contests ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load profile');
     } finally {
@@ -110,6 +111,31 @@ export default function ProfilePage() {
     if (!authReady || !signedIn) return;
     void load();
   }, [authReady, signedIn, load]);
+
+  const contestHistory = useMemo((): ContestMatchRow[] => {
+    if (!profile) return [];
+    return contests
+      .filter(
+        (c) =>
+          c.status === 'completed' && c.entrants.some((e) => e.userId === profile.id),
+      )
+      .map((contest) => {
+        const placement = contest.placements.find((p) => p.userId === profile.id);
+        const assignment = contest.assignments.find((a) => a.userId === profile.id);
+        return {
+          contest,
+          place: placement?.place ?? assignment?.place ?? null,
+          prizeWuffies: placement?.prizeWuffies ?? 0,
+          playedAt: contest.completedAt ?? contest.startedAt ?? contest.createdAt,
+        };
+      })
+      .sort((a, b) => b.playedAt - a.playedAt);
+  }, [contests, profile]);
+
+  const contestCurrencyWon = useMemo(
+    () => contestHistory.reduce((sum, row) => sum + row.prizeWuffies, 0),
+    [contestHistory],
+  );
 
   const openAvatarEditor = () => {
     if (!profile) return;
@@ -138,19 +164,6 @@ export default function ProfilePage() {
     }
   };
 
-  const onChallenge = async (friendUserId: string) => {
-    if (!token || challengeBusy) return;
-    setChallengeBusy(friendUserId);
-    setError(null);
-    try {
-      await challengeFriend(friendUserId, { sessionToken: token });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Challenge failed');
-    } finally {
-      setChallengeBusy(null);
-    }
-  };
-
   if (!authReady) {
     return <LoadingScreen label="Loading…" />;
   }
@@ -164,12 +177,8 @@ export default function ProfilePage() {
         })
       : null;
 
-  const friendCount = friends.length;
-
   return (
     <LobbyPageShell
-      title="Your profile"
-      subtitle="Your balance, how you appear at tables, and when you joined."
       signedIn={signedIn}
       requireAuth
     >
@@ -185,10 +194,8 @@ export default function ProfilePage() {
 
       {profile ? (
         <div className="flex w-full flex-col gap-5 sm:gap-6">
-          {/* Profile header card — Chess.com structure, POKR skin */}
           <section className="overflow-hidden rounded-2xl border border-sidebar/12 bg-white shadow-[0_14px_36px_rgb(29_4_50_/_0.08)]">
             <div className="flex flex-col gap-6 p-5 sm:p-7 md:flex-row md:items-start md:gap-8">
-              {/* Avatar column */}
               <div className="flex shrink-0 flex-col items-center gap-2 md:items-start">
                 <div className="rounded-full bg-white p-1 shadow-[0_0_0_1px_rgb(29_4_50_/_0.08)]">
                   <PlayerAvatar
@@ -208,19 +215,19 @@ export default function ProfilePage() {
                 </button>
               </div>
 
-              {/* Identity + meta */}
               <div className="min-w-0 flex-1">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                   <div className="min-w-0">
                     <h2 className="truncate font-display text-3xl font-bold tracking-tight text-sidebar sm:text-[2rem]">
                       {profile.username}
                     </h2>
-                    <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
-                      <ChipCluster />
-                      <p className="font-display text-xl font-bold tabular-nums tracking-tight text-sidebar sm:text-2xl">
-                        {formatMoneyLabel(profile.chipBalance)}
-                      </p>
-                    </div>
+                    <p className="mt-2.5">
+                      <MoneyAmount
+                        amount={profile.chipBalance}
+                        showChips
+                        className="font-display text-xl font-bold tracking-tight text-sidebar sm:text-2xl"
+                      />
+                    </p>
                     <p className="mt-3 text-sm leading-relaxed text-ink-strong-muted">
                       {joined ? (
                         <>
@@ -230,12 +237,13 @@ export default function ProfilePage() {
                           </span>
                         </>
                       ) : null}
-                      <Link
-                        href="/friends"
+                      <button
+                        type="button"
+                        onClick={() => selectTab('friends')}
                         className="font-medium text-sidebar underline-offset-2 hover:underline"
                       >
                         {friendCount} {friendCount === 1 ? 'friend' : 'friends'}
-                      </Link>
+                      </button>
                       <span className="mx-1.5 text-sidebar/30" aria-hidden>
                         ·
                       </span>
@@ -281,7 +289,6 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Tabs */}
             <div
               className="flex gap-6 border-t border-sidebar/10 px-5 sm:px-7"
               role="tablist"
@@ -290,6 +297,7 @@ export default function ProfilePage() {
               {(
                 [
                   { id: 'overview' as const, label: 'Overview' },
+                  { id: 'contests' as const, label: 'Contests' },
                   { id: 'friends' as const, label: 'Friends' },
                 ] as const
               ).map((item) => {
@@ -302,7 +310,7 @@ export default function ProfilePage() {
                     aria-selected={active}
                     id={`profile-tab-${item.id}`}
                     aria-controls={`profile-panel-${item.id}`}
-                    onClick={() => setTab(item.id)}
+                    onClick={() => selectTab(item.id)}
                     className={`relative py-3.5 text-sm font-display font-bold tracking-wide transition ${
                       active
                         ? 'text-sidebar'
@@ -322,7 +330,6 @@ export default function ProfilePage() {
             </div>
           </section>
 
-          {/* Tab panels */}
           {tab === 'overview' ? (
             <section
               role="tabpanel"
@@ -331,16 +338,17 @@ export default function ProfilePage() {
               className="rounded-2xl border border-sidebar/12 bg-white p-5 shadow-[0_10px_28px_rgb(29_4_50_/_0.06)] sm:p-7"
             >
               <h3 className="font-display text-lg font-bold tracking-tight text-sidebar">
-                {MONEY_TOKEN}
+                Balance
               </h3>
-              <p className="mt-3 flex flex-wrap items-center gap-2.5">
-                <ChipCluster />
-                <span className="font-display text-2xl font-bold tabular-nums text-sidebar">
-                  {formatMoneyLabel(profile.chipBalance)}
-                </span>
+              <p className="mt-3">
+                <MoneyAmount
+                  amount={profile.chipBalance}
+                  showChips
+                  className="font-display text-2xl font-bold text-sidebar"
+                />
               </p>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-strong-muted">
-                Same {MONEY_TOKEN} balance for public, private, and contest tables.
+                Same balance for public, private, and contest tables.
               </p>
               <div className="mt-6 flex flex-wrap gap-2.5">
                 <Link
@@ -349,13 +357,95 @@ export default function ProfilePage() {
                 >
                   Host a table
                 </Link>
-                <Link
-                  href="/friends"
+                <button
+                  type="button"
+                  onClick={() => selectTab('contests')}
+                  className="inline-flex items-center justify-center rounded-full border border-sidebar/30 bg-transparent px-4 py-2 text-xs font-display font-bold uppercase tracking-wider text-sidebar transition hover:border-sidebar hover:bg-sidebar/5"
+                >
+                  Contest history
+                </button>
+                <button
+                  type="button"
+                  onClick={() => selectTab('friends')}
                   className="inline-flex items-center justify-center rounded-full border border-sidebar/30 bg-transparent px-4 py-2 text-xs font-display font-bold uppercase tracking-wider text-sidebar transition hover:border-sidebar hover:bg-sidebar/5"
                 >
                   Find friends
-                </Link>
+                </button>
               </div>
+            </section>
+          ) : tab === 'contests' ? (
+            <section
+              role="tabpanel"
+              id="profile-panel-contests"
+              aria-labelledby="profile-tab-contests"
+              className="rounded-2xl border border-sidebar/12 bg-white p-5 shadow-[0_10px_28px_rgb(29_4_50_/_0.06)] sm:p-7"
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                <div className="min-w-0">
+                  <h3 className="font-display text-lg font-bold tracking-tight text-sidebar">
+                    Contest matches
+                  </h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-ink-strong-muted">
+                    Completed contests you played, with place and ranking prizes.
+                  </p>
+                </div>
+              </div>
+
+              {contestHistory.length === 0 ? (
+                <p className="mt-5 text-sm text-ink-strong-muted">
+                  No completed contests yet.{' '}
+                  <Link
+                    href="/contests"
+                    className="font-medium text-sidebar underline-offset-2 hover:underline"
+                  >
+                    Join or host one
+                  </Link>
+                  .
+                </p>
+              ) : (
+                <ul className="mt-5 divide-y divide-sidebar/10 overflow-hidden rounded-xl border border-sidebar/12">
+                  {contestHistory.map((row) => {
+                    const when = new Date(row.playedAt).toLocaleDateString(undefined, {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                    });
+                    return (
+                      <li key={row.contest.id}>
+                        <Link
+                          href={`/contest/${row.contest.id}`}
+                          onClick={() => enterMobileFullscreen()}
+                          className="flex items-center justify-between gap-3 px-3.5 py-3 transition hover:bg-mushroom/50 sm:px-4"
+                        >
+                          <span className="min-w-0">
+                            <span className="block truncate font-medium text-ink-strong">
+                              {row.contest.name}
+                            </span>
+                            <span className="mt-0.5 block text-[11px] text-ink-strong-muted">
+                              {when} · {modeLabel(row.contest.mode)} ·{' '}
+                              {row.contest.entrants.length} players
+                            </span>
+                          </span>
+                          <span className="flex shrink-0 flex-col items-end gap-0.5">
+                            <span className="font-mono text-sm font-semibold text-sidebar">
+                              {placeLabel(row.place)}
+                            </span>
+                            {row.prizeWuffies > 0 ? (
+                              <MoneyAmount
+                                amount={row.prizeWuffies}
+                                prefix="+"
+                                className="text-xs font-semibold text-brass-dim"
+                              />
+                            ) : (
+                              <span className="text-[11px] text-ink-strong-muted">No prize</span>
+                            )}
+                          </span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </section>
           ) : (
             <section
@@ -364,66 +454,31 @@ export default function ProfilePage() {
               aria-labelledby="profile-tab-friends"
               className="rounded-2xl border border-sidebar/12 bg-white p-5 shadow-[0_10px_28px_rgb(29_4_50_/_0.06)] sm:p-7"
             >
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <h3 className="font-display text-lg font-bold tracking-tight text-sidebar">Friends</h3>
-                <Link
-                  href="/friends"
-                  className="text-xs font-semibold text-sidebar underline-offset-2 hover:underline"
-                >
-                  Manage
-                </Link>
-              </div>
-              {friends.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-sidebar/20 bg-mushroom/40 px-4 py-8 text-center">
-                  <p className="text-sm font-medium text-ink-strong">No friends yet</p>
-                  <p className="mt-1 text-xs leading-relaxed text-ink-strong-muted">
-                    Find people by username and send a request from the Friends page.
-                  </p>
-                  <Link
-                    href="/friends"
-                    className="btn-primary mt-4 inline-flex text-xs"
-                  >
-                    Find friends
-                  </Link>
-                </div>
-              ) : (
-                <ul className="space-y-2">
-                  {friends.map((f) => (
-                    <li
-                      key={f.userId}
-                      className="flex items-center gap-3 rounded-2xl border border-sidebar/12 bg-mushroom/45 px-3 py-2.5"
-                    >
-                      <PlayerAvatar
-                        userId={f.userId}
-                        avatarId={f.avatarId}
-                        size={40}
-                        title={f.name}
-                      />
-                      <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink-strong">
-                        {f.name}
-                      </span>
-                      <button
-                        type="button"
-                        disabled={challengeBusy === f.userId}
-                        onClick={() => void onChallenge(f.userId)}
-                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-sidebar/20 text-sidebar transition hover:border-sidebar hover:bg-sidebar/8 disabled:opacity-50"
-                        aria-label={`Challenge ${f.name}`}
-                        title={`Challenge ${f.name}`}
-                      >
-                        {challengeBusy === f.userId ? (
-                          <span className="text-[10px] font-display font-bold">…</span>
-                        ) : (
-                          <ChallengeIcon className="h-4 w-4" />
-                        )}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <FriendsPanel
+                variant="embedded"
+                disabled={!signedIn}
+                onFriendCountChange={setFriendCount}
+                onNavigateTable={(tableId, inviteCode) => {
+                  enterMobileFullscreen();
+                  router.push(`/table/${tableId}?invite=${inviteCode}`);
+                }}
+                onNavigateContest={(contestId) => {
+                  enterMobileFullscreen();
+                  router.push(`/contest/${contestId}`);
+                }}
+              />
             </section>
           )}
         </div>
       ) : null}
     </LobbyPageShell>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={<LoadingScreen label="Loading…" />}>
+      <ProfilePageInner />
+    </Suspense>
   );
 }

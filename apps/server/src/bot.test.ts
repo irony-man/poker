@@ -7,9 +7,9 @@ import {
   type TableConfig,
 } from '@poker/engine';
 import { chooseBotAction, isBotUserId, makeBotUserId } from './bot.js';
-import { MemoryKv } from './kv.js';
-import { FileHistoryStore } from './history.js';
-import { RoomManager } from './room.js';
+import { MemoryKv } from './kv/kv.store.js';
+import { FileHistoryStore } from './history/history.store.js';
+import { RoomManager } from './rooms/room.js';
 import path from 'node:path';
 import os from 'node:os';
 import { randomBytes } from 'node:crypto';

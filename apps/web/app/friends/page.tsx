@@ -1,16 +1,38 @@
 'use client';
 
-import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { FriendsPanel } from '@/components/FriendsPanel';
 import { LoadingScreen } from '@/components/LoadingScreen';
+import { LobbyPageShell } from '@/components/LobbyPageShell';
+import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
+import { useLobbySession } from '@/lib/useLobbySession';
 
-/** Friends hub lives on the profile Friends tab. */
 export default function FriendsPage() {
   const router = useRouter();
+  const { authReady, signedIn } = useLobbySession();
 
-  useEffect(() => {
-    router.replace('/profile?tab=friends');
-  }, [router]);
+  if (!authReady) {
+    return <LoadingScreen label="Loading…" />;
+  }
 
-  return <LoadingScreen label="Opening friends…" />;
+  return (
+    <LobbyPageShell
+      title="Community and Social"
+      subtitle="Find people by username, build groups for the tables you play together, invite a group to sit down, or challenge a friend to heads-up."
+      signedIn={signedIn}
+      requireAuth
+    >
+      <FriendsPanel
+        disabled={!signedIn}
+        onNavigateTable={(tableId, inviteCode) => {
+          enterMobileFullscreen();
+          router.push(`/table/${tableId}?invite=${inviteCode}`);
+        }}
+        onNavigateContest={(contestId) => {
+          enterMobileFullscreen();
+          router.push(`/contest/${contestId}`);
+        }}
+      />
+    </LobbyPageShell>
+  );
 }

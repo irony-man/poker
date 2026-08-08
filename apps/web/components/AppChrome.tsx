@@ -10,7 +10,8 @@ import {
   readStoredSession,
 } from '@/lib/session';
 import { useSession } from '@/lib/store';
-import { logout as apiLogout } from '@/lib/api';
+import { fetchMe, logout as apiLogout } from '@/lib/api';
+import { saveAvatarId } from '@/lib/avatars';
 import { attachPlayFullscreen } from '@/lib/mobileFullscreen';
 
 /** App shell: lobby sidebar + main, or immersive play with no chrome. */
@@ -29,6 +30,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
 
   const setSession = useSession((s) => s.setSession);
   const clearSession = useSession((s) => s.clearSession);
+  const setChipBalance = useSession((s) => s.setChipBalance);
   const sessionName = useSession((s) => s.name);
   const sessionToken = useSession((s) => s.sessionToken);
   const [signedIn, setSignedIn] = useState(() => {
@@ -69,6 +71,27 @@ export function AppChrome({ children }: { children: ReactNode }) {
       setSignedIn(false);
     }
   }, [sessionName, sessionToken]);
+
+  // Keep sidebar bankroll in sync for signed-in lobby.
+  useEffect(() => {
+    if (!sessionToken) {
+      setChipBalance(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchMe(sessionToken)
+      .then((me) => {
+        if (cancelled) return;
+        setChipBalance(me.chipBalance);
+        saveAvatarId(me.avatarId);
+      })
+      .catch(() => {
+        /* ignore — balance shown when available */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionToken, setChipBalance, pathname]);
 
   useEffect(() => {
     setMenuOpen(false);

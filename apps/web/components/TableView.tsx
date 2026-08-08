@@ -14,7 +14,7 @@ import { TableLeaderboard, LeaderboardToggle, saveShowLeaderboard } from './Tabl
 import { TableOverflowMenu, type OverflowItem } from './TableOverflowMenu';
 import { TableShell } from './TableShell';
 import { VoiceCallBar } from './VoiceCallBar';
-import { WinHandModal } from './WinHandModal';
+import { WinHandModal, ReadyPlayersRoster } from './WinHandModal';
 import { playTick } from '@/lib/audio';
 import { buildTableJoinShareText } from '@/lib/tableLink';
 import { usePokerSocket } from '@/lib/ws';
@@ -225,6 +225,20 @@ export function TableView({
     myPlayer?.status !== 'sittingOut' &&
     (myPlayer?.stack ?? 0) > 0 &&
     eligiblePlayers.length >= 2;
+  const readyRosterPlayers = eligiblePlayers.map((p) => ({
+    seat: p.seat,
+    name: p.name ?? `Seat ${p.seat}`,
+    userId: p.userId,
+    avatarId: p.avatarId,
+    ready: !!p.ready,
+    isSelf: p.userId === userId,
+  }));
+  /** First hand (waiting) or between hands after dismiss — avatar roster like win modal. */
+  const showReadyRoster =
+    !isTournament &&
+    betweenHands &&
+    !showWinModal &&
+    eligiblePlayers.length > 0;
   /** Desktop keeps the full pill row; mobile only shows Ready/Sit CTA between hands. */
   const showDesktopTools =
     !narrow &&
@@ -729,11 +743,26 @@ export function TableView({
                   >
                     {myReady ? 'Not ready' : 'Ready'}
                   </button>
-                  <span className="text-[10px] font-display uppercase tracking-wider text-ink-strong-muted">
-                    {readyCount}/{eligiblePlayers.length} ready
-                  </span>
+                  {!showReadyRoster ? (
+                    <span className="text-[10px] font-display uppercase tracking-wider text-ink-strong-muted">
+                      {readyCount}/{eligiblePlayers.length} ready
+                    </span>
+                  ) : null}
                 </>
               )}
+            </div>
+          )}
+
+          {showReadyRoster && (
+            <div className="relative z-30 mx-auto w-full max-w-lg shrink-0 px-2 pb-1 pt-0.5 sm:px-3">
+              <ReadyPlayersRoster
+                players={readyRosterPlayers}
+                readyCount={readyCount}
+                readyTotal={eligiblePlayers.length}
+                heading={
+                  table?.street === 'waiting' ? 'Ready to start' : 'Ready for next hand'
+                }
+              />
             </div>
           )}
 
@@ -861,14 +890,7 @@ export function TableView({
               readyCount={readyCount}
               readyTotal={eligiblePlayers.length}
               isReady={myReady}
-              readyPlayers={eligiblePlayers.map((p) => ({
-                seat: p.seat,
-                name: p.name ?? `Seat ${p.seat}`,
-                userId: p.userId,
-                avatarId: p.avatarId,
-                ready: !!p.ready,
-                isSelf: p.userId === userId,
-              }))}
+              readyPlayers={readyRosterPlayers}
               canTopUp={canTopUp}
               canSitOut={canSitOut}
               canSitIn={canSitIn}

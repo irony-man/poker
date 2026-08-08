@@ -23,6 +23,97 @@ export type ReadyRosterPlayer = {
   isSelf?: boolean;
 };
 
+/** Avatar strip for cash-table ready state (first hand + between hands). */
+export function ReadyPlayersRoster({
+  players,
+  readyCount,
+  readyTotal,
+  heading = 'Ready for next hand',
+  className = '',
+}: {
+  players: ReadyRosterPlayer[];
+  readyCount?: number;
+  readyTotal?: number;
+  heading?: string;
+  className?: string;
+}) {
+  const narrow = useIsNarrow();
+  if (players.length === 0) return null;
+
+  const rCount = readyCount ?? players.filter((p) => p.ready).length;
+  const rTotal = readyTotal ?? players.length;
+  const rosterAvatarSize = players.length > 5 ? (narrow ? 40 : 44) : narrow ? 48 : 56;
+
+  return (
+    <section
+      aria-label={heading}
+      className={`rounded-2xl border border-sidebar/12 bg-white/95 px-3 py-3 shadow-[0_12px_32px_rgb(29_4_50_/_0.12)] sm:px-4 sm:py-3.5 ${className}`.trim()}
+    >
+      <div className="mb-2.5 flex items-baseline justify-between gap-2">
+        <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-sidebar/55">
+          {heading}
+        </h3>
+        <p className="font-display text-[10px] font-semibold tabular-nums tracking-wide text-sidebar/50">
+          {rCount}/{rTotal}
+        </p>
+      </div>
+      <ul className="flex flex-nowrap items-end justify-between gap-1 sm:gap-1.5">
+        {players.map((p) => {
+          const label = p.isSelf ? `${p.name} (you)` : p.name;
+          return (
+            <li key={p.seat} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+              <div
+                className={`relative rounded-full p-[2px] transition sm:p-[3px] ${
+                  p.ready
+                    ? 'bg-gradient-to-b from-sidebar to-sidebar/80 shadow-[0_0_0_2px_rgb(29_4_50_/_0.12),0_6px_16px_rgb(29_4_50_/_0.18)]'
+                    : 'bg-sidebar/10'
+                }`}
+              >
+                <PlayerAvatar
+                  userId={p.userId}
+                  avatarId={p.avatarId}
+                  size={rosterAvatarSize}
+                  title={label}
+                  className={`ring-2 ring-white ${p.ready ? '' : 'opacity-55 grayscale-[0.35]'}`}
+                />
+                {p.ready ? (
+                  <span
+                    className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-emerald-500 text-white shadow-sm sm:h-5 sm:w-5"
+                    aria-hidden
+                  >
+                    <svg viewBox="0 0 12 12" className="h-2 w-2 sm:h-2.5 sm:w-2.5" fill="none">
+                      <path
+                        d="M2.5 6.2 5 8.7 9.5 3.5"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </span>
+                ) : (
+                  <span
+                    className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-2 border-white bg-stone-200 sm:h-5 sm:w-5"
+                    aria-hidden
+                  />
+                )}
+              </div>
+              <span
+                className={`w-full truncate text-center text-[9px] font-display font-semibold leading-tight sm:text-[10px] ${
+                  p.ready ? 'text-sidebar' : 'text-sidebar/45'
+                }`}
+                title={label}
+              >
+                {p.isSelf ? 'You' : p.name}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 export function WinHandModal({
   winners,
   youWon,
@@ -57,12 +148,7 @@ export function WinHandModal({
   onSitIn?: () => void;
   onDismiss: () => void;
 }) {
-  const narrow = useIsNarrow();
   const roster = readyPlayers ?? [];
-  const showRoster = roster.length > 0;
-  const rCount = readyCount ?? roster.filter((p) => p.ready).length;
-  const rTotal = readyTotal ?? roster.length;
-  const rosterAvatarSize = roster.length > 5 ? (narrow ? 40 : 44) : narrow ? 48 : 56;
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center bg-ink-overlay/55 p-3 backdrop-blur-[3px] sm:items-center sm:p-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
@@ -193,74 +279,12 @@ export function WinHandModal({
           </div>
         </div>
 
-        {showRoster && (
-          <section
-            aria-label="Players ready for next hand"
-            className="rounded-2xl border border-sidebar/12 bg-white/95 px-3 py-3 shadow-[0_12px_32px_rgb(29_4_50_/_0.12)] sm:px-4 sm:py-3.5"
-          >
-            <div className="mb-2.5 flex items-baseline justify-between gap-2">
-              <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-sidebar/55">
-                Ready for next hand
-              </h3>
-              <p className="font-display text-[10px] font-semibold tabular-nums tracking-wide text-sidebar/50">
-                {rCount}/{rTotal}
-              </p>
-            </div>
-            <ul className="flex flex-nowrap items-end justify-between gap-1 sm:gap-1.5">
-              {roster.map((p) => {
-                const label = p.isSelf ? `${p.name} (you)` : p.name;
-                return (
-                  <li key={p.seat} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-                    <div
-                      className={`relative rounded-full p-[2px] transition sm:p-[3px] ${
-                        p.ready
-                          ? 'bg-gradient-to-b from-sidebar to-sidebar/80 shadow-[0_0_0_2px_rgb(29_4_50_/_0.12),0_6px_16px_rgb(29_4_50_/_0.18)]'
-                          : 'bg-sidebar/10'
-                      }`}
-                    >
-                      <PlayerAvatar
-                        userId={p.userId}
-                        avatarId={p.avatarId}
-                        size={rosterAvatarSize}
-                        title={label}
-                        className={`ring-2 ring-white ${p.ready ? '' : 'opacity-55 grayscale-[0.35]'}`}
-                      />
-                      {p.ready ? (
-                        <span
-                          className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-emerald-500 text-white shadow-sm sm:h-5 sm:w-5"
-                          aria-hidden
-                        >
-                          <svg viewBox="0 0 12 12" className="h-2 w-2 sm:h-2.5 sm:w-2.5" fill="none">
-                            <path
-                              d="M2.5 6.2 5 8.7 9.5 3.5"
-                              stroke="currentColor"
-                              strokeWidth="1.8"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </span>
-                      ) : (
-                        <span
-                          className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-2 border-white bg-stone-200 sm:h-5 sm:w-5"
-                          aria-hidden
-                        />
-                      )}
-                    </div>
-                    <span
-                      className={`w-full truncate text-center text-[9px] font-display font-semibold leading-tight sm:text-[10px] ${
-                        p.ready ? 'text-sidebar' : 'text-sidebar/45'
-                      }`}
-                      title={label}
-                    >
-                      {p.isSelf ? 'You' : p.name}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        )}
+        <ReadyPlayersRoster
+          players={roster}
+          readyCount={readyCount}
+          readyTotal={readyTotal}
+          heading="Ready for next hand"
+        />
       </div>
     </div>
   );

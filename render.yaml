@@ -14,9 +14,9 @@ services:
     runtime: node
     plan: free
     region: oregon
-    branch: main
+    branch: main-08-08
     buildCommand: npm ci && npm run build -w @poker/engine -w @poker/protocol -w @poker/db -w @poker/server
-    # Use package start so entry stays correct across Nest/Express entry renames
+    # Package start, with dist/index.js also present as alias for dashboard overrides.
     startCommand: npm run start -w @poker/server
     healthCheckPath: /health
     envVars:

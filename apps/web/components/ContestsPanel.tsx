@@ -358,7 +358,7 @@ export function ContestsPanel({
       {error && (
         <p
           role="alert"
-          className="status-chip border-danger/30 bg-danger/10 text-danger text-xs"
+          className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm leading-snug text-danger"
         >
           {error}
         </p>

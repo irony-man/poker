@@ -16,14 +16,51 @@ function sessionHeaders(sessionToken?: string | null): HeadersInit {
   return headers;
 }
 
+/** Turn Zod `error.message` JSON dumps into a short read-only summary. */
+function humanizeApiError(raw: string, fallback: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith('[')) return raw;
+  try {
+    const issues = JSON.parse(trimmed) as Array<{
+      path?: (string | number)[];
+      message?: string;
+      code?: string;
+      received?: unknown;
+      options?: unknown[];
+    }>;
+    if (!Array.isArray(issues) || issues.length === 0) return raw;
+
+    const parts = issues
+      .map((issue) => {
+        if (typeof issue.message === 'string' && issue.message.trim()) {
+          return issue.message.trim();
+        }
+        if (issue.code === 'invalid_enum_value' && Array.isArray(issue.options)) {
+          const field = issue.path?.length ? issue.path.join('.') : 'value';
+          const opts = issue.options.map(String).join(' | ');
+          return `Invalid ${field}: expected ${opts}`;
+        }
+        if (issue.path?.length) {
+          return `Invalid ${issue.path.join('.')}`;
+        }
+        return null;
+      })
+      .filter((part): part is string => !!part);
+
+    return parts.length > 0 ? parts.join('. ') : fallback;
+  } catch {
+    return raw;
+  }
+}
+
 async function parseError(res: Response, fallback: string): Promise<string> {
   try {
     const data = (await res.json()) as { error?: string };
-    if (data.error) return data.error;
+    if (data.error) return humanizeApiError(data.error, fallback);
   } catch {
     try {
       const text = await res.text();
-      if (text) return text;
+      if (text) return humanizeApiError(text, fallback);
     } catch {
       /* keep fallback */
     }

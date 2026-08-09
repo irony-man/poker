@@ -83,6 +83,8 @@ export class Room {
   private avatarByUser = new Map<string, number>();
   /** Cash: humans who have opted in for the next hand. */
   private readyUserIds = new Set<string>();
+  /** Cash: sit out after the current hand finishes (still finish this hand). */
+  private pendingSitOutUserIds = new Set<string>();
   private kv: KvStore;
   private history: HandHistoryStore;
   private chips: TableChipStore;
@@ -573,6 +575,7 @@ export class Room {
         return {
           ...p,
           ready: Boolean(ready),
+          pendingSitOut: !!p.userId && this.pendingSitOutUserIds.has(p.userId),
           avatarId: p.userId
             ? (this.avatarByUser.get(p.userId) ?? avatarIdFromUserId(p.userId))
             : null,
@@ -597,6 +600,10 @@ export class Room {
   }
 
   private async afterStateChange(): Promise<void> {
+    // After a hand (or when waiting), apply "sit out next" flags.
+    if (this.state.street === 'payout' || this.state.street === 'waiting') {
+      this.applyPendingSitOuts();
+    }
     if (this.state.street === 'payout') {
       await this.history.recordHand({
         tableId: this.meta.id,
@@ -776,10 +783,13 @@ export class Room {
     if (!result.ok) return { ok: false, error: result.error };
     this.state = result.state;
     this.announceEngineEvents(result.events);
-    try {
-      await this.chips.reserve(this.meta.id, kickedId, reservedStack);
-    } catch (err) {
-      console.error('[chips] failed to reserve kick stack', err);
+    // Only hold a positive stack for rejoin. Zero means busted — next sit does a fresh buy-in.
+    if (reservedStack > 0) {
+      try {
+        await this.chips.reserve(this.meta.id, kickedId, reservedStack);
+      } catch (err) {
+        console.error('[chips] failed to reserve kick stack', err);
+      }
     }
     if (this.connections.has(kickedId)) {
       const conn = this.connections.get(kickedId)!;
@@ -809,6 +819,12 @@ export class Room {
       reserved = await this.chips.take(this.meta.id, userId);
     } catch (err) {
       console.error('[chips] failed to load reserved stack', err);
+    }
+
+    // A held stack of 0 is not a rebuy credit — clear and debit a full table buy-in instead.
+    // (Previously sit used `reserved ?? buyIn`, so 0 blocked debit and seated empty stacks.)
+    if (reserved != null && reserved <= 0) {
+      reserved = null;
     }
 
     const stack = reserved ?? buyIn;
@@ -876,20 +892,63 @@ export class Room {
   doSitOut(userId: string, seat: number): { ok: boolean; error?: string } {
     if (this.seatOf(userId) !== seat) return { ok: false, error: 'Not your seat' };
     this.readyUserIds.delete(userId);
+
+    // Toggle off a pending “sit out after this hand” request.
+    if (this.pendingSitOutUserIds.has(userId)) {
+      this.pendingSitOutUserIds.delete(userId);
+      void this.afterStateChange();
+      return { ok: true };
+    }
+
+    const between =
+      this.state.street === 'waiting' || this.state.street === 'payout';
+    const me = this.state.players[seat];
+    if (
+      !between &&
+      me &&
+      (me.status === 'active' || me.status === 'allin')
+    ) {
+      // Finish this hand, then skip the next deal until sit-in.
+      this.pendingSitOutUserIds.add(userId);
+      void this.afterStateChange();
+      return { ok: true };
+    }
+
     const result = sitOut(this.state, seat);
     if (!result.ok) return { ok: false, error: result.error };
     this.state = result.state;
+    this.pendingSitOutUserIds.delete(userId);
     void this.afterStateChange();
     return { ok: true };
   }
 
   doSitIn(userId: string, seat: number): { ok: boolean; error?: string } {
     if (this.seatOf(userId) !== seat) return { ok: false, error: 'Not your seat' };
+    this.pendingSitOutUserIds.delete(userId);
     const result = sitIn(this.state, seat);
     if (!result.ok) return { ok: false, error: result.error };
     this.state = result.state;
+    // Back in the pool for the next hand — not auto-ready.
+    this.readyUserIds.delete(userId);
     void this.afterStateChange();
     return { ok: true };
+  }
+
+  /** Apply deferred sit-outs once the hand is over. */
+  private applyPendingSitOuts(): void {
+    if (this.pendingSitOutUserIds.size === 0) return;
+    for (const userId of [...this.pendingSitOutUserIds]) {
+      this.pendingSitOutUserIds.delete(userId);
+      const seat = this.seatOf(userId);
+      if (seat === null) continue;
+      const me = this.state.players[seat];
+      if (!me || me.status === 'sittingOut' || me.status === 'empty') continue;
+      const result = sitOut(this.state, seat);
+      if (result.ok) {
+        this.state = result.state;
+        this.readyUserIds.delete(userId);
+      }
+    }
   }
 
   async doTopUp(userId: string, seat: number, amount: number): Promise<{ ok: boolean; error?: string }> {

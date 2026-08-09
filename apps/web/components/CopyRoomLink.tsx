@@ -56,16 +56,14 @@ export function CopyRoomLink({
       type="button"
       onClick={() => void copy()}
       title={copied ? 'Copied' : `Copy link · room code ${inviteCode}`}
-      className={`inline-flex items-center gap-1.5 rounded-full border border-sidebar/20 bg-white font-mono font-semibold text-sidebar shadow-[0_2px_8px_rgb(29_4_50/0.06)] transition hover:border-sidebar/40 hover:bg-sidebar/5 ${
-        compact
-          ? 'min-h-9 px-2.5 py-1 text-[10px] tracking-wider'
-          : 'min-h-9 px-3 py-1.5 text-xs tracking-widest'
+      className={`play-chrome-control font-mono ${
+        compact ? 'min-w-0 px-2 text-[11px]' : 'px-2.5 text-xs tracking-wide'
       }`}
     >
-      <span className="font-display text-[9px] font-bold uppercase tracking-[0.14em] text-ink-strong-muted">
+      <span className="font-display text-[9px] font-bold uppercase tracking-[0.16em] text-sidebar/55">
         {copied ? 'Copied' : 'Code'}
       </span>
-      <span className="tabular-nums">{inviteCode}</span>
+      <span className="tabular-nums tracking-wider text-sidebar">{inviteCode}</span>
     </button>
   );
 }

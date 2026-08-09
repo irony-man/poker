@@ -499,8 +499,8 @@ export function OfflineTableView({
       actions={<ActionControls onAction={onAction} bare />}
     >
       <div className="flex min-h-0 flex-1 flex-col">
-        <div className="mb-1 flex shrink-0 items-center justify-between gap-2 px-1.5 text-sm text-ink-strong-muted sm:mb-2 sm:px-0">
-          <div className="flex min-w-0 items-center gap-2">
+        <header className="play-chrome-bar mb-2">
+          <div className="flex min-w-0 items-center gap-2.5 pl-0.5">
             <Image
               src="/purple-logo.png"
               alt="POKR"
@@ -509,21 +509,24 @@ export function OfflineTableView({
               className="h-7 w-auto object-contain object-left sm:h-8"
               priority
             />
+            <span className="play-chrome-control cursor-default text-[10px] uppercase tracking-wider text-sidebar/70 hover:border-sidebar/15 hover:bg-white">
+              Offline
+            </span>
           </div>
           {narrow ? (
-            <div className="flex shrink-0 items-center gap-1.5">
+            <div className="play-chrome-rail">
               <HowToPlayHelp />
               <TableOverflowMenu items={offlineOverflow} />
             </div>
           ) : (
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="play-chrome-rail">
               <HowToPlayHelp />
-              <a href="/" className="text-[10px] text-sidebar/80 hover:text-sidebar sm:text-xs">
-                ← Lobby
+              <a href="/" className="play-chrome-control no-underline">
+                Lobby
               </a>
             </div>
           )}
-        </div>
+        </header>
 
         <div className="relative flex min-h-0 flex-1 flex-col">
           <div className="relative min-h-0 flex-1">

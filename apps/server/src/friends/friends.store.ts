@@ -237,6 +237,40 @@ export class FriendsStore {
     return { ok: true };
   }
 
+  async removeFriend(
+    userId: string,
+    friendUserId: string,
+  ): Promise<{ ok: true } | { ok: false; error: string }> {
+    await this.ensureLoaded();
+    if (!friendUserId || userId === friendUserId) {
+      return { ok: false, error: 'Invalid user' };
+    }
+    const [a, b] = pairKey(userId, friendUserId);
+    const key = `${a}:${b}`;
+    if (!this.friendships.has(key)) {
+      return { ok: false, error: 'Not friends' };
+    }
+    this.friendships.delete(key);
+    // Drop each person from the other’s owned groups.
+    for (const g of this.groups) {
+      if (g.ownerUserId === userId) {
+        g.memberUserIds = g.memberUserIds.filter((id) => id !== friendUserId);
+      } else if (g.ownerUserId === friendUserId) {
+        g.memberUserIds = g.memberUserIds.filter((id) => id !== userId);
+      }
+    }
+    // Expire open challenges between the pair.
+    for (const c of this.challenges) {
+      if (c.status !== 'pending') continue;
+      const pair =
+        (c.challengerId === userId && c.challengedId === friendUserId) ||
+        (c.challengerId === friendUserId && c.challengedId === userId);
+      if (pair) c.status = 'expired';
+    }
+    await this.persist();
+    return { ok: true };
+  }
+
   async listFriends(auth: AuthStore, userId: string): Promise<FriendProfile[]> {
     await this.ensureLoaded();
     const ids = new Set<string>();

@@ -12,6 +12,7 @@ import {
   joinFriendChallenge,
   listFriends,
   registerContest,
+  removeFriend,
   respondFriendRequest,
   searchUsers,
   sendFriendRequest,
@@ -208,6 +209,23 @@ export function FriendsPanel({
       onNavigateTable(result.tableId, result.inviteCode);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Challenge failed');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function onRemoveFriend(friend: FriendProfile) {
+    if (disabled || !sessionToken) return;
+    const ok = window.confirm(`Remove ${friend.name} from your friends?`);
+    if (!ok) return;
+    setBusy(`remove-${friend.userId}`);
+    setError(null);
+    try {
+      await removeFriend(friend.userId, auth());
+      flash(`Removed ${friend.name}`);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not remove friend');
     } finally {
       setBusy(null);
     }
@@ -560,42 +578,44 @@ export function FriendsPanel({
       )}
 
       <div className="min-w-0">
-        <div
-          role="tablist"
-          aria-label="Friends and groups"
-          className="flex rounded-xl border border-sidebar/15 bg-mushroom/50 p-1"
-        >
-          {(
-            [
-              { id: 'friends' as const, label: 'Friends' },
-              { id: 'groups' as const, label: 'Groups' },
-            ] as const
-          ).map((tab) => {
-            const selected = socialTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                id={`social-tab-${tab.id}`}
-                aria-selected={selected}
-                aria-controls={`social-panel-${tab.id}`}
-                disabled={disabled}
-                onClick={() => setSocialTab(tab.id)}
-                className={[
-                  'relative min-h-10 flex-1 rounded-lg px-3 py-2 text-center font-display text-xs font-bold uppercase tracking-[0.14em] transition',
-                  selected
-                    ? 'bg-sidebar text-mushroom shadow-[0_4px_14px_rgb(29_4_50/0.18)]'
-                    : 'text-ink-strong-muted hover:bg-sidebar/[0.06] hover:text-sidebar',
-                ].join(' ')}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
+        {variant !== 'embedded' ? (
+          <div
+            role="tablist"
+            aria-label="Friends and groups"
+            className="flex rounded-xl border border-sidebar/15 bg-mushroom/50 p-1"
+          >
+            {(
+              [
+                { id: 'friends' as const, label: 'Friends' },
+                { id: 'groups' as const, label: 'Groups' },
+              ] as const
+            ).map((tab) => {
+              const selected = socialTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  id={`social-tab-${tab.id}`}
+                  aria-selected={selected}
+                  aria-controls={`social-panel-${tab.id}`}
+                  disabled={disabled}
+                  onClick={() => setSocialTab(tab.id)}
+                  className={[
+                    'relative min-h-10 flex-1 rounded-lg px-3 py-2 text-center font-display text-xs font-bold uppercase tracking-[0.14em] transition',
+                    selected
+                      ? 'bg-sidebar text-mushroom shadow-[0_4px_14px_rgb(29_4_50/0.18)]'
+                      : 'text-ink-strong-muted hover:bg-sidebar/[0.06] hover:text-sidebar',
+                  ].join(' ')}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
 
-        {socialTab === 'groups' && (
+        {variant !== 'embedded' && socialTab === 'groups' && (
         <section
           role="tabpanel"
           id="social-panel-groups"
@@ -919,12 +939,12 @@ export function FriendsPanel({
         </section>
         )}
 
-        {socialTab === 'friends' && (
+        {(variant === 'embedded' || socialTab === 'friends') && (
         <section
           role="tabpanel"
           id="social-panel-friends"
           aria-labelledby="social-tab-friends"
-          className="mt-3 min-w-0"
+          className={variant === 'embedded' ? 'min-w-0' : 'mt-3 min-w-0'}
         >
           {friends.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-sidebar/20 bg-mushroom/35 px-4 py-6 text-center">
@@ -941,28 +961,72 @@ export function FriendsPanel({
                   key={f.userId}
                   className="flex items-center gap-3 rounded-2xl border border-sidebar/12 bg-mushroom/50 px-3 py-2.5"
                 >
-                  <PlayerAvatar userId={f.userId} avatarId={f.avatarId} size={36} title={f.name} />
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink-strong">
-                    {f.name}
+                  <span className="relative shrink-0">
+                    <PlayerAvatar userId={f.userId} avatarId={f.avatarId} size={36} title={f.name} />
+                    <span
+                      className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white ${
+                        f.online ? 'bg-positive' : 'bg-sidebar/25'
+                      }`}
+                      title={f.online ? 'Online' : 'Offline'}
+                      aria-hidden
+                    />
                   </span>
-                  <IconAction
-                    label={
-                      busy === `challenge-${f.userId}`
-                        ? 'Starting challenge…'
-                        : `Challenge ${f.name}`
-                    }
-                    disabled={disabled || busy === `challenge-${f.userId}`}
-                    tone="primary"
-                    onClick={() => void onChallenge(f.userId)}
-                  >
-                    {busy === `challenge-${f.userId}` ? (
-                      <span className="text-[10px] font-display font-bold uppercase tracking-wider">
-                        …
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium text-ink-strong">
+                      {f.name}
+                    </span>
+                    {f.online ? (
+                      <span className="mt-0.5 block text-[10px] font-semibold uppercase tracking-wider text-positive">
+                        Online
                       </span>
-                    ) : (
-                      <ChallengeIcon className="h-4 w-4" />
-                    )}
-                  </IconAction>
+                    ) : null}
+                  </span>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <IconAction
+                      label={
+                        busy === `remove-${f.userId}`
+                          ? 'Removing…'
+                          : `Remove ${f.name}`
+                      }
+                      disabled={
+                        disabled ||
+                        busy === `remove-${f.userId}` ||
+                        busy === `challenge-${f.userId}`
+                      }
+                      tone="ghost"
+                      onClick={() => void onRemoveFriend(f)}
+                    >
+                      {busy === `remove-${f.userId}` ? (
+                        <span className="text-[10px] font-display font-bold uppercase tracking-wider">
+                          …
+                        </span>
+                      ) : (
+                        <RemoveFriendIcon className="h-4 w-4" />
+                      )}
+                    </IconAction>
+                    <IconAction
+                      label={
+                        busy === `challenge-${f.userId}`
+                          ? 'Starting challenge…'
+                          : `Challenge ${f.name}`
+                      }
+                      disabled={
+                        disabled ||
+                        busy === `challenge-${f.userId}` ||
+                        busy === `remove-${f.userId}`
+                      }
+                      tone="primary"
+                      onClick={() => void onChallenge(f.userId)}
+                    >
+                      {busy === `challenge-${f.userId}` ? (
+                        <span className="text-[10px] font-display font-bold uppercase tracking-wider">
+                          …
+                        </span>
+                      ) : (
+                        <ChallengeIcon className="h-4 w-4" />
+                      )}
+                    </IconAction>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -1084,6 +1148,17 @@ function ChallengeIcon({ className }: { className?: string }) {
       <path d="m5 14 4 4" />
       <path d="m7 17-3 3" />
       <path d="m3 19 2 2" />
+    </svg>
+  );
+}
+
+/** Remove from friends list. */
+function RemoveFriendIcon({ className }: { className?: string }) {
+  return (
+    <svg {...iconProps(className)}>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <line x1="22" x2="16" y1="11" y2="11" />
     </svg>
   );
 }

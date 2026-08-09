@@ -38,6 +38,20 @@ describe('FriendsStore', () => {
     expect(aliceFriends.map((f) => f.userId)).toContain('user-bob');
   });
 
+  it('removes a friendship', async () => {
+    const req = await friends.sendRequest('user-alice', 'user-bob');
+    await friends.respondRequest('user-bob', req.id, true);
+
+    const removed = await friends.removeFriend('user-alice', 'user-bob');
+    expect(removed.ok).toBe(true);
+
+    expect(await friends.listFriends(auth, 'user-alice')).toEqual([]);
+    expect(await friends.listFriends(auth, 'user-bob')).toEqual([]);
+
+    const missing = await friends.removeFriend('user-alice', 'user-bob');
+    expect(missing.ok).toBe(false);
+  });
+
   it('creates challenges only between friends', async () => {
     const req = await friends.sendRequest('user-alice', 'user-bob');
     await friends.respondRequest('user-bob', req.id, true);

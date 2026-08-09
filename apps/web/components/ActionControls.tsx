@@ -83,7 +83,7 @@ export function ActionControls({
         className={
           bare
             ? 'flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-1.5 px-3 py-2 text-center'
-            : 'hud-panel flex min-h-[160px] flex-col items-center justify-center gap-1.5 px-3 py-3 text-center'
+            : 'hud-panel flex min-h-[180px] flex-col items-center justify-center gap-1.5 px-3 py-3 text-center'
         }
         role="status"
         aria-live="polite"

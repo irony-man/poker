@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { authHref, currentPathWithQuery } from '@/lib/authRedirect';
+import { pingPresence } from '@/lib/api';
 import {
   clearStoredSession,
   readStoredSession,
@@ -71,6 +72,24 @@ export function useLobbySession() {
   useEffect(() => {
     if (sessionName) setName(sessionName);
   }, [sessionName]);
+
+  // Heartbeat so friends see you as online for quick invite.
+  useEffect(() => {
+    if (!signedIn || !sessionToken) return;
+    let cancelled = false;
+    const beat = () => {
+      if (cancelled) return;
+      void pingPresence({ sessionToken }).catch(() => {
+        /* ignore network while offline */
+      });
+    };
+    beat();
+    const id = window.setInterval(beat, 25_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [signedIn, sessionToken]);
 
   const ensureSession = useCallback(async (): Promise<StoredSession> => {
     const stored = resolveLocalSession();

@@ -18,7 +18,7 @@ const TIPS: { title: string; body: string }[] = [
   },
   {
     title: 'Table tools',
-    body: 'Host can Start hand between rounds. Sit out to skip hands. Chat and voice sit in the toolbar. Broke stacks can Top up between hands from your global Wuffies balance (cash and rounds contests; Wuffies freezeouts have no rebuy).',
+    body: 'Between hands: Ready starts the next deal. Sit out skips hands; sit in when you want the next hand. Mid-hand you can request “Sit out next hand” and still finish this one. Chat and voice sit in the toolbar. Broke stacks can Top up between hands from your bankroll.',
   },
 ];
 
@@ -190,16 +190,12 @@ export function HowToPlayHelp({ className = '' }: { className?: string }) {
         aria-controls={panelId}
         aria-haspopup="dialog"
         onClick={() => setOpen((v) => !v)}
-        className="flex h-11 items-center gap-1.5 rounded-full border border-sidebar/20 bg-white/80 px-2.5 text-xs font-display font-semibold uppercase tracking-wider text-ink-strong-muted hover:border-sidebar/40 hover:text-sidebar sm:h-9 sm:px-3"
+        className="play-chrome-control-icon"
         title="How to play"
       >
-        <span
-          aria-hidden
-          className="flex h-5 w-5 items-center justify-center rounded-full border border-sidebar/25 text-[11px] font-bold leading-none"
-        >
+        <span aria-hidden className="text-[13px] leading-none">
           ?
         </span>
-        <span className="hidden sm:inline">How to play</span>
       </button>
 
       {open && (

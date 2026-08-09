@@ -172,21 +172,9 @@ export function LeaderboardToggle({
       onClick={onToggle}
       aria-pressed={open}
       title={open ? 'Hide leaderboard' : 'Show leaderboard'}
-      className={
-        compact
-          ? `flex h-11 items-center rounded-full border px-3 text-[11px] font-display font-bold uppercase tracking-wide ${
-              open
-                ? 'border-sidebar/40 bg-sidebar/10 text-sidebar'
-                : 'border-sidebar/20 bg-white/80 text-ink-strong hover:border-sidebar/40 hover:text-sidebar'
-            }`
-          : `status-chip ${
-              open
-                ? 'border-sidebar/40 bg-sidebar/10 text-sidebar'
-                : 'border-sidebar/20 bg-white/80 text-ink-strong hover:border-sidebar/35'
-            }`
-      }
+      className={open ? 'play-chrome-control play-chrome-control-active' : 'play-chrome-control'}
     >
-      {open ? 'Ranks · on' : 'Ranks'}
+      {open ? (compact ? 'Ranks' : 'Ranks · on') : 'Ranks'}
     </button>
   );
 }

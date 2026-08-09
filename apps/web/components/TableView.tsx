@@ -14,7 +14,7 @@ import { TableLeaderboard, LeaderboardToggle, saveShowLeaderboard } from './Tabl
 import { TableOverflowMenu, type OverflowItem } from './TableOverflowMenu';
 import { TableShell } from './TableShell';
 import { VoiceCallBar } from './VoiceCallBar';
-import { WinHandModal } from './WinHandModal';
+import { WinHandModal, ReadyPlayersRoster } from './WinHandModal';
 import { playTick } from '@/lib/audio';
 import { buildTableJoinShareText } from '@/lib/tableLink';
 import { usePokerSocket } from '@/lib/ws';
@@ -199,11 +199,32 @@ export function TableView({
 
   const canSitOut =
     mySeat !== undefined &&
-    betweenHands &&
-    myPlayer &&
+    !!myPlayer &&
     myPlayer.status !== 'empty' &&
-    myPlayer.status !== 'sittingOut';
-  const canSitIn = mySeat !== undefined && myPlayer?.status === 'sittingOut' && betweenHands;
+    myPlayer.status !== 'sittingOut' &&
+    !myPlayer.pendingSitOut &&
+    (betweenHands ||
+      myPlayer.status === 'folded' ||
+      myPlayer.status === 'seated' ||
+      myPlayer.status === 'active' ||
+      myPlayer.status === 'allin');
+  const canCancelSitOutNext =
+    mySeat !== undefined && !!myPlayer?.pendingSitOut && myPlayer.status !== 'sittingOut';
+  /** Seat stays; you’ll be dealt starting next hand (works mid-hand while sitting out). */
+  const canSitIn =
+    mySeat !== undefined &&
+    myPlayer?.status === 'sittingOut' &&
+    (myPlayer?.stack ?? 0) > 0;
+  const sitOutNextHand =
+    canSitOut &&
+    !betweenHands &&
+    (myPlayer?.status === 'active' || myPlayer?.status === 'allin');
+  const sitOutLabel = sitOutNextHand
+    ? 'Sit out next hand'
+    : canCancelSitOutNext
+      ? 'Stay in (cancel sit-out)'
+      : 'Sit out';
+  const sitInLabel = betweenHands ? 'Sit in' : 'Sit in — next hand';
   const playersInHand =
     table?.players.filter((p) => p.userId && p.stack > 0 && p.status !== 'sittingOut').length ?? 0;
 
@@ -225,11 +246,26 @@ export function TableView({
     myPlayer?.status !== 'sittingOut' &&
     (myPlayer?.stack ?? 0) > 0 &&
     eligiblePlayers.length >= 2;
+  const readyRosterPlayers = eligiblePlayers.map((p) => ({
+    seat: p.seat,
+    name: p.name ?? `Seat ${p.seat}`,
+    userId: p.userId,
+    avatarId: p.avatarId,
+    ready: !!p.ready,
+    isSelf: p.userId === userId,
+  }));
+  /** First hand (waiting) or between hands after dismiss — avatar roster like win modal. */
+  const showReadyRoster =
+    !isTournament &&
+    betweenHands &&
+    !showWinModal &&
+    eligiblePlayers.length > 0;
   /** Desktop keeps the full pill row; mobile only shows Ready/Sit CTA between hands. */
   const showDesktopTools =
     !narrow &&
     (isSpectating ||
       canSitOut ||
+      canCancelSitOutNext ||
       canSitIn ||
       canTopUp ||
       brokeNoWallet ||
@@ -279,6 +315,13 @@ export function TableView({
   };
 
   const leaveRoom = () => {
+    if (
+      !window.confirm(
+        'Leave this table? Your remaining stack returns to your bankroll when you leave between hands.',
+      )
+    ) {
+      return;
+    }
     voice.leaveVoice();
     leaveTable();
     clearTable();
@@ -424,17 +467,17 @@ export function TableView({
         tone: 'danger',
       });
     }
-    if (canSitOut) {
+    if (canSitOut || canCancelSitOutNext) {
       mobileOverflowItems.push({
         id: 'sit-out',
-        label: 'Sit out',
+        label: sitOutLabel,
         onClick: () => send({ type: 'sit_out', tableId, seat: mySeat! }),
       });
     }
     if (canSitIn) {
       mobileOverflowItems.push({
         id: 'sit-in',
-        label: 'Sit in',
+        label: sitInLabel,
         onClick: () => send({ type: 'sit_in', tableId, seat: mySeat! }),
         tone: 'accent',
       });
@@ -482,9 +525,9 @@ export function TableView({
       }
     >
       <div className="flex min-h-0 flex-1 flex-col">
-        {/* Mobile controls | Desktop chrome — brand mark top-left */}
-        <div className="mb-1 flex shrink-0 items-center justify-between gap-2 px-1.5 text-sm text-ink-strong-muted sm:mb-2 sm:px-0">
-          <div className="flex min-w-0 items-center gap-2">
+        {/* Cohesive play chrome: brand + room tools */}
+        <header className="play-chrome-bar mb-2">
+          <div className="flex min-w-0 items-center gap-2.5 pl-0.5">
             <Image
               src="/purple-logo.png"
               alt="POKR"
@@ -494,30 +537,30 @@ export function TableView({
               priority
             />
             {isSpectating && (
-              <span className="status-chip shrink-0 border-brass/40 bg-brass/15 text-ink-strong max-sm:text-[10px]">
+              <span className="play-chrome-control cursor-default border-brass/35 bg-brass/15 text-[10px] uppercase tracking-wider text-sidebar hover:border-brass/35 hover:bg-brass/15">
                 Spec
               </span>
             )}
           </div>
 
           {narrow ? (
-            <div className="flex shrink-0 items-center gap-1.5">
+            <div className="play-chrome-rail">
               {inviteCode ? (
                 <CopyRoomLink tableId={tableId} inviteCode={inviteCode} compact />
               ) : null}
               <HowToPlayHelp />
-              <TableOverflowMenu
-                items={mobileOverflowItems}
-              />
+              <TableOverflowMenu items={mobileOverflowItems} />
             </div>
           ) : (
-            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1 sm:gap-2">
-              {inviteCode ? (
-                <CopyRoomLink tableId={tableId} inviteCode={inviteCode} />
-              ) : null}
+            <div className="play-chrome-rail">
+              {inviteCode ? <CopyRoomLink tableId={tableId} inviteCode={inviteCode} /> : null}
               {isTournament ? (
-                <LeaderboardToggle open={showLeaderboard} onToggle={toggleLeaderboard} />
+                <>
+                  <span className="play-chrome-divider" aria-hidden />
+                  <LeaderboardToggle open={showLeaderboard} onToggle={toggleLeaderboard} />
+                </>
               ) : null}
+              <span className="play-chrome-divider" aria-hidden />
               <VoiceCallBar
                 inVoice={voice.inVoice}
                 state={voice.state}
@@ -529,15 +572,15 @@ export function TableView({
                 onToggleMute={voice.toggleMute}
               />
               <HowToPlayHelp />
-              <button type="button" onClick={leaveRoom} className="btn-ghost text-xs py-1.5 px-3">
+              <button type="button" onClick={leaveRoom} className="play-chrome-leave">
                 Leave
               </button>
             </div>
           )}
-        </div>
+        </header>
 
         {table?.tournament && (
-          <div className="mb-2 flex flex-wrap items-center gap-2">
+          <div className="mb-2 flex flex-wrap items-center gap-2 px-0.5">
             <span className="status-chip border-sidebar/25 bg-sidebar/8 text-sidebar">
               {table.tournament.mode === 'rounds' ? 'Rounds' : 'Wuffies'}
               {table.tournament.frozen ? ' · over' : ''}
@@ -549,7 +592,7 @@ export function TableView({
             {table.tournament.contestId && (
               <a
                 href={`/contest/${table.tournament.contestId}`}
-                className="text-xs text-sidebar underline"
+                className="text-xs font-medium text-sidebar underline-offset-2 hover:underline"
               >
                 Contest lobby
               </a>
@@ -729,11 +772,26 @@ export function TableView({
                   >
                     {myReady ? 'Not ready' : 'Ready'}
                   </button>
-                  <span className="text-[10px] font-display uppercase tracking-wider text-ink-strong-muted">
-                    {readyCount}/{eligiblePlayers.length} ready
-                  </span>
+                  {!showReadyRoster ? (
+                    <span className="text-[10px] font-display uppercase tracking-wider text-ink-strong-muted">
+                      {readyCount}/{eligiblePlayers.length} ready
+                    </span>
+                  ) : null}
                 </>
               )}
+            </div>
+          )}
+
+          {showReadyRoster && (
+            <div className="relative z-30 mx-auto w-full max-w-lg shrink-0 px-2 pb-1 pt-0.5 sm:px-3">
+              <ReadyPlayersRoster
+                players={readyRosterPlayers}
+                readyCount={readyCount}
+                readyTotal={eligiblePlayers.length}
+                heading={
+                  table?.street === 'waiting' ? 'Ready to start' : 'Ready for next hand'
+                }
+              />
             </div>
           )}
 
@@ -812,13 +870,24 @@ export function TableView({
                   − Bots
                 </button>
               )}
-              {canSitOut && (
+              {(canSitOut || canCancelSitOutNext) && (
                 <button
                   type="button"
                   onClick={() => send({ type: 'sit_out', tableId, seat: mySeat! })}
-                  className="rounded-full border border-amber-600/30 px-3 py-1.5 text-xs text-amber-900 hover:bg-amber-500/10"
+                  className={
+                    canCancelSitOutNext
+                      ? 'rounded-full border border-sidebar/30 bg-sidebar/8 px-3 py-1.5 text-xs text-sidebar hover:bg-sidebar/12'
+                      : 'rounded-full border border-amber-600/30 px-3 py-1.5 text-xs text-amber-900 hover:bg-amber-500/10'
+                  }
+                  title={
+                    sitOutNextHand
+                      ? 'Finish this hand, then skip until you sit back in'
+                      : canCancelSitOutNext
+                        ? 'You will keep playing after this hand'
+                        : 'Skip the next hand(s) — sit back in when ready'
+                  }
                 >
-                  Sit out
+                  {sitOutLabel}
                 </button>
               )}
               {canSitIn && (
@@ -826,8 +895,9 @@ export function TableView({
                   type="button"
                   onClick={() => send({ type: 'sit_in', tableId, seat: mySeat! })}
                   className="rounded-full border border-sidebar/30 bg-sidebar/8 px-3 py-1.5 text-xs text-sidebar hover:bg-sidebar/12"
+                  title="Return for the next dealt hand (not mid-hand cards)"
                 >
-                  Sit in
+                  {sitInLabel}
                 </button>
               )}
               {canTopUp && (
@@ -861,14 +931,7 @@ export function TableView({
               readyCount={readyCount}
               readyTotal={eligiblePlayers.length}
               isReady={myReady}
-              readyPlayers={eligiblePlayers.map((p) => ({
-                seat: p.seat,
-                name: p.name ?? `Seat ${p.seat}`,
-                userId: p.userId,
-                avatarId: p.avatarId,
-                ready: !!p.ready,
-                isSelf: p.userId === userId,
-              }))}
+              readyPlayers={readyRosterPlayers}
               canTopUp={canTopUp}
               canSitOut={canSitOut}
               canSitIn={canSitIn}

@@ -2,9 +2,13 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { authHref } from '@/lib/authRedirect';
+import { loadSavedAvatarId } from '@/lib/avatars';
+import { MoneyAmount } from '@/components/CurrencyIcon';
+import { OnlineFriendsSidebar } from '@/components/OnlineFriends';
+import { PlayerAvatar } from '@/components/PlayerAvatar';
 import { LOBBY_NAV, isLobbyNavActive } from '@/lib/lobbyNav';
 import { useSession } from '@/lib/store';
 
@@ -43,6 +47,23 @@ function CheckIcon({ className }: { className?: string }) {
   );
 }
 
+function ChevronIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="m9 18 6-6-6-6" />
+    </svg>
+  );
+}
+
 export function LobbySidebar({
   open,
   onClose,
@@ -58,11 +79,20 @@ export function LobbySidebar({
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const userId = useSession((s) => s.userId);
   const username = useSession((s) => s.username);
+  const chipBalance = useSession((s) => s.chipBalance);
+  const [avatarId, setAvatarId] = useState(0);
   const [copied, setCopied] = useState(false);
 
+  // Prefer saved avatar (updated on profile/sign-in); re-read when identity changes.
+  useEffect(() => {
+    if (!signedIn) return;
+    setAvatarId(loadSavedAvatarId());
+  }, [signedIn, userId, pathname, chipBalance]);
+
   const onCopyUsername = useCallback(async () => {
-    const handle = (username ?? '').trim();
+    const handle = (username ?? displayName ?? '').trim();
     if (!handle) return;
     try {
       await navigator.clipboard.writeText(handle);
@@ -71,7 +101,7 @@ export function LobbySidebar({
     } catch {
       /* ignore */
     }
-  }, [username]);
+  }, [username, displayName]);
 
   const navLinks = (
     <nav className="flex flex-1 flex-col gap-1 px-3 py-4" aria-label="Lobby">
@@ -95,31 +125,70 @@ export function LobbySidebar({
     </nav>
   );
 
-  const handle = (username ?? '').trim();
+  const onlineFriends = (
+    <OnlineFriendsSidebar signedIn={signedIn} onNavigate={onClose} />
+  );
+
+  const handle = (username ?? displayName ?? '').trim();
+  const profileActive = pathname === '/profile' || pathname.startsWith('/profile/');
 
   const footer = (
-    <div className="mt-auto border-t border-mushroom/10 px-4 py-4">
+    <div className="mt-auto border-t border-mushroom/10 px-3 py-3">
       {signedIn ? (
         <div className="space-y-2">
-          <div className="min-w-0">
-            <p className="text-[10px] font-display uppercase tracking-[0.16em] text-mushroom/45">
-              Signed in
-            </p>
-            {handle ? (
-              <div className="flex min-w-0 items-center gap-1">
-                <Link
-                  href="/profile"
-                  onClick={onClose}
-                  className="min-w-0 flex-1 truncate font-display font-semibold text-mushroom transition hover:text-mushroom/90"
-                  title={`${handle} — Profile`}
-                  aria-label={`Open profile for ${handle}`}
-                >
-                  {handle || 'Player'}
-                </Link>
+          <div
+            className={`rounded-xl border transition ${
+              profileActive
+                ? 'border-mushroom/30 bg-mushroom/12'
+                : 'border-mushroom/12 bg-mushroom/[0.06] hover:border-mushroom/25 hover:bg-mushroom/10'
+            }`}
+          >
+            <div className="flex items-stretch gap-0.5 p-1.5">
+              <Link
+                href="/profile"
+                onClick={onClose}
+                className="group flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-1.5 py-1.5 transition"
+                title={handle ? `${handle} — Profile` : 'Profile'}
+                aria-label={handle ? `Open profile for ${handle}` : 'Open profile'}
+                aria-current={profileActive ? 'page' : undefined}
+              >
+                <span className="relative shrink-0">
+                  <PlayerAvatar
+                    avatarId={avatarId}
+                    userId={userId}
+                    size={40}
+                    className="ring-1 ring-mushroom/25"
+                    title={handle || 'Player'}
+                  />
+                  <span
+                    className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-sidebar bg-positive"
+                    title="Online"
+                    aria-hidden
+                  />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-display text-sm font-semibold leading-tight text-mushroom">
+                    {handle || 'Player'}
+                  </span>
+                  {chipBalance != null ? (
+                    <MoneyAmount
+                      amount={chipBalance}
+                      showChips
+                      className="mt-1 text-[11px] font-medium text-mushroom/75"
+                      iconClassName="opacity-70"
+                      chipsClassName="!h-3.5 sm:!h-3.5"
+                    />
+                  ) : (
+                    <span className="mt-1 block text-[11px] text-mushroom/40">Bankroll…</span>
+                  )}
+                </span>
+                <ChevronIcon className="h-4 w-4 shrink-0 text-mushroom/30 transition group-hover:translate-x-0.5 group-hover:text-mushroom/55" />
+              </Link>
+              {handle ? (
                 <button
                   type="button"
                   onClick={() => void onCopyUsername()}
-                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-mushroom/55 transition hover:bg-mushroom/10 hover:text-mushroom"
+                  className="inline-flex w-7 shrink-0 items-center justify-center self-stretch rounded-lg text-mushroom/40 transition hover:bg-mushroom/12 hover:text-mushroom"
                   aria-label={copied ? 'Username copied' : 'Copy username'}
                   title={copied ? 'Copied' : 'Copy username'}
                 >
@@ -129,8 +198,8 @@ export function LobbySidebar({
                     <CopyIcon className="h-3.5 w-3.5" />
                   )}
                 </button>
-              </div>
-            ) : null}
+              ) : null}
+            </div>
           </div>
           <button
             type="button"
@@ -138,24 +207,24 @@ export function LobbySidebar({
               onLogout();
               onClose();
             }}
-            className="w-full rounded-md border border-mushroom/20 px-3 py-2 text-xs font-display font-semibold uppercase tracking-wider text-mushroom/70 transition hover:border-mushroom/40 hover:text-mushroom"
+            className="w-full rounded-lg px-2 py-1.5 text-center text-[11px] font-display font-semibold uppercase tracking-[0.14em] text-mushroom/45 transition hover:bg-mushroom/8 hover:text-mushroom/80"
           >
             Sign out
           </button>
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="space-y-2">
           <Link
             href={authHref('sign-in', pathname)}
             onClick={onClose}
-            className="rounded-md border border-mushroom/25 bg-mushroom/10 px-3 py-2.5 text-center text-xs font-display font-bold uppercase tracking-wider text-mushroom transition hover:bg-mushroom/20"
+            className="block rounded-xl border border-mushroom/20 bg-mushroom/10 px-3 py-2.5 text-center text-xs font-display font-bold uppercase tracking-wider text-mushroom transition hover:border-mushroom/35 hover:bg-mushroom/18"
           >
             Sign in
           </Link>
           <Link
             href={authHref('sign-up', pathname)}
             onClick={onClose}
-            className="rounded-md px-3 py-2 text-center text-xs font-display font-semibold uppercase tracking-wider text-mushroom/60 transition hover:text-mushroom"
+            className="block rounded-lg px-3 py-2 text-center text-[11px] font-display font-semibold uppercase tracking-wider text-mushroom/55 transition hover:text-mushroom"
           >
             Create account
           </Link>
@@ -186,6 +255,7 @@ export function LobbySidebar({
       <aside className="lobby-sidebar hidden h-full min-h-0 md:flex md:w-60 md:shrink-0 md:flex-col">
         {logo}
         {navLinks}
+        {onlineFriends}
         {footer}
       </aside>
 
@@ -218,6 +288,7 @@ export function LobbySidebar({
             </button>
           </div>
           {navLinks}
+          {onlineFriends}
           {footer}
         </aside>
       </div>

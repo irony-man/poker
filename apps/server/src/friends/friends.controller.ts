@@ -99,6 +99,15 @@ export class FriendsController {
     return { ok: true };
   }
 
+  @Delete(':friendUserId')
+  async removeFriend(@CurrentUser() user: User, @Param('friendUserId') friendUserId: string) {
+    const result = await this.friends.removeFriend(user.id, friendUserId);
+    if (!result.ok) {
+      throw new NotFoundException({ error: result.error });
+    }
+    return { ok: true };
+  }
+
   @Post('challenge')
   async challenge(@CurrentUser() user: User, @Body() body: unknown) {
     const parsed = ChallengeFriendBodySchema.safeParse(body);

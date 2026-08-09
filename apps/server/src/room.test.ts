@@ -162,6 +162,41 @@ describe('RoomManager', () => {
     expect(room.state.street).not.toBe('waiting');
   });
 
+  it('queues sit-out mid-hand and applies between hands; sit-in returns for next hand', async () => {
+    const kv = new MemoryKv();
+    const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-sitout-next-${Date.now()}`));
+    const rooms = new RoomManager(kv, history);
+    const meta = rooms.create({
+      name: 'SitOutNext',
+      hostUserId: 'u1',
+      isPrivate: true,
+      config: { ...cashConfig() },
+    });
+    const room = rooms.get(meta.id)!;
+    await room.sit('u1', 'A', 0, 1000);
+    await room.sit('u2', 'B', 1, 1000);
+    expect(room.setReady('u1', true).ok).toBe(true);
+    expect(room.setReady('u2', true).ok).toBe(true);
+    expect(room.state.street).not.toBe('waiting');
+
+    // Mid-hand: request sit-out after this hand (keep playing now).
+    room.state.players[1]!.status = 'active';
+    expect(room.doSitOut('u2', 1).ok).toBe(true);
+    expect(room.state.players[1]!.status).toBe('active');
+
+    // Hand ends → any afterStateChange while payout/waiting flushes the queue.
+    room.state.street = 'payout';
+    room.state.players[0]!.status = 'seated';
+    room.state.players[1]!.status = 'seated';
+    // addBot forces returnToWaiting on payout and broadcasts.
+    expect(room.addBot('u1', undefined, 1000, 1).ok).toBe(true);
+    expect(room.state.players[1]!.status).toBe('sittingOut');
+
+    // Sit in for the next deal (does not need between-hands street only).
+    expect(room.doSitIn('u2', 1).ok).toBe(true);
+    expect(room.state.players[1]!.status).toBe('seated');
+  });
+
   it('kick is host-only and vacates seat between hands', async () => {
     const kv = new MemoryKv();
     const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-kick-${Date.now()}`));
@@ -229,6 +264,29 @@ describe('RoomManager', () => {
 
     // Reserved stack is single-use.
     await room.stand('u2', 1);
+    expect((await room.sit('u2', 'Guest', 1, 1000)).ok).toBe(true);
+    expect(room.state.players[1]?.stack).toBe(1000);
+  });
+
+  it('reseat after kick with zero stack does a fresh buy-in, not stack 0', async () => {
+    const kv = new MemoryKv();
+    const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-kick-zero-${Date.now()}`));
+    const chips = new MemoryTableChipStore();
+    const rooms = new RoomManager(kv, history, chips);
+    const meta = rooms.create({
+      name: 'KickZero',
+      hostUserId: 'host1',
+      isPrivate: true,
+      config: { ...cashConfig() },
+    });
+    const room = rooms.get(meta.id)!;
+    await room.sit('host1', 'Host', 0, 1000);
+    await room.sit('u2', 'Guest', 1, 1000);
+    room.state.players[1]!.stack = 0;
+
+    expect((await room.kickPlayer('host1', 1)).ok).toBe(true);
+    // Legacy / bad data: empty hold would previously re-seat with stack 0.
+    await chips.reserve(meta.id, 'u2', 0);
     expect((await room.sit('u2', 'Guest', 1, 1000)).ok).toBe(true);
     expect(room.state.players[1]?.stack).toBe(1000);
   });

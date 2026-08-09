@@ -26,12 +26,7 @@ export function isLobbyNavActive(
 ): boolean {
   if (href === '/') return pathname === '/';
   if (href === '/friends') {
-    if (pathname === '/friends' || pathname.startsWith('/friends/')) return true;
-    if (pathname === '/profile' || pathname.startsWith('/profile/')) {
-      const tab = new URLSearchParams(search?.replace(/^\?/, '') ?? '').get('tab');
-      return tab === 'friends';
-    }
-    return false;
+    return pathname === '/friends' || pathname.startsWith('/friends/');
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }

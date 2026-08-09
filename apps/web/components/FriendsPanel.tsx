@@ -17,6 +17,7 @@ import {
   updateFriendGroup,
   type FriendGroup,
   type FriendProfile,
+  type PendingChallenge,
 } from '@/lib/api';
 import { groupMembersDirty, useFriendsSocial } from '@/hooks/useFriendsSocial';
 
@@ -106,14 +107,17 @@ export function FriendsPanel({
 }) {
   const {
     userId,
+    sessionToken,
     refreshSocial,
     friends,
     groups,
     incoming,
     challenges,
+    setChallenges,
     searchQuery,
     setSearchQuery,
     searchResults,
+    setSearchResults,
     searchLookedUp,
     busy,
     setBusy,
@@ -271,7 +275,7 @@ export function FriendsPanel({
           // May already be registered or contest full — still open lobby
         }
         if (onNavigateContest) onNavigateContest(challenge.contestId);
-        else onNavigateContest?.(challenge.contestId);
+        else window.location.href = `/contest/${challenge.contestId}`;
       } else if (challenge.tableId) {
         onNavigateTable(challenge.tableId, challenge.inviteCode);
       } else {

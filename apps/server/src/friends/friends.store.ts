@@ -88,6 +88,9 @@ function pairKey(a: string, b: string): [string, string] {
   return a < b ? [a, b] : [b, a];
 }
 
+/** Game invites / challenges auto-drop if unanswered. */
+export const CHALLENGE_TTL_MS = 2 * 60 * 1000;
+
 /** Social graph — Postgres (social_store) when pool is set, else data/social.json. */
 export class FriendsStore {
   private requests: FriendRequest[] = [];
@@ -394,6 +397,7 @@ export class FriendsStore {
     userId: string,
   ): Promise<PendingChallengeView[]> {
     await this.ensureLoaded();
+    await this.expireStaleChallenges();
     const out: PendingChallengeView[] = [];
     for (const c of this.challenges) {
       if (c.challengedId !== userId || c.status !== 'pending') continue;
@@ -416,12 +420,36 @@ export class FriendsStore {
     return out.sort((a, b) => b.createdAt - a.createdAt);
   }
 
-  async markChallengeJoined(challengeId: string, userId: string): Promise<void> {
+  /** Mark pending invites older than {@link CHALLENGE_TTL_MS} as expired. */
+  private async expireStaleChallenges(now: number = Date.now()): Promise<number> {
+    const cutoff = now - CHALLENGE_TTL_MS;
+    let n = 0;
+    for (const c of this.challenges) {
+      if (c.status !== 'pending') continue;
+      if (c.createdAt > cutoff) continue;
+      c.status = 'expired';
+      n += 1;
+    }
+    if (n > 0) await this.persist();
+    return n;
+  }
+
+  async markChallengeJoined(
+    challengeId: string,
+    userId: string,
+  ): Promise<{ ok: true } | { ok: false; error: string }> {
     await this.ensureLoaded();
+    await this.expireStaleChallenges();
     const c = this.challenges.find((x) => x.id === challengeId);
-    if (!c || c.challengedId !== userId) return;
+    if (!c || c.challengedId !== userId) {
+      return { ok: false, error: 'Invite not found' };
+    }
+    if (c.status !== 'pending') {
+      return { ok: false, error: 'Invite has expired or is no longer pending' };
+    }
     c.status = 'joined';
     await this.persist();
+    return { ok: true };
   }
 
   /** Challenged player declines a pending table/contest invite. */
@@ -430,6 +458,7 @@ export class FriendsStore {
     userId: string,
   ): Promise<{ ok: true } | { ok: false; error: string }> {
     await this.ensureLoaded();
+    await this.expireStaleChallenges();
     const c = this.challenges.find((x) => x.id === challengeId);
     if (!c || c.challengedId !== userId) {
       return { ok: false, error: 'Invite not found' };

@@ -1,8 +1,8 @@
 import { mkdir, rm } from 'node:fs/promises';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthStore } from './auth/auth.store.js';
-import { FriendsStore } from './friends/friends.store.js';
+import { CHALLENGE_TTL_MS, FriendsStore } from './friends/friends.store.js';
 
 describe('FriendsStore', () => {
   const dir = path.join(process.cwd(), '.test-social');
@@ -139,5 +139,36 @@ describe('FriendsStore', () => {
     expect(pending[0]!.kind).toBe('contest');
     expect(pending[0]!.contestId).toBe('contest-1');
     expect(pending[0]!.tableId).toBeNull();
+  });
+
+  it('expires game invites after 2 minutes', async () => {
+    vi.useFakeTimers();
+    try {
+      const req = await friends.sendRequest('user-alice', 'user-bob');
+      await friends.respondRequest('user-bob', req.id, true);
+
+      const challenge = await friends.createChallenge(
+        'user-alice',
+        'user-bob',
+        'table-ttl',
+        '9999',
+      );
+      expect(await friends.listPendingChallenges(auth, 'user-bob')).toHaveLength(1);
+
+      vi.advanceTimersByTime(CHALLENGE_TTL_MS - 1);
+      expect(await friends.listPendingChallenges(auth, 'user-bob')).toHaveLength(1);
+
+      vi.advanceTimersByTime(2);
+      expect(await friends.listPendingChallenges(auth, 'user-bob')).toHaveLength(0);
+
+      await friends.markChallengeJoined(challenge.id, 'user-bob');
+      expect(await friends.listPendingChallenges(auth, 'user-bob')).toHaveLength(0);
+      const joinExpired = await friends.markChallengeJoined(challenge.id, 'user-bob');
+      expect(joinExpired.ok).toBe(false);
+      const declined = await friends.declineChallenge(challenge.id, 'user-bob');
+      expect(declined.ok).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

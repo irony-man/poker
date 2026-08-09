@@ -152,7 +152,10 @@ export class FriendsController {
 
   @Post('challenges/:id/join')
   async joinChallenge(@CurrentUser() user: User, @Param('id') id: string) {
-    await this.friends.markChallengeJoined(id, user.id);
+    const result = await this.friends.markChallengeJoined(id, user.id);
+    if (!result.ok) {
+      throw new BadRequestException({ error: result.error });
+    }
     return { ok: true };
   }
 

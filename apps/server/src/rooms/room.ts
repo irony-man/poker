@@ -27,6 +27,36 @@ import { avatarIdFromUserId, clampAvatarId } from '../avatars.js';
 import { chooseBotAction, isBotUserId, makeBotUserId, pickBotName } from '../bot.js';
 import type { WalletStore } from '../wallet/wallet.constants.js';
 import { UnlimitedWalletStore, WalletError } from '../wallet/wallet.store.js';
+import { appendFileSync } from 'node:fs';
+
+function agentLog(hypothesisId: string, location: string, message: string, data: Record<string, unknown>) {
+  const payload = {
+    sessionId: '61d007',
+    runId: 'pre-fix',
+    hypothesisId,
+    location,
+    message,
+    data,
+    timestamp: Date.now(),
+  };
+  // #region agent log
+  try {
+    appendFileSync('/tmp/poker-dev/debug-61d007.log', `${JSON.stringify(payload)}\n`);
+  } catch {
+    /* ignore */
+  }
+  try {
+    appendFileSync('/home/shivam/work/poker/.cursor/debug-61d007.log', `${JSON.stringify(payload)}\n`);
+  } catch {
+    /* ignore */
+  }
+  fetch('http://127.0.0.1:7727/ingest/74202427-8442-4104-883a-fdcf8ef5d80b', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '61d007' },
+    body: JSON.stringify(payload),
+  }).catch(() => {});
+  // #endregion
+}
 
 export interface TournamentTableRules {
   contestId: string;
@@ -66,6 +96,11 @@ type RateBucket = { count: number; resetAt: number };
 /** Keep seated players through brief disconnects; vacate if they don't reconnect in time. */
 const DISCONNECT_GRACE_MS = 120_000;
 
+/** Close cash/public rooms with no humans after this long. Tournament tables are exempt. */
+export const ROOM_INACTIVITY_MS = 15 * 60 * 1000;
+/** How often RoomManager checks idle rooms. */
+export const ROOM_IDLE_SWEEP_MS = 30_000;
+
 export class Room {
   meta: TableMeta;
   state: HandState;
@@ -94,6 +129,12 @@ export class Room {
   private autoStartTimer: NodeJS.Timeout | null = null;
   /** Tournament: one hand → payout transition already notified. */
   private lastNotifiedHandId: string | null = null;
+  /**
+   * Epoch ms when the table last became free of humans (connected, seated, or disconnect-grace).
+   * Null while any human is present. Set at create when empty.
+   */
+  private idleSince: number | null = null;
+  private closed = false;
 
   constructor(
     meta: TableMeta,
@@ -110,6 +151,8 @@ export class Room {
     this.chips = chips;
     this.wallet = wallet;
     this.tournamentHook = tournamentHook;
+    // Empty until a human joins — age from creation.
+    this.idleSince = meta.createdAt;
   }
 
   /** Notify this user of their current wallet balance when connected. */
@@ -119,7 +162,7 @@ export class Room {
   }
 
   async creditCashOut(userId: string, stack: number): Promise<void> {
-    if (isBotUserId(userId) || stack <= 0) return;
+    if (isBotUserId(userId) || !Number.isFinite(stack) || stack <= 0) return;
     try {
       const result = await this.wallet.credit(userId, stack, 'cash_out', this.meta.id);
       this.notifyWallet(userId, result.balance);
@@ -150,6 +193,7 @@ export class Room {
     if (!result.ok) return { ok: false, error: result.error };
     this.state = result.state;
     this.avatarByUser.set(userId, avatarIdFromUserId(userId));
+    this.refreshIdleClock();
     void this.afterStateChange();
     return { ok: true };
   }
@@ -272,11 +316,103 @@ export class Room {
     return this.state.players.filter((p) => p.status !== 'empty').length;
   }
 
+  /** True while any human is connected, seated, or inside disconnect grace. */
+  hasHumanPresence(): boolean {
+    for (const userId of this.connections.keys()) {
+      if (!isBotUserId(userId)) return true;
+    }
+    for (const p of this.state.players) {
+      if (p.userId && p.status !== 'empty' && !isBotUserId(p.userId)) return true;
+    }
+    for (const userId of this.disconnectTimers.keys()) {
+      if (!isBotUserId(userId)) return true;
+    }
+    return false;
+  }
+
+  /**
+   * True when no humans have been present for `ms` (tournament rooms never idle-terminate).
+   */
+  isIdle(ms: number = ROOM_INACTIVITY_MS, now: number = Date.now()): boolean {
+    if (this.closed || this.isTournament()) return false;
+    if (this.hasHumanPresence()) return false;
+    if (this.idleSince == null) return false;
+    return now - this.idleSince >= ms;
+  }
+
+  /** Start/clear the idle clock when human presence changes. */
+  private refreshIdleClock(now: number = Date.now()): void {
+    if (this.hasHumanPresence()) {
+      this.idleSince = null;
+    } else if (this.idleSince == null) {
+      this.idleSince = now;
+    }
+  }
+
+  /**
+   * Tear down the live room: cash out humans, clear timers, notify sockets.
+   * RoomManager removes the room from maps after this.
+   */
+  shutdown(message = 'Table closed due to inactivity'): void {
+    if (this.closed) return;
+    this.closed = true;
+
+    this.clearTurnTimer();
+    if (this.autoStartTimer) {
+      clearTimeout(this.autoStartTimer);
+      this.autoStartTimer = null;
+    }
+    for (const timer of this.disconnectTimers.values()) clearTimeout(timer);
+    this.disconnectTimers.clear();
+    for (const timer of this.timers.values()) clearTimeout(timer);
+    this.timers.clear();
+
+    if (this.state.street !== 'waiting' && this.state.street !== 'payout') {
+      this.state = returnToWaiting(this.state);
+    } else if (this.state.street === 'payout') {
+      this.state = returnToWaiting(this.state);
+    }
+
+    for (const p of [...this.state.players]) {
+      if (!p.userId || p.status === 'empty') continue;
+      const userId = p.userId;
+      const stack = p.stack;
+      if (!isBotUserId(userId)) {
+        void this.creditCashOut(userId, stack);
+      }
+      const vacated = standUp(this.state, p.seat);
+      if (vacated.ok) this.state = vacated.state;
+    }
+
+    this.readyUserIds.clear();
+    this.pendingSitOutUserIds.clear();
+    this.voiceParticipants.clear();
+
+    for (const conn of this.connections.values()) {
+      try {
+        conn.send({ type: 'error', message, code: 'room_closed' });
+      } catch {
+        /* ignore */
+      }
+    }
+    this.connections.clear();
+    this.spectators.clear();
+  }
+
   attach(conn: ConnectionContext): void {
+    if (this.closed) {
+      conn.send({
+        type: 'error',
+        message: 'Table closed due to inactivity',
+        code: 'room_closed',
+      });
+      return;
+    }
     this.cancelDisconnect(conn.userId);
     this.connections.set(conn.userId, conn);
     this.spectators.add(conn.userId);
     this.avatarByUser.set(conn.userId, clampAvatarId(conn.avatarId));
+    this.refreshIdleClock();
     this.pushTo(conn.userId);
   }
 
@@ -294,6 +430,14 @@ export class Room {
     if (this.seatOf(userId) !== null) return { ok: true };
     const empty = this.state.players.find((p) => p.status === 'empty');
     if (!empty) return { ok: false, error: 'Table full' };
+    // #region agent log
+    agentLog('B', 'room.ts:autoSit', 'autoSit calling sit', {
+      tableId: this.meta.id,
+      seat: empty.seat,
+      configBuyIn: this.config.buyIn,
+      version: this.state.version,
+    });
+    // #endregion
     return this.sit(userId, name, empty.seat, this.config.buyIn);
   }
 
@@ -311,6 +455,7 @@ export class Room {
     this.leaveVoice(userId);
     this.connections.delete(userId);
     this.spectators.delete(userId);
+    this.refreshIdleClock();
   }
 
   /** Start grace period after socket drop; seat is vacated if player does not reconnect. */
@@ -320,9 +465,12 @@ export class Room {
       this.disconnectTimers.delete(userId);
       if (!this.connections.has(userId)) {
         this.leave(userId);
+      } else {
+        this.refreshIdleClock();
       }
     }, DISCONNECT_GRACE_MS);
     this.disconnectTimers.set(userId, timer);
+    this.refreshIdleClock();
   }
 
   private cancelDisconnect(userId: string): void {
@@ -335,6 +483,10 @@ export class Room {
 
   /** Fold/stand if seated, then detach the websocket — preferred leave path. */
   leave(userId: string): { ok: boolean; error?: string } {
+    if (this.closed) {
+      this.detach(userId);
+      return { ok: true };
+    }
     this.cancelDisconnect(userId);
     this.readyUserIds.delete(userId);
     const seat = this.seatOf(userId);
@@ -358,6 +510,7 @@ export class Room {
       }
     }
     this.detach(userId);
+    this.refreshIdleClock();
     return { ok: true };
   }
 
@@ -808,9 +961,13 @@ export class Room {
     buyIn: number,
   ): Promise<{ ok: boolean; error?: string }> {
     if (!this.rateLimit(`${userId}:sit`)) return { ok: false, error: 'Rate limited' };
+    // Idempotent same-seat retry: server autoSit + client fallback often race on one seat.
+    const existingSeat = this.seatOf(userId);
+    if (existingSeat !== null) {
+      if (existingSeat === seat) return { ok: true };
+      return { ok: false, error: 'Already seated' };
+    }
     if (this.isTournament()) {
-      // Already force-seated entrants re-attach via autoSit; free sit not allowed.
-      if (this.seatOf(userId) !== null) return { ok: true };
       return { ok: false, error: 'Tournament seats are assigned' };
     }
 
@@ -821,13 +978,31 @@ export class Room {
       console.error('[chips] failed to load reserved stack', err);
     }
 
-    // A held stack of 0 is not a rebuy credit — clear and debit a full table buy-in instead.
-    // (Previously sit used `reserved ?? buyIn`, so 0 blocked debit and seated empty stacks.)
-    if (reserved != null && reserved <= 0) {
+    // 0 / non-finite holds are not rebuy credits — debit a full table buy-in instead.
+    // (NaN fails `<= 0`, so it previously skipped debit and seated stack NaN → UI 0.)
+    if (reserved == null || !Number.isFinite(reserved) || reserved <= 0) {
       reserved = null;
     }
 
     const stack = reserved ?? buyIn;
+    // #region agent log
+    agentLog('B', 'room.ts:sit', 'sit resolved stack', {
+      tableId: this.meta.id,
+      seat,
+      buyIn,
+      buyInType: typeof buyIn,
+      reserved,
+      stack,
+      stackType: typeof stack,
+      stackFinite: Number.isFinite(stack),
+      configBuyIn: this.config.buyIn,
+      alreadySeated: this.seatOf(userId),
+      version: this.state.version,
+    });
+    // #endregion
+    if (!Number.isFinite(stack) || stack <= 0) {
+      return { ok: false, error: 'Invalid buy-in' };
+    }
     if (reserved == null && buyIn !== this.config.buyIn) {
       return { ok: false, error: 'Buy-in must match table buy-in' };
     }
@@ -849,6 +1024,16 @@ export class Room {
 
     const result = sitDown(this.state, seat, userId, name, stack);
     if (!result.ok) {
+      // #region agent log
+      agentLog('C', 'room.ts:sit', 'sitDown failed', {
+        tableId: this.meta.id,
+        seat,
+        stack,
+        error: result.error ?? null,
+        seatStatus: this.state.players[seat]?.status ?? null,
+        seatStack: this.state.players[seat]?.stack ?? null,
+      });
+      // #endregion
       if (reserved != null) {
         try {
           await this.chips.reserve(this.meta.id, userId, reserved);
@@ -867,11 +1052,21 @@ export class Room {
       return { ok: false, error: result.error };
     }
     this.state = result.state;
+    // #region agent log
+    agentLog('B', 'room.ts:sit', 'sitDown ok', {
+      tableId: this.meta.id,
+      seat,
+      stack: this.state.players[seat]?.stack ?? null,
+      status: this.state.players[seat]?.status ?? null,
+      version: this.state.version,
+    });
+    // #endregion
     const conn = this.connections.get(userId);
     if (conn) this.avatarByUser.set(userId, clampAvatarId(conn.avatarId));
     else if (!this.avatarByUser.has(userId)) {
       this.avatarByUser.set(userId, avatarIdFromUserId(userId));
     }
+    this.refreshIdleClock();
     void this.afterStateChange();
     this.maybeAutoStart();
     return { ok: true };
@@ -885,6 +1080,7 @@ export class Room {
     if (!result.ok) return { ok: false, error: result.error };
     this.state = result.state;
     void this.creditCashOut(userId, stack);
+    this.refreshIdleClock();
     void this.afterStateChange();
     return { ok: true };
   }
@@ -1303,6 +1499,35 @@ export class RoomManager {
     return [...this.rooms.values()].find(
       (r) => !r.meta.isPrivate && r.meta.stakeId === stakeId,
     );
+  }
+
+  /** Drop a live room immediately (caller may re-seed public tables). */
+  destroy(tableId: string, message?: string): boolean {
+    const room = this.rooms.get(tableId);
+    if (!room) return false;
+    room.shutdown(message);
+    this.rooms.delete(tableId);
+    this.byInvite.delete(room.meta.inviteCode);
+    return true;
+  }
+
+  /**
+   * Shut down cash/public rooms idle for {@link ROOM_INACTIVITY_MS}.
+   * Returns closed table ids (tournament rooms are never removed here).
+   */
+  terminateIdleRooms(
+    now: number = Date.now(),
+    inactivityMs: number = ROOM_INACTIVITY_MS,
+  ): string[] {
+    const closed: string[] = [];
+    for (const room of [...this.rooms.values()]) {
+      if (!room.isIdle(inactivityMs, now)) continue;
+      const id = room.meta.id;
+      if (this.destroy(id, 'Table closed due to inactivity')) {
+        closed.push(id);
+      }
+    }
+    return closed;
   }
 
   listPublicLobby(): {

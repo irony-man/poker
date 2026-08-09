@@ -291,6 +291,42 @@ describe('RoomManager', () => {
     expect(room.state.players[1]?.stack).toBe(1000);
   });
 
+  it('non-finite reserved stack falls back to table buy-in', async () => {
+    const kv = new MemoryKv();
+    const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-kick-nan-${Date.now()}`));
+    const chips = new MemoryTableChipStore();
+    const rooms = new RoomManager(kv, history, chips);
+    const meta = rooms.create({
+      name: 'KickNan',
+      hostUserId: 'host1',
+      isPrivate: true,
+      config: { ...cashConfig() },
+    });
+    const room = rooms.get(meta.id)!;
+    await room.sit('host1', 'Host', 0, 1000);
+    // Simulate corrupt hold (NaN bypasses `reserved <= 0`).
+    await chips.reserve(meta.id, 'u2', Number.NaN);
+    expect((await room.sit('u2', 'Guest', 1, 1000)).ok).toBe(true);
+    expect(room.state.players[1]?.stack).toBe(1000);
+  });
+
+  it('duplicate sit after autoSit is idempotent (no Seat taken)', async () => {
+    const kv = new MemoryKv();
+    const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-dup-sit-${Date.now()}`));
+    const rooms = new RoomManager(kv, history);
+    const meta = rooms.create({
+      name: 'DupSit',
+      hostUserId: 'host1',
+      isPrivate: true,
+      config: { ...cashConfig() },
+    });
+    const room = rooms.get(meta.id)!;
+    expect((await room.autoSit('host1', 'Host')).ok).toBe(true);
+    expect(room.state.players[0]?.stack).toBe(1000);
+    expect((await room.sit('host1', 'Host', 0, 1000)).ok).toBe(true);
+    expect(room.state.players[0]?.stack).toBe(1000);
+  });
+
   it('start_hand toggles ready on cash tables', async () => {
     const kv = new MemoryKv();
     const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-toggle-${Date.now()}`));
@@ -311,5 +347,61 @@ describe('RoomManager', () => {
     expect(room.startHand('u1').ok).toBe(true); // ready again
     expect(room.startHand('u2').ok).toBe(true); // both ready → deal
     expect(room.state.street).not.toBe('waiting');
+  });
+
+  it('terminates rooms after 15 minutes without humans', async () => {
+    const { ROOM_INACTIVITY_MS } = await import('./rooms/room.js');
+    const kv = new MemoryKv();
+    const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-idle-${Date.now()}`));
+    const rooms = new RoomManager(kv, history);
+    const meta = rooms.create({
+      name: 'Idle',
+      hostUserId: 'host1',
+      isPrivate: true,
+      config: { ...cashConfig() },
+    });
+    const room = rooms.get(meta.id)!;
+    const msgs: unknown[] = [];
+    room.attach({
+      userId: 'u1',
+      name: 'A',
+      avatarId: 0,
+      send: (m) => {
+        msgs.push(m);
+      },
+    });
+    expect((await room.sit('u1', 'A', 0, 1000)).ok).toBe(true);
+    expect(room.isIdle()).toBe(false);
+
+    // Still connected — even long after create time, not idle.
+    const farFuture = meta.createdAt + ROOM_INACTIVITY_MS + 60_000;
+    expect(rooms.terminateIdleRooms(farFuture)).toEqual([]);
+    expect(rooms.get(meta.id)).toBeDefined();
+
+    room.leave('u1');
+    expect(room.hasHumanPresence()).toBe(false);
+    expect(room.isIdle(ROOM_INACTIVITY_MS, Date.now())).toBe(false);
+
+    const justIdle = Date.now() + ROOM_INACTIVITY_MS;
+    expect(rooms.terminateIdleRooms(justIdle)).toEqual([meta.id]);
+    expect(rooms.get(meta.id)).toBeUndefined();
+    expect(rooms.getByInvite(meta.inviteCode)).toBeUndefined();
+  });
+
+  it('does not idle-terminate tournament rooms', async () => {
+    const { ROOM_INACTIVITY_MS } = await import('./rooms/room.js');
+    const kv = new MemoryKv();
+    const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-tour-idle-${Date.now()}`));
+    const rooms = new RoomManager(kv, history);
+    const meta = rooms.create({
+      name: 'Tourny',
+      hostUserId: 'host1',
+      isPrivate: true,
+      config: { ...cashConfig() },
+      tournament: { contestId: 'c1', mode: 'chips' },
+    });
+    const later = meta.createdAt + ROOM_INACTIVITY_MS + 1;
+    expect(rooms.terminateIdleRooms(later)).toEqual([]);
+    expect(rooms.get(meta.id)).toBeDefined();
   });
 });

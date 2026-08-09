@@ -327,6 +327,28 @@ describe('RoomManager', () => {
     expect(room.state.players[0]?.stack).toBe(1000);
   });
 
+  it('concurrent autoSit and sit resolve without Seat taken', async () => {
+    const kv = new MemoryKv();
+    const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-race-sit-${Date.now()}`));
+    const rooms = new RoomManager(kv, history);
+    const meta = rooms.create({
+      name: 'RaceSit',
+      hostUserId: 'host1',
+      isPrivate: true,
+      config: { ...cashConfig() },
+    });
+    const room = rooms.get(meta.id)!;
+    const [a, b] = await Promise.all([
+      room.autoSit('host1', 'Host'),
+      room.sit('host1', 'Host', 0, 1000),
+    ]);
+    expect(a.ok).toBe(true);
+    expect(b.ok).toBe(true);
+    expect(b.error).toBeUndefined();
+    expect(room.state.players[0]?.userId).toBe('host1');
+    expect(room.state.players[0]?.stack).toBe(1000);
+  });
+
   it('start_hand toggles ready on cash tables', async () => {
     const kv = new MemoryKv();
     const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-toggle-${Date.now()}`));

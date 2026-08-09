@@ -108,29 +108,13 @@ export function TableView({
     autoSitSent.current = false;
   }, [tableId]);
 
-  // Reset so a reconnect can sit again if the first attempt was dropped.
+  // Reset so a reconnect / manual sit can retry if the first attempt was dropped.
   useEffect(() => {
     if (connection !== 'open') autoSitSent.current = false;
   }, [connection]);
 
-  // Client fallback — server also auto-sits on join_table (unless spectating).
-  useEffect(() => {
-    if (!table || !userId || isSpectating || connection !== 'open') return;
-    if (mySeat !== undefined) return;
-    if (autoSitSent.current) return;
-    const empty = table.players.find((p) => p.status === 'empty');
-    if (!empty || !table.config.buyIn) return;
-    // #region agent log
-    fetch('http://127.0.0.1:7727/ingest/74202427-8442-4104-883a-fdcf8ef5d80b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'61d007'},body:JSON.stringify({sessionId:'61d007',runId:'pre-fix',hypothesisId:'A',location:'TableView.tsx:autoSit',message:'client auto-sit send',data:{tableId,seat:empty.seat,buyIn:table.config.buyIn,buyInType:typeof table.config.buyIn,version:table.version,mySeat:mySeat??null},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
-    const ok = send({
-      type: 'sit',
-      tableId,
-      seat: empty.seat,
-      buyIn: table.config.buyIn,
-    });
-    if (ok) autoSitSent.current = true;
-  }, [table, userId, mySeat, isSpectating, connection, tableId, send]);
+  // Server auto-sits on join_table; client only sits via explicit Sit controls.
+  // (A parallel client auto-sit raced the server and produced "Seat taken" toasts.)
 
   const angles = useMemo(
     () => seatAnglesForHero(table?.config.maxSeats ?? 6, mySeat),

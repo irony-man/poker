@@ -27,36 +27,6 @@ import { avatarIdFromUserId, clampAvatarId } from '../avatars.js';
 import { chooseBotAction, isBotUserId, makeBotUserId, pickBotName } from '../bot.js';
 import type { WalletStore } from '../wallet/wallet.constants.js';
 import { UnlimitedWalletStore, WalletError } from '../wallet/wallet.store.js';
-import { appendFileSync } from 'node:fs';
-
-function agentLog(hypothesisId: string, location: string, message: string, data: Record<string, unknown>) {
-  const payload = {
-    sessionId: '61d007',
-    runId: 'pre-fix',
-    hypothesisId,
-    location,
-    message,
-    data,
-    timestamp: Date.now(),
-  };
-  // #region agent log
-  try {
-    appendFileSync('/tmp/poker-dev/debug-61d007.log', `${JSON.stringify(payload)}\n`);
-  } catch {
-    /* ignore */
-  }
-  try {
-    appendFileSync('/home/shivam/work/poker/.cursor/debug-61d007.log', `${JSON.stringify(payload)}\n`);
-  } catch {
-    /* ignore */
-  }
-  fetch('http://127.0.0.1:7727/ingest/74202427-8442-4104-883a-fdcf8ef5d80b', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '61d007' },
-    body: JSON.stringify(payload),
-  }).catch(() => {});
-  // #endregion
-}
 
 export interface TournamentTableRules {
   contestId: string;
@@ -135,6 +105,8 @@ export class Room {
    */
   private idleSince: number | null = null;
   private closed = false;
+  /** Serialize buy-in sits so autoSit + client sit cannot interleave across awaits. */
+  private sitChain: Promise<void> = Promise.resolve();
 
   constructor(
     meta: TableMeta,
@@ -430,14 +402,6 @@ export class Room {
     if (this.seatOf(userId) !== null) return { ok: true };
     const empty = this.state.players.find((p) => p.status === 'empty');
     if (!empty) return { ok: false, error: 'Table full' };
-    // #region agent log
-    agentLog('B', 'room.ts:autoSit', 'autoSit calling sit', {
-      tableId: this.meta.id,
-      seat: empty.seat,
-      configBuyIn: this.config.buyIn,
-      version: this.state.version,
-    });
-    // #endregion
     return this.sit(userId, name, empty.seat, this.config.buyIn);
   }
 
@@ -960,6 +924,21 @@ export class Room {
     seat: number,
     buyIn: number,
   ): Promise<{ ok: boolean; error?: string }> {
+    // Queue sits so join_table autoSit and client sit cannot both pass seatOf across awaits.
+    const run = this.sitChain.then(() => this.sitUnlocked(userId, name, seat, buyIn));
+    this.sitChain = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }
+
+  private async sitUnlocked(
+    userId: string,
+    name: string,
+    seat: number,
+    buyIn: number,
+  ): Promise<{ ok: boolean; error?: string }> {
     if (!this.rateLimit(`${userId}:sit`)) return { ok: false, error: 'Rate limited' };
     // Idempotent same-seat retry: server autoSit + client fallback often race on one seat.
     const existingSeat = this.seatOf(userId);
@@ -985,26 +964,25 @@ export class Room {
     }
 
     const stack = reserved ?? buyIn;
-    // #region agent log
-    agentLog('B', 'room.ts:sit', 'sit resolved stack', {
-      tableId: this.meta.id,
-      seat,
-      buyIn,
-      buyInType: typeof buyIn,
-      reserved,
-      stack,
-      stackType: typeof stack,
-      stackFinite: Number.isFinite(stack),
-      configBuyIn: this.config.buyIn,
-      alreadySeated: this.seatOf(userId),
-      version: this.state.version,
-    });
-    // #endregion
     if (!Number.isFinite(stack) || stack <= 0) {
       return { ok: false, error: 'Invalid buy-in' };
     }
     if (reserved == null && buyIn !== this.config.buyIn) {
       return { ok: false, error: 'Buy-in must match table buy-in' };
+    }
+
+    // Re-check after awaits: a queued peer sit may have seated us already.
+    const seatedAfterAwait = this.seatOf(userId);
+    if (seatedAfterAwait !== null) {
+      if (reserved != null) {
+        try {
+          await this.chips.reserve(this.meta.id, userId, reserved);
+        } catch (err) {
+          console.error('[chips] failed to restore reserved stack after concurrent sit', err);
+        }
+      }
+      if (seatedAfterAwait === seat) return { ok: true };
+      return { ok: false, error: 'Already seated' };
     }
 
     let debited = false;
@@ -1022,18 +1000,49 @@ export class Room {
       }
     }
 
+    // Another await gap (debit): if we now own the seat, refund duplicate debit.
+    const seatedAfterDebit = this.seatOf(userId);
+    if (seatedAfterDebit !== null) {
+      if (debited) {
+        try {
+          const refund = await this.wallet.credit(userId, buyIn, 'cash_out', this.meta.id);
+          this.notifyWallet(userId, refund.balance);
+        } catch (err) {
+          console.error('[wallet] buy-in refund failed', err);
+        }
+      }
+      if (reserved != null) {
+        try {
+          await this.chips.reserve(this.meta.id, userId, reserved);
+        } catch (err) {
+          console.error('[chips] failed to restore reserved stack after concurrent sit', err);
+        }
+      }
+      if (seatedAfterDebit === seat) return { ok: true };
+      return { ok: false, error: 'Already seated' };
+    }
+
     const result = sitDown(this.state, seat, userId, name, stack);
     if (!result.ok) {
-      // #region agent log
-      agentLog('C', 'room.ts:sit', 'sitDown failed', {
-        tableId: this.meta.id,
-        seat,
-        stack,
-        error: result.error ?? null,
-        seatStatus: this.state.players[seat]?.status ?? null,
-        seatStack: this.state.players[seat]?.stack ?? null,
-      });
-      // #endregion
+      // Lost a same-seat race to our own sit — treat as success after undoing this attempt.
+      if (this.seatOf(userId) === seat) {
+        if (reserved != null) {
+          try {
+            await this.chips.reserve(this.meta.id, userId, reserved);
+          } catch (err) {
+            console.error('[chips] failed to restore reserved stack after sit race', err);
+          }
+        }
+        if (debited) {
+          try {
+            const refund = await this.wallet.credit(userId, buyIn, 'cash_out', this.meta.id);
+            this.notifyWallet(userId, refund.balance);
+          } catch (err) {
+            console.error('[wallet] buy-in refund failed', err);
+          }
+        }
+        return { ok: true };
+      }
       if (reserved != null) {
         try {
           await this.chips.reserve(this.meta.id, userId, reserved);
@@ -1052,15 +1061,6 @@ export class Room {
       return { ok: false, error: result.error };
     }
     this.state = result.state;
-    // #region agent log
-    agentLog('B', 'room.ts:sit', 'sitDown ok', {
-      tableId: this.meta.id,
-      seat,
-      stack: this.state.players[seat]?.stack ?? null,
-      status: this.state.players[seat]?.status ?? null,
-      version: this.state.version,
-    });
-    // #endregion
     const conn = this.connections.get(userId);
     if (conn) this.avatarByUser.set(userId, clampAvatarId(conn.avatarId));
     else if (!this.avatarByUser.has(userId)) {

@@ -102,15 +102,6 @@ export function usePokerSocket(
             const table = msg.table as PublicTable;
             // Drop late packets after navigation / reconnect epoch change.
             if (table?.tableId !== tableIdRef.current) return;
-            // #region agent log
-            {
-              const me = table?.players?.find((p) => p.userId && String(p.userId).length > 0);
-              const stacks = (table?.players ?? [])
-                .filter((p) => p.status !== 'empty')
-                .map((p) => ({ seat: p.seat, stack: p.stack, status: p.status, userId: p.userId ? 'set' : null }));
-              fetch('http://127.0.0.1:7727/ingest/74202427-8442-4104-883a-fdcf8ef5d80b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'61d007'},body:JSON.stringify({sessionId:'61d007',runId:'pre-fix',hypothesisId:'D',location:'ws.ts:state_sync',message:'incoming state_sync',data:{tableId:table?.tableId,version:table?.version,buyIn:table?.config?.buyIn,stacks,sampleMe:me?{stack:me.stack,status:me.status}:null},timestamp:Date.now()})}).catch(()=>{});
-            }
-            // #endregion
             applyStateSync(table, (msg.private as PrivateView) ?? null);
             break;
           }

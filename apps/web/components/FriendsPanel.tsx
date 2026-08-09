@@ -961,9 +961,25 @@ export function FriendsPanel({
                   key={f.userId}
                   className="flex items-center gap-3 rounded-2xl border border-sidebar/12 bg-mushroom/50 px-3 py-2.5"
                 >
-                  <PlayerAvatar userId={f.userId} avatarId={f.avatarId} size={36} title={f.name} />
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink-strong">
-                    {f.name}
+                  <span className="relative shrink-0">
+                    <PlayerAvatar userId={f.userId} avatarId={f.avatarId} size={36} title={f.name} />
+                    <span
+                      className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white ${
+                        f.online ? 'bg-positive' : 'bg-sidebar/25'
+                      }`}
+                      title={f.online ? 'Online' : 'Offline'}
+                      aria-hidden
+                    />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium text-ink-strong">
+                      {f.name}
+                    </span>
+                    {f.online ? (
+                      <span className="mt-0.5 block text-[10px] font-semibold uppercase tracking-wider text-positive">
+                        Online
+                      </span>
+                    ) : null}
                   </span>
                   <div className="flex shrink-0 items-center gap-1.5">
                     <IconAction

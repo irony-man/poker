@@ -28,36 +28,35 @@ export function VoiceCallBar({
         ? peers[0]!.name
         : `${peers.length} players`;
 
-  const btn = compact ? 'btn-ghost text-[10px] py-1 px-2' : 'btn-ghost text-xs py-1.5 px-3';
-
   return (
-    <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+    <div className="flex min-w-0 flex-wrap items-center gap-1">
       {!inVoice ? (
         <button
           type="button"
           onClick={() => void onJoinVoice()}
           disabled={state === 'joining'}
-          className={`${btn} border-sidebar/30 text-sidebar hover:bg-sidebar/10`}
+          className="play-chrome-control disabled:opacity-50"
           title="Join table voice chat"
         >
-          {state === 'joining' ? '…' : compact ? 'Mic' : 'Voice'}
+          {state === 'joining' ? 'Connecting…' : compact ? 'Mic' : 'Voice'}
         </button>
       ) : (
         <>
           {!compact && (
-            <span className="status-chip border-sidebar/25 bg-sidebar/8 text-sidebar">
-              <span className="h-1.5 w-1.5 rounded-full bg-positive animate-live-blink" />
-              Voice · {peerLabel}
+            <span
+              className="play-chrome-control max-w-[11rem] cursor-default gap-1.5 border-positive/25 bg-positive/10 text-sidebar hover:border-positive/25 hover:bg-positive/10"
+              title={`Voice · ${peerLabel}`}
+            >
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-positive animate-live-blink" />
+              <span className="truncate font-display text-[10px] font-semibold uppercase tracking-[0.08em]">
+                Voice · {peerLabel}
+              </span>
             </span>
           )}
           <button
             type="button"
             onClick={onToggleMute}
-            className={
-              muted
-                ? `rounded-full border border-sidebar/20 ${compact ? 'px-2 py-1 text-[10px]' : 'px-2.5 py-1.5 text-[10px]'} text-ink-strong-muted hover:bg-sidebar/8`
-                : `rounded-full border border-sidebar/35 bg-sidebar/10 ${compact ? 'px-2 py-1 text-[10px]' : 'px-2.5 py-1.5 text-[10px]'} text-sidebar`
-            }
+            className={muted ? 'play-chrome-control' : 'play-chrome-control play-chrome-control-active'}
             title={muted ? 'Unmute microphone' : 'Mute microphone'}
           >
             {muted ? 'Unmute' : compact ? 'Mic' : 'Mic on'}
@@ -65,15 +64,16 @@ export function VoiceCallBar({
           <button
             type="button"
             onClick={onLeave}
-            className={`rounded-full ${compact ? 'px-1.5 py-1 text-[10px]' : 'px-2.5 py-1.5 text-[10px]'} text-ink-strong-muted hover:text-danger`}
+            className="play-chrome-control border-danger/25 text-danger hover:border-danger/40 hover:bg-danger/10"
+            title="Leave voice call"
           >
             {compact ? '×' : 'Leave call'}
           </button>
         </>
       )}
       {error && (
-        <span className="text-[10px] text-red-300" title={error}>
-          Media error
+        <span className="px-1 text-[10px] font-medium text-danger" title={error}>
+          Mic error
         </span>
       )}
     </div>

@@ -7,6 +7,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { authHref } from '@/lib/authRedirect';
 import { loadSavedAvatarId } from '@/lib/avatars';
 import { MoneyAmount } from '@/components/CurrencyIcon';
+import { OnlineFriendsSidebar } from '@/components/OnlineFriends';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 import { LOBBY_NAV, isLobbyNavActive } from '@/lib/lobbyNav';
 import { useSession } from '@/lib/store';
@@ -122,6 +123,10 @@ export function LobbySidebar({
         );
       })}
     </nav>
+  );
+
+  const onlineFriends = (
+    <OnlineFriendsSidebar signedIn={signedIn} onNavigate={onClose} />
   );
 
   const handle = (username ?? displayName ?? '').trim();
@@ -250,6 +255,7 @@ export function LobbySidebar({
       <aside className="lobby-sidebar hidden h-full min-h-0 md:flex md:w-60 md:shrink-0 md:flex-col">
         {logo}
         {navLinks}
+        {onlineFriends}
         {footer}
       </aside>
 
@@ -282,6 +288,7 @@ export function LobbySidebar({
             </button>
           </div>
           {navLinks}
+          {onlineFriends}
           {footer}
         </aside>
       </div>

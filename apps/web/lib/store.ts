@@ -15,6 +15,8 @@ export interface PublicPlayer {
   avatarId?: number | null;
   /** Between hands on cash tables: opted in for next deal (bots always true). */
   ready?: boolean;
+  /** Requested sit-out after the current hand ends. */
+  pendingSitOut?: boolean;
 }
 
 export interface PublicTable {

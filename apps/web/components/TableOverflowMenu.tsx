@@ -45,7 +45,7 @@ export function TableOverflowMenu({
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}
-        className="flex h-11 w-11 items-center justify-center rounded-full border border-sidebar/20 bg-white/80 text-lg font-bold text-ink-strong hover:border-sidebar/40 hover:text-sidebar"
+        className="play-chrome-control-icon text-base leading-none"
         title="More"
       >
         ⋯
@@ -54,7 +54,7 @@ export function TableOverflowMenu({
         <div
           id={panelId}
           role="menu"
-          className="absolute right-0 top-[calc(100%+0.35rem)] z-50 min-w-[12.5rem] overflow-hidden rounded-xl border border-sidebar/12 bg-white py-1 shadow-[0_12px_40px_rgba(29,4,50,0.12)]"
+          className="absolute right-0 top-[calc(100%+0.4rem)] z-50 min-w-[12.5rem] overflow-hidden rounded-xl border border-sidebar/12 bg-white py-1 shadow-[0_14px_40px_rgba(29,4,50,0.14)]"
         >
           {items.map((item) => (
             <button
@@ -68,7 +68,7 @@ export function TableOverflowMenu({
               }}
               className={`flex w-full items-center px-3.5 py-2.5 text-left text-sm font-medium disabled:opacity-40 ${
                 item.tone === 'danger'
-                  ? 'text-danger hover:bg-danger/10'
+                  ? 'bg-danger font-semibold text-cream hover:brightness-110'
                   : item.tone === 'accent'
                     ? 'text-sidebar hover:bg-sidebar/8'
                     : item.tone === 'gold'

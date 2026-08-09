@@ -20,13 +20,48 @@ type OnlineFriendsContextValue = {
   online: FriendProfile[];
   loaded: boolean;
   friendCount: number;
+  incomingCount: number;
+  challengeCount: number;
+  pendingCount: number;
+  refreshSocial: () => Promise<void>;
 };
 
 const OnlineFriendsContext = createContext<OnlineFriendsContextValue>({
   online: [],
   loaded: false,
   friendCount: 0,
+  incomingCount: 0,
+  challengeCount: 0,
+  pendingCount: 0,
+  refreshSocial: async () => {},
 });
+
+/** Compact numeric count for nav/tabs; caps at 9+. */
+export function PendingCountBadge({
+  count,
+  className = '',
+  tone = 'dark',
+}: {
+  count: number;
+  className?: string;
+  /** dark = sidebar/mushroom chrome; light = cream profile tabs */
+  tone?: 'dark' | 'light';
+}) {
+  if (count <= 0) return null;
+  const label = count > 9 ? '9+' : String(count);
+  const toneClass =
+    tone === 'light'
+      ? 'bg-danger text-cream'
+      : 'bg-gold text-sidebar';
+  return (
+    <span
+      className={`inline-flex min-w-[1.15rem] items-center justify-center rounded-full px-1 py-0.5 text-[10px] font-bold leading-none tabular-nums ${toneClass} ${className}`.trim()}
+      aria-label={`${count} pending invite${count === 1 ? '' : 's'}`}
+    >
+      {label}
+    </span>
+  );
+}
 
 /** Single poll for the whole app shell — wrap AppChrome children. */
 export function OnlineFriendsProvider({
@@ -38,17 +73,23 @@ export function OnlineFriendsProvider({
 }) {
   const sessionToken = useSession((s) => s.sessionToken);
   const [friends, setFriends] = useState<FriendProfile[]>([]);
+  const [incomingCount, setIncomingCount] = useState(0);
+  const [challengeCount, setChallengeCount] = useState(0);
   const [loaded, setLoaded] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!signedIn || !sessionToken) {
       setFriends([]);
+      setIncomingCount(0);
+      setChallengeCount(0);
       setLoaded(false);
       return;
     }
     try {
       const data = await listFriends({ sessionToken });
       setFriends(data.friends);
+      setIncomingCount(data.incoming.length);
+      setChallengeCount(data.pendingChallenges.length);
       setLoaded(true);
     } catch {
       setLoaded(true);
@@ -66,15 +107,23 @@ export function OnlineFriendsProvider({
     const online = friends
       .filter((f) => f.online)
       .sort((a, b) => a.name.localeCompare(b.name));
-    return { online, loaded, friendCount: friends.length };
-  }, [friends, loaded]);
+    return {
+      online,
+      loaded,
+      friendCount: friends.length,
+      incomingCount,
+      challengeCount,
+      pendingCount: incomingCount + challengeCount,
+      refreshSocial: refresh,
+    };
+  }, [friends, loaded, incomingCount, challengeCount, refresh]);
 
   return (
     <OnlineFriendsContext.Provider value={value}>{children}</OnlineFriendsContext.Provider>
   );
 }
 
-function useOnlineFriends() {
+export function useOnlineFriends() {
   return useContext(OnlineFriendsContext);
 }
 
@@ -205,26 +254,37 @@ export function OnlineFriendsStrip({
  * Floating compact panel for immersive table / offline play.
  */
 export function OnlineFriendsOverlay({ signedIn }: { signedIn: boolean }) {
-  const { online, loaded } = useOnlineFriends();
+  const { online, loaded, pendingCount } = useOnlineFriends();
   const [open, setOpen] = useState(false);
 
   if (!signedIn || !loaded) return null;
+
+  const onlineLabel =
+    online.length === 0
+      ? 'No friends online'
+      : `${online.length} friend${online.length === 1 ? '' : 's'} online`;
+  const pendingLabel =
+    pendingCount > 0
+      ? `, ${pendingCount} pending invite${pendingCount === 1 ? '' : 's'}`
+      : '';
 
   return (
     <div className="pointer-events-auto absolute right-2 top-2 z-40 sm:right-3 sm:top-3">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5 rounded-full border border-mushroom/25 bg-sidebar/90 px-2.5 py-1.5 text-[10px] font-display font-bold uppercase tracking-[0.14em] text-mushroom shadow-raised backdrop-blur-sm transition hover:border-mushroom/40"
+        className="relative inline-flex items-center gap-1.5 rounded-full border border-mushroom/25 bg-sidebar/90 px-2.5 py-1.5 text-[10px] font-display font-bold uppercase tracking-[0.14em] text-mushroom shadow-raised backdrop-blur-sm transition hover:border-mushroom/40"
         aria-expanded={open}
-        aria-label={
-          online.length === 0
-            ? 'No friends online'
-            : `${online.length} friend${online.length === 1 ? '' : 's'} online`
-        }
+        aria-label={`${onlineLabel}${pendingLabel}`}
       >
         <span className="h-1.5 w-1.5 rounded-full bg-positive" aria-hidden />
         {online.length}
+        {pendingCount > 0 ? (
+          <PendingCountBadge
+            count={pendingCount}
+            className="absolute -right-1 -top-1"
+          />
+        ) : null}
       </button>
 
       {open ? (
@@ -232,6 +292,16 @@ export function OnlineFriendsOverlay({ signedIn }: { signedIn: boolean }) {
           <p className="mb-1.5 px-1 font-display text-[0.6rem] font-bold uppercase tracking-[0.16em] text-mushroom/45">
             Online friends
           </p>
+          {pendingCount > 0 ? (
+            <Link
+              href="/friends"
+              className="mb-1.5 flex items-center justify-between gap-2 rounded-lg bg-gold/15 px-1.5 py-1 text-[11px] font-medium text-mushroom transition hover:bg-gold/25"
+              onClick={() => setOpen(false)}
+            >
+              <span>Pending invites</span>
+              <PendingCountBadge count={pendingCount} />
+            </Link>
+          ) : null}
           {online.length === 0 ? (
             <p className="px-1 pb-1 text-[11px] text-mushroom/45">Nobody online</p>
           ) : (

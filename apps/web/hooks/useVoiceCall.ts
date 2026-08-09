@@ -36,7 +36,14 @@ export function useVoiceCall(
     if (!userId) return;
     const session = new VoiceCallSession(userId, sendSignal);
     sessionRef.current = session;
-    return session.subscribe(setSnap);
+    const unsub = session.subscribe(setSnap);
+    return () => {
+      unsub();
+      inVoiceRef.current = false;
+      session.leave();
+      if (sessionRef.current === session) sessionRef.current = null;
+      setSnap(IDLE);
+    };
   }, [userId, sendSignal]);
 
   useEffect(() => {

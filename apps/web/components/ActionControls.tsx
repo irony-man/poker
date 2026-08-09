@@ -2,15 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { MoveTimerStrip } from './TurnTimer';
-import { useSession } from '@/lib/store';
+import { useSession, type PrivateView, type PublicTable } from '@/lib/store';
+import { formatMoneyAmount } from '@/lib/currency';
 import { useIsLandscapePhone, useIsNarrow } from '@/lib/tableLayout';
 
 function waitingCopy(opts: {
   spectating: boolean;
   street: string | undefined;
   isTurn: boolean;
-  mySeat: number | undefined;
-  toAct: number | null | undefined;
   connection?: string;
 }): string {
   if (opts.connection && opts.connection !== 'open') {
@@ -27,21 +26,32 @@ export function ActionControls({
   onAction,
   spectating = false,
   bare = false,
-  connectionOpen = true,
+  connection = 'open',
+  table: tableProp,
+  private: privateProp,
+  userId: userIdProp,
 }: {
   onAction: (action: string, amount?: number) => void;
   spectating?: boolean;
   /** Skip outer hud-panel chrome (when nested in FloatingActionDock). */
   bare?: boolean;
-  /** When false, block commits and show reconnect copy. */
-  connectionOpen?: boolean;
+  /** Socket connection state — blocks commits unless `open`. */
+  connection?: 'idle' | 'connecting' | 'open' | 'closed';
+  /** Optional overrides (offline / tests); defaults to zustand session. */
+  table?: PublicTable | null;
+  private?: PrivateView | null;
+  userId?: string | null;
 }) {
-  const table = useSession((s) => s.table);
-  const priv = useSession((s) => s.private);
-  const userId = useSession((s) => s.userId);
+  const tableFromStore = useSession((s) => s.table);
+  const privFromStore = useSession((s) => s.private);
+  const userIdFromStore = useSession((s) => s.userId);
+  const table = tableProp !== undefined ? tableProp : tableFromStore;
+  const priv = privateProp !== undefined ? privateProp : privFromStore;
+  const userId = userIdProp !== undefined ? userIdProp : userIdFromStore;
   const narrow = useIsNarrow();
   const landscape = useIsLandscapePhone();
 
+  const connectionOpen = connection === 'open';
   const mySeat = table?.players.find((p) => p.userId === userId)?.seat;
   const myStack = table?.players.find((p) => p.userId === userId)?.stack ?? 0;
   const isTurn = connectionOpen && table?.toAct === mySeat && !!priv;
@@ -74,9 +84,7 @@ export function ActionControls({
       spectating,
       street: table?.street,
       isTurn: false,
-      mySeat,
-      toAct: table?.toAct,
-      connection: connectionOpen ? 'open' : 'closed',
+      connection,
     });
     return (
       <div
@@ -148,7 +156,7 @@ export function ActionControls({
 
   const submitBet = (raw: number) => {
     const v = clampBet(raw);
-    commit(betAction, v, `${betLabel} ${v}`);
+    commit(betAction, v, `${betLabel} ${formatMoneyAmount(v)}`);
   };
 
   if (confirm) {
@@ -217,7 +225,7 @@ export function ActionControls({
     const midLabel = legal.types.includes('check')
       ? 'Check'
       : legal.types.includes('call')
-        ? `Call ${callAmount}`
+        ? `Call ${formatMoneyAmount(callAmount)}`
         : null;
     const thirdIsBet = canBet;
     const thirdIsAllin = !canBet && legal.types.includes('allin');
@@ -228,7 +236,7 @@ export function ActionControls({
         {canBet && (
           <div className="flex shrink-0 items-center gap-1 border-b border-sidebar/12 px-1.5 py-0.5">
             <span className="shrink-0 font-display text-sm font-semibold tabular-nums text-sidebar">
-              ${amount}
+              {formatMoneyAmount(amount)}
             </span>
             <input
               type="range"
@@ -332,9 +340,9 @@ export function ActionControls({
                   {betLabel} to
                 </span>
                 <span className="font-mono text-sm font-bold tabular-nums text-sidebar">
-                  {amount}
+                  {formatMoneyAmount(amount)}
                   <span className="ml-1.5 text-[10px] font-medium text-ink-strong-muted">
-                    {min}–{max}
+                    {formatMoneyAmount(min)}–{formatMoneyAmount(max)}
                   </span>
                 </span>
               </div>
@@ -378,7 +386,7 @@ export function ActionControls({
                 onClick={() => commit('call')}
                 className={`${softAction} min-h-11`}
               >
-                Call {callAmount}
+                Call {formatMoneyAmount(callAmount)}
               </button>
             )}
             {canBet && (
@@ -387,7 +395,7 @@ export function ActionControls({
                 onClick={() => submitBet(amount)}
                 className={`btn-primary ${actionBtn} min-h-11`}
               >
-                {betLabel} {amount}
+                {betLabel} {formatMoneyAmount(amount)}
               </button>
             )}
             {legal.types.includes('allin') && (
@@ -417,9 +425,9 @@ export function ActionControls({
                 {betLabel} to
               </span>
               <span className="font-mono text-sm font-bold tabular-nums text-sidebar">
-                {amount}
+                {formatMoneyAmount(amount)}
                 <span className="ml-1.5 text-[10px] font-medium text-ink-strong-muted">
-                  {min}–{max}
+                  {formatMoneyAmount(min)}–{formatMoneyAmount(max)}
                 </span>
               </span>
             </div>
@@ -501,7 +509,7 @@ export function ActionControls({
               onClick={() => commit('call')}
               className={`${softAction} min-h-9 py-2 text-xs`}
             >
-              Call {callAmount}
+              Call {formatMoneyAmount(callAmount)}
             </button>
           )}
           {canBet && (
@@ -510,7 +518,7 @@ export function ActionControls({
               onClick={() => submitBet(amount)}
               className="btn-primary !rounded py-2 text-xs"
             >
-              {betLabel} {amount}
+              {betLabel} {formatMoneyAmount(amount)}
             </button>
           )}
           {legal.types.includes('allin') && (

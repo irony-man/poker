@@ -9,6 +9,8 @@ import {
   OnlineFriendsOverlay,
   OnlineFriendsProvider,
   OnlineFriendsStrip,
+  PendingCountBadge,
+  useOnlineFriends,
 } from '@/components/OnlineFriends';
 import {
   clearStoredSession,
@@ -18,6 +20,37 @@ import { useSession } from '@/lib/store';
 import { fetchMe, logout as apiLogout, pingPresence } from '@/lib/api';
 import { saveAvatarId } from '@/lib/avatars';
 import { attachPlayFullscreen } from '@/lib/mobileFullscreen';
+
+function MobileMenuButton({
+  onOpen,
+  signedIn,
+}: {
+  onOpen: () => void;
+  signedIn: boolean;
+}) {
+  const { pendingCount } = useOnlineFriends();
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="relative flex h-10 w-10 items-center justify-center rounded-md border border-mushroom/20 text-mushroom"
+      aria-label={
+        signedIn && pendingCount > 0
+          ? `Open menu, ${pendingCount} pending invite${pendingCount === 1 ? '' : 's'}`
+          : 'Open menu'
+      }
+    >
+      <span className="flex flex-col gap-1" aria-hidden>
+        <span className="block h-0.5 w-4 bg-mushroom" />
+        <span className="block h-0.5 w-4 bg-mushroom" />
+        <span className="block h-0.5 w-4 bg-mushroom" />
+      </span>
+      {signedIn && pendingCount > 0 ? (
+        <PendingCountBadge count={pendingCount} className="absolute -right-1 -top-1" />
+      ) : null}
+    </button>
+  );
+}
 
 /** App shell: lobby sidebar + main, or immersive play with no chrome. */
 export function AppChrome({ children }: { children: ReactNode }) {
@@ -162,18 +195,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
         <div className="lobby-main flex h-full min-h-0 min-w-0 flex-1 flex-col">
           <header className="flex shrink-0 flex-col gap-0 bg-sidebar md:hidden">
             <div className="flex items-center justify-between gap-3 px-3 py-2.5">
-              <button
-                type="button"
-                onClick={() => setMenuOpen(true)}
-                className="flex h-10 w-10 items-center justify-center rounded-md border border-mushroom/20 text-mushroom"
-                aria-label="Open menu"
-              >
-                <span className="flex flex-col gap-1" aria-hidden>
-                  <span className="block h-0.5 w-4 bg-mushroom" />
-                  <span className="block h-0.5 w-4 bg-mushroom" />
-                  <span className="block h-0.5 w-4 bg-mushroom" />
-                </span>
-              </button>
+              <MobileMenuButton signedIn={signedIn} onOpen={() => setMenuOpen(true)} />
               <Link href="/" className="flex flex-1 justify-center">
                 <Image
                   src="/pokr-logo.png"

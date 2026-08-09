@@ -34,8 +34,11 @@ import { TableShell } from './TableShell';
 import { WinHandModal } from './WinHandModal';
 import { playTick } from '@/lib/audio';
 import { avatarIdFromUserId, loadSavedAvatarId } from '@/lib/avatars';
+import { formatMoneyAmount } from '@/lib/currency';
+import { useHandPresentation } from '@/hooks/useHandPresentation';
 import { useSession, type ChatMessage, type PrivateView, type PublicTable } from '@/lib/store';
 import { seatAnglesForHero, useIsLandscapePhone, useIsNarrow } from '@/lib/tableLayout';
+import type { ActionType } from '@poker/engine';
 
 const HUMAN_ID = 'offline-human';
 
@@ -45,23 +48,20 @@ function randomBytes(n: number): Uint8Array {
   return buf;
 }
 
-function formatAction(
-  action: string,
-  amount: number,
-): string {
+function formatAction(action: string, amount: number): string {
   switch (action) {
     case 'fold':
       return 'folds';
     case 'check':
       return 'checks';
     case 'call':
-      return `calls ${amount}`;
+      return `calls ${formatMoneyAmount(amount)}`;
     case 'bet':
-      return `bets ${amount}`;
+      return `bets ${formatMoneyAmount(amount)}`;
     case 'raise':
-      return `raises to ${amount}`;
+      return `raises to ${formatMoneyAmount(amount)}`;
     case 'allin':
-      return amount > 0 ? `goes all-in (${amount})` : 'goes all-in';
+      return amount > 0 ? `goes all-in (${formatMoneyAmount(amount)})` : 'goes all-in';
     default:
       return action;
   }
@@ -74,13 +74,13 @@ function formatActionPopup(action: string, amount: number): string {
     case 'check':
       return 'Check';
     case 'call':
-      return `Call ${amount}`;
+      return `Call ${formatMoneyAmount(amount)}`;
     case 'bet':
-      return `Bet ${amount}`;
+      return `Bet ${formatMoneyAmount(amount)}`;
     case 'raise':
-      return `Raise ${amount}`;
+      return `Raise ${formatMoneyAmount(amount)}`;
     case 'allin':
-      return amount > 0 ? `All-in ${amount}` : 'All-in';
+      return amount > 0 ? `All-in ${formatMoneyAmount(amount)}` : 'All-in';
     default:
       return action;
   }
@@ -114,7 +114,7 @@ function announceEvents(
         push({
           userId: 'system',
           name: 'Dealer',
-          text: `${name} wins ${w.amount}${hand}`,
+          text: `${name} wins ${formatMoneyAmount(w.amount)}${hand}`,
           at: Date.now(),
         });
       } else if (e.winners.length > 1) {
@@ -122,7 +122,7 @@ function announceEvents(
           const name = state.players[w.seat]?.name ?? `Seat ${w.seat}`;
           const hand =
             w.handName && w.handName !== 'Uncontested' ? ` (${w.handName})` : '';
-          return `${name} ${w.amount}${hand}`;
+          return `${name} ${formatMoneyAmount(w.amount)}${hand}`;
         });
         push({
           userId: 'system',
@@ -137,7 +137,7 @@ function announceEvents(
       push({
         userId: 'system',
         name: 'Dealer',
-        text: `Blinds — ${sb} posts ${e.sb}, ${bb} posts ${e.bb}`,
+        text: `Blinds — ${sb} posts ${formatMoneyAmount(e.sb)}, ${bb} posts ${formatMoneyAmount(e.bb)}`,
         at: Date.now(),
       });
     }
@@ -221,7 +221,7 @@ export function OfflineTableView({
 
   const publicTable: PublicTable | null = useMemo(() => {
     if (!bootstrapped) return null;
-    const view = toPublicView('offline', state, config) as unknown as PublicTable;
+    const view = toPublicView('offline', state, config);
     const humanAvatar = loadSavedAvatarId();
     return {
       ...view,
@@ -242,7 +242,7 @@ export function OfflineTableView({
     if (!bootstrapped) return null;
     const seat = state.players.find((p) => p.userId === HUMAN_ID)?.seat;
     if (seat === undefined) return null;
-    return toPrivateView(state, seat, config) as unknown as PrivateView;
+    return toPrivateView(state, seat, config);
   }, [bootstrapped, state, config]);
 
   const mySeat = state.players.find((p) => p.userId === HUMAN_ID)?.seat;
@@ -329,11 +329,12 @@ export function OfflineTableView({
 
   const onAction = (action: string, amount?: number) => {
     if (mySeat === undefined || state.toAct !== mySeat) return;
+    const type = action as ActionType;
     const result = applyAction(
       state,
       mySeat,
       {
-        type: action as 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'allin',
+        type,
         amount,
         seq: state.actionSeq,
       },
@@ -378,55 +379,14 @@ export function OfflineTableView({
     () => seatAnglesForHero(config.maxSeats, mySeat),
     [config.maxSeats, mySeat],
   );
-  const winBySeat = useMemo(() => {
-    const map = new Map<number, { amount: number; handName?: string }>();
-    for (const w of publicTable?.winners ?? []) {
-      const prev = map.get(w.seat);
-      const handName =
-        w.handName && w.handName !== 'Uncontested' ? w.handName : prev?.handName;
-      map.set(w.seat, {
-        amount: (prev?.amount ?? 0) + w.amount,
-        handName,
-      });
-    }
-    return map;
-  }, [publicTable?.winners]);
-
-  const handNameBySeat = useMemo(() => {
-    const map = new Map<number, string>();
-    for (const h of publicTable?.showdownHands ?? []) map.set(h.seat, h.handName);
-    for (const [seat, w] of winBySeat) {
-      if (w.handName && !map.has(seat)) map.set(seat, w.handName);
-    }
-    return map;
-  }, [publicTable?.showdownHands, winBySeat]);
-
-  const winningCards = useMemo(() => {
-    const codes = new Set<string>();
-    if (!publicTable || (publicTable.street !== 'payout' && publicTable.street !== 'showdown')) {
-      return codes;
-    }
-    const winnerSeats = new Set(publicTable.winners.map((w) => w.seat));
-    for (const h of publicTable.showdownHands ?? []) {
-      if (!winnerSeats.has(h.seat)) continue;
-      for (const c of h.cards ?? []) codes.add(c);
-    }
-    return codes;
-  }, [publicTable]);
-  const highlightMode = winningCards.size > 0;
-  const showWinModal =
-    publicTable?.street === 'payout' &&
-    publicTable.winners.length > 0 &&
-    publicTable.handId !== dismissedWinHandId;
-  const youWon = !!publicTable?.winners.some(
-    (w) => publicTable.players[w.seat]?.userId === HUMAN_ID,
-  );
-
-  // Patch session private/table for ActionControls which reads zustand
-  useEffect(() => {
-    if (!publicTable) return;
-    useSession.setState({ table: publicTable, private: priv });
-  }, [publicTable, priv]);
+  const {
+    winBySeat,
+    handNameBySeat,
+    winningCards,
+    highlightMode,
+    showWinModal,
+    youWon,
+  } = useHandPresentation(publicTable, HUMAN_ID, dismissedWinHandId);
 
   if (!publicTable || !bootstrapped) {
     return <p className="text-ink-strong-muted">Dealing offline table…</p>;
@@ -496,7 +456,16 @@ export function OfflineTableView({
       chatOpen={chatOpen}
       onChatOpenChange={setChatOpen}
       actionsExpanded={!!isMyTurn}
-      actions={<ActionControls onAction={onAction} bare />}
+      actions={
+        <ActionControls
+          onAction={onAction}
+          bare
+          table={publicTable}
+          private={priv}
+          userId={HUMAN_ID}
+          connection="open"
+        />
+      }
     >
       <div className="flex min-h-0 flex-1 flex-col">
         <header className="play-chrome-bar mb-2">

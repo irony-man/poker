@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { contestModeLabel } from '@/lib/contestLabels';
 import {
   type ContestMode,
   type ContestView,
@@ -66,10 +67,6 @@ function handsBlurb(handLimit: number): string {
   return `${handLimit} hands, then standings by stack`;
 }
 
-function modeLabel(mode: ContestMode): string {
-  return mode === 'rounds' ? 'Rounds' : 'Wuffies';
-}
-
 function statusLabel(status: ContestView['status']): string {
   switch (status) {
     case 'registering':
@@ -83,6 +80,38 @@ function statusLabel(status: ContestView['status']): string {
     default:
       return status;
   }
+}
+
+function ContestListItem({
+  contest,
+  subtitle,
+  disabled,
+  onOpen,
+}: {
+  contest: ContestView;
+  subtitle: string;
+  disabled?: boolean;
+  onOpen: () => void;
+}) {
+  return (
+    <li>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={onOpen}
+        className="flex w-full items-center justify-between gap-3 rounded-lg border border-sidebar/10 bg-mushroom/60 px-3 py-2.5 text-left transition hover:border-sidebar/25 hover:bg-sidebar/[0.04] disabled:opacity-50"
+      >
+        <span className="min-w-0">
+          <span className="block truncate font-medium text-ink-strong">{contest.name}</span>
+          <span className="mt-0.5 block text-[11px] text-ink-strong-muted">{subtitle}</span>
+        </span>
+        <span className="shrink-0 text-xs tabular-nums text-ink-strong-muted">
+          {contestModeLabel(contest.mode)} · {contest.entrants.length}/{contest.fieldSize}
+          {contest.mode === 'rounds' && contest.handLimit ? ` · ${contest.handLimit}h` : ''}
+        </span>
+      </button>
+    </li>
+  );
 }
 
 export function ContestsPanel({
@@ -109,6 +138,7 @@ export function ContestsPanel({
   const [invite, setInvite] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
   const [open, setOpen] = useState<ContestView[]>([]);
   const [joined, setJoined] = useState<ContestView[]>([]);
 
@@ -136,32 +166,20 @@ export function ContestsPanel({
     let cancelled = false;
     const load = async () => {
       try {
-        const { contests } = await listPublicContests();
-        if (!cancelled) setOpen(contests);
-      } catch {
-        /* ignore list errors */
-      }
-    };
-    void load();
-    const t = setInterval(load, 8000);
-    return () => {
-      cancelled = true;
-      clearInterval(t);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!sessionToken) {
-      setJoined([]);
-      return;
-    }
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const { contests } = await listMyContests({ sessionToken });
-        if (!cancelled) setJoined(contests);
-      } catch {
-        if (!cancelled) setJoined([]);
+        const publicList = await listPublicContests();
+        if (cancelled) return;
+        setOpen(publicList.contests);
+        if (sessionToken) {
+          const mine = await listMyContests({ sessionToken });
+          if (!cancelled) setJoined(mine.contests);
+        } else {
+          setJoined([]);
+        }
+        setListError(null);
+      } catch (err) {
+        if (!cancelled) {
+          setListError(err instanceof Error ? err.message : 'Could not load contests');
+        }
       }
     };
     void load();
@@ -184,7 +202,7 @@ export function ContestsPanel({
       const session = await onEnsureSession();
       const { contest } = await createContest(
         {
-          name: `${session.name}'s ${modeLabel(mode)} Contest`,
+          name: `${session.name}'s ${contestModeLabel(mode)} Contest`,
           mode,
           fieldSize,
           startingStack: 1000,
@@ -245,26 +263,13 @@ export function ContestsPanel({
           </div>
           <ul className="max-h-48 space-y-1.5 overflow-y-auto pr-0.5">
             {joined.map((c) => (
-              <li key={c.id}>
-                <button
-                  type="button"
-                  disabled={disabled || busy}
-                  onClick={() => onOpenContest(c.id)}
-                  className="flex w-full items-center justify-between gap-3 rounded-lg border border-sidebar/10 bg-mushroom/60 px-3 py-2.5 text-left transition hover:border-sidebar/25 hover:bg-sidebar/[0.04] disabled:opacity-50"
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate font-medium text-ink-strong">{c.name}</span>
-                    <span className="mt-0.5 block text-[11px] text-ink-strong-muted">
-                      {statusLabel(c.status)}
-                      {userId && c.hostUserId === userId ? ' · host' : ' · joined'}
-                    </span>
-                  </span>
-                  <span className="shrink-0 text-xs tabular-nums text-ink-strong-muted">
-                    {modeLabel(c.mode)} · {c.entrants.length}/{c.fieldSize}
-                    {c.mode === 'rounds' && c.handLimit ? ` · ${c.handLimit}h` : ''}
-                  </span>
-                </button>
-              </li>
+              <ContestListItem
+                key={c.id}
+                contest={c}
+                subtitle={`${statusLabel(c.status)}${userId && c.hostUserId === userId ? ' · host' : ' · joined'}`}
+                disabled={disabled || busy}
+                onOpen={() => onOpenContest(c.id)}
+              />
             ))}
           </ul>
         </div>
@@ -418,6 +423,28 @@ export function ContestsPanel({
         </div>
       </form>
 
+      <form onSubmit={onJoin} className="flex flex-col gap-2 border-t border-sidebar/10 pt-5">
+        <label className="block">
+          <span className="hud-label">Join with room code</span>
+          <input
+            value={invite}
+            onChange={(e) => setInvite(e.target.value.replace(/\D/g, '').slice(0, 8))}
+            className="hud-input"
+            inputMode="numeric"
+            placeholder="4–8 digits"
+            disabled={disabled || busy}
+            autoComplete="off"
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={disabled || busy || invite.trim().length < 4}
+          className="btn-ghost min-h-10 w-full sm:w-auto"
+        >
+          Join contest
+        </button>
+      </form>
+
 
       {open.length > 0 && (
         <div className="border-t border-sidebar/10 pt-5">
@@ -429,31 +456,24 @@ export function ContestsPanel({
           </div>
           <ul className="max-h-44 space-y-1.5 overflow-y-auto pr-0.5">
             {open.map((c) => (
-              <li key={c.id}>
-                <button
-                  type="button"
-                  disabled={disabled || busy}
-                  onClick={() => onOpenContest(c.id)}
-                  className="flex w-full items-center justify-between gap-3 rounded-lg border border-sidebar/10 bg-mushroom/40 px-3 py-2.5 text-left transition hover:border-sidebar/25 hover:bg-sidebar/[0.04] disabled:opacity-50"
-                >
-                  <span className="min-w-0 truncate font-medium text-ink-strong">{c.name}</span>
-                  <span className="shrink-0 text-xs tabular-nums text-ink-strong-muted">
-                    {modeLabel(c.mode)} · {c.entrants.length}/{c.fieldSize}
-                    {c.mode === 'rounds' && c.handLimit ? ` · ${c.handLimit}h` : ''}
-                  </span>
-                </button>
-              </li>
+              <ContestListItem
+                key={c.id}
+                contest={c}
+                subtitle={statusLabel(c.status)}
+                disabled={disabled || busy}
+                onOpen={() => onOpenContest(c.id)}
+              />
             ))}
           </ul>
         </div>
       )}
 
-      {error && (
+      {(error || listError) && (
         <p
           role="alert"
           className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm leading-snug text-danger"
         >
-          {error}
+          {error ?? listError}
         </p>
       )}
     </LobbySplitCard>

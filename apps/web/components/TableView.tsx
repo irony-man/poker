@@ -17,9 +17,11 @@ import { VoiceCallBar } from './VoiceCallBar';
 import { WinHandModal, ReadyPlayersRoster } from './WinHandModal';
 import { playTick } from '@/lib/audio';
 import { buildTableJoinShareText } from '@/lib/tableLink';
+import { coerceMoney, formatMoneyAmount } from '@/lib/currency';
 import { usePokerSocket } from '@/lib/ws';
 import { useSession } from '@/lib/store';
 import { useVoiceCall } from '@/hooks/useVoiceCall';
+import { useHandPresentation } from '@/hooks/useHandPresentation';
 import { seatAnglesForHero, useIsLandscapePhone, useIsNarrow } from '@/lib/tableLayout';
 
 export function TableView({
@@ -86,7 +88,7 @@ export function TableView({
   const myPlayer = mySeat !== undefined ? table?.players[mySeat] : undefined;
   const isSpectating = spectating && mySeat === undefined;
   const chipBalance = useSession((s) => s.chipBalance);
-  const walletChips = typeof chipBalance === 'number' ? Math.max(0, chipBalance) : 0;
+  const walletChips = coerceMoney(chipBalance);
   const topUpAmount =
     table != null && walletChips > 0 ? Math.min(table.config.buyIn, walletChips) : 0;
   const sitAtFirstOpenSeat = () => {
@@ -118,6 +120,9 @@ export function TableView({
     if (autoSitSent.current) return;
     const empty = table.players.find((p) => p.status === 'empty');
     if (!empty || !table.config.buyIn) return;
+    // #region agent log
+    fetch('http://127.0.0.1:7727/ingest/74202427-8442-4104-883a-fdcf8ef5d80b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'61d007'},body:JSON.stringify({sessionId:'61d007',runId:'pre-fix',hypothesisId:'A',location:'TableView.tsx:autoSit',message:'client auto-sit send',data:{tableId,seat:empty.seat,buyIn:table.config.buyIn,buyInType:typeof table.config.buyIn,version:table.version,mySeat:mySeat??null},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     const ok = send({
       type: 'sit',
       tableId,
@@ -136,46 +141,14 @@ export function TableView({
     if (mySeat !== undefined && spectating) setSpectating(false);
   }, [mySeat, spectating]);
 
-  const winBySeat = useMemo(() => {
-    const map = new Map<number, { amount: number; handName?: string }>();
-    for (const w of table?.winners ?? []) {
-      const prev = map.get(w.seat);
-      const handName =
-        w.handName && w.handName !== 'Uncontested' ? w.handName : prev?.handName;
-      map.set(w.seat, {
-        amount: (prev?.amount ?? 0) + w.amount,
-        handName,
-      });
-    }
-    return map;
-  }, [table?.winners]);
-
-  const handNameBySeat = useMemo(() => {
-    const map = new Map<number, string>();
-    for (const h of table?.showdownHands ?? []) map.set(h.seat, h.handName);
-    for (const [seat, w] of winBySeat) {
-      if (w.handName && !map.has(seat)) map.set(seat, w.handName);
-    }
-    return map;
-  }, [table?.showdownHands, winBySeat]);
-
-  /** Best-five card codes for any seat that won chips this hand. */
-  const winningCards = useMemo(() => {
-    const codes = new Set<string>();
-    if (!table || (table.street !== 'payout' && table.street !== 'showdown')) return codes;
-    const winnerSeats = new Set(table.winners.map((w) => w.seat));
-    for (const h of table.showdownHands ?? []) {
-      if (!winnerSeats.has(h.seat)) continue;
-      for (const c of h.cards ?? []) codes.add(c);
-    }
-    return codes;
-  }, [table]);
-  const highlightMode = winningCards.size > 0;
-  const showWinModal =
-    table?.street === 'payout' &&
-    (table.winners?.length ?? 0) > 0 &&
-    table.handId !== dismissedWinHandId;
-  const youWon = !!table?.winners.some((w) => table.players[w.seat]?.userId === userId);
+  const {
+    winBySeat,
+    handNameBySeat,
+    winningCards,
+    highlightMode,
+    showWinModal,
+    youWon,
+  } = useHandPresentation(table, userId, dismissedWinHandId);
   const betweenHands = table?.street === 'waiting' || table?.street === 'payout';
   const brokeAtTable =
     !table?.tournament?.noTopUp &&
@@ -225,8 +198,6 @@ export function TableView({
       ? 'Stay in (cancel sit-out)'
       : 'Sit out';
   const sitInLabel = betweenHands ? 'Sit in' : 'Sit in — next hand';
-  const playersInHand =
-    table?.players.filter((p) => p.userId && p.stack > 0 && p.status !== 'sittingOut').length ?? 0;
 
   const emptySeats = table?.players.filter((p) => p.status === 'empty').length ?? 0;
   const botSeats = table?.players.filter((p) => p.userId?.startsWith('bot:')).length ?? 0;
@@ -314,18 +285,19 @@ export function TableView({
     }
   };
 
-  const leaveRoom = () => {
+  const leaveRoom = (to: '/' | '/profile' = '/') => {
     if (
       !window.confirm(
         'Leave this table? Your remaining stack returns to your bankroll when you leave between hands.',
       )
     ) {
-      return;
+      return false;
     }
     voice.leaveVoice();
     leaveTable();
     clearTable();
-    router.push('/');
+    router.push(to);
+    return true;
   };
 
   const isMyTurn = table?.toAct === mySeat && !!priv?.legal?.types.length;
@@ -485,7 +457,7 @@ export function TableView({
     if (canTopUp) {
       mobileOverflowItems.push({
         id: 'top-up',
-        label: topUpAmount < (table?.config.buyIn ?? 0) ? `Top up ${topUpAmount}` : 'Top up',
+        label: topUpAmount < (table?.config.buyIn ?? 0) ? `Top up ${formatMoneyAmount(topUpAmount)}` : 'Top up',
         onClick: doTopUp,
         tone: 'gold',
       });
@@ -494,8 +466,7 @@ export function TableView({
         id: 'need-wuffies',
         label: 'Need Wuffies — Profile',
         onClick: () => {
-          leaveRoom();
-          router.push('/profile');
+          leaveRoom('/profile');
         },
         tone: 'gold',
       });
@@ -520,7 +491,7 @@ export function TableView({
           onAction={onAction}
           spectating={isSpectating}
           bare
-          connectionOpen={connection === 'open'}
+          connection={connection}
         />
       }
     >
@@ -572,7 +543,7 @@ export function TableView({
                 onToggleMute={voice.toggleMute}
               />
               <HowToPlayHelp />
-              <button type="button" onClick={leaveRoom} className="play-chrome-leave">
+              <button type="button" onClick={() => leaveRoom()} className="play-chrome-leave">
                 Leave
               </button>
             </div>
@@ -906,7 +877,7 @@ export function TableView({
                   onClick={doTopUp}
                   className="rounded-full border border-sidebar/25 bg-sidebar/8 px-3 py-1.5 text-xs text-sidebar hover:bg-sidebar/12"
                 >
-                  {topUpAmount < table!.config.buyIn ? `Top up ${topUpAmount}` : 'Top up'}
+                  {topUpAmount < table!.config.buyIn ? `Top up ${formatMoneyAmount(topUpAmount)}` : 'Top up'}
                 </button>
               )}
               {brokeNoWallet && (

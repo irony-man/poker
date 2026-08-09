@@ -8,10 +8,6 @@ import { STAKE_PRESETS } from '@poker/protocol';
 
 import { formatMoneyLabel } from '@/lib/currency';
 
-function formatMoney(n: number): string {
-  return formatMoneyLabel(n);
-}
-
 export function PublicTablesPanel({
   disabled,
   onJoin,
@@ -105,7 +101,7 @@ export function PublicTablesPanel({
               </div>
               <p className="text-sm text-ink-strong-muted">
                 Buy-in{' '}
-                <span className="font-medium text-ink-strong">{formatMoney(stake.buyIn)}</span>
+                <span className="font-medium text-ink-strong">{formatMoneyLabel(stake.buyIn)}</span>
               </p>
               <button
                 type="button"

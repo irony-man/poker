@@ -7,9 +7,10 @@ import { AvatarPicker, PlayerAvatar } from '@/components/PlayerAvatar';
 import { FriendsPanel } from '@/components/FriendsPanel';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
+import { PendingCountBadge, useOnlineFriends } from '@/components/OnlineFriends';
+import { contestModeLabel } from '@/lib/contestLabels';
 import {
   fetchMe,
-  listFriends,
   listMyContests,
   updateMe,
   type ContestView,
@@ -36,10 +37,6 @@ function parseProfileTab(raw: string | null): ProfileTab {
   return 'overview';
 }
 
-function modeLabel(mode: ContestView['mode']): string {
-  return mode === 'rounds' ? 'Rounds' : 'Wuffies';
-}
-
 function placeLabel(place: number | null): string {
   if (place == null) return '—';
   return `#${place}`;
@@ -51,6 +48,7 @@ function ProfilePageInner() {
   const { authReady, signedIn } = useLobbySession();
   const sessionToken = useSession((s) => s.sessionToken);
   const setChipBalance = useSession((s) => s.setChipBalance);
+  const { pendingCount } = useOnlineFriends();
   const [profile, setProfile] = useState<MeProfile | null>(null);
   const [friendCount, setFriendCount] = useState(0);
   const [contests, setContests] = useState<ContestView[]>([]);
@@ -90,15 +88,13 @@ function ProfilePageInner() {
     setLoading(true);
     setError(null);
     try {
-      const [me, social, mine] = await Promise.all([
+      const [me, mine] = await Promise.all([
         fetchMe(token),
-        listFriends({ sessionToken: token }).catch(() => null),
         listMyContests({ sessionToken: token }).catch(() => null),
       ]);
       setProfile(me);
       setDraftAvatarId(me.avatarId);
       setChipBalance(me.chipBalance);
-      setFriendCount(social?.friends.length ?? 0);
       setContests(mine?.contests ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load profile');
@@ -241,10 +237,6 @@ function ProfilePageInner() {
                       >
                         {friendCount} {friendCount === 1 ? 'friend' : 'friends'}
                       </button>
-                      <span className="mx-1.5 text-sidebar/30" aria-hidden>
-                        ·
-                      </span>
-                      Online
                     </p>
                   </div>
 
@@ -253,7 +245,7 @@ function ProfilePageInner() {
                     onClick={openAvatarEditor}
                     className="inline-flex shrink-0 items-center justify-center rounded-full border border-sidebar bg-sidebar px-4 py-2 text-xs font-display font-bold uppercase tracking-wider text-mushroom transition hover:bg-sidebar/90 sm:mt-0.5"
                   >
-                    Edit profile
+                    Change avatar
                   </button>
                 </div>
 
@@ -299,6 +291,7 @@ function ProfilePageInner() {
                 ] as const
               ).map((item) => {
                 const active = tab === item.id;
+                const showBadge = item.id === 'friends' && pendingCount > 0;
                 return (
                   <button
                     key={item.id}
@@ -308,13 +301,16 @@ function ProfilePageInner() {
                     id={`profile-tab-${item.id}`}
                     aria-controls={`profile-panel-${item.id}`}
                     onClick={() => selectTab(item.id)}
-                    className={`relative py-3.5 text-sm font-display font-bold tracking-wide transition ${
+                    className={`relative inline-flex items-center gap-2 py-3.5 text-sm font-display font-bold tracking-wide transition ${
                       active
                         ? 'text-sidebar'
                         : 'text-ink-strong-muted hover:text-sidebar/80'
                     }`}
                   >
                     {item.label}
+                    {showBadge ? (
+                      <PendingCountBadge count={pendingCount} tone="light" />
+                    ) : null}
                     {active ? (
                       <span
                         className="absolute inset-x-0 bottom-0 h-[3px] rounded-t-sm bg-sidebar"
@@ -335,17 +331,10 @@ function ProfilePageInner() {
               className="rounded-2xl border border-sidebar/12 bg-white p-5 shadow-[0_10px_28px_rgb(29_4_50_/_0.06)] sm:p-7"
             >
               <h3 className="font-display text-lg font-bold tracking-tight text-sidebar">
-                Balance
+                Quick links
               </h3>
-              <p className="mt-3">
-                <MoneyAmount
-                  amount={profile.chipBalance}
-                  showChips
-                  className="font-display text-2xl font-bold text-sidebar"
-                />
-              </p>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-strong-muted">
-                Same balance for public, private, and contest tables.
+                Same bankroll for public, private, and contest tables — shown above.
               </p>
               <div className="mt-6 flex flex-wrap gap-2.5">
                 <Link
@@ -419,7 +408,7 @@ function ProfilePageInner() {
                               {row.contest.name}
                             </span>
                             <span className="mt-0.5 block text-[11px] text-ink-strong-muted">
-                              {when} · {modeLabel(row.contest.mode)} ·{' '}
+                              {when} · {contestModeLabel(row.contest.mode)} ·{' '}
                               {row.contest.entrants.length} players
                             </span>
                           </span>

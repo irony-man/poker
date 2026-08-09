@@ -1,6 +1,6 @@
 'use client';
 
-import { coerceMoney, formatMoneyAmount } from '@/lib/currency';
+import { coerceMoney, formatMoneyAmount, formatMoneyLabel } from '@/lib/currency';
 
 /**
  * In-app money unit mark (public/currency.svg). Sits after amounts like the old "chips" label.
@@ -78,12 +78,12 @@ export function MoneyAmount({
   chipsClassName?: string;
 }) {
   const n = coerceMoney(amount);
-  const text = compact ? formatMoneyAmount(n) : n.toLocaleString();
+  const text = compact ? formatMoneyAmount(n) : formatMoneyLabel(n);
 
   return (
     <span
       className={`inline-flex items-center gap-2 tabular-nums ${className}`.trim()}
-      title={n.toLocaleString()}
+      title={formatMoneyLabel(n)}
     >
       {showChips ? <ChipsImage className={chipsClassName} /> : null}
       <span className="inline-flex items-baseline gap-1.5 leading-none">

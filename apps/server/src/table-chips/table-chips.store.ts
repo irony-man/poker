@@ -26,7 +26,8 @@ export class MemoryTableChipStore implements TableChipStore {
   private balances = new Map<string, number>();
 
   async reserve(tableId: string, userId: string, stack: number): Promise<void> {
-    this.balances.set(key(tableId, userId), Math.max(0, Math.floor(stack)));
+    const amount = Number.isFinite(stack) ? Math.max(0, Math.floor(stack)) : 0;
+    this.balances.set(key(tableId, userId), amount);
   }
 
   async take(tableId: string, userId: string): Promise<number | null> {
@@ -34,6 +35,7 @@ export class MemoryTableChipStore implements TableChipStore {
     if (!this.balances.has(k)) return null;
     const stack = this.balances.get(k)!;
     this.balances.delete(k);
+    if (!Number.isFinite(stack)) return null;
     return stack;
   }
 }
@@ -66,7 +68,8 @@ export class FileTableChipStore implements TableChipStore {
 
   async reserve(tableId: string, userId: string, stack: number): Promise<void> {
     await this.ensure();
-    this.balances[key(tableId, userId)] = Math.max(0, Math.floor(stack));
+    const amount = Number.isFinite(stack) ? Math.max(0, Math.floor(stack)) : 0;
+    this.balances[key(tableId, userId)] = amount;
     await this.persist();
   }
 
@@ -77,6 +80,7 @@ export class FileTableChipStore implements TableChipStore {
     const stack = this.balances[k]!;
     delete this.balances[k];
     await this.persist();
+    if (!Number.isFinite(stack)) return null;
     return stack;
   }
 }
@@ -92,7 +96,7 @@ export class PostgresTableChipStore implements TableChipStore {
   }
 
   async reserve(tableId: string, userId: string, stack: number): Promise<void> {
-    const amount = Math.max(0, Math.floor(stack));
+    const amount = Number.isFinite(stack) ? Math.max(0, Math.floor(stack)) : 0;
     await this.pool.query(
       `INSERT INTO table_chip_balances (user_id, table_id, stack, updated_at)
        VALUES ($1, $2, $3, NOW())
@@ -109,9 +113,17 @@ export class PostgresTableChipStore implements TableChipStore {
        RETURNING stack`,
       [userId, tableId],
     );
-    const row = res.rows?.[0] as { stack: number } | undefined;
-    if (!row) return null;
-    return Number(row.stack);
+    const row = res.rows?.[0] as { stack?: unknown } | unknown[] | number | undefined;
+    if (row == null) return null;
+    const raw =
+      typeof row === 'number'
+        ? row
+        : Array.isArray(row)
+          ? row[0]
+          : (row as { stack?: unknown }).stack;
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return null;
+    return Math.floor(n);
   }
 }
 

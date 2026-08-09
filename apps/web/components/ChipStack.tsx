@@ -95,7 +95,7 @@ export function ChipDisc({
           fontWeight="700"
           fontFamily="Oxanium, sans-serif"
         >
-          {amount >= 1000 ? `${Math.round(amount / 1000)}k` : amount}
+          {formatMoneyAmount(amount)}
         </text>
       )}
     </svg>

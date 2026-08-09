@@ -7,8 +7,8 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { authHref } from '@/lib/authRedirect';
 import { loadSavedAvatarId } from '@/lib/avatars';
 import { MoneyAmount } from '@/components/CurrencyIcon';
-import { OnlineFriendsSidebar } from '@/components/OnlineFriends';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
+import { PendingCountBadge, useOnlineFriends } from '@/components/OnlineFriends';
 import { LOBBY_NAV, isLobbyNavActive } from '@/lib/lobbyNav';
 import { useSession } from '@/lib/store';
 
@@ -82,6 +82,7 @@ export function LobbySidebar({
   const userId = useSession((s) => s.userId);
   const username = useSession((s) => s.username);
   const chipBalance = useSession((s) => s.chipBalance);
+  const { pendingCount } = useOnlineFriends();
   const [avatarId, setAvatarId] = useState(0);
   const [copied, setCopied] = useState(false);
 
@@ -107,26 +108,24 @@ export function LobbySidebar({
     <nav className="flex flex-1 flex-col gap-1 px-3 py-4" aria-label="Lobby">
       {LOBBY_NAV.map((t) => {
         const active = isLobbyNavActive(pathname, t.href, searchParams.toString());
+        const showBadge = signedIn && t.href === '/friends' && pendingCount > 0;
         return (
           <Link
             key={t.href}
             href={t.href}
             onClick={onClose}
-            className={`rounded-md px-3 py-2.5 text-left text-sm font-display font-semibold uppercase tracking-[0.12em] transition ${
+            className={`flex items-center justify-between gap-2 rounded-md px-3 py-2.5 text-left text-sm font-display font-semibold uppercase tracking-[0.12em] transition ${
               active
                 ? 'bg-mushroom/15 text-mushroom'
                 : 'text-mushroom/55 hover:bg-mushroom/10 hover:text-mushroom/90'
             }`}
           >
-            {t.label}
+            <span>{t.label}</span>
+            {showBadge ? <PendingCountBadge count={pendingCount} /> : null}
           </Link>
         );
       })}
     </nav>
-  );
-
-  const onlineFriends = (
-    <OnlineFriendsSidebar signedIn={signedIn} onNavigate={onClose} />
   );
 
   const handle = (username ?? displayName ?? '').trim();
@@ -255,7 +254,6 @@ export function LobbySidebar({
       <aside className="lobby-sidebar hidden h-full min-h-0 md:flex md:w-60 md:shrink-0 md:flex-col">
         {logo}
         {navLinks}
-        {onlineFriends}
         {footer}
       </aside>
 
@@ -288,7 +286,6 @@ export function LobbySidebar({
             </button>
           </div>
           {navLinks}
-          {onlineFriends}
           {footer}
         </aside>
       </div>

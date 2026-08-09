@@ -1,40 +1,23 @@
 'use client';
 
+import type {
+  PrivateView as EnginePrivateView,
+  PublicPlayerView,
+  PublicTableView,
+} from '@poker/engine';
 import { create } from 'zustand';
 
-export interface PublicPlayer {
-  seat: number;
-  userId: string | null;
-  name: string | null;
-  stack: number;
-  bet: number;
-  status: string;
-  hasCards: boolean;
-  holeCards: [string, string] | null;
+export type PublicPlayer = PublicPlayerView & {
   /** Preset profile picture index (0–7). */
   avatarId?: number | null;
   /** Between hands on cash tables: opted in for next deal (bots always true). */
   ready?: boolean;
   /** Requested sit-out after the current hand ends. */
   pendingSitOut?: boolean;
-}
+};
 
-export interface PublicTable {
-  tableId: string;
-  handId: string;
-  street: string;
-  community: string[];
+export type PublicTable = Omit<PublicTableView, 'players' | 'showdownHands'> & {
   players: PublicPlayer[];
-  dealerButton: number;
-  sbSeat: number;
-  bbSeat: number;
-  toAct: number | null;
-  currentBet: number;
-  pot: number;
-  sidePots: { amount: number; eligible: number[] }[];
-  actionSeq: number;
-  version: number;
-  winners: { seat: number; amount: number; handName?: string }[];
   showdownHands?: { seat: number; handName: string; cards?: string[] }[];
   /** Epoch ms when current turn expires (server clock). */
   turnEndsAt?: number | null;
@@ -48,25 +31,9 @@ export interface PublicTable {
     frozen: boolean;
     noTopUp: boolean;
   } | null;
-  config: {
-    maxSeats: number;
-    smallBlind: number;
-    bigBlind: number;
-    buyIn: number;
-    turnTimeMs: number;
-  };
-}
+};
 
-export interface PrivateView {
-  seat: number;
-  holeCards: [string, string] | null;
-  legal: {
-    types: string[];
-    callAmount: number;
-    minRaiseTo: number;
-    maxRaiseTo: number;
-  };
-}
+export type PrivateView = EnginePrivateView;
 
 export interface ChatMessage {
   userId: string;
@@ -147,6 +114,15 @@ export const useSession = create<SessionState>((set) => ({
       ticket: null,
       sessionToken: null,
       chipBalance: null,
+      connection: 'idle',
+      boundTableId: null,
+      table: null,
+      private: null,
+      chat: [],
+      lastError: null,
+      lastErrorCode: null,
+      emojiBurst: null,
+      actionBurst: null,
     }),
   setConnection: (connection) => set({ connection }),
   bindTable: (boundTableId) => set({ boundTableId }),

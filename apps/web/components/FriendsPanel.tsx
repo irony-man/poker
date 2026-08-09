@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 import {
@@ -10,19 +10,84 @@ import {
   deleteFriendGroup,
   inviteFriendGroup,
   joinFriendChallenge,
-  listFriends,
   registerContest,
   removeFriend,
   respondFriendRequest,
-  searchUsers,
   sendFriendRequest,
   updateFriendGroup,
   type FriendGroup,
   type FriendProfile,
-  type PendingChallenge,
-  type PendingRequest,
 } from '@/lib/api';
-import { useSession } from '@/lib/store';
+import { groupMembersDirty, useFriendsSocial } from '@/hooks/useFriendsSocial';
+
+function MemberAvatarStack({
+  members,
+  selfUserId,
+}: {
+  members: FriendProfile[];
+  selfUserId: string | null | undefined;
+}) {
+  const shown = members.slice(0, 3);
+  const extra = members.length - shown.length;
+  return (
+    <div className="flex shrink-0 items-center">
+      <div className="flex -space-x-2">
+        {shown.map((m, i) => (
+          <span
+            key={m.userId}
+            className="inline-flex rounded-full"
+            style={{ zIndex: shown.length - i }}
+          >
+            <PlayerAvatar
+              userId={m.userId}
+              avatarId={m.avatarId}
+              size={28}
+              title={m.userId === selfUserId ? 'You' : m.name}
+            />
+          </span>
+        ))}
+      </div>
+      {extra > 0 && (
+        <span className="ml-1.5 text-[11px] font-medium text-ink-strong-muted">+{extra}</span>
+      )}
+    </div>
+  );
+}
+
+function FriendToggleRow({
+  friend,
+  selected,
+  onToggle,
+}: {
+  friend: FriendProfile;
+  selected: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`flex w-full items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left transition ${
+        selected
+          ? 'border-sidebar/40 bg-sidebar/[0.08] text-ink-strong'
+          : 'border-transparent bg-mushroom/40 text-ink-strong-muted hover:border-sidebar/15 hover:bg-mushroom/70'
+      }`}
+    >
+      <span
+        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-[10px] font-bold ${
+          selected
+            ? 'border-sidebar bg-sidebar text-mushroom'
+            : 'border-sidebar/25 bg-transparent text-transparent'
+        }`}
+        aria-hidden
+      >
+        ✓
+      </span>
+      <PlayerAvatar userId={friend.userId} avatarId={friend.avatarId} size={28} title={friend.name} />
+      <span className="min-w-0 flex-1 truncate text-sm font-medium">{friend.name}</span>
+    </button>
+  );
+}
 
 /** Friends, groups & challenges for the main lobby content area. */
 export function FriendsPanel({
@@ -39,19 +104,29 @@ export function FriendsPanel({
   variant?: 'page' | 'embedded';
   onFriendCountChange?: (count: number) => void;
 }) {
-  const userId = useSession((s) => s.userId);
-  const sessionToken = useSession((s) => s.sessionToken);
-  const [friends, setFriends] = useState<FriendProfile[]>([]);
-  const [groups, setGroups] = useState<FriendGroup[]>([]);
-  const [incoming, setIncoming] = useState<PendingRequest[]>([]);
-  const [challenges, setChallenges] = useState<PendingChallenge[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<FriendProfile[]>([]);
-  const [searchLookedUp, setSearchLookedUp] = useState(false);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const {
+    userId,
+    refreshSocial,
+    friends,
+    groups,
+    incoming,
+    challenges,
+    searchQuery,
+    setSearchQuery,
+    searchResults,
+    searchLookedUp,
+    busy,
+    setBusy,
+    error,
+    setError,
+    toast,
+    loadError,
+    setLoadError,
+    auth,
+    friendIds,
+    flash,
+    refresh,
+  } = useFriendsSocial({ disabled, onFriendCountChange });
 
   const [socialTab, setSocialTab] = useState<'friends' | 'groups'>('friends');
   const [newGroupName, setNewGroupName] = useState('');
@@ -61,57 +136,6 @@ export function FriendsPanel({
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editMembers, setEditMembers] = useState<Set<string>>(new Set());
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-
-  const auth = () => ({ sessionToken: sessionToken! });
-  const friendIds = useMemo(() => new Set(friends.map((f) => f.userId)), [friends]);
-
-  const flash = (msg: string) => {
-    setToast(msg);
-    window.setTimeout(() => setToast(null), 3200);
-  };
-
-  const refresh = useCallback(async () => {
-    if (disabled || !userId || !sessionToken) return;
-    try {
-      const data = await listFriends(auth());
-      setFriends(data.friends);
-      setGroups(data.groups ?? []);
-      setIncoming(data.incoming);
-      setChallenges(data.pendingChallenges);
-      setLoadError(null);
-      onFriendCountChange?.(data.friends.length);
-    } catch (err) {
-      setLoadError(err instanceof Error ? err.message : 'Could not load friends');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- auth is derived from session
-  }, [disabled, userId, sessionToken, onFriendCountChange]);
-
-  useEffect(() => {
-    void refresh();
-    const id = setInterval(() => void refresh(), 15000);
-    return () => clearInterval(id);
-  }, [refresh]);
-
-  useEffect(() => {
-    const q = searchQuery.trim();
-    if (disabled || !q || !userId || !sessionToken) {
-      setSearchResults([]);
-      setSearchLookedUp(false);
-      return;
-    }
-    const t = setTimeout(async () => {
-      try {
-        const data = await searchUsers(q, auth());
-        setSearchResults(data.users);
-        setSearchLookedUp(true);
-      } catch {
-        setSearchResults([]);
-        setSearchLookedUp(true);
-      }
-    }, 300);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [disabled, searchQuery, userId, sessionToken]);
 
   function toggleMember(id: string) {
     setSelectedMembers((prev) => {
@@ -194,6 +218,7 @@ export function FriendsPanel({
       await respondFriendRequest(requestId, accept, auth());
       flash(accept ? 'Friend added' : 'Request declined');
       await refresh();
+      void refreshSocial();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
     } finally {
@@ -224,6 +249,7 @@ export function FriendsPanel({
       await removeFriend(friend.userId, auth());
       flash(`Removed ${friend.name}`);
       await refresh();
+      void refreshSocial();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not remove friend');
     } finally {
@@ -236,6 +262,7 @@ export function FriendsPanel({
     setError(null);
     try {
       await joinFriendChallenge(challenge.id, auth());
+      void refreshSocial();
       const isContest = challenge.kind === 'contest' || Boolean(challenge.contestId);
       if (isContest && challenge.contestId) {
         try {
@@ -244,7 +271,7 @@ export function FriendsPanel({
           // May already be registered or contest full — still open lobby
         }
         if (onNavigateContest) onNavigateContest(challenge.contestId);
-        else window.location.href = `/contest/${challenge.contestId}`;
+        else onNavigateContest?.(challenge.contestId);
       } else if (challenge.tableId) {
         onNavigateTable(challenge.tableId, challenge.inviteCode);
       } else {
@@ -265,6 +292,7 @@ export function FriendsPanel({
       setChallenges((list) => list.filter((c) => c.id !== challengeId));
       flash('Invite declined');
       await refresh();
+      void refreshSocial();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not decline invite');
     } finally {
@@ -338,69 +366,6 @@ export function FriendsPanel({
   /** Friends still linked, for starting a group table. */
   function playableMembers(g: FriendGroup): FriendProfile[] {
     return g.members.filter((m) => m.userId !== userId && friendIds.has(m.userId));
-  }
-
-  function MemberAvatarStack({ members }: { members: FriendProfile[] }) {
-    const shown = members.slice(0, 3);
-    const extra = members.length - shown.length;
-    return (
-      <div className="flex shrink-0 items-center">
-        <div className="flex -space-x-2">
-          {shown.map((m, i) => (
-            <span
-              key={m.userId}
-              className="inline-flex rounded-full"
-              style={{ zIndex: shown.length - i }}
-            >
-              <PlayerAvatar
-                userId={m.userId}
-                avatarId={m.avatarId}
-                size={28}
-                title={m.userId === userId ? 'You' : m.name}
-              />
-            </span>
-          ))}
-        </div>
-        {extra > 0 && (
-          <span className="ml-1.5 text-[11px] font-medium text-ink-strong-muted">+{extra}</span>
-        )}
-      </div>
-    );
-  }
-
-  function FriendToggleRow({
-    friend,
-    selected,
-    onToggle,
-  }: {
-    friend: FriendProfile;
-    selected: boolean;
-    onToggle: () => void;
-  }) {
-    return (
-      <button
-        type="button"
-        onClick={onToggle}
-        className={`flex w-full items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left transition ${
-          selected
-            ? 'border-sidebar/40 bg-sidebar/[0.08] text-ink-strong'
-            : 'border-transparent bg-mushroom/40 text-ink-strong-muted hover:border-sidebar/15 hover:bg-mushroom/70'
-        }`}
-      >
-        <span
-          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-[10px] font-bold ${
-            selected
-              ? 'border-sidebar bg-sidebar text-mushroom'
-              : 'border-sidebar/25 bg-transparent text-transparent'
-          }`}
-          aria-hidden
-        >
-          ✓
-        </span>
-        <PlayerAvatar userId={friend.userId} avatarId={friend.avatarId} size={28} title={friend.name} />
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">{friend.name}</span>
-      </button>
-    );
   }
 
   const playerSearch = (
@@ -717,8 +682,7 @@ export function FriendsPanel({
                         .filter((m) => m.userId !== g.ownerUserId && friendIds.has(m.userId))
                         .map((m) => m.userId),
                     );
-                    if (original.size !== editMembers.size) return true;
-                    for (const id of editMembers) if (!original.has(id)) return true;
+                    if (groupMembersDirty(original, editMembers)) return true;
                     return false;
                   })();
 
@@ -813,7 +777,7 @@ export function FriendsPanel({
                     className="rounded-2xl border border-sidebar/12 bg-mushroom/50 p-3.5 sm:p-4"
                   >
                     <div className="flex items-center gap-3">
-                      <MemberAvatarStack members={g.members} />
+                      <MemberAvatarStack members={g.members} selfUserId={userId} />
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-display text-sm font-semibold uppercase tracking-wider text-sidebar">
                           {g.name}

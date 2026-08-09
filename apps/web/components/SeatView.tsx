@@ -1,15 +1,12 @@
 'use client';
 
-import { ChipStack, formatChips } from './ChipStack';
+import { ChipStack } from './ChipStack';
 import { HoleCardFan, PlayingCard, type CardSize } from './PlayingCard';
 import { PlayerAvatar } from './PlayerAvatar';
+import { formatMoneyAmount } from '@/lib/currency';
 import { isSeatActionLabel } from '@/lib/seatAction';
 import { SeatTurnRing } from './TurnTimer';
 import { useSession, type PublicPlayer } from '@/lib/store';
-
-function money(n: number): string {
-  return formatChips(n);
-}
 
 function SeatActionPopup({ label, burstKey }: { label: string; burstKey: number }) {
   return (
@@ -157,8 +154,7 @@ export function SeatView({
 
   const showCards = isSelf && myCards ? myCards : player.holeCards;
   /** Landscape shows opponent backs; portrait shows opponent backs so folds stay readable. */
-  const renderCards = true;
-  const faceDown = renderCards && !showCards && player.hasCards;
+  const faceDown = !showCards && player.hasCards;
   const dealKey = handId ?? 'idle';
   const folded = player.status === 'folded';
   const sittingOut = player.status === 'sittingOut';
@@ -281,7 +277,7 @@ export function SeatView({
                     isWinner ? 'bg-brass text-ink' : 'bg-sidebar'
                   }`}
                 >
-                  {money(player.stack)}
+                  {formatMoneyAmount(player.stack)}
                 </div>
                 <div
                   className={`truncate px-1 py-0.5 text-center text-[10px] font-bold leading-none ${
@@ -352,7 +348,7 @@ export function SeatView({
               </div>
             )}
 
-            {renderCards && (faceDown || showCards) && !(compact && isSelf) && (
+            { (faceDown || showCards) && !(compact && isSelf) && (
               isSelf && showCards ? (
                 <HoleCardFan
                   cards={showCards}
@@ -436,7 +432,7 @@ export function SeatView({
                         isWinner ? 'bg-brass text-ink' : 'bg-sidebar text-mushroom'
                       }`}
                     >
-                      {money(player.stack)}
+                      {formatMoneyAmount(player.stack)}
                     </span>
                   </div>
                 </div>
@@ -484,7 +480,7 @@ export function SeatView({
                         : 'bg-sidebar text-mushroom'
                     }`}
                   >
-                    {money(player.stack)}
+                    {formatMoneyAmount(player.stack)}
                   </div>
                 </div>
               </div>
@@ -530,7 +526,7 @@ export function SeatView({
 
         {isWinner && winAmount != null && winAmount > 0 && (
           <div className="mt-0.5 text-center text-[11px] font-extrabold text-[#ffe29a] drop-shadow">
-            +{money(winAmount)}
+            +{formatMoneyAmount(winAmount)}
           </div>
         )}
         {isBot && canManageBots && onRemoveBot && !compact && (

@@ -225,19 +225,21 @@ export class FriendsStore {
     userId: string,
     requestId: string,
     accept: boolean,
-  ): Promise<{ ok: true; friend?: FriendProfile } | { ok: false; error: string }> {
+  ): Promise<{ ok: true; fromUserId: string; toUserId: string } | { ok: false; error: string }> {
     await this.ensureLoaded();
     const req = this.requests.find((r) => r.id === requestId);
     if (!req || req.toUserId !== userId || req.status !== 'pending') {
       return { ok: false, error: 'Request not found' };
     }
+    const fromUserId = req.fromUserId;
+    const toUserId = req.toUserId;
     req.status = accept ? 'accepted' : 'declined';
     if (accept) {
       const [a, b] = pairKey(req.fromUserId, req.toUserId);
       this.friendships.add(`${a}:${b}`);
     }
     await this.persist();
-    return { ok: true };
+    return { ok: true, fromUserId, toUserId };
   }
 
   async removeFriend(

@@ -14,6 +14,7 @@ function TablePageInner() {
   const search = useSearchParams();
   const invite = search.get('invite');
   const spectate = search.get('mode') === 'spectate';
+  const contest = search.get('contest');
   const setSession = useSession((s) => s.setSession);
   const clearSession = useSession((s) => s.clearSession);
   const clearTable = useSession((s) => s.clearTable);
@@ -114,7 +115,7 @@ function TablePageInner() {
     );
   }
 
-  return <TableView tableId={tableId} inviteCode={invite} initialSpectate={spectate} />;
+  return <TableView tableId={tableId} inviteCode={invite} initialSpectate={spectate} contestId={contest} />;
 }
 
 export default function TablePage() {

@@ -14,7 +14,7 @@ import { TableLeaderboard, LeaderboardToggle, saveShowLeaderboard } from './Tabl
 import { TableOverflowMenu, type OverflowItem } from './TableOverflowMenu';
 import { TableShell } from './TableShell';
 import { VoiceCallBar } from './VoiceCallBar';
-import { WinHandModal, ReadyPlayersRoster } from './WinHandModal';
+import { WinHandModal } from './WinHandModal';
 import { playTick } from '@/lib/audio';
 import { buildTableJoinShareText } from '@/lib/tableLink';
 import { coerceMoney, formatMoneyAmount } from '@/lib/currency';
@@ -23,17 +23,23 @@ import { useSession } from '@/lib/store';
 import { useVoiceCall } from '@/hooks/useVoiceCall';
 import { useHandPresentation } from '@/hooks/useHandPresentation';
 import { seatAnglesForHero, useIsLandscapePhone, useIsNarrow } from '@/lib/tableLayout';
+import { loadSavedTableColorId } from '@/lib/tableColors';
+import { useConfirm } from './ConfirmPopover';
 
 export function TableView({
   tableId,
   inviteCode,
   initialSpectate = false,
+  contestId: contestIdProp = null,
 }: {
   tableId: string;
   inviteCode?: string | null;
   initialSpectate?: boolean;
+  /** Prefer table.tournament.contestId; URL ?contest= as fallback. */
+  contestId?: string | null;
 }) {
   const table = useSession((s) => s.table);
+  const confirm = useConfirm();
   const priv = useSession((s) => s.private);
   const userId = useSession((s) => s.userId);
   const connection = useSession((s) => s.connection);
@@ -48,6 +54,11 @@ export function TableView({
   const landscape = useIsLandscapePhone();
   const botAddCount = 3;
   const [spectating, setSpectating] = useState(initialSpectate);
+  const [tableColorId, setTableColorId] = useState(0);
+
+  useEffect(() => {
+    setTableColorId(loadSavedTableColorId());
+  }, []);
   const [dismissedWinHandId, setDismissedWinHandId] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(true);
@@ -89,8 +100,16 @@ export function TableView({
   const isSpectating = spectating && mySeat === undefined;
   const chipBalance = useSession((s) => s.chipBalance);
   const walletChips = coerceMoney(chipBalance);
+  const isTournament = Boolean(table?.tournament);
+  /** Cash rooms: free rebuy to full buy-in. Contests: bankroll-funded (partial OK). */
   const topUpAmount =
-    table != null && walletChips > 0 ? Math.min(table.config.buyIn, walletChips) : 0;
+    table == null
+      ? 0
+      : !isTournament
+        ? table.config.buyIn
+        : walletChips > 0
+          ? Math.min(table.config.buyIn, walletChips)
+          : 0;
   const sitAtFirstOpenSeat = () => {
     if (!table || isSpectating) return false;
     const empty = table.players.find((p) => p.status === 'empty');
@@ -134,16 +153,18 @@ export function TableView({
     youWon,
   } = useHandPresentation(table, userId, dismissedWinHandId);
   const betweenHands = table?.street === 'waiting' || table?.street === 'payout';
+  const myStack = coerceMoney(myPlayer?.stack);
   const brokeAtTable =
     !table?.tournament?.noTopUp &&
     mySeat !== undefined &&
     !!myPlayer &&
-    myPlayer.stack === 0 &&
+    myStack === 0 &&
     betweenHands;
   const canTopUp = brokeAtTable && topUpAmount > 0;
-  const brokeNoWallet = brokeAtTable && topUpAmount <= 0 && chipBalance !== null;
+  const brokeNoWallet = isTournament && brokeAtTable && topUpAmount <= 0 && chipBalance !== null;
+  const needWuffies = isTournament && brokeAtTable && topUpAmount <= 0;
 
-  /** Instant rebuy funded from global bankroll (partial OK). Also sits back in if sitting out. */
+  /** Cash: free table rebuy. Contest: funded from global bankroll (partial OK). */
   const doTopUp = () => {
     if (!table || mySeat === undefined || !canTopUp || topUpAmount <= 0) return;
     send({
@@ -155,6 +176,7 @@ export function TableView({
   };
 
   const canSitOut =
+    !isTournament &&
     mySeat !== undefined &&
     !!myPlayer &&
     myPlayer.status !== 'empty' &&
@@ -166,12 +188,16 @@ export function TableView({
       myPlayer.status === 'active' ||
       myPlayer.status === 'allin');
   const canCancelSitOutNext =
-    mySeat !== undefined && !!myPlayer?.pendingSitOut && myPlayer.status !== 'sittingOut';
+    !isTournament &&
+    mySeat !== undefined &&
+    !!myPlayer?.pendingSitOut &&
+    myPlayer.status !== 'sittingOut';
   /** Seat stays; you’ll be dealt starting next hand (works mid-hand while sitting out). */
   const canSitIn =
+    !isTournament &&
     mySeat !== undefined &&
     myPlayer?.status === 'sittingOut' &&
-    (myPlayer?.stack ?? 0) > 0;
+    myStack > 0;
   const sitOutNextHand =
     canSitOut &&
     !betweenHands &&
@@ -185,49 +211,55 @@ export function TableView({
 
   const emptySeats = table?.players.filter((p) => p.status === 'empty').length ?? 0;
   const botSeats = table?.players.filter((p) => p.userId?.startsWith('bot:')).length ?? 0;
-  const isTournament = Boolean(table?.tournament);
   const isHost = !!userId && table?.hostUserId === userId;
+  /** Public stake tables are humans-only; bots are private host practice. */
+  const botsAllowed = table?.isPrivate === true && !isTournament;
   /** Humans + bots eligible for next cash hand. */
   const eligiblePlayers =
     table?.players.filter(
-      (p) => p.userId && p.stack > 0 && p.status !== 'sittingOut' && p.status !== 'empty',
+      (p) => p.userId && coerceMoney(p.stack) > 0 && p.status !== 'sittingOut' && p.status !== 'empty',
     ) ?? [];
-  const readyCount = eligiblePlayers.filter((p) => p.ready).length;
+  const humanEligiblePlayers = eligiblePlayers.filter((p) => !p.userId?.startsWith('bot:'));
+  const readyCount = humanEligiblePlayers.filter((p) => p.ready).length;
   const myReady = !!myPlayer?.ready;
+  /**
+   * Cash only: seated with chips between hands → can mark ready (“Play Next Hand”).
+   * Contests auto-deal and never use ready.
+   */
   const canReady =
     !isTournament &&
     betweenHands &&
     mySeat !== undefined &&
-    myPlayer?.status !== 'sittingOut' &&
-    (myPlayer?.stack ?? 0) > 0 &&
-    eligiblePlayers.length >= 2;
-  const readyRosterPlayers = eligiblePlayers.map((p) => ({
-    seat: p.seat,
-    name: p.name ?? `Seat ${p.seat}`,
-    userId: p.userId,
-    avatarId: p.avatarId,
-    ready: !!p.ready,
-    isSelf: p.userId === userId,
-  }));
-  /** First hand (waiting) or between hands after dismiss — avatar roster like win modal. */
-  const showReadyRoster =
-    !isTournament &&
-    betweenHands &&
-    !showWinModal &&
-    eligiblePlayers.length > 0;
-  /** Desktop keeps the full pill row; mobile only shows Ready/Sit CTA between hands. */
-  const showDesktopTools =
-    !narrow &&
-    (isSpectating ||
-      canSitOut ||
-      canCancelSitOutNext ||
-      canSitIn ||
-      canTopUp ||
-      brokeNoWallet ||
-      (!isTournament && !isSpectating && emptySeats > 0) ||
-      (!isTournament && !isSpectating && botSeats > 0) ||
-      canReady);
-  const showMobileStartCta = narrow && (canReady || isSpectating);
+    !!myPlayer &&
+    myPlayer.status !== 'sittingOut' &&
+    myPlayer.status !== 'empty' &&
+    myStack > 0;
+  const readyLabel = myReady ? 'Not ready' : 'Play Next Hand';
+  /** Real (non-bot) seats for the Actions dock ready strip. */
+  const readyRosterPlayers =
+    table?.players
+      .filter(
+        (p) =>
+          p.userId &&
+          p.status !== 'empty' &&
+          !p.userId.startsWith('bot:'),
+      )
+      .map((p) => ({
+        seat: p.seat,
+        name: p.name ?? `Seat ${p.seat}`,
+        userId: p.userId,
+        avatarId: p.avatarId,
+        ready: !!p.ready,
+        isSelf: p.userId === userId,
+        sittingOut: p.status === 'sittingOut',
+      })) ?? [];
+  const showDockReadyRoster = !isTournament && betweenHands && readyRosterPlayers.length > 0;
+  const dockReadyHeading =
+    table?.street === 'waiting' && readyCount === 0
+      ? 'Players'
+      : table?.street === 'waiting'
+        ? 'Ready to start'
+        : 'Ready for next hand';
 
   const toggleLeaderboard = () => {
     setShowLeaderboard((prev) => {
@@ -269,13 +301,18 @@ export function TableView({
     }
   };
 
-  const leaveRoom = (to: '/' | '/profile' = '/') => {
-    if (
-      !window.confirm(
-        'Leave this table? Your remaining stack returns to your bankroll when you leave between hands.',
-      )
-    ) {
-      return false;
+  const leaveRoom = async (to: string = '/') => {
+    const softLeave = to.startsWith('/contest/');
+    if (!softLeave) {
+      const ok = await confirm({
+        title: 'Leave this table?',
+        description:
+          'Your remaining stack returns to your bankroll when you leave between hands.',
+        confirmLabel: 'Leave',
+        cancelLabel: 'Stay',
+        tone: 'danger',
+      });
+      if (!ok) return false;
     }
     voice.leaveVoice();
     leaveTable();
@@ -284,7 +321,20 @@ export function TableView({
     return true;
   };
 
-  const isMyTurn = table?.toAct === mySeat && !!priv?.legal?.types.length;
+  const contestId = table?.tournament?.contestId || contestIdProp || null;
+  const contestOver = Boolean(table?.tournament?.frozen);
+  const goToContest = () => {
+    if (contestId) {
+      void leaveRoom(`/contest/${contestId}`);
+      return;
+    }
+    voice.leaveVoice();
+    leaveTable();
+    clearTable();
+    router.push('/contests');
+  };
+
+  const isMyTurn = table?.toAct === mySeat && !!priv?.legal?.types.length && !contestOver;
   const potTotal =
     (table?.pot ?? 0) ||
     (table?.sidePots?.reduce((s, p) => s + p.amount, 0) ?? 0);
@@ -389,7 +439,15 @@ export function TableView({
         tone: 'accent',
       });
     }
-    if (!isSpectating && emptySeats > 0) {
+    if (contestOver) {
+      mobileOverflowItems.push({
+        id: 'contest-results',
+        label: 'Contest results',
+        onClick: goToContest,
+        tone: 'accent',
+      });
+    }
+    if (!isSpectating && botsAllowed && emptySeats > 0) {
       mobileOverflowItems.push(
         {
           id: 'add-bot',
@@ -415,7 +473,7 @@ export function TableView({
         },
       );
     }
-    if (!isSpectating && botSeats > 0) {
+    if (!isSpectating && botsAllowed && botSeats > 0) {
       mobileOverflowItems.push({
         id: 'remove-bots',
         label: 'Remove bots',
@@ -450,7 +508,7 @@ export function TableView({
         id: 'need-wuffies',
         label: 'Need Wuffies — Profile',
         onClick: () => {
-          leaveRoom('/profile');
+          void leaveRoom('/profile');
         },
         tone: 'gold',
       });
@@ -458,30 +516,96 @@ export function TableView({
     mobileOverflowItems.push({
       id: 'leave',
       label: 'Leave table',
-      onClick: leaveRoom,
+      onClick: () => {
+        void leaveRoom();
+      },
       tone: 'danger',
     });
   }
 
   return (
     <TableShell
+      tableColorId={tableColorId}
       onSend={(text) => send({ type: 'chat', tableId, text })}
       onEmoji={(emoji) => send({ type: 'emoji', tableId, emoji })}
       chatOpen={chatOpen}
       onChatOpenChange={setChatOpen}
-      actionsExpanded={!!isMyTurn}
+      actionsExpanded={
+        !!isMyTurn ||
+        contestOver ||
+        canReady ||
+        canSitIn ||
+        isSpectating ||
+        showDockReadyRoster
+      }
       actions={
         <ActionControls
           onAction={onAction}
           spectating={isSpectating}
           bare
           connection={connection}
+          onViewContest={contestOver ? goToContest : undefined}
+          tableTools={{
+            canReady,
+            readyLabel,
+            isReady: myReady,
+            readyCount,
+            readyTotal: humanEligiblePlayers.length,
+            readyPlayers: showDockReadyRoster ? readyRosterPlayers : undefined,
+            readyHeading: dockReadyHeading,
+            onReady: () => send({ type: 'set_ready', tableId, ready: !myReady }),
+            canSitOut,
+            canCancelSitOut: canCancelSitOutNext,
+            sitOutLabel,
+            sitOutTitle: sitOutNextHand
+              ? 'Finish this hand, then skip until you sit back in'
+              : canCancelSitOutNext
+                ? 'You will keep playing after this hand'
+                : 'Skip the next hand(s) — sit back in when ready',
+            onSitOut: () => send({ type: 'sit_out', tableId, seat: mySeat! }),
+            canSitIn,
+            sitInLabel,
+            onSitIn: () => send({ type: 'sit_in', tableId, seat: mySeat! }),
+            canTopUp,
+            topUpLabel:
+              table && topUpAmount < table.config.buyIn
+                ? `Top up ${formatMoneyAmount(topUpAmount)}`
+                : 'Top up',
+            onTopUp: doTopUp,
+            needWuffies: brokeNoWallet,
+            onNeedWuffies: () => {
+              void leaveRoom('/profile');
+            },
+            canSitAndPlay: isSpectating,
+            onSitAndPlay: () => {
+              setSpectating(false);
+              if (!sitAtFirstOpenSeat()) autoSitSent.current = false;
+              else autoSitSent.current = true;
+            },
+            canAddBot: !isSpectating && botsAllowed && emptySeats > 0,
+            onAddBot: () =>
+              send({
+                type: 'add_bot',
+                tableId,
+                buyIn: table!.config.buyIn,
+                count: Math.min(Math.max(1, botAddCount), emptySeats),
+              }),
+            onFillBots: () =>
+              send({
+                type: 'add_bot',
+                tableId,
+                buyIn: table!.config.buyIn,
+                count: emptySeats,
+              }),
+            canRemoveBots: !isSpectating && botsAllowed && botSeats > 0,
+            onRemoveBots: () => send({ type: 'remove_all_bots', tableId }),
+          }}
         />
       }
     >
       <div className="flex min-h-0 flex-1 flex-col">
         {/* Cohesive play chrome: brand + room tools */}
-        <header className="play-chrome-bar mb-2">
+        <header className="play-chrome-bar">
           <div className="flex min-w-0 items-center gap-2.5 pl-0.5">
             <Image
               src="/purple-logo.png"
@@ -527,7 +651,7 @@ export function TableView({
                 onToggleMute={voice.toggleMute}
               />
               <HowToPlayHelp />
-              <button type="button" onClick={() => leaveRoom()} className="play-chrome-leave">
+              <button type="button" onClick={() => void leaveRoom()} className="play-chrome-leave">
                 Leave
               </button>
             </div>
@@ -540,20 +664,60 @@ export function TableView({
               {table.tournament.mode === 'rounds' ? 'Rounds' : 'Wuffies'}
               {table.tournament.frozen ? ' · over' : ''}
             </span>
+            {table.tournament.mode === 'rounds' &&
+            typeof table.tournament.handLimit === 'number' &&
+            table.tournament.handLimit > 0 ? (
+              <span className="status-chip border-brass/30 bg-brass/10 text-brass-dim tabular-nums">
+                {(() => {
+                  const limit = table.tournament.handLimit!;
+                  const done = Math.max(0, table.tournament.handsPlayed ?? 0);
+                  const street = table.street;
+                  // Payout already counted this hand; live streets / idle = next or current index.
+                  const current =
+                    street === 'payout' || street === 'showdown' || table.tournament.frozen
+                      ? Math.min(Math.max(done, 1), limit)
+                      : Math.min(done + 1, limit);
+                  return `Hand ${current}/${limit}`;
+                })()}
+              </span>
+            ) : null}
             <span className="text-xs text-ink-strong-muted">
               Blinds {table.config.smallBlind}/{table.config.bigBlind}
               {table.tournament.noTopUp ? ' · no rebuy' : ' · top-ups on'}
             </span>
-            {table.tournament.contestId && (
-              <a
-                href={`/contest/${table.tournament.contestId}`}
-                className="text-xs font-medium text-sidebar underline-offset-2 hover:underline"
+            {contestOver ? (
+              <button
+                type="button"
+                onClick={goToContest}
+                className="rounded-full border border-sidebar/25 bg-sidebar px-3 py-1 text-[10px] font-display font-bold uppercase tracking-wider text-mushroom shadow-sm transition hover:bg-sidebar/90"
               >
-                Contest lobby
-              </a>
-            )}
+                Contest results
+              </button>
+            ) : null}
           </div>
         )}
+
+        {contestOver ? (
+          <div className="relative z-40 mx-auto mb-2 w-full max-w-md shrink-0 px-2">
+            <div className="flex flex-col items-center gap-2 rounded-2xl border border-sidebar/15 bg-white/95 px-4 py-3 text-center shadow-[0_12px_32px_rgb(29_4_50/0.12)] sm:flex-row sm:justify-between sm:text-left">
+              <div className="min-w-0">
+                <p className="font-display text-sm font-bold uppercase tracking-wider text-sidebar">
+                  Contest complete
+                </p>
+                <p className="mt-0.5 text-xs text-ink-strong-muted">
+                  See placements and prizes on the contest page.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={goToContest}
+                className="btn-primary min-h-10 shrink-0 px-5 text-xs font-display font-bold uppercase tracking-wide"
+              >
+                View results
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         <div className="relative flex min-h-0 flex-1 flex-col">
           {!narrow && (
@@ -637,7 +801,7 @@ export function TableView({
               landscape={landscape}
               highlightMode={highlightMode}
               winningCards={winningCards}
-              dealing={!!table && table.street !== 'waiting'}
+              street={table?.street}
             />
           </div>
 
@@ -677,24 +841,35 @@ export function TableView({
                   p.status !== 'empty' &&
                   !p.ready
                 }
-                onSit={() => {
-                  if (!table || isSpectating) return;
-                  send({
-                    type: 'sit',
-                    tableId,
-                    seat: p.seat,
-                    buyIn: table.config.buyIn,
-                  });
-                }}
-                onAddBot={() =>
-                  send({
-                    type: 'add_bot',
-                    tableId,
-                    seat: p.seat,
-                    buyIn: table.config.buyIn,
-                  })
+                onSit={
+                  isTournament
+                    ? undefined
+                    : () => {
+                        if (!table || isSpectating) return;
+                        send({
+                          type: 'sit',
+                          tableId,
+                          seat: p.seat,
+                          buyIn: table.config.buyIn,
+                        });
+                      }
                 }
-                onRemoveBot={() => send({ type: 'remove_bot', tableId, seat: p.seat })}
+                onAddBot={
+                  botsAllowed
+                    ? () =>
+                        send({
+                          type: 'add_bot',
+                          tableId,
+                          seat: p.seat,
+                          buyIn: table.config.buyIn,
+                        })
+                    : undefined
+                }
+                onRemoveBot={
+                  botsAllowed
+                    ? () => send({ type: 'remove_bot', tableId, seat: p.seat })
+                    : undefined
+                }
                 onKick={() => send({ type: 'kick_player', tableId, seat: p.seat })}
               />
             );
@@ -702,179 +877,6 @@ export function TableView({
           </div>
           </div>
 
-          {showMobileStartCta && (
-            <div className="relative z-30 flex shrink-0 flex-col items-center gap-1 px-1 pb-0.5 pt-1">
-              {isSpectating ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSpectating(false);
-                    if (!sitAtFirstOpenSeat()) autoSitSent.current = false;
-                    else autoSitSent.current = true;
-                  }}
-                  className="btn-ghost min-h-10 px-4 text-[11px] font-display font-bold uppercase tracking-wide"
-                >
-                  Sit & play
-                </button>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => send({ type: 'set_ready', tableId, ready: !myReady })}
-                    className={`min-h-10 px-5 text-[11px] font-display font-bold uppercase tracking-wide ${
-                      myReady ? 'btn-ghost' : 'btn-primary'
-                    }`}
-                  >
-                    {myReady ? 'Not ready' : 'Ready'}
-                  </button>
-                  {!showReadyRoster ? (
-                    <span className="text-[10px] font-display uppercase tracking-wider text-ink-strong-muted">
-                      {readyCount}/{eligiblePlayers.length} ready
-                    </span>
-                  ) : null}
-                </>
-              )}
-            </div>
-          )}
-
-          {showReadyRoster && (
-            <div className="relative z-30 mx-auto w-full max-w-lg shrink-0 px-2 pb-1 pt-0.5 sm:px-3">
-              <ReadyPlayersRoster
-                players={readyRosterPlayers}
-                readyCount={readyCount}
-                readyTotal={eligiblePlayers.length}
-                heading={
-                  table?.street === 'waiting' ? 'Ready to start' : 'Ready for next hand'
-                }
-              />
-            </div>
-          )}
-
-          {showDesktopTools && (
-          <div className="relative z-30 flex shrink-0 justify-center px-2 pb-1 pt-2">
-            <div className="flex max-w-full flex-wrap items-center justify-center gap-1.5 rounded-full border border-sidebar/15 bg-white/80 px-2 py-1.5 shadow-[0_8px_24px_rgb(29_4_50/0.1)] backdrop-blur-md">
-              {isSpectating && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSpectating(false);
-                    if (!sitAtFirstOpenSeat()) autoSitSent.current = false;
-                    else autoSitSent.current = true;
-                  }}
-                  className="btn-ghost text-xs py-1.5"
-                >
-                  Sit and play
-                </button>
-              )}
-              {canReady && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => send({ type: 'set_ready', tableId, ready: !myReady })}
-                    className={`text-xs py-1.5 ${
-                      myReady
-                        ? 'rounded-full border border-sidebar/40 bg-sidebar/10 px-3 text-sidebar'
-                        : 'btn-ghost'
-                    }`}
-                  >
-                    {myReady ? 'Ready ✓' : 'Ready'}
-                  </button>
-                  <span className="px-1 text-[10px] font-display uppercase tracking-wider text-ink-strong-muted">
-                    {readyCount}/{eligiblePlayers.length}
-                  </span>
-                </>
-              )}
-              {!isSpectating && !isTournament && emptySeats > 0 && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      send({
-                        type: 'add_bot',
-                        tableId,
-                        buyIn: table!.config.buyIn,
-                        count: Math.min(Math.max(1, botAddCount), emptySeats),
-                      })
-                    }
-                    className="rounded-full border border-sidebar/20 px-3 py-1.5 text-xs text-ink-strong hover:bg-sidebar/8"
-                  >
-                    + Bot
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      send({
-                        type: 'add_bot',
-                        tableId,
-                        buyIn: table!.config.buyIn,
-                        count: emptySeats,
-                      })
-                    }
-                    className="rounded-full border border-sidebar/12 px-2.5 py-1.5 text-[10px] text-ink-strong-muted hover:bg-sidebar/8"
-                  >
-                    Fill
-                  </button>
-                </>
-              )}
-              {!isSpectating && botSeats > 0 && (
-                <button
-                  type="button"
-                  onClick={() => send({ type: 'remove_all_bots', tableId })}
-                  className="rounded-full px-2.5 py-1.5 text-[10px] text-ink-strong-muted hover:text-danger"
-                >
-                  − Bots
-                </button>
-              )}
-              {(canSitOut || canCancelSitOutNext) && (
-                <button
-                  type="button"
-                  onClick={() => send({ type: 'sit_out', tableId, seat: mySeat! })}
-                  className={
-                    canCancelSitOutNext
-                      ? 'rounded-full border border-sidebar/30 bg-sidebar/8 px-3 py-1.5 text-xs text-sidebar hover:bg-sidebar/12'
-                      : 'rounded-full border border-amber-600/30 px-3 py-1.5 text-xs text-amber-900 hover:bg-amber-500/10'
-                  }
-                  title={
-                    sitOutNextHand
-                      ? 'Finish this hand, then skip until you sit back in'
-                      : canCancelSitOutNext
-                        ? 'You will keep playing after this hand'
-                        : 'Skip the next hand(s) — sit back in when ready'
-                  }
-                >
-                  {sitOutLabel}
-                </button>
-              )}
-              {canSitIn && (
-                <button
-                  type="button"
-                  onClick={() => send({ type: 'sit_in', tableId, seat: mySeat! })}
-                  className="rounded-full border border-sidebar/30 bg-sidebar/8 px-3 py-1.5 text-xs text-sidebar hover:bg-sidebar/12"
-                  title="Return for the next dealt hand (not mid-hand cards)"
-                >
-                  {sitInLabel}
-                </button>
-              )}
-              {canTopUp && (
-                <button
-                  type="button"
-                  onClick={doTopUp}
-                  className="rounded-full border border-sidebar/25 bg-sidebar/8 px-3 py-1.5 text-xs text-sidebar hover:bg-sidebar/12"
-                >
-                  {topUpAmount < table!.config.buyIn ? `Top up ${formatMoneyAmount(topUpAmount)}` : 'Top up'}
-                </button>
-              )}
-              {brokeNoWallet && (
-                <a
-                  href="/profile"
-                  className="rounded-full border border-danger/30 bg-danger/10 px-3 py-1.5 text-xs text-danger"
-                >
-                  Need Wuffies — profile
-                </a>
-              )}
-            </div>
-          </div>
-          )}
         </div>
 
       </div>
@@ -884,12 +886,14 @@ export function TableView({
               youWon={youWon}
               canStartNext={canReady}
               readyCount={readyCount}
-              readyTotal={eligiblePlayers.length}
+              readyTotal={humanEligiblePlayers.length}
               isReady={myReady}
               readyPlayers={readyRosterPlayers}
               canTopUp={canTopUp}
               canSitOut={canSitOut}
               canSitIn={canSitIn}
+              isTournament={isTournament}
+              needWuffies={needWuffies}
               winners={(() => {
                 const bySeat = new Map<
                   number,
@@ -928,6 +932,9 @@ export function TableView({
               onSitIn={() => {
                 if (mySeat === undefined) return;
                 send({ type: 'sit_in', tableId, seat: mySeat });
+              }}
+              onNeedWuffies={() => {
+                void leaveRoom('/profile');
               }}
               onDismiss={() => setDismissedWinHandId(table.handId)}
             />

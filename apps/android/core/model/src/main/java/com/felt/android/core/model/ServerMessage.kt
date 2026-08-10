@@ -70,4 +70,32 @@ sealed interface ServerMessage {
         val matchId: String? = null,
         val place: Int? = null,
     ) : ServerMessage
+
+    /** Lobby / social push messages — ignored on table screens when unused. */
+    @Serializable
+    @SerialName("public_tables_sync")
+    data class PublicTablesSync(
+        val tables: List<kotlinx.serialization.json.JsonElement> = emptyList(),
+    ) : ServerMessage
+
+    @Serializable
+    @SerialName("public_contests_sync")
+    data class PublicContestsSync(
+        val contests: List<ContestView> = emptyList(),
+    ) : ServerMessage
+
+    @Serializable
+    @SerialName("my_contests_sync")
+    data class MyContestsSync(
+        val contests: List<ContestView> = emptyList(),
+    ) : ServerMessage
+
+    @Serializable
+    @SerialName("social_sync")
+    data class SocialSync(
+        val friends: List<kotlinx.serialization.json.JsonElement> = emptyList(),
+        val incoming: List<kotlinx.serialization.json.JsonElement> = emptyList(),
+        val pendingChallenges: List<kotlinx.serialization.json.JsonElement> = emptyList(),
+        val groups: List<kotlinx.serialization.json.JsonElement> = emptyList(),
+    ) : ServerMessage
 }

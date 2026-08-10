@@ -34,7 +34,8 @@ import { TableShell } from './TableShell';
 import { WinHandModal } from './WinHandModal';
 import { playTick } from '@/lib/audio';
 import { avatarIdFromUserId, loadSavedAvatarId } from '@/lib/avatars';
-import { formatMoneyAmount } from '@/lib/currency';
+import { loadSavedTableColorId } from '@/lib/tableColors';
+import { coerceMoney, formatMoneyAmount } from '@/lib/currency';
 import { useHandPresentation } from '@/hooks/useHandPresentation';
 import { useSession, type ChatMessage, type PrivateView, type PublicTable } from '@/lib/store';
 import { seatAnglesForHero, useIsLandscapePhone, useIsNarrow } from '@/lib/tableLayout';
@@ -163,6 +164,11 @@ export function OfflineTableView({
   const [turnEndsAt, setTurnEndsAt] = useState<number | null>(null);
   const [dismissedWinHandId, setDismissedWinHandId] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [tableColorId, setTableColorId] = useState(0);
+
+  useEffect(() => {
+    setTableColorId(loadSavedTableColorId());
+  }, []);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevVersion = useRef<number | null>(null);
 
@@ -398,8 +404,11 @@ export function OfflineTableView({
     (publicTable.sidePots?.reduce((s, p) => s + p.amount, 0) ?? 0);
   const dealerPlayer = publicTable.players[publicTable.dealerButton];
   const showDealerZone = publicTable.street !== 'waiting';
-  const showMobileStartCta = narrow && betweenHands;
-  const showDesktopTools = !narrow;
+  const canStartHand =
+    betweenHands &&
+    myPlayer?.status !== 'sittingOut' &&
+    myPlayer?.status !== 'empty' &&
+    coerceMoney(myPlayer?.stack) > 0;
 
   const offlineOverflow: OverflowItem[] = [];
   if (narrow) {
@@ -444,6 +453,7 @@ export function OfflineTableView({
 
   return (
     <TableShell
+      tableColorId={tableColorId}
       onSend={(text) =>
         pushChat({ userId: HUMAN_ID, name: playerName, text, at: Date.now() })
       }
@@ -455,7 +465,7 @@ export function OfflineTableView({
       }}
       chatOpen={chatOpen}
       onChatOpenChange={setChatOpen}
-      actionsExpanded={!!isMyTurn}
+      actionsExpanded={!!isMyTurn || canStartHand || canSitIn}
       actions={
         <ActionControls
           onAction={onAction}
@@ -464,11 +474,24 @@ export function OfflineTableView({
           private={priv}
           userId={HUMAN_ID}
           connection="open"
+          tableTools={{
+            onStart: canStartHand ? start : undefined,
+            startLabel: publicTable.street === 'waiting' ? 'Start hand' : 'Next hand',
+            canSitOut,
+            sitOutLabel: 'Sit out',
+            onSitOut: doSitOut,
+            canSitIn,
+            sitInLabel: 'Sit in',
+            onSitIn: doSitIn,
+            canTopUp,
+            topUpLabel: 'Top up',
+            onTopUp: doTopUp,
+          }}
         />
       }
     >
       <div className="flex min-h-0 flex-1 flex-col">
-        <header className="play-chrome-bar mb-2">
+        <header className="play-chrome-bar">
           <div className="flex min-w-0 items-center gap-2.5 pl-0.5">
             <Image
               src="/purple-logo.png"
@@ -537,7 +560,7 @@ export function OfflineTableView({
               landscape={landscape}
               highlightMode={highlightMode}
               winningCards={winningCards}
-              dealing={publicTable.street !== 'waiting'}
+              street={publicTable.street}
             />
           </div>
 
@@ -571,57 +594,6 @@ export function OfflineTableView({
           })}
           </div>
           </div>
-
-          {showMobileStartCta && (
-            <div className="relative z-30 flex shrink-0 justify-center px-1 pb-0.5 pt-1">
-              <button
-                type="button"
-                onClick={start}
-                className="btn-primary min-h-10 px-5 text-[11px] font-display font-bold uppercase tracking-wide"
-              >
-                {publicTable.street === 'waiting' ? 'Start hand' : 'Next hand'}
-              </button>
-            </div>
-          )}
-
-          {showDesktopTools && (
-          <div className="relative z-30 flex shrink-0 justify-center px-2 pb-1 pt-2">
-            <div className="flex max-w-full flex-wrap items-center justify-center gap-1.5 rounded-full border border-sidebar/15 bg-white/80 px-2 py-1.5 backdrop-blur-md shadow-[0_8px_24px_rgb(29_4_50/0.1)]">
-              {betweenHands && (
-                <button type="button" onClick={start} className="btn-ghost text-xs py-1.5">
-                  {publicTable.street === 'waiting' ? 'Start hand' : 'Next hand'}
-                </button>
-              )}
-              {canSitOut && (
-                <button
-                  type="button"
-                  onClick={doSitOut}
-                  className="rounded-full border border-amber-600/30 px-3 py-1.5 text-xs text-amber-900 hover:bg-amber-500/10"
-                >
-                  Sit out
-                </button>
-              )}
-              {canSitIn && (
-                <button
-                  type="button"
-                  onClick={doSitIn}
-                  className="rounded-full border border-sidebar/30 bg-sidebar/8 px-3 py-1.5 text-xs text-sidebar hover:bg-sidebar/12"
-                >
-                  Sit in
-                </button>
-              )}
-              {canTopUp && (
-                <button
-                  type="button"
-                  onClick={doTopUp}
-                  className="rounded-full border border-sidebar/25 bg-sidebar/8 px-3 py-1.5 text-xs text-sidebar hover:bg-sidebar/12"
-                >
-                  Top up
-                </button>
-              )}
-            </div>
-          </div>
-          )}
         </div>
 
       </div>
@@ -629,14 +601,21 @@ export function OfflineTableView({
       {showWinModal && publicTable && (
         <WinHandModal
           youWon={youWon}
-          canStartNext={myPlayer?.status !== 'sittingOut'}
+          canStartNext={
+            myPlayer?.status !== 'sittingOut' &&
+            myPlayer?.status !== 'empty' &&
+            coerceMoney(myPlayer?.stack) > 0
+          }
           canTopUp={canTopUp}
           canSitOut={canSitOut}
           canSitIn={canSitIn}
           readyPlayers={publicTable.players
             .filter(
               (p) =>
-                p.userId && p.stack > 0 && p.status !== 'sittingOut' && p.status !== 'empty',
+                p.userId &&
+                coerceMoney(p.stack) > 0 &&
+                p.status !== 'sittingOut' &&
+                p.status !== 'empty',
             )
             .map((p) => ({
               seat: p.seat,

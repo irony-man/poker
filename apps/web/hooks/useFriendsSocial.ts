@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  listFriends,
   searchUsers,
   type FriendGroup,
   type FriendProfile,
@@ -18,7 +17,7 @@ export function groupMembersDirty(original: Set<string>, editMembers: Set<string
   return false;
 }
 
-/** Shared friends list / search / toast state for FriendsPanel. */
+/** Shared friends list / search / toast state for FriendsPanel (WS social_sync). */
 export function useFriendsSocial({
   disabled,
   onFriendCountChange,
@@ -28,12 +27,15 @@ export function useFriendsSocial({
 }) {
   const userId = useSession((s) => s.userId);
   const sessionToken = useSession((s) => s.sessionToken);
+  const social = useSession((s) => s.social);
+  const socialLoaded = useSession((s) => s.socialLoaded);
   const { refreshSocial } = useOnlineFriends();
 
-  const [friends, setFriends] = useState<FriendProfile[]>([]);
-  const [groups, setGroups] = useState<FriendGroup[]>([]);
-  const [incoming, setIncoming] = useState<PendingRequest[]>([]);
-  const [challenges, setChallenges] = useState<PendingChallenge[]>([]);
+  const friends = social?.friends ?? [];
+  const groups = social?.groups ?? [];
+  const incoming = social?.incoming ?? [];
+  const challenges = social?.pendingChallenges ?? [];
+
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<FriendProfile[]>([]);
   const [searchLookedUp, setSearchLookedUp] = useState(false);
@@ -62,26 +64,34 @@ export function useFriendsSocial({
     };
   }, []);
 
-  const refresh = useCallback(async () => {
-    if (disabled || !userId || !sessionToken) return;
-    try {
-      const data = await listFriends({ sessionToken });
-      setFriends(data.friends);
-      setGroups(data.groups ?? []);
-      setIncoming(data.incoming);
-      setChallenges(data.pendingChallenges);
-      setLoadError(null);
-      onFriendCountChange?.(data.friends.length);
-    } catch (err) {
-      setLoadError(err instanceof Error ? err.message : 'Could not load friends');
-    }
-  }, [disabled, userId, sessionToken, onFriendCountChange]);
+  useEffect(() => {
+    if (disabled) return;
+    onFriendCountChange?.(friends.length);
+  }, [disabled, friends.length, onFriendCountChange]);
 
   useEffect(() => {
-    void refresh();
-    const id = setInterval(() => void refresh(), 15000);
-    return () => clearInterval(id);
-  }, [refresh]);
+    // Surface wait state until first social_sync; clear once loaded.
+    if (socialLoaded) setLoadError(null);
+  }, [socialLoaded]);
+
+  const refresh = useCallback(async () => {
+    if (disabled || !userId || !sessionToken) return;
+    await refreshSocial();
+  }, [disabled, userId, sessionToken, refreshSocial]);
+
+  // Allow local challenge list updates after accept/decline until next push.
+  const [challengeOverride, setChallengeOverride] = useState<PendingChallenge[] | null>(null);
+  useEffect(() => {
+    setChallengeOverride(null);
+  }, [social?.pendingChallenges]);
+
+  const effectiveChallenges = challengeOverride ?? challenges;
+  const setChallenges = useCallback((next: PendingChallenge[] | ((prev: PendingChallenge[]) => PendingChallenge[])) => {
+    setChallengeOverride((prev) => {
+      const base = prev ?? challenges;
+      return typeof next === 'function' ? next(base) : next;
+    });
+  }, [challenges]);
 
   useEffect(() => {
     const q = searchQuery.trim();
@@ -108,9 +118,9 @@ export function useFriendsSocial({
     sessionToken,
     refreshSocial,
     friends,
-    groups,
-    incoming,
-    challenges,
+    groups: groups as FriendGroup[],
+    incoming: incoming as PendingRequest[],
+    challenges: effectiveChallenges,
     setChallenges,
     searchQuery,
     setSearchQuery,

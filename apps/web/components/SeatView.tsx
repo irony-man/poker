@@ -1,20 +1,44 @@
 'use client';
 
+import { useCallback, useState } from 'react';
 import { ChipStack } from './ChipStack';
 import { HoleCardFan, PlayingCard, type CardSize } from './PlayingCard';
 import { PlayerAvatar } from './PlayerAvatar';
+import {
+  canOpenSeatFriendMenu,
+  FriendableSeatHit,
+  SeatFriendMenu,
+} from './SeatFriendMenu';
 import { formatMoneyAmount } from '@/lib/currency';
 import { isSeatActionLabel } from '@/lib/seatAction';
 import { SeatTurnRing } from './TurnTimer';
 import { useSession, type PublicPlayer } from '@/lib/store';
 
-function SeatActionPopup({ label, burstKey }: { label: string; burstKey: number }) {
+function SeatActionPopup({
+  label,
+  burstKey,
+  /** Extra clearance (rem) when hole cards float above the name/avatar stack. */
+  liftRem = 0,
+}: {
+  label: string;
+  burstKey: number;
+  liftRem?: number;
+}) {
   return (
     <div
       key={burstKey}
-      className="pointer-events-none absolute left-1/2 top-0 z-30 -translate-x-1/2 -translate-y-[115%]"
+      className={
+        liftRem > 0
+          ? 'pointer-events-none absolute left-1/2 z-40 -translate-x-1/2'
+          : 'pointer-events-none absolute left-1/2 top-0 z-40 -translate-x-1/2 -translate-y-[115%]'
+      }
+      style={
+        liftRem > 0
+          ? { bottom: `calc(100% + ${liftRem}rem)` }
+          : undefined
+      }
     >
-      <span className="seat-action-popup inline-block whitespace-nowrap rounded-lg border-2 border-mushroom/55 bg-sidebar/95 px-3.5 py-1.5 text-sm font-extrabold uppercase tracking-wide text-mushroom shadow-[0_6px_18px_rgba(14,6,24,0.65)]">
+      <span className="seat-action-popup table-action-popup inline-block whitespace-nowrap rounded-lg border-2 px-2.5 py-1 text-xs font-extrabold uppercase tracking-wide shadow-[0_6px_18px_rgba(14,6,24,0.65)] sm:px-3.5 sm:py-1.5 sm:text-sm">
         {label}
       </span>
     </div>
@@ -102,7 +126,9 @@ export function SeatView({
   const x = 50 + Math.cos(rad) * rx;
   const y = 50 + Math.sin(rad) * ry;
   const isBot = !!player.userId?.startsWith('bot:');
+  const sessionToken = useSession((s) => s.sessionToken);
   const actionBurst = useSession((s) => s.actionBurst);
+  const [friendMenuOpen, setFriendMenuOpen] = useState(false);
   /** Show Call/Fold/etc float on this seat only while the burst is live. */
   const showAction =
     actionBurst != null &&
@@ -112,8 +138,19 @@ export function SeatView({
   const betX = 50 + Math.cos(rad) * (landscape ? 22 : compact ? 24 : 23);
   const betY = 50 + Math.sin(rad) * (landscape ? 18 : compact ? 20 : 19);
 
+  const canFriend = canOpenSeatFriendMenu({
+    sessionToken,
+    isSelf,
+    isBot,
+    userId: player.userId,
+  });
+  const toggleFriendMenu = useCallback(() => {
+    setFriendMenuOpen((v) => !v);
+  }, []);
+  const closeFriendMenu = useCallback(() => setFriendMenuOpen(false), []);
+
   if (player.status === 'empty') {
-    if (spectating) {
+    if (spectating || !onSit) {
       return (
         <div
           style={{ left: `${x}%`, top: `${y}%` }}
@@ -160,8 +197,11 @@ export function SeatView({
   const sittingOut = player.status === 'sittingOut';
   const cardSize: CardSize = landscape ? 'peek' : compact ? 'sm' : isSelf ? 'md' : 'sm';
   const avatarSize = compact ? (isSelf ? 30 : 26) : isSelf ? 28 : 24;
-  const displayName = isSelf ? 'You' : (player.name ?? 'Seat').slice(0, landscape ? 8 : compact ? 7 : 10);
+  const displayName = (player.name ?? 'Seat').slice(0, landscape ? 8 : compact ? 7 : 10);
   const showKick = canKick && !!onKick && !(isBot && canManageBots);
+  const hasHoleCards = !folded && !!(faceDown || showCards);
+  /** Compact self seats float hole cards above the chrome; lift badge clear of them. */
+  const actionLiftRem = hasHoleCards && compact && isSelf ? 4.75 : 0;
 
   return (
     <>
@@ -176,10 +216,16 @@ export function SeatView({
 
       <div
         style={{ left: `${x}%`, top: `${y}%` }}
-        className={`absolute -translate-x-1/2 -translate-y-1/2 ${isToAct || isWinner || showAction ? 'z-20' : 'z-10'}`}
+        className={`absolute -translate-x-1/2 -translate-y-1/2 ${
+          isToAct || isWinner || showAction || friendMenuOpen ? 'z-20' : 'z-10'
+        }`}
       >
         {showAction && actionBurst && (
-          <SeatActionPopup label={actionBurst.label} burstKey={actionBurst.at} />
+          <SeatActionPopup
+            label={actionBurst.label}
+            burstKey={actionBurst.at}
+            liftRem={actionLiftRem}
+          />
         )}
         <div className={folded || sittingOut ? 'opacity-55' : undefined}>
         {/* —— Landscape reference: cards → red $ → name; D on dealer —— */}
@@ -190,7 +236,7 @@ export function SeatView({
             }`}
           >
             {isDealer && (
-              <span className="absolute -right-1 top-0 z-20 flex h-4 w-4 items-center justify-center rounded-full bg-sidebar text-[9px] font-black text-mushroom shadow ring-1 ring-mushroom/40">
+              <span className="table-chrome-disc table-chrome-disc-ring absolute -right-1 top-0 z-20 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-black shadow ring-1">
                 D
               </span>
             )}
@@ -273,24 +319,40 @@ export function SeatView({
               )}
               <div className="overflow-hidden rounded">
                 <div
-                  className={`relative px-1 py-0.5 text-center text-[11px] font-extrabold tabular-nums leading-none text-mushroom ${
-                    isWinner ? 'bg-brass text-ink' : 'bg-sidebar'
+                  className={`relative px-1 py-0.5 text-center text-[11px] font-extrabold tabular-nums leading-none ${
+                    isWinner ? 'table-stack-winner' : 'table-stack-fill'
                   }`}
                 >
                   {formatMoneyAmount(player.stack)}
                 </div>
-                <div
-                  className={`truncate px-1 py-0.5 text-center text-[10px] font-bold leading-none ${
-                    isSelf ? 'bg-mushroom text-sidebar' : 'bg-[#efe6e4] text-sidebar'
-                  }`}
+                <FriendableSeatHit
+                  enabled={canFriend}
+                  label={player.name ?? displayName}
+                  open={friendMenuOpen}
+                  onToggle={toggleFriendMenu}
+                  className="block w-full rounded-none"
                 >
-                  {displayName}
-                </div>
+                  <div
+                    className={`truncate px-1 py-0.5 text-center text-[10px] font-bold leading-none ${
+                      isSelf ? 'bg-mushroom text-sidebar' : 'bg-[#efe6e4] text-sidebar'
+                    } ${canFriend ? 'hover:brightness-95' : ''}`}
+                  >
+                    {displayName}
+                  </div>
+                </FriendableSeatHit>
               </div>
+              {canFriend && player.userId ? (
+                <SeatFriendMenu
+                  targetUserId={player.userId}
+                  name={player.name ?? displayName}
+                  open={friendMenuOpen}
+                  onClose={closeFriendMenu}
+                />
+              ) : null}
             </div>
 
             {player.status === 'allin' && !folded && (
-              <div className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-mushroom drop-shadow">
+              <div className="table-label-on-felt mt-0.5 text-[9px] font-bold uppercase tracking-wider">
                 All-in
               </div>
             )}
@@ -305,7 +367,7 @@ export function SeatView({
               </div>
             )}
             {showReady && !sittingOut && !player.pendingSitOut && (
-              <div className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-mushroom drop-shadow">
+              <div className="table-label-on-felt mt-0.5 text-[9px] font-bold uppercase tracking-wider">
                 Ready
               </div>
             )}
@@ -389,7 +451,7 @@ export function SeatView({
             {handName && !compact && (
               <div
                 className={`relative z-[1] mb-0.5 rounded px-1.5 py-0.5 text-[8px] font-bold tracking-wide ${
-                  isWinner ? 'bg-[#e0b43a] text-black' : 'bg-black/70 text-white/90'
+                  isWinner ? 'table-stack-winner' : 'bg-black/70 text-white/90'
                 }`}
               >
                 {handName}
@@ -409,32 +471,54 @@ export function SeatView({
                       />
                     </div>
                   )}
-                  <PlayerAvatar
-                    avatarId={player.avatarId}
-                    userId={player.userId}
-                    size={avatarSize}
-                    className="relative z-[1]"
-                  />
+                  <FriendableSeatHit
+                    enabled={canFriend}
+                    label={player.name ?? displayName}
+                    open={friendMenuOpen}
+                    onToggle={toggleFriendMenu}
+                  >
+                    <PlayerAvatar
+                      avatarId={player.avatarId}
+                      userId={player.userId}
+                      size={avatarSize}
+                      className="relative z-[1]"
+                    />
+                  </FriendableSeatHit>
                 </div>
                 <div className="relative w-full">
                   {showKick && onKick && <SeatKickButton onKick={onKick} compact />}
                   <div className="flex w-full flex-col overflow-hidden rounded-md shadow-[0_3px_8px_rgba(0,0,0,0.45)]">
-                    {isSelf && (
-                      <span className="bg-mushroom px-0.5 py-px text-center text-[6px] font-extrabold uppercase leading-none tracking-wide text-sidebar">
-                        You
+                    <FriendableSeatHit
+                      enabled={canFriend}
+                      label={player.name ?? displayName}
+                      open={friendMenuOpen}
+                      onToggle={toggleFriendMenu}
+                      className="block w-full rounded-none"
+                    >
+                      <span
+                        className={`block truncate bg-[#efe6e4] px-0.5 py-0.5 text-center text-[8px] font-bold leading-none text-sidebar ${
+                          canFriend ? 'hover:brightness-95' : ''
+                        }`}
+                      >
+                        {displayName}
                       </span>
-                    )}
-                    <span className="truncate bg-[#efe6e4] px-0.5 py-0.5 text-center text-[8px] font-bold leading-none text-sidebar">
-                      {displayName}
-                    </span>
+                    </FriendableSeatHit>
                     <span
                       className={`px-0.5 py-0.5 text-center text-[10px] font-extrabold tabular-nums leading-none tracking-tight ${
-                        isWinner ? 'bg-brass text-ink' : 'bg-sidebar text-mushroom'
+                        isWinner ? 'table-stack-winner' : 'table-stack-fill'
                       }`}
                     >
                       {formatMoneyAmount(player.stack)}
                     </span>
                   </div>
+                  {canFriend && player.userId ? (
+                    <SeatFriendMenu
+                      targetUserId={player.userId}
+                      name={player.name ?? displayName}
+                      open={friendMenuOpen}
+                      onClose={closeFriendMenu}
+                    />
+                  ) : null}
                 </div>
               </div>
             ) : (
@@ -450,38 +534,54 @@ export function SeatView({
                       />
                     </div>
                   )}
-                  <PlayerAvatar
-                    avatarId={player.avatarId}
-                    userId={player.userId}
-                    size={avatarSize}
-                    className="relative z-[1]"
-                  />
+                  <FriendableSeatHit
+                    enabled={canFriend}
+                    label={player.name ?? displayName}
+                    open={friendMenuOpen}
+                    onToggle={toggleFriendMenu}
+                  >
+                    <PlayerAvatar
+                      avatarId={player.avatarId}
+                      userId={player.userId}
+                      size={avatarSize}
+                      className="relative z-[1]"
+                    />
+                  </FriendableSeatHit>
                 </div>
                 <div className="relative flex items-stretch shadow-[0_3px_8px_rgba(0,0,0,0.45)]">
                   {showKick && onKick && <SeatKickButton onKick={onKick} />}
                   <div className="flex flex-col justify-end">
-                    {isSelf && (
-                      <span className="rounded-t-sm bg-mushroom px-1 py-[1px] text-center text-[7px] font-extrabold uppercase leading-tight tracking-wide text-sidebar">
-                        You
-                      </span>
-                    )}
-                    <span
-                      className={`max-w-[3.2rem] truncate rounded-b-sm bg-[#efe6e4] px-1.5 py-1 text-[10px] font-bold leading-none text-sidebar sm:max-w-[3.6rem] ${
-                        isSelf ? '' : 'rounded-sm'
-                      }`}
+                    <FriendableSeatHit
+                      enabled={canFriend}
+                      label={player.name ?? displayName}
+                      open={friendMenuOpen}
+                      onToggle={toggleFriendMenu}
+                      className="block rounded-none"
                     >
-                      {displayName}
-                    </span>
+                      <span
+                        className={`block max-w-[3.2rem] truncate rounded-b-sm bg-[#efe6e4] px-1.5 py-1 text-[10px] font-bold leading-none text-sidebar sm:max-w-[3.6rem] rounded-sm ${
+                          canFriend ? 'hover:brightness-95' : ''
+                        }`}
+                      >
+                        {displayName}
+                      </span>
+                    </FriendableSeatHit>
                   </div>
                   <div
                     className={`flex min-w-[2.75rem] items-center justify-center px-1.5 py-1 text-[11px] font-extrabold tabular-nums tracking-tight sm:min-w-[3.75rem] sm:px-2.5 sm:py-1.5 sm:text-[13px] ${
-                      isWinner
-                        ? 'bg-brass text-ink'
-                        : 'bg-sidebar text-mushroom'
+                      isWinner ? 'table-stack-winner' : 'table-stack-fill'
                     }`}
                   >
                     {formatMoneyAmount(player.stack)}
                   </div>
+                  {canFriend && player.userId ? (
+                    <SeatFriendMenu
+                      targetUserId={player.userId}
+                      name={player.name ?? displayName}
+                      open={friendMenuOpen}
+                      onClose={closeFriendMenu}
+                    />
+                  ) : null}
                 </div>
               </div>
             )}
@@ -489,7 +589,7 @@ export function SeatView({
             {handName && compact && (
               <div
                 className={`relative z-[1] mt-0.5 max-w-full truncate rounded px-1 py-px text-[7px] font-bold tracking-wide ${
-                  isWinner ? 'bg-[#e0b43a] text-black' : 'bg-black/70 text-white/90'
+                  isWinner ? 'table-stack-winner' : 'bg-black/70 text-white/90'
                 }`}
               >
                 {handName}
@@ -497,7 +597,7 @@ export function SeatView({
             )}
 
             {player.status === 'allin' && (
-              <div className="relative z-[1] mt-0.5 text-[7px] font-bold uppercase tracking-[0.14em] text-mushroom">
+              <div className="table-label-on-felt relative z-[1] mt-0.5 text-[7px] font-bold uppercase tracking-[0.14em]">
                 All-in
               </div>
             )}
@@ -517,7 +617,7 @@ export function SeatView({
               </div>
             )}
             {showReady && !sittingOut && !player.pendingSitOut && (
-              <div className="relative z-[1] mt-0.5 text-[7px] font-bold uppercase tracking-[0.14em] text-mushroom">
+              <div className="table-label-on-felt relative z-[1] mt-0.5 text-[7px] font-bold uppercase tracking-[0.14em]">
                 Ready
               </div>
             )}
@@ -525,7 +625,7 @@ export function SeatView({
         )}
 
         {isWinner && winAmount != null && winAmount > 0 && (
-          <div className="mt-0.5 text-center text-[11px] font-extrabold text-[#ffe29a] drop-shadow">
+          <div className="table-label-on-felt mt-0.5 text-center text-[11px] font-extrabold drop-shadow">
             +{formatMoneyAmount(winAmount)}
           </div>
         )}

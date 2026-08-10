@@ -9,7 +9,9 @@ import { ClientMessageSchema } from '@poker/protocol';
 import type { RawData, WebSocket } from 'ws';
 import { AuthService } from '../auth/auth.service.js';
 import { ContestsService } from '../contests/contests.service.js';
+import { FriendsService } from '../friends/friends.service.js';
 import { PresenceService } from '../presence/presence.service.js';
+import { RealtimeService } from '../realtime/realtime.service.js';
 import { RoomsService } from '../rooms/rooms.service.js';
 import { WalletService } from '../wallet/wallet.service.js';
 
@@ -31,7 +33,9 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly wallet: WalletService,
     private readonly rooms: RoomsService,
     private readonly contests: ContestsService,
+    private readonly friends: FriendsService,
     private readonly presence: PresenceService,
+    private readonly realtime: RealtimeService,
   ) {}
 
   handleConnection(@ConnectedSocket() client: WebSocket): void {
@@ -47,6 +51,11 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
       contestId: null,
       send,
     });
+    this.realtime.registerSocket(send);
+    // Fresh public lobby lists (tables may have just changed while connected clients idle).
+    this.realtime.setPublicTables(this.rooms.listPublicLobby());
+    this.realtime.setPublicContests(this.contests.listPublic());
+    this.realtime.sendPublicLobby(send);
     client.on('message', (raw: RawData) => {
       void this.handleMessage(client, raw);
     });
@@ -66,6 +75,11 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.contests.detachWatcher(contestId, userId);
     } else if (userId) {
       this.contests.detachWatcherAll(userId);
+    }
+    const lastSocket = this.realtime.unregisterSocket(send, userId);
+    if (userId && lastSocket) {
+      this.presence.clear(userId);
+      void this.realtime.pushSocialToFriendsOf(userId);
     }
     this.states.delete(client);
   }
@@ -92,6 +106,7 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     if (msg.type === 'ping') {
       send({ type: 'pong' });
+      if (st.userId) this.presence.touch(st.userId);
       return;
     }
 
@@ -101,10 +116,12 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
         send({ type: 'error', message: 'Invalid or expired ticket', code: 'bad_auth' });
         return;
       }
+      const wasOnline = this.presence.isOnline(user.id) || this.realtime.isUserConnected(user.id);
       st.userId = user.id;
       st.name = user.name;
       void this.wallet.ensureStartingBalance(user.id);
       this.presence.touch(user.id);
+      const firstSocket = this.realtime.registerUser(user.id, send);
       send({
         type: 'auth_ok',
         userId: user.id,
@@ -112,6 +129,10 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
         avatarId: user.avatarId,
         chipBalance: this.wallet.getBalance(user.id),
       });
+      await this.realtime.sendAuthSnapshots(user.id, send);
+      if (firstSocket && !wasOnline) {
+        void this.realtime.pushSocialToFriendsOf(user.id);
+      }
       return;
     }
 
@@ -150,6 +171,14 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
           type: 'error',
           message: 'Table not found — server may have restarted. Create a new table from the lobby.',
           code: 'not_found',
+        });
+        return;
+      }
+      if (room.meta.tournament?.frozen) {
+        send({
+          type: 'error',
+          message: 'Contest has ended',
+          code: 'contest_ended',
         });
         return;
       }

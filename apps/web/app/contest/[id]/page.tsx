@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   type ContestView,
   getContest,
@@ -10,13 +10,13 @@ import {
   registerContest,
   startContest,
   unregisterContest,
-  WS_URL,
 } from '@/lib/api';
 import { FriendInvitePicker } from '@/components/FriendInvitePicker';
 import { MoneyAmount } from '@/components/CurrencyIcon';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { useSession } from '@/lib/store';
+import { useContestSocket } from '@/lib/ws';
 
 function modeLabel(mode: ContestView['mode']): string {
   return mode === 'rounds' ? 'Rounds' : 'Wuffies';
@@ -27,7 +27,7 @@ function modeDescription(contest: ContestView): string {
     const limit = contest.handLimit ?? 20;
     return `Play ${limit} hands with top-ups. Highest stack when the session ends wins.`;
   }
-  return 'Equal stacks, no top-ups. Last player with Wuffies wins.';
+  return 'equal stacks, no top-ups. Last player with Wuffies wins.';
 }
 
 function statusLabel(status: ContestView['status']): string {
@@ -53,6 +53,8 @@ export default function ContestPage() {
   const ticket = useSession((s) => s.ticket);
   const sessionToken = useSession((s) => s.sessionToken);
   const setSession = useSession((s) => s.setSession);
+  const liveContest = useSession((s) => s.contestById[contestId] ?? null);
+  const contestEvent = useSession((s) => s.contestEvent);
   const [contest, setContest] = useState<ContestView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -86,73 +88,48 @@ export default function ContestPage() {
     }
   }, [sessionToken, ticket, setSession]);
 
-  const load = useCallback(async () => {
-    try {
-      const { contest: c } = await getContest(contestId);
-      setContest(c);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Not found');
-    }
+  // One-shot REST bootstrap before/while WS connects (cold load + unauth).
+  useEffect(() => {
+    let cancelled = false;
+    void getContest(contestId)
+      .then(({ contest: c }) => {
+        if (!cancelled) {
+          setContest(c);
+          setError(null);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Not found');
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [contestId]);
 
-  useEffect(() => {
-    void load();
-    const t = setInterval(() => void load(), 3000);
-    return () => clearInterval(t);
-  }, [load]);
+  useContestSocket(ticket ? contestId : null);
 
-  // Live contest_sync over websocket
   useEffect(() => {
-    if (!ticket || !contestId) return;
-    let ws: WebSocket | null = null;
-    let ping: ReturnType<typeof setInterval> | null = null;
-    let closed = false;
+    if (liveContest) setContest(liveContest);
+  }, [liveContest]);
 
-    const connect = () => {
-      if (closed) return;
-      ws = new WebSocket(WS_URL);
-      ws.onopen = () => ws!.send(JSON.stringify({ type: 'auth', ticket }));
-      ws.onmessage = (ev) => {
-        const msg = JSON.parse(String(ev.data)) as {
-          type: string;
-          contest?: ContestView;
-          event?: string;
-          tableId?: string;
-        };
-        if (msg.type === 'auth_ok') {
-          ws!.send(JSON.stringify({ type: 'join_contest', contestId }));
-        } else if (msg.type === 'contest_sync' && msg.contest) {
-          setContest(msg.contest as ContestView);
-        } else if (msg.type === 'contest_event' && msg.event === 'match_assigned' && msg.tableId) {
-          if (navigatedTable.current !== msg.tableId) {
-            navigatedTable.current = msg.tableId;
-            enterMobileFullscreen();
-            router.push(`/table/${msg.tableId}?contest=${contestId}`);
-          }
-        }
-      };
-      ws.onclose = () => {
-        if (!closed) setTimeout(connect, 2000);
-      };
-      ping = setInterval(() => {
-        if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping' }));
-      }, 20000);
-    };
-    connect();
-    return () => {
-      closed = true;
-      if (ping) clearInterval(ping);
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'leave_contest', contestId }));
-        ws.close();
+  useEffect(() => {
+    if (!contestEvent || contestEvent.contestId !== contestId) return;
+    if (contestEvent.event === 'match_assigned' && contestEvent.tableId) {
+      if (navigatedTable.current !== contestEvent.tableId) {
+        navigatedTable.current = contestEvent.tableId;
+        enterMobileFullscreen();
+        router.push(`/table/${contestEvent.tableId}?contest=${contestId}`);
       }
-    };
-  }, [ticket, contestId, router]);
+    } else if (contestEvent.event === 'contest_completed') {
+      navigatedTable.current = null;
+    }
+  }, [contestEvent, contestId, router]);
 
-  // Auto-navigate when assignment appears via poll
+  // Auto-navigate when assignment appears via sync (only while contest is live)
   useEffect(() => {
-    if (!contest || !userId) return;
+    if (!contest || !userId || contest.status !== 'running') return;
     const a = contest.assignments.find((x) => x.userId === userId);
     if (a?.tableId && navigatedTable.current !== a.tableId) {
       navigatedTable.current = a.tableId;

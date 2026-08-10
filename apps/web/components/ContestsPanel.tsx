@@ -6,8 +6,6 @@ import {
   type ContestMode,
   type ContestView,
   createContest,
-  listMyContests,
-  listPublicContests,
 } from '@/lib/api';
 import { useSession } from '@/lib/store';
 import { LobbySplitCard } from './LobbySplitCard';
@@ -50,17 +48,7 @@ const FORMAT_TABS: {
 
 function sizeBlurb(fieldSize: number): string {
   if (fieldSize === 2) return 'Max 2 seats — heads-up when the contest starts';
-  return `Up to ${fieldSize} seats; start with fewer if you fill gaps with bots`;
-}
-
-function botsBlurb(botCount: number, fieldSize: number): string {
-  if (botCount === 0) {
-    return 'Only human players — wait for friends or start when enough have joined';
-  }
-  if (botCount === 1) {
-    return 'If a seat is open when you start, 1 bot joins';
-  }
-  return `If seats are open when you start, up to ${botCount} bots fill them (max ${fieldSize})`;
+  return `Up to ${fieldSize} seats; start once at least 2 players have joined`;
 }
 
 function handsBlurb(handLimit: number): string {
@@ -130,65 +118,28 @@ export function ContestsPanel({
   onJoinCode: (code: string) => Promise<void>;
 }) {
   const userId = useSession((s) => s.userId);
+  const open = useSession((s) => s.publicContests);
+  const joined = useSession((s) => s.myContests);
   const [mode, setMode] = useState<ContestMode>('chips');
   const [fieldSize, setFieldSize] = useState(6);
-  const [botCount, setBotCount] = useState(0);
   const [handLimit, setHandLimit] = useState(20);
   const [inviteFriendIds, setInviteFriendIds] = useState<string[]>([]);
   const [invite, setInvite] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [listError, setListError] = useState<string | null>(null);
-  const [open, setOpen] = useState<ContestView[]>([]);
-  const [joined, setJoined] = useState<ContestView[]>([]);
+  const listError: string | null = null;
 
-  const maxBots = Math.max(0, fieldSize - 1);
   const maxFriendInvites = Math.min(8, Math.max(0, fieldSize - 1));
   const moreSummary =
-    `${botCount === 0 ? 'No fill bots' : `Up to ${botCount} fill bot${botCount === 1 ? '' : 's'}`}` +
-    ` · ${
-      inviteFriendIds.length === 0
-        ? 'no invites'
-        : `${inviteFriendIds.length} invite${inviteFriendIds.length === 1 ? '' : 's'}`
-    }`;
-
-  useEffect(() => {
-    if (botCount > maxBots) setBotCount(maxBots);
-  }, [fieldSize, botCount, maxBots]);
+    inviteFriendIds.length === 0
+      ? 'No invites'
+      : `${inviteFriendIds.length} invite${inviteFriendIds.length === 1 ? '' : 's'}`;
 
   useEffect(() => {
     if (inviteFriendIds.length > maxFriendInvites) {
       setInviteFriendIds((ids) => ids.slice(0, maxFriendInvites));
     }
   }, [maxFriendInvites, inviteFriendIds.length]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const publicList = await listPublicContests();
-        if (cancelled) return;
-        setOpen(publicList.contests);
-        if (sessionToken) {
-          const mine = await listMyContests({ sessionToken });
-          if (!cancelled) setJoined(mine.contests);
-        } else {
-          setJoined([]);
-        }
-        setListError(null);
-      } catch (err) {
-        if (!cancelled) {
-          setListError(err instanceof Error ? err.message : 'Could not load contests');
-        }
-      }
-    };
-    void load();
-    const t = setInterval(load, 8000);
-    return () => {
-      cancelled = true;
-      clearInterval(t);
-    };
-  }, [sessionToken]);
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -208,7 +159,6 @@ export function ContestsPanel({
           startingStack: 1000,
           smallBlind: 5,
           bigBlind: 10,
-          botCount,
           isPrivate: true,
           autoStart: true,
           handLimit: mode === 'rounds' ? handLimit : undefined,
@@ -369,7 +319,7 @@ export function ContestsPanel({
         <details className="group rounded-xl border border-sidebar/12 bg-mushroom/40 open:bg-mushroom/55">
           <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm outline-none marker:content-none [&::-webkit-details-marker]:hidden focus-visible:ring-2 focus-visible:ring-sidebar/30">
             <span className="min-w-0 flex-1">
-              <span className="hud-label block">Bots & friends</span>
+              <span className="hud-label block">Invite friends</span>
               <span className="mt-0.5 block text-xs text-ink-strong-muted">{moreSummary}</span>
             </span>
             <svg
@@ -386,17 +336,6 @@ export function ContestsPanel({
             </svg>
           </summary>
           <div className="space-y-4 border-t border-sidebar/10 px-3 py-3.5">
-            <div className="min-w-0">
-              <ChoiceRow
-                label="Fill bots if empty"
-                name="contest-bots"
-                selected={botCount}
-                options={Array.from({ length: maxBots + 1 }, (_, n) => n)}
-                onSelect={setBotCount}
-                format={(n) => (n === 0 ? 'None' : String(n))}
-              />
-              <p className="field-help mt-2.5">{botsBlurb(botCount, fieldSize)}</p>
-            </div>
             <FriendInvitePicker
               sessionToken={sessionToken}
               selectedIds={inviteFriendIds}
@@ -404,7 +343,7 @@ export function ContestsPanel({
               disabled={disabled || busy}
               maxSelect={Math.max(0, maxFriendInvites)}
               title="Invite friends"
-              help="They get a contest invite in Friends. Start later and empty seats can fill with bots."
+              help="They get a contest invite in Friends. Start once at least two players have joined."
             />
           </div>
         </details>
@@ -418,33 +357,10 @@ export function ContestsPanel({
             {busy ? 'Starting…' : submitLabel}
           </button>
           <p className="field-help mt-2.5">
-            Share the contest code after you create it. Bots only join when you press Start.
+            Share the contest code after you create it. Need at least two human players to start.
           </p>
         </div>
       </form>
-
-      <form onSubmit={onJoin} className="flex flex-col gap-2 border-t border-sidebar/10 pt-5">
-        <label className="block">
-          <span className="hud-label">Join with room code</span>
-          <input
-            value={invite}
-            onChange={(e) => setInvite(e.target.value.replace(/\D/g, '').slice(0, 8))}
-            className="hud-input"
-            inputMode="numeric"
-            placeholder="4–8 digits"
-            disabled={disabled || busy}
-            autoComplete="off"
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={disabled || busy || invite.trim().length < 4}
-          className="btn-ghost min-h-10 w-full sm:w-auto"
-        >
-          Join contest
-        </button>
-      </form>
-
 
       {open.length > 0 && (
         <div className="border-t border-sidebar/10 pt-5">

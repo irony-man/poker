@@ -156,7 +156,11 @@ class TableViewModel @Inject constructor(
                         }
                         ServerMessage.Pong -> Unit
                         is ServerMessage.ContestSync,
-                        is ServerMessage.ContestEvent -> Unit
+                        is ServerMessage.ContestEvent,
+                        is ServerMessage.PublicTablesSync,
+                        is ServerMessage.PublicContestsSync,
+                        is ServerMessage.MyContestsSync,
+                        is ServerMessage.SocialSync -> Unit
                     }
                 }
             }

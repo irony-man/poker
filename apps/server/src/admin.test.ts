@@ -1,0 +1,143 @@
+import { mkdtemp, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { isAdminUsername, parseAdminUsernames } from './admin/admin-allowlist.js';
+import { AuthStore } from './auth/auth.store.js';
+import { MemoryKv } from './kv/kv.store.js';
+import type { HandHistoryStore } from './history/history.store.js';
+import { RoomManager } from './rooms/room.js';
+import { SiteConfigStore } from './site-config/site-config.store.js';
+import { MemoryTableChipStore } from './table-chips/table-chips.store.js';
+import { TournamentManager } from './contests/tournament.js';
+import { AuthWalletStore } from './wallet/wallet.store.js';
+import { STARTING_CHIP_GRANT, WalletError } from './wallet/wallet.constants.js';
+
+function memoryHistory(): HandHistoryStore {
+  return {
+    async recordTable() {},
+    async recordHand() {},
+    async listHands() {
+      return [];
+    },
+  };
+}
+
+describe('admin allowlist', () => {
+  it('parses usernames and fails closed when empty', () => {
+    expect(parseAdminUsernames(undefined).size).toBe(0);
+    expect(parseAdminUsernames('').size).toBe(0);
+    expect(parseAdminUsernames(' alice, Bob ')).toEqual(new Set(['alice', 'bob']));
+    expect(isAdminUsername('Alice', parseAdminUsernames('alice,bob'))).toBe(true);
+    expect(isAdminUsername('charlie', parseAdminUsernames('alice,bob'))).toBe(false);
+    expect(isAdminUsername('alice', parseAdminUsernames(null))).toBe(false);
+  });
+});
+
+describe('site config + runtime economy', () => {
+  let dir: string;
+  let site: SiteConfigStore;
+  let auth: AuthStore;
+  let wallet: AuthWalletStore;
+
+  beforeEach(async () => {
+    dir = await mkdtemp(path.join(os.tmpdir(), 'admin-'));
+    site = new SiteConfigStore(dir);
+    await site.init();
+    auth = new AuthStore(dir);
+    auth.setEconomyProvider(() => site.getEconomy());
+    await auth.init();
+    wallet = new AuthWalletStore(auth);
+    wallet.setEconomyProvider(() => site.getEconomy());
+  });
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it('defaults match wallet constants', () => {
+    const eco = site.getEconomy();
+    expect(eco.startingChipGrant).toBe(STARTING_CHIP_GRANT);
+  });
+
+  it('signup uses configured starting grant', async () => {
+    await site.setEconomy({ startingChipGrant: 42_000 });
+    const session = await auth.signup('newbie', 'password12');
+    expect(session.chipBalance).toBe(42_000);
+    expect(wallet.getBalance(session.userId)).toBe(42_000);
+  });
+
+  it('refill respects configured threshold and grant', async () => {
+    await auth.seedUser('u1', 'alice', 'password1');
+    await site.setEconomy({ refillThreshold: 2_000, refillGrant: 7_000 });
+    await wallet.debit('u1', STARTING_CHIP_GRANT - 1_500, 'buy_in');
+    expect(wallet.getBalance('u1')).toBe(1_500);
+    expect(wallet.refillInfo('u1').eligible).toBe(true);
+    const after = await wallet.claimRefill('u1');
+    expect(after.balance).toBe(1_500 + 7_000);
+  });
+
+  it('admin_credit increases balance', async () => {
+    await auth.seedUser('u1', 'alice', 'password1');
+    const before = wallet.getBalance('u1');
+    const res = await wallet.credit('u1', 500, 'admin_credit');
+    expect(res.balance).toBe(before + 500);
+  });
+
+  it('rejects claim above runtime threshold', async () => {
+    await auth.seedUser('u1', 'alice', 'password1');
+    await site.setEconomy({ refillThreshold: 100 });
+    await expect(wallet.claimRefill('u1')).rejects.toBeInstanceOf(WalletError);
+  });
+
+  it('persists announcement to file', async () => {
+    await site.setAnnouncement({ enabled: true, text: 'Hello players' });
+    const reloaded = new SiteConfigStore(dir);
+    await reloaded.init();
+    expect(reloaded.getAnnouncement()).toEqual({ enabled: true, text: 'Hello players' });
+  });
+});
+
+describe('admin live games listing', () => {
+  it('lists private rooms and all contests', async () => {
+    const rooms = new RoomManager(
+      new MemoryKv(),
+      memoryHistory(),
+      new MemoryTableChipStore(),
+    );
+    const meta = rooms.create({
+      name: 'Private Game',
+      hostUserId: 'host1',
+      isPrivate: true,
+      config: {
+        smallBlind: 5,
+        bigBlind: 10,
+        buyIn: 1000,
+        turnTimeMs: 20_000,
+        maxSeats: 6,
+      },
+    });
+    const all = rooms.listAllAdmin();
+    expect(all.some((t) => t.tableId === meta.id && t.isPrivate)).toBe(true);
+
+    const tm = new TournamentManager(rooms);
+    await tm.create({
+      name: 'Cup',
+      mode: 'chips',
+      hostUserId: 'host1',
+      hostName: 'Host',
+      fieldSize: 4,
+      startingStack: 1000,
+      smallBlind: 5,
+      bigBlind: 10,
+      turnTimeMs: 20_000,
+      botCount: 0,
+      isPrivate: true,
+      autoStart: false,
+    });
+    const contests = tm.listAll();
+    expect(contests).toHaveLength(1);
+    expect(contests[0]!.isPrivate).toBe(true);
+    expect(tm.listPublic()).toHaveLength(0);
+  });
+});

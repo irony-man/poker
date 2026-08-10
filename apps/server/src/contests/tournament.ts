@@ -13,7 +13,7 @@ import {
   type ContestView,
   validateContestFieldSize,
 } from '@poker/protocol';
-import { isBotUserId, makeBotUserId, pickBotName } from '../bot.js';
+import { isBotUserId } from '../bot.js';
 import { Room, RoomManager } from '../rooms/room.js';
 import type { WalletStore } from '../wallet/wallet.constants.js';
 import { UnlimitedWalletStore, WalletError } from '../wallet/wallet.store.js';
@@ -28,6 +28,7 @@ export interface CreateContestOpts {
   smallBlind: number;
   bigBlind: number;
   turnTimeMs: number;
+  /** Deprecated; ignored — contests are humans-only. */
   botCount: number;
   isPrivate: boolean;
   inviteCode?: string;
@@ -47,7 +48,7 @@ export interface ContestState {
   status: ContestStatus;
   hostUserId: string;
   fieldSize: number;
-  /** Max bots to seat when starting if seats are still open. */
+  /** Always 0 — contests are humans-only (field kept for wire/state shape). */
   botFillMax: number;
   startingStack: number;
   smallBlind: number;
@@ -71,6 +72,8 @@ export interface ContestState {
   activeTableByUser: Map<string, string>;
   /** Tables owned by this contest. */
   tableIds: Set<string>;
+  /** Humans who already paid `startingStack` entry (join-time buy-in). */
+  entryPaid: Set<string>;
 }
 
 type SendFn = (msg: unknown) => void;
@@ -85,6 +88,8 @@ export class TournamentManager {
   private walletSettled = new Map<string, Set<string>>(); // contestId → userIds
   /** Humans who already received a ranking prize for this contest. */
   private prizeSettled = new Map<string, Set<string>>(); // contestId → userIds
+  /** Fan-out public + mine contest lists (set by ContestsService). */
+  private onListChange: ((c: ContestState) => void) | null = null;
 
   constructor(rooms: RoomManager, wallet: WalletStore = new UnlimitedWalletStore()) {
     this.rooms = rooms;
@@ -92,14 +97,18 @@ export class TournamentManager {
     rooms.setTournamentHook((room) => this.onRoomHandEnded(room));
   }
 
-  create(opts: CreateContestOpts): ContestView {
+  setListChangeHandler(handler: ((c: ContestState) => void) | null): void {
+    this.onListChange = handler;
+  }
+
+  private notifyListChange(c: ContestState): void {
+    this.onListChange?.(c);
+  }
+
+  async create(opts: CreateContestOpts): Promise<ContestView> {
     const sizeErr = validateContestFieldSize(opts.mode, opts.fieldSize);
     if (sizeErr) throw new Error(sizeErr);
     if (opts.bigBlind < opts.smallBlind) throw new Error('bigBlind must be >= smallBlind');
-    if (opts.botCount >= opts.fieldSize) {
-      throw new Error('botCount must leave at least one human seat');
-    }
-
     const inviteCode = opts.inviteCode ?? this.allocateInviteCode();
     if (this.byInvite.has(inviteCode)) {
       throw new Error('Room code already in use');
@@ -107,7 +116,8 @@ export class TournamentManager {
 
     const handLimit = resolveHandLimit(opts.mode, opts.handLimit);
     const id = nanoid(10);
-    const botFillMax = Math.max(0, Math.min(opts.botCount, opts.fieldSize - 1));
+    // Contests are humans-only; ignore legacy botCount from older clients.
+    const botFillMax = 0;
     const contest: ContestState = {
       id,
       inviteCode,
@@ -136,9 +146,20 @@ export class TournamentManager {
       completedAt: null,
       activeTableByUser: new Map(),
       tableIds: new Set(),
+      entryPaid: new Set(),
     };
 
-    // Host auto-registers. Bots fill empty seats only when the contest starts.
+    // Host auto-registers — collect buy-in at join time (create).
+    if (!isBotUserId(opts.hostUserId)) {
+      try {
+        await this.wallet.debit(opts.hostUserId, opts.startingStack, 'buy_in', id);
+        contest.entryPaid.add(opts.hostUserId);
+      } catch (err) {
+        if (err instanceof WalletError) throw new Error(err.message);
+        throw err instanceof Error ? err : new Error('Could not collect entry fee');
+      }
+    }
+
     contest.entrants.push({
       userId: opts.hostUserId,
       name: opts.hostName,
@@ -149,7 +170,9 @@ export class TournamentManager {
     this.contests.set(id, contest);
     this.byInvite.set(inviteCode, id);
 
-    return this.toView(contest);
+    const view = this.toView(contest);
+    this.notifyListChange(contest);
+    return view;
   }
 
   async register(
@@ -159,50 +182,75 @@ export class TournamentManager {
   ): Promise<{ ok: boolean; error?: string; contest?: ContestView }> {
     const c = this.contests.get(contestId);
     if (!c) return { ok: false, error: 'Contest not found' };
+    if (c.status === 'completed') return { ok: false, error: 'Contest has ended' };
+    if (c.status === 'cancelled') return { ok: false, error: 'Contest was cancelled' };
     if (c.status !== 'registering') return { ok: false, error: 'Registration closed' };
     if (c.entrants.some((e) => e.userId === userId)) {
       return { ok: true, contest: this.toView(c) };
     }
     if (c.entrants.length >= c.fieldSize) return { ok: false, error: 'Contest full' };
 
+    const isBot = isBotUserId(userId);
+    if (!isBot && !c.entryPaid.has(userId)) {
+      try {
+        await this.wallet.debit(userId, c.startingStack, 'buy_in', c.id);
+        c.entryPaid.add(userId);
+      } catch (err) {
+        if (err instanceof WalletError && err.code === 'insufficient') {
+          return { ok: false, error: err.message };
+        }
+        console.error('[wallet] contest join buy-in failed', err);
+        return {
+          ok: false,
+          error: err instanceof WalletError ? err.message : 'Could not process buy-in',
+        };
+      }
+    }
+
     c.entrants.push({
       userId,
       name,
-      isBot: isBotUserId(userId),
+      isBot,
       registeredAt: Date.now(),
     });
     this.broadcast(c.id);
+    this.notifyListChange(c);
 
     if (c.autoStart && c.entrants.length >= c.fieldSize) {
-      let canPay = true;
-      for (const e of c.entrants) {
-        if (e.isBot || isBotUserId(e.userId)) continue;
-        if (this.wallet.getBalance(e.userId) < c.startingStack) {
-          canPay = false;
-          break;
-        }
-      }
-      if (canPay) {
-        const started = await this.startContest(c);
-        if (!started.ok) {
-          return { ok: true, contest: this.toView(c), error: started.error };
-        }
+      const started = await this.startContest(c);
+      if (!started.ok) {
+        return { ok: true, contest: this.toView(c), error: started.error };
       }
     }
 
     return { ok: true, contest: this.toView(c) };
   }
 
-  unregister(
+  async unregister(
     contestId: string,
     userId: string,
-  ): { ok: boolean; error?: string; contest?: ContestView } {
+  ): Promise<{ ok: boolean; error?: string; contest?: ContestView }> {
     const c = this.contests.get(contestId);
     if (!c) return { ok: false, error: 'Contest not found' };
     if (c.status !== 'registering') return { ok: false, error: 'Registration closed' };
     if (userId === c.hostUserId) return { ok: false, error: 'Host cannot unregister' };
+    if (!c.entrants.some((e) => e.userId === userId)) {
+      return { ok: true, contest: this.toView(c) };
+    }
+
+    if (c.entryPaid.has(userId) && !isBotUserId(userId)) {
+      try {
+        await this.wallet.credit(userId, c.startingStack, 'cash_out', c.id);
+        c.entryPaid.delete(userId);
+      } catch (err) {
+        console.error('[wallet] contest entry refund failed', err);
+        return { ok: false, error: 'Could not refund buy-in' };
+      }
+    }
+
     c.entrants = c.entrants.filter((e) => e.userId !== userId);
     this.broadcast(c.id);
+    this.notifyListChange(c);
     return { ok: true, contest: this.toView(c) };
   }
 
@@ -215,22 +263,21 @@ export class TournamentManager {
     if (userId !== c.hostUserId) return { ok: false, error: 'Only host can start' };
     if (c.status !== 'registering') return { ok: false, error: 'Already started' };
 
-    this.fillEmptySeatsWithBots(c);
     if (c.entrants.length < 2) {
       return {
         ok: false,
-        error: 'Need at least 2 entrants — invite friends or add fill bots',
+        error: 'Need at least 2 players to start',
       };
     }
     if (c.entrants.length > 9) return { ok: false, error: 'Contest needs 2–9 entrants' };
 
+    // Buy-in was collected on join; refuse if a human still somehow unpaid.
     for (const e of c.entrants) {
       if (e.isBot || isBotUserId(e.userId)) continue;
-      const bal = this.wallet.getBalance(e.userId);
-      if (bal < c.startingStack) {
+      if (!c.entryPaid.has(e.userId)) {
         return {
           ok: false,
-          error: `${e.name} needs ${c.startingStack} Wuffies (has ${bal})`,
+          error: `${e.name} has not paid the entry fee`,
         };
       }
     }
@@ -253,6 +300,13 @@ export class TournamentManager {
   listPublic(): ContestView[] {
     return [...this.contests.values()]
       .filter((c) => !c.isPrivate && c.status === 'registering')
+      .map((c) => this.toView(c));
+  }
+
+  /** All contests for admin (including private / finished). */
+  listAll(): ContestView[] {
+    return [...this.contests.values()]
+      .sort((a, b) => b.createdAt - a.createdAt)
       .map((c) => this.toView(c));
   }
 
@@ -321,30 +375,7 @@ export class TournamentManager {
   private async startContest(c: ContestState): Promise<{ ok: boolean; error?: string }> {
     if (c.status !== 'registering') return { ok: false, error: 'Already started' };
 
-    const humans = c.entrants.filter((e) => !e.isBot && !isBotUserId(e.userId));
-    const debited: string[] = [];
-    try {
-      for (const e of humans) {
-        await this.wallet.debit(e.userId, c.startingStack, 'buy_in', c.id);
-        debited.push(e.userId);
-      }
-    } catch (err) {
-      for (const userId of debited) {
-        try {
-          await this.wallet.credit(userId, c.startingStack, 'cash_out', c.id);
-        } catch (refundErr) {
-          console.error('[wallet] contest entry refund failed', refundErr);
-        }
-      }
-      const msg =
-        err instanceof WalletError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : 'Could not collect entry fees';
-      return { ok: false, error: msg };
-    }
-
+    // Entry fees are debited on join/create. Only seat stacks and start play here.
     c.status = 'running';
     c.startedAt = Date.now();
     this.walletSettled.set(c.id, new Set());
@@ -356,31 +387,8 @@ export class TournamentManager {
     });
     this.openTable(c);
     this.broadcast(c.id);
+    this.notifyListChange(c);
     return { ok: true };
-  }
-
-  /**
-   * Seat bots into remaining spots up to botFillMax when the host starts
-   * without a full human field.
-   */
-  private fillEmptySeatsWithBots(c: ContestState): void {
-    const open = Math.max(0, c.fieldSize - c.entrants.length);
-    if (open === 0 || c.botFillMax <= 0) return;
-    const existingBots = c.entrants.filter((e) => e.isBot).length;
-    const botsToAdd = Math.min(open, Math.max(0, c.botFillMax - existingBots));
-    if (botsToAdd <= 0) return;
-
-    const takenNames = new Set(c.entrants.map((e) => e.name));
-    for (let i = 0; i < botsToAdd; i++) {
-      const name = pickBotName(takenNames);
-      takenNames.add(name);
-      c.entrants.push({
-        userId: makeBotUserId(nanoid(8)),
-        name,
-        isBot: true,
-        registeredAt: Date.now(),
-      });
-    }
   }
 
   private openTable(c: ContestState): void {
@@ -402,6 +410,8 @@ export class TournamentManager {
         contestId: c.id,
         mode: c.mode,
         allowTopUp,
+        handsPlayed: 0,
+        handLimit: c.mode === 'rounds' ? c.handLimit : null,
       },
     });
     c.tableId = meta.id;
@@ -452,6 +462,13 @@ export class TournamentManager {
 
     c.handsPlayed += 1;
     c.handsAtLevel += 1;
+    if (room.meta.tournament) {
+      room.meta.tournament = {
+        ...room.meta.tournament,
+        handsPlayed: c.handsPlayed,
+        handLimit: c.mode === 'rounds' ? c.handLimit : room.meta.tournament.handLimit ?? null,
+      };
+    }
     const level = c.schedule[c.levelIndex];
     if (level && c.handsAtLevel >= level.durationHands && c.levelIndex < c.schedule.length - 1) {
       c.levelIndex += 1;
@@ -624,6 +641,11 @@ export class TournamentManager {
       room ?? (c.tableId ? this.rooms.get(c.tableId) ?? null : null);
     this.settleAllRemaining(c, tableRoom);
     this.payPlacementPrizes(c, tableRoom);
+    // Drop table assignments so clients stop routing back into the finished table.
+    c.activeTableByUser.clear();
+    if (tableRoom && !tableRoom.meta.tournament?.frozen) {
+      tableRoom.freezeTournamentMatch();
+    }
     this.broadcastEvent(c.id, {
       type: 'contest_event',
       contestId: c.id,
@@ -631,6 +653,7 @@ export class TournamentManager {
       message: 'Contest completed',
     });
     this.broadcast(c.id);
+    this.notifyListChange(c);
   }
 
   private aliveEntrants(c: ContestState): ContestEntrantInternal[] {

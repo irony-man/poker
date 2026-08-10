@@ -1,6 +1,13 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from 'react';
 import { ChatPanel } from './ChatPanel';
 import {
   ChatActionDock,
@@ -10,11 +17,46 @@ import {
   type ActionPlacement,
 } from './FloatingActionDock';
 import { MobileQuickReactions } from './MobileQuickReactions';
+import { OnlineFriendsOverlay } from './OnlineFriends';
 import { TableActionToast, useSeatActionAutoClear } from './TableActionToast';
 import { useSession } from '@/lib/store';
 import { useIsNarrow } from '@/lib/tableLayout';
 
 const STORAGE_KEY = 'felt-chat-open';
+const CHAT_WIDTH_KEY = 'felt-chat-width';
+const DEFAULT_CHAT_WIDTH = 336; // 21rem
+const MIN_CHAT_WIDTH = 260;
+const MAX_CHAT_WIDTH_CAP = 560;
+
+function loadChatWidth(): number {
+  try {
+    const raw = localStorage.getItem(CHAT_WIDTH_KEY);
+    if (!raw) return DEFAULT_CHAT_WIDTH;
+    const n = Math.floor(Number(raw));
+    if (!Number.isFinite(n)) return DEFAULT_CHAT_WIDTH;
+    return Math.min(MAX_CHAT_WIDTH_CAP, Math.max(MIN_CHAT_WIDTH, n));
+  } catch {
+    return DEFAULT_CHAT_WIDTH;
+  }
+}
+
+function saveChatWidth(width: number) {
+  try {
+    localStorage.setItem(CHAT_WIDTH_KEY, String(Math.round(width)));
+  } catch {
+    /* ignore */
+  }
+}
+
+function maxChatWidth(): number {
+  if (typeof window === 'undefined') return MAX_CHAT_WIDTH_CAP;
+  // Leave at least ~420px for the felt table.
+  return Math.min(MAX_CHAT_WIDTH_CAP, Math.max(MIN_CHAT_WIDTH, window.innerWidth - 420));
+}
+
+function clampChatWidth(width: number): number {
+  return Math.min(maxChatWidth(), Math.max(MIN_CHAT_WIDTH, Math.round(width)));
+}
 
 function EmojiOverlay() {
   const burst = useSession((s) => s.emojiBurst);
@@ -40,6 +82,7 @@ export function TableShell({
   onChatOpenChange,
   actions,
   actionsExpanded = false,
+  tableColorId = 0,
 }: {
   children: ReactNode;
   onSend: (text: string) => void;
@@ -50,11 +93,18 @@ export function TableShell({
   /** Action controls (ActionControls). Placed bottom on mobile; float or chat on laptop. */
   actions?: ReactNode;
   actionsExpanded?: boolean;
+  /** Viewer table theme preset (0–4). Scopes `.table-theme` CSS tokens. */
+  tableColorId?: number;
 }) {
   const narrow = useIsNarrow();
+  const sessionToken = useSession((s) => s.sessionToken);
+  const signedIn = !!sessionToken;
   const [internalMobileOpen, setInternalMobileOpen] = useState(false);
   const [desktopOpen, setDesktopOpen] = useState(true);
   const [actionPlacement, setActionPlacement] = useState<ActionPlacement>('float');
+  const [chatWidth, setChatWidth] = useState(DEFAULT_CHAT_WIDTH);
+  const [resizing, setResizing] = useState(false);
+  const dragRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const mobileOpen = chatOpen ?? internalMobileOpen;
   const setMobileOpen = onChatOpenChange ?? setInternalMobileOpen;
   useSeatActionAutoClear();
@@ -68,7 +118,16 @@ export function TableShell({
       /* ignore */
     }
     setActionPlacement(loadActionPlacement());
+    setChatWidth(loadChatWidth());
   }, []);
+
+  // Clamp when the viewport shrinks so chat never eats the whole table.
+  useEffect(() => {
+    if (narrow) return;
+    const onResize = () => setChatWidth((w) => clampChatWidth(w));
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [narrow]);
 
   function setChatVisible(visible: boolean) {
     setDesktopOpen(visible);
@@ -97,17 +156,56 @@ export function TableShell({
     }
   }
 
+  const onResizePointerDown = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.currentTarget.setPointerCapture(e.pointerId);
+      dragRef.current = { startX: e.clientX, startWidth: chatWidth };
+      setResizing(true);
+    },
+    [chatWidth],
+  );
+
+  const onResizePointerMove = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    // Dragging the left edge: move left → wider chat.
+    const next = clampChatWidth(drag.startWidth + (drag.startX - e.clientX));
+    setChatWidth(next);
+  }, []);
+
+  const endResize = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!dragRef.current) return;
+    dragRef.current = null;
+    setResizing(false);
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+    setChatWidth((w) => {
+      const clamped = clampChatWidth(w);
+      saveChatWidth(clamped);
+      return clamped;
+    });
+  }, []);
+
   const showFloat = !!actions && (narrow || actionPlacement === 'float');
   const showChatDock = !!actions && !narrow && actionPlacement === 'chat' && desktopOpen;
 
   return (
-    <div className="relative flex h-full min-h-0 flex-1 overflow-hidden">
+    <div
+      className={`table-theme relative flex h-full min-h-0 flex-1 overflow-hidden ${
+        resizing ? 'select-none' : ''
+      }`}
+      data-table-color={tableColorId}
+    >
       <EmojiOverlay />
       <TableActionToast />
 
       <div
-        className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ${
-          narrow ? 'px-0 py-0' : 'px-4 py-2'
+        className={`relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ${
+          narrow ? 'px-0 py-0' : 'px-0 pb-2 pt-0'
         }`}
       >
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{children}</div>
@@ -121,10 +219,66 @@ export function TableShell({
             {actions}
           </FloatingActionDock>
         ) : null}
+        {/* Bottom-right of table column only (not over chat) */}
+        <OnlineFriendsOverlay signedIn={signedIn} />
       </div>
 
       {!narrow && desktopOpen ? (
-        <aside className="relative flex w-[21rem] shrink-0 flex-col overflow-hidden border-l border-sidebar/12 bg-mushroom shadow-[-8px_0_28px_rgb(29_4_50/0.06)]">
+        <aside
+          className="relative flex shrink-0 flex-col overflow-hidden border-l border-sidebar/12 bg-mushroom shadow-[-8px_0_28px_rgb(29_4_50/0.06)]"
+          style={{ width: chatWidth }}
+        >
+          {/* Drag handle on the left edge — laptop resize */}
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize chat panel"
+            aria-valuenow={chatWidth}
+            aria-valuemin={MIN_CHAT_WIDTH}
+            aria-valuemax={maxChatWidth()}
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                setChatWidth((w) => {
+                  const next = clampChatWidth(w + 16);
+                  saveChatWidth(next);
+                  return next;
+                });
+              } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                setChatWidth((w) => {
+                  const next = clampChatWidth(w - 16);
+                  saveChatWidth(next);
+                  return next;
+                });
+              } else if (e.key === 'Home') {
+                e.preventDefault();
+                setChatWidth(MIN_CHAT_WIDTH);
+                saveChatWidth(MIN_CHAT_WIDTH);
+              } else if (e.key === 'End') {
+                e.preventDefault();
+                const max = maxChatWidth();
+                setChatWidth(max);
+                saveChatWidth(max);
+              }
+            }}
+            onPointerDown={onResizePointerDown}
+            onPointerMove={onResizePointerMove}
+            onPointerUp={endResize}
+            onPointerCancel={endResize}
+            className={`absolute inset-y-0 left-0 z-20 w-3 -translate-x-1.5 cursor-col-resize touch-none ${
+              resizing ? 'bg-sidebar/15' : 'bg-transparent hover:bg-sidebar/10'
+            }`}
+            title="Drag to resize chat"
+          >
+            <span
+              className={`pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 transition ${
+                resizing ? 'bg-sidebar/50' : 'bg-sidebar/20'
+              }`}
+              aria-hidden
+            />
+          </div>
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             <ChatPanel
               onSend={onSend}

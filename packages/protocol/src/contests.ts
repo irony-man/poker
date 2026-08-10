@@ -134,8 +134,7 @@ export const CreateContestBodySchema = z.object({
   bigBlind: z.number().int().positive().default(10),
   turnTimeMs: z.number().int().positive().default(20000),
   /**
-   * Max bot seats to fill when starting if human friends leave empty spots.
-   * Bots are not seated until the host starts (or the field fills with humans).
+   * Deprecated — contests are humans-only. Accepted for API compatibility; server ignores it.
    */
   botCount: z.number().int().min(0).max(8).default(0),
   isPrivate: z.boolean().default(true),

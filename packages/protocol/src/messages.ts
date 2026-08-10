@@ -200,6 +200,32 @@ export const ServerMessageSchema = z.discriminatedUnion('type', [
     matchId: z.string().optional(),
     place: z.number().int().positive().optional(),
   }),
+  /** Lobby: open public cash tables (same payload as GET /api/tables). */
+  z.object({
+    type: z.literal('public_tables_sync'),
+    tables: z.array(z.unknown()),
+  }),
+  /** Lobby: open public contests (same as GET /api/contests). */
+  z.object({
+    type: z.literal('public_contests_sync'),
+    contests: z.array(z.unknown()),
+  }),
+  /** Auth only: contests the user hosts or is registered for. */
+  z.object({
+    type: z.literal('my_contests_sync'),
+    contests: z.array(z.unknown()),
+  }),
+  /**
+   * Auth only: full social snapshot (same fields as GET /api/friends).
+   * Pushed on auth and after friend/presence/request/challenge/group changes.
+   */
+  z.object({
+    type: z.literal('social_sync'),
+    friends: z.array(z.unknown()),
+    incoming: z.array(z.unknown()),
+    pendingChallenges: z.array(z.unknown()),
+    groups: z.array(z.unknown()),
+  }),
 ]);
 
 export type ServerMessage = z.infer<typeof ServerMessageSchema>;
@@ -306,10 +332,16 @@ export const AuthSessionSchema = z.object({
   chipBalance: z.number().int().nonnegative().optional(),
 });
 
-export const UpdateMeBodySchema = z.object({
-  /** Preset profile picture index (0–7). */
-  avatarId: z.number().int().min(0).max(7),
-});
+export const UpdateMeBodySchema = z
+  .object({
+    /** Preset profile picture index (0–7). */
+    avatarId: z.number().int().min(0).max(7).optional(),
+    /** Preset table felt theme index (0–4). */
+    tableColorId: z.number().int().min(0).max(4).optional(),
+  })
+  .refine((body) => body.avatarId !== undefined || body.tableColorId !== undefined, {
+    message: 'At least one of avatarId or tableColorId is required',
+  });
 
 export type SignupBody = z.infer<typeof SignupBodySchema>;
 export type LoginBody = z.infer<typeof LoginBodySchema>;

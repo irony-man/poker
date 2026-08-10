@@ -19,6 +19,16 @@ function memoryHistory(): HandHistoryStore {
 
 class TrackingWallet extends UnlimitedWalletStore implements WalletStore {
   credits: { userId: string; amount: number; reason: WalletReason }[] = [];
+  debits: { userId: string; amount: number; reason: WalletReason }[] = [];
+  async debit(
+    userId: string,
+    amount: number,
+    reason: WalletReason,
+    tableId?: string,
+  ): Promise<WalletMutationResult> {
+    this.debits.push({ userId, amount, reason });
+    return super.debit(userId, amount, reason, tableId);
+  }
   async credit(
     userId: string,
     amount: number,
@@ -28,6 +38,24 @@ class TrackingWallet extends UnlimitedWalletStore implements WalletStore {
     this.credits.push({ userId, amount, reason });
     return super.credit(userId, amount, reason, tableId);
   }
+}
+
+/** Fill remaining human seats so start (or autoStart) has a full field. */
+async function fillHumans(
+  tournaments: TournamentManager,
+  contestId: string,
+  count: number,
+  prefix = 'p',
+): Promise<string[]> {
+  const ids: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const userId = `${prefix}${i + 2}`;
+    const name = `Player${i + 2}`;
+    const result = await tournaments.register(contestId, userId, name);
+    expect(result.ok).toBe(true);
+    ids.push(userId);
+  }
+  return ids;
 }
 
 describe('contestPlacementPrize', () => {
@@ -56,7 +84,7 @@ describe('TournamentManager', () => {
   });
 
   it('creates chips contest with equal stacks and no top-up', async () => {
-    const created = tournaments.create({
+    const created = await tournaments.create({
       name: 'SNG',
       mode: 'chips',
       hostUserId: 'host',
@@ -66,13 +94,14 @@ describe('TournamentManager', () => {
       smallBlind: 5,
       bigBlind: 10,
       turnTimeMs: 20_000,
-      botCount: 3,
+      botCount: 0,
       isPrivate: true,
-      autoStart: true,
+      autoStart: false,
     });
     expect(created.status).toBe('registering');
     expect(created.entrants).toHaveLength(1);
 
+    await fillHumans(tournaments, created.id, 3);
     const started = await tournaments.start(created.id, 'host');
     expect(started.ok).toBe(true);
     const view = started.contest!;
@@ -96,9 +125,9 @@ describe('TournamentManager', () => {
     expect(result.error).toMatch(/top-up/i);
   });
 
-  it('places players in chip-elimination order (last standing wins)', async () => {
-    const created = tournaments.create({
-      name: 'Freezeout',
+  it('refuses start until two humans are registered (ignores botCount)', async () => {
+    const created = await tournaments.create({
+      name: 'No bots',
       mode: 'chips',
       hostUserId: 'host',
       hostName: 'Host',
@@ -109,26 +138,77 @@ describe('TournamentManager', () => {
       turnTimeMs: 20_000,
       botCount: 3,
       isPrivate: true,
-      autoStart: true,
+      autoStart: false,
     });
+    const alone = await tournaments.start(created.id, 'host');
+    expect(alone.ok).toBe(false);
+    expect(alone.error).toMatch(/2 players/i);
+    expect(tournaments.get(created.id)!.entrants).toHaveLength(1);
+  });
+
+  it('rejects register after contest has ended', async () => {
+    const created = await tournaments.create({
+      name: 'Ended',
+      mode: 'chips',
+      hostUserId: 'host',
+      hostName: 'Host',
+      fieldSize: 3,
+      startingStack: 500,
+      smallBlind: 5,
+      bigBlind: 10,
+      turnTimeMs: 20_000,
+      botCount: 0,
+      isPrivate: true,
+      autoStart: false,
+    });
+    const others = await fillHumans(tournaments, created.id, 2);
+    const view = (await tournaments.start(created.id, 'host')).contest!;
+    tournaments.forceEliminate(view.id, others[0]!);
+    tournaments.forceEliminate(view.id, others[1]!);
+    expect(tournaments.get(view.id)!.status).toBe('completed');
+
+    const late = await tournaments.register(view.id, 'latecomer', 'Late');
+    expect(late.ok).toBe(false);
+    expect(late.error).toMatch(/ended/i);
+    expect(tournaments.get(view.id)!.assignments.every((a) => a.tableId == null)).toBe(true);
+
+    const room = rooms.get(view.tableId!);
+    expect(room?.meta.tournament?.frozen).toBe(true);
+  });
+
+  it('places players in chip-elimination order (last standing wins)', async () => {
+    const created = await tournaments.create({
+      name: 'Freezeout',
+      mode: 'chips',
+      hostUserId: 'host',
+      hostName: 'Host',
+      fieldSize: 4,
+      startingStack: 500,
+      smallBlind: 5,
+      bigBlind: 10,
+      turnTimeMs: 20_000,
+      botCount: 0,
+      isPrivate: true,
+      autoStart: false,
+    });
+    const others = await fillHumans(tournaments, created.id, 3);
     const view = (await tournaments.start(created.id, 'host')).contest!;
 
-    const bots = view.entrants.filter((e) => e.userId !== 'host');
-    tournaments.forceEliminate(view.id, bots[0]!.userId);
-    tournaments.forceEliminate(view.id, bots[1]!.userId);
-    tournaments.forceEliminate(view.id, bots[2]!.userId);
+    tournaments.forceEliminate(view.id, others[0]!);
+    tournaments.forceEliminate(view.id, others[1]!);
+    tournaments.forceEliminate(view.id, others[2]!);
 
     const c = tournaments.get(view.id)!;
     expect(c.status).toBe('completed');
     expect(c.placements.find((p) => p.place === 1)?.userId).toBe('host');
     expect(c.placements).toHaveLength(4);
-    expect(c.placements.find((p) => p.userId === bots[0]!.userId)?.place).toBe(4);
-    expect(c.placements.find((p) => p.userId === bots[1]!.userId)?.place).toBe(3);
-    expect(c.placements.find((p) => p.userId === bots[2]!.userId)?.place).toBe(2);
+    expect(c.placements.find((p) => p.userId === others[0]!)?.place).toBe(4);
+    expect(c.placements.find((p) => p.userId === others[1]!)?.place).toBe(3);
+    expect(c.placements.find((p) => p.userId === others[2]!)?.place).toBe(2);
   });
 
   it('pays ranking Wuffies prizes to the human winner', async () => {
-    const created = tournaments.create({
+    const created = await tournaments.create({
       name: 'Prize freezeout',
       mode: 'chips',
       hostUserId: 'host',
@@ -138,15 +218,15 @@ describe('TournamentManager', () => {
       smallBlind: 5,
       bigBlind: 10,
       turnTimeMs: 20_000,
-      botCount: 3,
+      botCount: 0,
       isPrivate: true,
-      autoStart: true,
+      autoStart: false,
     });
+    const others = await fillHumans(tournaments, created.id, 3);
     const view = (await tournaments.start(created.id, 'host')).contest!;
-    const bots = view.entrants.filter((e) => e.userId !== 'host');
-    tournaments.forceEliminate(view.id, bots[0]!.userId);
-    tournaments.forceEliminate(view.id, bots[1]!.userId);
-    tournaments.forceEliminate(view.id, bots[2]!.userId);
+    tournaments.forceEliminate(view.id, others[0]!);
+    tournaments.forceEliminate(view.id, others[1]!);
+    tournaments.forceEliminate(view.id, others[2]!);
 
     const c = tournaments.get(view.id)!;
     expect(c.status).toBe('completed');
@@ -156,13 +236,17 @@ describe('TournamentManager', () => {
 
     await new Promise((r) => setTimeout(r, 0));
     const prizeCredits = wallet.credits.filter((x) => x.reason === 'contest_prize');
-    expect(prizeCredits).toEqual([
-      { userId: 'host', amount: contestPlacementPrize(1, 4, 1000), reason: 'contest_prize' },
-    ]);
+    // All four humans place — first place only for host when we elim 3 others first?
+    // Other placements also get prizes; host is first.
+    expect(prizeCredits).toContainEqual({
+      userId: 'host',
+      amount: contestPlacementPrize(1, 4, 1000),
+      reason: 'contest_prize',
+    });
   });
 
   it('creates rounds contest with hand limit and allows top-up', async () => {
-    const created = tournaments.create({
+    const created = await tournaments.create({
       name: 'Session',
       mode: 'rounds',
       hostUserId: 'host',
@@ -172,11 +256,12 @@ describe('TournamentManager', () => {
       smallBlind: 5,
       bigBlind: 10,
       turnTimeMs: 20_000,
-      botCount: 2,
+      botCount: 0,
       isPrivate: true,
-      autoStart: true,
+      autoStart: false,
       handLimit: 10,
     });
+    await fillHumans(tournaments, created.id, 2);
     const view = (await tournaments.start(created.id, 'host')).contest!;
 
     expect(view.status).toBe('running');
@@ -194,7 +279,7 @@ describe('TournamentManager', () => {
   });
 
   it('finishes rounds contest by chip leader after hand limit', async () => {
-    const created = tournaments.create({
+    const created = await tournaments.create({
       name: 'Short session',
       mode: 'rounds',
       hostUserId: 'host',
@@ -204,11 +289,12 @@ describe('TournamentManager', () => {
       smallBlind: 5,
       bigBlind: 10,
       turnTimeMs: 20_000,
-      botCount: 2,
+      botCount: 0,
       isPrivate: true,
-      autoStart: true,
+      autoStart: false,
       handLimit: 2,
     });
+    await fillHumans(tournaments, created.id, 2);
     const view = (await tournaments.start(created.id, 'host')).contest!;
 
     const room = rooms.get(view.tableId!)!;
@@ -230,33 +316,8 @@ describe('TournamentManager', () => {
     expect(room.meta.tournament?.frozen).toBe(true);
   });
 
-  it('auto-tops bots during rounds contests', async () => {
-    const created = tournaments.create({
-      name: 'Bot rebuy',
-      mode: 'rounds',
-      hostUserId: 'host',
-      hostName: 'Host',
-      fieldSize: 2,
-      startingStack: 1000,
-      smallBlind: 5,
-      bigBlind: 10,
-      turnTimeMs: 20_000,
-      botCount: 1,
-      isPrivate: true,
-      autoStart: true,
-      handLimit: 5,
-    });
-    const view = (await tournaments.start(created.id, 'host')).contest!;
-
-    const room = rooms.get(view.tableId!)!;
-    const bot = room.seatedPlayersSnapshot().find((p) => p.userId !== 'host')!;
-    room.state.players[bot.seat]!.stack = 0;
-    expect(room.autoTopUpBrokeBots()).toBe(1);
-    expect(room.state.players[bot.seat]!.stack).toBe(1000);
-  });
-
   it('registers players until field is full then auto-starts', async () => {
-    const view = tournaments.create({
+    const view = await tournaments.create({
       name: 'Reg',
       mode: 'chips',
       hostUserId: 'host',
@@ -279,7 +340,7 @@ describe('TournamentManager', () => {
   });
 
   it('lists contests the user has joined', async () => {
-    const a = tournaments.create({
+    const a = await tournaments.create({
       name: 'Mine',
       mode: 'chips',
       hostUserId: 'host',
@@ -294,7 +355,7 @@ describe('TournamentManager', () => {
       autoStart: false,
     });
     await tournaments.register(a.id, 'friend', 'Friend');
-    const other = tournaments.create({
+    const other = await tournaments.create({
       name: 'Other',
       mode: 'chips',
       hostUserId: 'other-host',
@@ -312,5 +373,62 @@ describe('TournamentManager', () => {
     const mine = tournaments.listForUser('friend');
     expect(mine.map((c) => c.id)).toEqual([a.id]);
     expect(tournaments.listForUser('host').map((c) => c.id)).toContain(a.id);
+  });
+
+  it('debits buy-in on create and register, not again on start', async () => {
+    const created = await tournaments.create({
+      name: 'Entry fees',
+      mode: 'chips',
+      hostUserId: 'host',
+      hostName: 'Host',
+      fieldSize: 3,
+      startingStack: 1000,
+      smallBlind: 5,
+      bigBlind: 10,
+      turnTimeMs: 20_000,
+      botCount: 0,
+      isPrivate: true,
+      autoStart: false,
+    });
+    expect(wallet.debits).toEqual([
+      { userId: 'host', amount: 1000, reason: 'buy_in' },
+    ]);
+
+    await tournaments.register(created.id, 'p2', 'Bob');
+    expect(wallet.debits).toEqual([
+      { userId: 'host', amount: 1000, reason: 'buy_in' },
+      { userId: 'p2', amount: 1000, reason: 'buy_in' },
+    ]);
+
+    const beforeStart = wallet.debits.length;
+    const started = await tournaments.start(created.id, 'host');
+    expect(started.ok).toBe(true);
+    expect(wallet.debits.length).toBe(beforeStart);
+  });
+
+  it('refunds buy-in on unregister', async () => {
+    const created = await tournaments.create({
+      name: 'Leave',
+      mode: 'chips',
+      hostUserId: 'host',
+      hostName: 'Host',
+      fieldSize: 4,
+      startingStack: 500,
+      smallBlind: 5,
+      bigBlind: 10,
+      turnTimeMs: 20_000,
+      botCount: 0,
+      isPrivate: true,
+      autoStart: false,
+    });
+    await tournaments.register(created.id, 'p2', 'Bob');
+    const left = await tournaments.unregister(created.id, 'p2');
+    expect(left.ok).toBe(true);
+    expect(wallet.credits).toContainEqual({
+      userId: 'p2',
+      amount: 500,
+      reason: 'cash_out',
+    });
+    expect(tournaments.get(created.id)!.entrants.map((e) => e.userId)).toEqual(['host']);
   });
 });

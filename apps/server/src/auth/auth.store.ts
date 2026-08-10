@@ -5,7 +5,12 @@ import * as argon2 from 'argon2';
 import { nanoid } from 'nanoid';
 import type { Queryable } from '../database/queryable.js';
 import { avatarIdFromUserId, clampAvatarId } from '../avatars.js';
-import { STARTING_CHIP_GRANT } from '../wallet/wallet.constants.js';
+import { clampTableColorId } from '../table-colors.js';
+import {
+  defaultEconomy,
+  type EconomyProvider,
+  STARTING_CHIP_GRANT,
+} from '../wallet/wallet.constants.js';
 import {
   AuthError,
   type AuthSessionPayload,
@@ -27,16 +32,26 @@ function toPublic(u: User): PublicUser {
     username: u.username,
     name: u.name,
     avatarId: u.avatarId,
+    tableColorId: u.tableColorId,
     createdAt: u.createdAt,
     chipBalance: u.chipBalance,
   };
 }
 
-function normalizeChipBalance(value: unknown): number {
+function normalizeUser(u: User, fallbackBalance = STARTING_CHIP_GRANT): User {
+  return {
+    ...u,
+    avatarId: clampAvatarId(u.avatarId),
+    tableColorId: clampTableColorId(u.tableColorId),
+    chipBalance: normalizeChipBalance(u.chipBalance, fallbackBalance),
+  };
+}
+
+function normalizeChipBalance(value: unknown, fallback = STARTING_CHIP_GRANT): number {
   if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
     return Math.floor(value);
   }
-  return STARTING_CHIP_GRANT;
+  return fallback;
 }
 
 /** File-backed (or Postgres-backed via Queryable) user + session + ticket store. */
@@ -51,6 +66,7 @@ export class AuthStore {
   private writeChain: Promise<void> = Promise.resolve();
   private lastExpiredCleanupAt = 0;
   private static readonly EXPIRED_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
+  private economyProvider: EconomyProvider = defaultEconomy;
 
   constructor(dataDir = path.join(process.cwd(), 'data')) {
     this.filePath = path.join(dataDir, 'users.json');
@@ -58,6 +74,14 @@ export class AuthStore {
 
   setPool(pool: Queryable | null): void {
     this.pool = pool;
+  }
+
+  setEconomyProvider(provider: EconomyProvider): void {
+    this.economyProvider = provider;
+  }
+
+  private startingGrant(): number {
+    return this.economyProvider().startingChipGrant;
   }
 
   async init(): Promise<void> {
@@ -85,10 +109,13 @@ export class AuthStore {
       this.sessions.clear();
       this.tickets.clear();
       for (const u of snap.users ?? []) {
-        this.indexUser({
-          ...u,
-          chipBalance: normalizeChipBalance((u as User).chipBalance),
-        });
+        this.indexUser(
+          normalizeUser({
+            ...u,
+            tableColorId: (u as User).tableColorId ?? 0,
+            chipBalance: normalizeChipBalance((u as User).chipBalance),
+          }),
+        );
       }
       for (const s of snap.sessions ?? []) {
         if (s.expiresAt > Date.now()) this.sessions.set(s.token, s);
@@ -107,7 +134,7 @@ export class AuthStore {
   private async loadFromPostgres(): Promise<void> {
     if (!this.pool) return;
     const result = await this.pool.query(
-      `SELECT id, name, username, password_hash, avatar_id, chip_balance, created_at
+      `SELECT id, name, username, password_hash, avatar_id, table_color_id, chip_balance, created_at
        FROM users
        WHERE password_hash IS NOT NULL AND username IS NOT NULL`,
     );
@@ -122,6 +149,7 @@ export class AuthStore {
       username: string;
       password_hash: string;
       avatar_id: number;
+      table_color_id?: number | null;
       chip_balance?: number | null;
       created_at: Date | string;
     }[]) {
@@ -135,6 +163,7 @@ export class AuthStore {
         name: row.username || row.name,
         passwordHash: row.password_hash,
         avatarId: clampAvatarId(row.avatar_id ?? 0),
+        tableColorId: clampTableColorId(row.table_color_id ?? 0),
         chipBalance: normalizeChipBalance(row.chip_balance),
         createdAt,
       };
@@ -255,14 +284,15 @@ export class AuthStore {
   private async persistUserToPostgres(user: User): Promise<void> {
     if (!this.pool) return;
     await this.pool.query(
-      `INSERT INTO users (id, name, username, username_lower, password_hash, avatar_id, chip_balance, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, to_timestamp($8 / 1000.0))
+      `INSERT INTO users (id, name, username, username_lower, password_hash, avatar_id, table_color_id, chip_balance, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, to_timestamp($9 / 1000.0))
        ON CONFLICT (id) DO UPDATE SET
          name = EXCLUDED.name,
          username = EXCLUDED.username,
          username_lower = EXCLUDED.username_lower,
          password_hash = EXCLUDED.password_hash,
          avatar_id = EXCLUDED.avatar_id,
+         table_color_id = EXCLUDED.table_color_id,
          chip_balance = EXCLUDED.chip_balance`,
       [
         user.id,
@@ -271,6 +301,7 @@ export class AuthStore {
         user.username.toLowerCase(),
         user.passwordHash,
         user.avatarId,
+        user.tableColorId,
         user.chipBalance,
         user.createdAt,
       ],
@@ -296,7 +327,8 @@ export class AuthStore {
       name: trimmed,
       passwordHash: await argon2.hash(password),
       avatarId: avatarId !== undefined ? clampAvatarId(avatarId) : avatarIdFromUserId(id),
-      chipBalance: STARTING_CHIP_GRANT,
+      tableColorId: 0,
+      chipBalance: this.startingGrant(),
       createdAt: Date.now(),
     };
     this.indexUser(user);
@@ -417,6 +449,21 @@ export class AuthStore {
     return user;
   }
 
+  async setTableColorId(userId: string, tableColorId: number): Promise<User | null> {
+    const user = this.users.get(userId);
+    if (!user) return null;
+    user.tableColorId = clampTableColorId(tableColorId);
+    if (this.pool) {
+      await this.pool.query(`UPDATE users SET table_color_id = $1 WHERE id = $2`, [
+        user.tableColorId,
+        userId,
+      ]);
+    } else {
+      await this.persistFile();
+    }
+    return user;
+  }
+
   getUserByUsername(username: string): User | undefined {
     const id = this.usernameIndex.get(username.trim().toLowerCase());
     return id ? this.users.get(id) : undefined;
@@ -476,7 +523,8 @@ export class AuthStore {
       name: username,
       passwordHash: await argon2.hash(password),
       avatarId: clampAvatarId(avatarId),
-      chipBalance: STARTING_CHIP_GRANT,
+      tableColorId: 0,
+      chipBalance: this.startingGrant(),
       createdAt: Date.now(),
     };
     this.indexUser(user);

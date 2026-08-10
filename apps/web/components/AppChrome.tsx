@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
 import { LobbySidebar } from '@/components/LobbySidebar';
 import {
-  OnlineFriendsOverlay,
   OnlineFriendsProvider,
   OnlineFriendsStrip,
   PendingCountBadge,
@@ -17,9 +16,13 @@ import {
   readStoredSession,
 } from '@/lib/session';
 import { useSession } from '@/lib/store';
-import { fetchMe, logout as apiLogout, pingPresence } from '@/lib/api';
+import { fetchMe, logout as apiLogout } from '@/lib/api';
 import { saveAvatarId } from '@/lib/avatars';
+import { saveTableColorId } from '@/lib/tableColors';
 import { attachPlayFullscreen } from '@/lib/mobileFullscreen';
+import { ConfirmProvider } from '@/components/ConfirmPopover';
+import { SiteAnnouncementBanner } from '@/components/SiteAnnouncement';
+import { useSessionSocket } from '@/lib/ws';
 
 function MobileMenuButton({
   onOpen,
@@ -80,6 +83,10 @@ export function AppChrome({ children }: { children: ReactNode }) {
     return readStoredSession()?.name ?? null;
   });
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // One shared WS for lobby social/lists + table + contest push.
+  useSessionSocket();
 
   // Restore session from localStorage once — do not hit /api/ticket on navigation.
   useEffect(() => {
@@ -114,6 +121,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!sessionToken) {
       setChipBalance(null);
+      setIsAdmin(false);
       return;
     }
     let cancelled = false;
@@ -121,7 +129,9 @@ export function AppChrome({ children }: { children: ReactNode }) {
       .then((me) => {
         if (cancelled) return;
         setChipBalance(me.chipBalance);
+        setIsAdmin(Boolean(me.isAdmin));
         saveAvatarId(me.avatarId);
+        saveTableColorId(me.tableColorId);
       })
       .catch(() => {
         /* ignore — balance shown when available */
@@ -130,24 +140,6 @@ export function AppChrome({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, [sessionToken, setChipBalance, pathname]);
-
-  // Presence on every screen (including table play) so friends see you online.
-  useEffect(() => {
-    if (!signedIn || !sessionToken) return;
-    let cancelled = false;
-    const beat = () => {
-      if (cancelled) return;
-      void pingPresence({ sessionToken }).catch(() => {
-        /* ignore */
-      });
-    };
-    beat();
-    const id = window.setInterval(beat, 25_000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(id);
-    };
-  }, [signedIn, sessionToken]);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -166,65 +158,71 @@ export function AppChrome({ children }: { children: ReactNode }) {
     clearSession();
     setSignedIn(false);
     setDisplayName(null);
+    setIsAdmin(false);
   }, [sessionToken, clearSession]);
 
   if (immersive) {
     return (
-      <OnlineFriendsProvider signedIn={signedIn}>
-        <main className="play-shell relative flex h-full min-h-0 flex-1 flex-col overflow-hidden px-0 py-0 md:px-3 md:py-2">
-          <OnlineFriendsOverlay signedIn={signedIn} />
-          {children}
-        </main>
-      </OnlineFriendsProvider>
+      <ConfirmProvider>
+        <OnlineFriendsProvider signedIn={signedIn}>
+          <main className="play-shell relative flex h-full min-h-0 flex-1 flex-col overflow-hidden px-0 py-0">
+            {children}
+          </main>
+        </OnlineFriendsProvider>
+      </ConfirmProvider>
     );
   }
 
   return (
-    <OnlineFriendsProvider signedIn={signedIn}>
-      <div className="lobby-shell">
-        <Suspense fallback={null}>
-          <LobbySidebar
-            open={menuOpen}
-            onClose={() => setMenuOpen(false)}
-            signedIn={signedIn}
-            displayName={displayName}
-            onLogout={() => void onLogout()}
-          />
-        </Suspense>
-
-        <div className="lobby-main flex h-full min-h-0 min-w-0 flex-1 flex-col">
-          <header className="flex shrink-0 flex-col gap-0 bg-sidebar md:hidden">
-            <div className="flex items-center justify-between gap-3 px-3 py-2.5">
-              <MobileMenuButton signedIn={signedIn} onOpen={() => setMenuOpen(true)} />
-              <Link href="/" className="flex flex-1 justify-center">
-                <Image
-                  src="/pokr-logo.png"
-                  alt="POKR"
-                  width={120}
-                  height={36}
-                  className="h-8 w-auto object-contain mix-blend-screen"
-                  priority
-                />
-              </Link>
-              <span className="w-10" aria-hidden />
-            </div>
-            <OnlineFriendsStrip
+    <ConfirmProvider>
+      <OnlineFriendsProvider signedIn={signedIn}>
+        <div className="lobby-shell">
+          <Suspense fallback={null}>
+            <LobbySidebar
+              open={menuOpen}
+              onClose={() => setMenuOpen(false)}
               signedIn={signedIn}
-              className="border-t border-mushroom/10 px-3 pb-2"
+              displayName={displayName}
+              onLogout={() => void onLogout()}
+              isAdmin={isAdmin}
             />
-          </header>
+          </Suspense>
 
-          <main
-            className={`flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain ${
-              isHome
-                ? 'px-5 py-6 sm:px-10 sm:py-8 lg:px-14 lg:py-10 xl:px-20'
-                : 'px-4 py-4 sm:px-8 sm:py-5 lg:px-12'
-            }`}
-          >
-            {children}
-          </main>
+          <div className="lobby-main flex h-full min-h-0 min-w-0 flex-1 flex-col">
+            <header className="flex shrink-0 flex-col gap-0 bg-sidebar md:hidden">
+              <div className="flex items-center justify-between gap-3 px-3 py-2.5">
+                <MobileMenuButton signedIn={signedIn} onOpen={() => setMenuOpen(true)} />
+                <Link href="/" className="flex flex-1 justify-center">
+                  <Image
+                    src="/pokr-logo.png"
+                    alt="POKR"
+                    width={120}
+                    height={36}
+                    className="h-8 w-auto object-contain mix-blend-screen"
+                    priority
+                  />
+                </Link>
+                <span className="w-10" aria-hidden />
+              </div>
+              <OnlineFriendsStrip
+                signedIn={signedIn}
+                className="border-t border-mushroom/10 px-3 pb-2"
+              />
+            </header>
+
+            <main
+              className={`flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain ${
+                isHome
+                  ? 'px-5 py-6 sm:px-10 sm:py-8 lg:px-14 lg:py-10 xl:px-20'
+                  : 'px-4 py-4 sm:px-8 sm:py-5 lg:px-12'
+              }`}
+            >
+              <SiteAnnouncementBanner />
+              {children}
+            </main>
+          </div>
         </div>
-      </div>
-    </OnlineFriendsProvider>
+      </OnlineFriendsProvider>
+    </ConfirmProvider>
   );
 }

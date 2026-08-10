@@ -36,6 +36,10 @@ export class TablesController {
     if (d.bigBlind < d.smallBlind) {
       throw new BadRequestException({ error: 'bigBlind must be >= smallBlind' });
     }
+    const maxBots = Math.max(0, d.maxSeats - 1);
+    const bots = Math.min(d.botCount, maxBots);
+    // Private host tables with bots are free practice (no bankroll moves).
+    const playMoney = d.isPrivate && bots > 0;
     let meta;
     try {
       meta = this.rooms.create({
@@ -43,6 +47,7 @@ export class TablesController {
         hostUserId: user.id,
         isPrivate: d.isPrivate,
         inviteCode: d.inviteCode,
+        playMoney,
         config: {
           maxSeats: d.maxSeats,
           smallBlind: d.smallBlind,
@@ -59,8 +64,6 @@ export class TablesController {
       throw new BadRequestException({ error: message });
     }
     const room = this.rooms.get(meta.id)!;
-    const maxBots = Math.max(0, d.maxSeats - 1);
-    const bots = Math.min(d.botCount, maxBots);
     if (bots > 0) {
       room.addBot(user.id, undefined, d.buyIn, bots);
     }

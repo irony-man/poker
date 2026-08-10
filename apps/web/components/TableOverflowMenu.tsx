@@ -10,7 +10,19 @@ export type OverflowItem = {
   disabled?: boolean;
 };
 
-/** Compact ⋯ menu for mobile table chrome. */
+function itemClass(tone: OverflowItem['tone']): string {
+  const base =
+    'flex w-full items-center gap-2 px-3.5 py-2.5 text-left text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-sidebar disabled:pointer-events-none disabled:opacity-40';
+  if (tone === 'danger') {
+    return `${base} font-semibold text-danger hover:bg-danger/10 focus-visible:bg-danger/10`;
+  }
+  if (tone === 'accent' || tone === 'gold') {
+    return `${base} text-sidebar hover:bg-sidebar/8 focus-visible:bg-sidebar/8`;
+  }
+  return `${base} text-ink-strong hover:bg-sidebar/8 focus-visible:bg-sidebar/8`;
+}
+
+/** Compact ⋯ menu for table / play chrome. */
 export function TableOverflowMenu({
   items,
   footer,
@@ -38,11 +50,18 @@ export function TableOverflowMenu({
     };
   }, [open]);
 
+  if (items.length === 0 && !footer) return null;
+
+  // Split non-destructive vs destructive so danger actions sit in a separate band.
+  const primary = items.filter((i) => i.tone !== 'danger');
+  const destructive = items.filter((i) => i.tone === 'danger');
+
   return (
     <div ref={rootRef} className="relative">
       <button
         type="button"
         aria-expanded={open}
+        aria-haspopup="menu"
         aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}
         className="play-chrome-control-icon text-base leading-none"
@@ -54,9 +73,9 @@ export function TableOverflowMenu({
         <div
           id={panelId}
           role="menu"
-          className="absolute right-0 top-[calc(100%+0.4rem)] z-50 min-w-[12.5rem] overflow-hidden rounded-xl border border-sidebar/12 bg-white py-1 shadow-[0_14px_40px_rgba(29,4,50,0.14)]"
+          className="absolute right-0 top-[calc(100%+0.4rem)] z-50 min-w-[13rem] overflow-hidden rounded-xl border border-sidebar/12 bg-white py-1 shadow-[0_14px_40px_rgba(29,4,50,0.14)]"
         >
-          {items.map((item) => (
+          {primary.map((item) => (
             <button
               key={item.id}
               type="button"
@@ -66,15 +85,25 @@ export function TableOverflowMenu({
                 item.onClick();
                 setOpen(false);
               }}
-              className={`flex w-full items-center px-3.5 py-2.5 text-left text-sm font-medium disabled:opacity-40 ${
-                item.tone === 'danger'
-                  ? 'bg-danger font-semibold text-cream hover:brightness-110'
-                  : item.tone === 'accent'
-                    ? 'text-sidebar hover:bg-sidebar/8'
-                    : item.tone === 'gold'
-                      ? 'text-sidebar hover:bg-sidebar/8'
-                      : 'text-ink-strong hover:bg-sidebar/8'
-              }`}
+              className={itemClass(item.tone)}
+            >
+              {item.label}
+            </button>
+          ))}
+          {destructive.length > 0 && primary.length > 0 ? (
+            <div className="my-1 border-t border-sidebar/10" role="separator" />
+          ) : null}
+          {destructive.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              role="menuitem"
+              disabled={item.disabled}
+              onClick={() => {
+                item.onClick();
+                setOpen(false);
+              }}
+              className={itemClass('danger')}
             >
               {item.label}
             </button>

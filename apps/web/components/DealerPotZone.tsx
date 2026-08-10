@@ -20,11 +20,11 @@ export function DealerPotZone({
     <div className="pointer-events-none flex flex-col items-center gap-1.5">
       {showDealer && !landscape && (
         <div className="flex flex-col items-center gap-0.5">
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-sidebar text-xs font-black text-mushroom shadow-[0_2px_8px_rgba(14,6,24,0.55)] ring-2 ring-mushroom/70">
+          <span className="table-chrome-disc table-chrome-disc-ring flex h-7 w-7 items-center justify-center rounded-full text-xs font-black ring-2">
             D
           </span>
           {dealerName ? (
-            <span className="max-w-[6.5rem] truncate text-[9px] font-semibold uppercase tracking-wide text-white/75">
+            <span className="table-label-on-felt max-w-[6.5rem] truncate text-[9px] font-semibold uppercase tracking-wide">
               {dealerName}
             </span>
           ) : null}

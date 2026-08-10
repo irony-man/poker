@@ -33,7 +33,6 @@ data class LobbyUiState(
     val offlineSeats: Int = 6,
     val contestMode: String = "chips",
     val contestFieldSize: Int = 6,
-    val contestBotCount: Int = 3,
     val contestHandLimit: Int = 20,
     val contestInvite: String = "",
     val busy: Boolean = false,
@@ -99,22 +98,9 @@ class LobbyViewModel @Inject constructor(
     fun onInviteChange(value: String) =
         _uiState.update { it.copy(inviteCode = value.trim().take(8)) }
     fun onOfflineSeatsChange(value: Int) = _uiState.update { it.copy(offlineSeats = value) }
-    fun onContestModeChange(value: String) {
-        _uiState.update {
-            it.copy(
-                contestMode = value,
-                contestBotCount = it.contestBotCount.coerceAtMost(it.contestFieldSize - 1),
-            )
-        }
-    }
+    fun onContestModeChange(value: String) = _uiState.update { it.copy(contestMode = value) }
     fun onContestFieldSizeChange(value: Int) =
-        _uiState.update {
-            it.copy(
-                contestFieldSize = value,
-                contestBotCount = it.contestBotCount.coerceAtMost(value - 1),
-            )
-        }
-    fun onContestBotCountChange(value: Int) = _uiState.update { it.copy(contestBotCount = value) }
+        _uiState.update { it.copy(contestFieldSize = value) }
     fun onContestHandLimitChange(value: Int) = _uiState.update { it.copy(contestHandLimit = value) }
     fun onContestInviteChange(value: String) =
         _uiState.update { it.copy(contestInvite = value.filter { ch -> ch.isDigit() }.take(8)) }
@@ -246,7 +232,7 @@ class LobbyViewModel @Inject constructor(
                         name = "${session.name}'s $modeLabel Contest",
                         mode = mode,
                         fieldSize = field,
-                        botCount = state.contestBotCount.coerceAtMost(field - 1),
+                        botCount = 0,
                         isPrivate = true,
                         autoStart = true,
                         handLimit = if (mode == "rounds") state.contestHandLimit else null,

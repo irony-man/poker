@@ -34,7 +34,7 @@ export class ContestsController {
     }
     try {
       const d = parsed.data;
-      const contest = this.contests.create({
+      const contest = await this.contests.create({
         name: d.name,
         mode: d.mode,
         hostUserId: user.id,
@@ -139,8 +139,8 @@ export class ContestsController {
 
   @Post(':id/unregister')
   @UseGuards(SessionAuthGuard)
-  unregister(@CurrentUser() user: User, @Param('id') id: string) {
-    const result = this.contests.unregister(id, user.id);
+  async unregister(@CurrentUser() user: User, @Param('id') id: string) {
+    const result = await this.contests.unregister(id, user.id);
     if (!result.ok) throw new BadRequestException({ error: result.error });
     return { contest: result.contest };
   }

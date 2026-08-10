@@ -269,7 +269,6 @@ fun LobbyScreen(
                         style = MaterialTheme.typography.bodySmall,
                     )
                     val contestSizes = (2..9).toList()
-                    val contestMaxBots = (state.contestFieldSize - 1).coerceAtLeast(0)
                     ChoiceRowString(
                         label = "Mode",
                         selected = state.contestMode,
@@ -290,12 +289,6 @@ fun LobbyScreen(
                             onSelect = viewModel::onContestHandLimitChange,
                         )
                     }
-                    ChoiceRow(
-                        label = "Fill bots",
-                        selected = state.contestBotCount.coerceAtMost(contestMaxBots),
-                        options = (0..contestMaxBots).toList(),
-                        onSelect = viewModel::onContestBotCountChange,
-                    ) { if (it == 0) "None" else "$it" }
                     FeltPrimaryButton(
                         text = "Create contest",
                         onClick = { viewModel.createContest(onContest) },

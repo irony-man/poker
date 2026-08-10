@@ -1,7 +1,8 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Optional } from '@nestjs/common';
+import { RealtimeService } from '../realtime/realtime.service.js';
 import { RoomsService } from '../rooms/rooms.service.js';
 import { WalletService } from '../wallet/wallet.service.js';
-import { TournamentManager, type CreateContestOpts } from './tournament.js';
+import { TournamentManager, type CreateContestOpts, type ContestState } from './tournament.js';
 
 @Injectable()
 export class ContestsService implements OnModuleInit {
@@ -10,10 +11,22 @@ export class ContestsService implements OnModuleInit {
   constructor(
     private readonly rooms: RoomsService,
     private readonly wallet: WalletService,
+    @Optional() private readonly realtime?: RealtimeService,
   ) {}
 
   onModuleInit(): void {
     this.tournaments = new TournamentManager(this.rooms.asManager(), this.wallet.asStore());
+    this.tournaments.setListChangeHandler((c) => this.onContestListChange(c));
+    if (this.realtime) {
+      this.realtime.setMyContestsLoader((userId) => this.listForUser(userId));
+      this.realtime.setPublicContests(this.listPublic());
+    }
+  }
+
+  private onContestListChange(c: ContestState): void {
+    if (!this.realtime) return;
+    const userIds = [c.hostUserId, ...c.entrants.map((e) => e.userId)];
+    this.realtime.notifyContestLists(this.listPublic(), userIds);
   }
 
   asManager(): TournamentManager {
@@ -34,6 +47,10 @@ export class ContestsService implements OnModuleInit {
 
   listPublic() {
     return this.tournaments.listPublic();
+  }
+
+  listAll() {
+    return this.tournaments.listAll();
   }
 
   listForUser(userId: string) {

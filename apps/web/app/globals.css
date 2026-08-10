@@ -486,23 +486,13 @@ body > * {
     background-color: rgb(var(--sidebar) / 0.06);
   }
 
-  /* Unified table / play route toolbar */
+  /* Unified table / play route toolbar — edge-aligned, not a floating card */
   .play-chrome-bar {
-    @apply flex shrink-0 items-center justify-between gap-2 rounded-2xl border px-2 py-1.5 sm:px-3 sm:py-2;
-    border-color: rgb(var(--sidebar) / 0.12);
-    background:
-      linear-gradient(180deg, rgb(255 255 255 / 0.92), rgb(255 252 250 / 0.82)),
-      linear-gradient(120deg, rgb(var(--mushroom) / 0.55), rgb(var(--sidebar) / 0.04));
-    box-shadow:
-      0 1px 0 0 rgb(255 255 255 / 0.75) inset,
-      0 10px 28px rgb(29 4 50 / 0.07);
-    backdrop-filter: blur(10px);
+    @apply flex shrink-0 items-center justify-between gap-2 px-3 py-2 sm:px-4 md:bg-transparent bg-mushroom;
   }
 
   .play-chrome-rail {
-    @apply flex min-w-0 flex-wrap items-center justify-end gap-1 rounded-xl border p-1 sm:gap-1.5;
-    border-color: rgb(var(--sidebar) / 0.1);
-    background-color: rgb(var(--sidebar) / 0.04);
+    @apply flex min-w-0 flex-wrap items-center justify-end gap-1 sm:gap-1.5;
   }
 
   .play-chrome-control {
@@ -546,20 +536,234 @@ body > * {
 }
 
 @layer utilities {
-  /* Purple table matching lobby sidebar. */
+  /*
+   * Table theme — scoped under .table-theme (TableShell).
+   * Felt + chrome + type + accent + focus + themed chip tokens.
+   * Status colors (danger/positive/amber) stay global and unused as theme accents.
+   */
+  .table-theme {
+    --felt: 29 4 50;
+    --felt-deep: 18 2 32;
+    --felt-mid: 52 18 82;
+    --felt-edge: #0a0414;
+    --felt-rim: 18 2 32;
+    --felt-rim-edge: 168 140 162;
+    --table-chrome: 29 4 50;
+    --table-chrome-raised: 46 16 72;
+    --table-text-on-chrome: 242 234 232;
+    --table-text-muted: 236 218 176;
+    --table-accent: 214 186 128;
+    --table-accent-hover: 228 204 156;
+    --table-accent-active: 180 150 92;
+    --table-accent-fg: 26 16 8;
+    --table-focus-ring: 236 218 176;
+    --table-chip-face: 29 4 50;
+    --table-chip-rim: 214 186 128;
+    --table-chip-ink: 255 240 210;
+  }
+
+  /* Indigo (replaces status-conflicting green) */
+  .table-theme[data-table-color='1'] {
+    --felt: 26 40 88;
+    --felt-deep: 14 22 52;
+    --felt-mid: 40 56 112;
+    --felt-edge: #0a1028;
+    --felt-rim: 28 32 48;
+    --felt-rim-edge: 160 168 196;
+    --table-chrome: 18 26 58;
+    --table-chrome-raised: 32 42 78;
+    --table-text-on-chrome: 242 240 246;
+    --table-text-muted: 200 208 228;
+    --table-accent: 192 200 220;
+    --table-accent-hover: 212 218 232;
+    --table-accent-active: 156 166 192;
+    --table-accent-fg: 16 20 36;
+    --table-focus-ring: 220 226 242;
+    --table-chip-face: 18 26 58;
+    --table-chip-rim: 192 200 220;
+    --table-chip-ink: 244 246 252;
+  }
+
+  /* Royal blue */
+  .table-theme[data-table-color='2'] {
+    --felt: 18 48 96;
+    --felt-deep: 10 28 58;
+    --felt-mid: 28 64 120;
+    --felt-edge: #061428;
+    --felt-rim: 28 36 52;
+    --felt-rim-edge: 150 170 200;
+    --table-chrome: 12 34 72;
+    --table-chrome-raised: 22 48 92;
+    --table-text-on-chrome: 240 244 250;
+    --table-text-muted: 200 216 236;
+    --table-accent: 196 210 228;
+    --table-accent-hover: 216 226 238;
+    --table-accent-active: 160 176 200;
+    --table-accent-fg: 12 22 40;
+    --table-focus-ring: 210 222 238;
+    --table-chip-face: 12 34 72;
+    --table-chip-rim: 196 210 228;
+    --table-chip-ink: 244 248 255;
+  }
+
+  /* Plum (cool, not danger red) */
+  .table-theme[data-table-color='3'] {
+    --felt: 58 28 64;
+    --felt-deep: 36 16 42;
+    --felt-mid: 78 40 88;
+    --felt-edge: #140818;
+    --felt-rim: 40 24 36;
+    --felt-rim-edge: 176 148 168;
+    --table-chrome: 42 20 52;
+    --table-chrome-raised: 62 32 72;
+    --table-text-on-chrome: 246 236 240;
+    --table-text-muted: 228 200 210;
+    --table-accent: 214 186 150;
+    --table-accent-hover: 228 204 176;
+    --table-accent-active: 180 150 110;
+    --table-accent-fg: 28 16 12;
+    --table-focus-ring: 236 216 224;
+    --table-chip-face: 42 20 52;
+    --table-chip-rim: 214 186 150;
+    --table-chip-ink: 255 244 232;
+  }
+
+  /* Charcoal */
+  .table-theme[data-table-color='4'] {
+    --felt: 36 38 42;
+    --felt-deep: 20 22 26;
+    --felt-mid: 48 50 56;
+    --felt-edge: #0a0a0c;
+    --felt-rim: 28 24 20;
+    --felt-rim-edge: 150 140 128;
+    --table-chrome: 28 30 34;
+    --table-chrome-raised: 44 46 52;
+    --table-text-on-chrome: 242 238 234;
+    --table-text-muted: 210 206 198;
+    --table-accent: 214 200 176;
+    --table-accent-hover: 228 218 200;
+    --table-accent-active: 176 164 140;
+    --table-accent-fg: 22 20 16;
+    --table-focus-ring: 230 224 214;
+    --table-chip-face: 28 30 34;
+    --table-chip-rim: 214 200 176;
+    --table-chip-ink: 250 246 240;
+  }
+
+  .table-theme :focus-visible {
+    outline: 2px solid rgb(var(--table-focus-ring));
+    outline-offset: 2px;
+  }
+
+  .table-stack-fill {
+    background-color: rgb(var(--table-chrome));
+    color: rgb(var(--table-text-on-chrome));
+  }
+
+  .table-stack-winner {
+    background-color: rgb(var(--table-accent));
+    color: rgb(var(--table-accent-fg));
+  }
+
+  .table-label-on-felt {
+    color: rgb(var(--table-text-muted));
+    text-shadow: 0 1px 2px rgb(0 0 0 / 0.75);
+  }
+
+  .table-chrome-disc {
+    background-color: rgb(var(--table-chrome));
+    color: rgb(var(--table-text-on-chrome));
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.45);
+  }
+
+  .table-chrome-disc-ring {
+    --tw-ring-color: rgb(var(--table-text-on-chrome) / 0.55);
+  }
+
+  .table-action-popup {
+    border-color: rgb(var(--table-text-on-chrome) / 0.55);
+    background-color: rgb(var(--table-chrome) / 0.95);
+    color: rgb(var(--table-text-on-chrome));
+  }
+
+  .table-theme-accent {
+    background-color: rgb(var(--table-accent));
+    color: rgb(var(--table-accent-fg));
+  }
+  .table-theme-accent:hover {
+    background-color: rgb(var(--table-accent-hover));
+  }
+  .table-theme-accent:active {
+    background-color: rgb(var(--table-accent-active));
+  }
+
+  /*
+   * Table felt — tokens from .table-theme ancestor (or self if both classes).
+   */
   .felt-surface {
     background:
       radial-gradient(ellipse at 50% 28%, rgb(var(--mushroom) / 0.1), transparent 44%),
-      radial-gradient(ellipse at 50% 55%, rgb(52 18 82 / 0.55), transparent 70%),
+      radial-gradient(ellipse at 50% 55%, rgb(var(--felt-mid) / 0.55), transparent 70%),
       radial-gradient(
         ellipse at center,
         rgb(var(--felt)) 0%,
         rgb(var(--felt-deep)) 58%,
-        #0a0414 100%
+        var(--felt-edge) 100%
       );
     box-shadow:
       inset 0 0 100px rgb(0 0 0 / 0.45),
       inset 0 0 0 1px rgb(var(--mushroom) / 0.08);
+  }
+
+  /* Standalone preview ovals (profile) without full table-theme root */
+  .felt-surface[data-table-color='0'],
+  .table-theme[data-table-color='0'] .felt-surface {
+    --felt: 29 4 50;
+    --felt-deep: 18 2 32;
+    --felt-mid: 52 18 82;
+    --felt-edge: #0a0414;
+    --felt-rim: 18 2 32;
+    --felt-rim-edge: 168 140 162;
+  }
+
+  .felt-surface[data-table-color='1'],
+  .table-theme[data-table-color='1'] .felt-surface {
+    --felt: 26 40 88;
+    --felt-deep: 14 22 52;
+    --felt-mid: 40 56 112;
+    --felt-edge: #0a1028;
+    --felt-rim: 28 32 48;
+    --felt-rim-edge: 160 168 196;
+  }
+
+  .felt-surface[data-table-color='2'],
+  .table-theme[data-table-color='2'] .felt-surface {
+    --felt: 18 48 96;
+    --felt-deep: 10 28 58;
+    --felt-mid: 28 64 120;
+    --felt-edge: #061428;
+    --felt-rim: 28 36 52;
+    --felt-rim-edge: 150 170 200;
+  }
+
+  .felt-surface[data-table-color='3'],
+  .table-theme[data-table-color='3'] .felt-surface {
+    --felt: 58 28 64;
+    --felt-deep: 36 16 42;
+    --felt-mid: 78 40 88;
+    --felt-edge: #140818;
+    --felt-rim: 40 24 36;
+    --felt-rim-edge: 176 148 168;
+  }
+
+  .felt-surface[data-table-color='4'],
+  .table-theme[data-table-color='4'] .felt-surface {
+    --felt: 36 38 42;
+    --felt-deep: 20 22 26;
+    --felt-mid: 48 50 56;
+    --felt-edge: #0a0a0c;
+    --felt-rim: 28 24 20;
+    --felt-rim-edge: 150 140 128;
   }
 
   /* Slightly darker rim so the oval reads on mushroom. */

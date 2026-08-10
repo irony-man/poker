@@ -92,7 +92,37 @@ describe('Room wallet economy', () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  it('debits buy-in on sit and credits on leave', async () => {
+  it('cash room: sit and leave do not touch bankroll', async () => {
+    const meta = rooms.create({
+      name: 'Cash',
+      hostUserId: 'u1',
+      isPrivate: true,
+      config: {
+        maxSeats: 6,
+        smallBlind: 5,
+        bigBlind: 10,
+        buyIn: 1000,
+        turnTimeMs: 20_000,
+      },
+    });
+    const room = rooms.get(meta.id)!;
+    const before = wallet.getBalance('u1');
+    const sit = await room.sit('u1', 'alice', 0, 1000);
+    expect(sit.ok).toBe(true);
+    expect(wallet.getBalance('u1')).toBe(before);
+    expect(room.state.players[0]!.stack).toBe(1000);
+
+    room.state.players[0]!.stack = 750;
+    const stand = room.stand('u1', 0);
+    expect(stand.ok).toBe(true);
+    // cash-out is async when enabled
+    await new Promise((r) => setTimeout(r, 20));
+    expect(wallet.getBalance('u1')).toBe(before);
+  });
+
+  it('cash room: allows sit with empty bankroll', async () => {
+    await wallet.debit('u1', STARTING_CHIP_GRANT, 'buy_in');
+    expect(wallet.getBalance('u1')).toBe(0);
     const meta = rooms.create({
       name: 'Cash',
       hostUserId: 'u1',
@@ -108,18 +138,11 @@ describe('Room wallet economy', () => {
     const room = rooms.get(meta.id)!;
     const sit = await room.sit('u1', 'alice', 0, 1000);
     expect(sit.ok).toBe(true);
-    expect(wallet.getBalance('u1')).toBe(STARTING_CHIP_GRANT - 1000);
-
-    room.state.players[0]!.stack = 750;
-    const stand = room.stand('u1', 0);
-    expect(stand.ok).toBe(true);
-    // cash-out is async
-    await new Promise((r) => setTimeout(r, 20));
-    expect(wallet.getBalance('u1')).toBe(STARTING_CHIP_GRANT - 1000 + 750);
+    expect(room.state.players[0]!.stack).toBe(1000);
+    expect(wallet.getBalance('u1')).toBe(0);
   });
 
-  it('rejects sit when bankroll is short', async () => {
-    await wallet.debit('u1', STARTING_CHIP_GRANT - 100, 'buy_in');
+  it('cash room: top-up freezes bankroll', async () => {
     const meta = rooms.create({
       name: 'Cash',
       hostUserId: 'u1',
@@ -133,35 +156,17 @@ describe('Room wallet economy', () => {
       },
     });
     const room = rooms.get(meta.id)!;
-    const sit = await room.sit('u1', 'alice', 0, 1000);
-    expect(sit.ok).toBe(false);
-    expect(sit.error).toMatch(/Need 1000/i);
-  });
-
-  it('debits top-up amount', async () => {
-    const meta = rooms.create({
-      name: 'Cash',
-      hostUserId: 'u1',
-      isPrivate: true,
-      config: {
-        maxSeats: 6,
-        smallBlind: 5,
-        bigBlind: 10,
-        buyIn: 1000,
-        turnTimeMs: 20_000,
-      },
-    });
-    const room = rooms.get(meta.id)!;
+    const before = wallet.getBalance('u1');
     await room.sit('u1', 'alice', 0, 1000);
     room.state.players[0]!.stack = 0;
     room.state.street = 'waiting';
     const top = await room.doTopUp('u1', 0, 1000);
     expect(top.ok).toBe(true);
-    expect(wallet.getBalance('u1')).toBe(STARTING_CHIP_GRANT - 2000);
+    expect(wallet.getBalance('u1')).toBe(before);
     expect(room.state.players[0]!.stack).toBe(1000);
   });
 
-  it('kick reserve rejoin does not double-debit', async () => {
+  it('kick reserve rejoin does not touch bankroll', async () => {
     const chips = new MemoryTableChipStore();
     rooms = new RoomManager(new MemoryKv(), memoryHistory(), chips, wallet);
     const meta = rooms.create({
@@ -177,18 +182,122 @@ describe('Room wallet economy', () => {
       },
     });
     const room = rooms.get(meta.id)!;
+    const before = wallet.getBalance('u2');
     await room.sit('u2', 'bob', 1, 1000);
-    expect(wallet.getBalance('u2')).toBe(STARTING_CHIP_GRANT - 1000);
+    expect(wallet.getBalance('u2')).toBe(before);
     room.state.players[1]!.stack = 420;
     const kick = await room.kickPlayer('u1', 1);
     expect(kick.ok).toBe(true);
-    // kick holds table reserve — no cash-out
     await new Promise((r) => setTimeout(r, 20));
-    expect(wallet.getBalance('u2')).toBe(STARTING_CHIP_GRANT - 1000);
+    expect(wallet.getBalance('u2')).toBe(before);
 
     const rejoin = await room.sit('u2', 'bob', 2, 1000);
     expect(rejoin.ok).toBe(true);
     expect(room.state.players[2]!.stack).toBe(420);
-    expect(wallet.getBalance('u2')).toBe(STARTING_CHIP_GRANT - 1000);
+    expect(wallet.getBalance('u2')).toBe(before);
+  });
+
+  it('play-money table: sit and leave freeze balance', async () => {
+    const meta = rooms.create({
+      name: 'Practice',
+      hostUserId: 'u1',
+      isPrivate: true,
+      playMoney: true,
+      config: {
+        maxSeats: 6,
+        smallBlind: 5,
+        bigBlind: 10,
+        buyIn: 1000,
+        turnTimeMs: 20_000,
+      },
+    });
+    const room = rooms.get(meta.id)!;
+    const before = wallet.getBalance('u1');
+    const sit = await room.sit('u1', 'alice', 0, 1000);
+    expect(sit.ok).toBe(true);
+    expect(wallet.getBalance('u1')).toBe(before);
+    expect(room.state.players[0]!.stack).toBe(1000);
+
+    room.state.players[0]!.stack = 2500;
+    const stand = room.stand('u1', 0);
+    expect(stand.ok).toBe(true);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(wallet.getBalance('u1')).toBe(before);
+  });
+
+  it('play-money table: top-up freezes balance', async () => {
+    const meta = rooms.create({
+      name: 'Practice',
+      hostUserId: 'u1',
+      isPrivate: true,
+      playMoney: true,
+      config: {
+        maxSeats: 6,
+        smallBlind: 5,
+        bigBlind: 10,
+        buyIn: 1000,
+        turnTimeMs: 20_000,
+      },
+    });
+    const room = rooms.get(meta.id)!;
+    const before = wallet.getBalance('u1');
+    await room.sit('u1', 'alice', 0, 1000);
+    room.state.players[0]!.stack = 0;
+    room.state.street = 'waiting';
+    const top = await room.doTopUp('u1', 0, 1000);
+    expect(top.ok).toBe(true);
+    expect(wallet.getBalance('u1')).toBe(before);
+    expect(room.state.players[0]!.stack).toBe(1000);
+  });
+
+  it('addBot enables playMoney on private table before humans sit', async () => {
+    const meta = rooms.create({
+      name: 'Host',
+      hostUserId: 'u1',
+      isPrivate: true,
+      config: {
+        maxSeats: 6,
+        smallBlind: 5,
+        bigBlind: 10,
+        buyIn: 1000,
+        turnTimeMs: 20_000,
+      },
+    });
+    const room = rooms.get(meta.id)!;
+    expect(room.meta.playMoney).toBeFalsy();
+    expect(room.addBot('u1').ok).toBe(true);
+    expect(room.meta.playMoney).toBe(true);
+
+    const empty = room.state.players.find((p) => p.status === 'empty')!.seat;
+    const before = wallet.getBalance('u1');
+    const sit = await room.sit('u1', 'alice', empty, 1000);
+    expect(sit.ok).toBe(true);
+    expect(wallet.getBalance('u1')).toBe(before);
+  });
+
+  it('public stake table: free buy-in stack and rejects bots', async () => {
+    const meta = rooms.create({
+      name: 'NL10',
+      hostUserId: 'felt-house',
+      isPrivate: false,
+      stakeId: 'nl10',
+      config: {
+        maxSeats: 6,
+        smallBlind: 5,
+        bigBlind: 10,
+        buyIn: 1000,
+        turnTimeMs: 20_000,
+      },
+    });
+    const room = rooms.get(meta.id)!;
+    expect(room.addBot('felt-house', undefined, 1000, 2).ok).toBe(false);
+    expect(room.meta.playMoney).toBeFalsy();
+
+    const empty = room.state.players.find((p) => p.status === 'empty')!.seat;
+    const before = wallet.getBalance('u1');
+    const sit = await room.sit('u1', 'alice', empty, 1000);
+    expect(sit.ok).toBe(true);
+    expect(wallet.getBalance('u1')).toBe(before);
+    expect(room.state.players[empty]!.stack).toBe(1000);
   });
 });

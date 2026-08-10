@@ -1,9 +1,25 @@
-/** Wuffies granted on signup / when backfilling legacy accounts. */
-export const STARTING_CHIP_GRANT = 10_000;
-/** Claim free Wuffies when balance is strictly below this. */
+/** Wuffies granted on signup / when backfilling legacy accounts (default). */
+export const STARTING_CHIP_GRANT = 25_000;
+/** Claim free Wuffies when balance is strictly below this (default). */
 export const REFILL_THRESHOLD = 1_000;
-/** Amount added on a successful free refill claim. */
+/** Amount added on a successful free refill claim (default). */
 export const REFILL_GRANT = 5_000;
+
+export type EconomySnapshot = {
+  startingChipGrant: number;
+  refillThreshold: number;
+  refillGrant: number;
+};
+
+export function defaultEconomy(): EconomySnapshot {
+  return {
+    startingChipGrant: STARTING_CHIP_GRANT,
+    refillThreshold: REFILL_THRESHOLD,
+    refillGrant: REFILL_GRANT,
+  };
+}
+
+export type EconomyProvider = () => EconomySnapshot;
 
 export type WalletReason =
   | 'signup_grant'
@@ -11,7 +27,8 @@ export type WalletReason =
   | 'buy_in'
   | 'cash_out'
   | 'top_up'
-  | 'contest_prize';
+  | 'contest_prize'
+  | 'admin_credit';
 
 export class WalletError extends Error {
   constructor(

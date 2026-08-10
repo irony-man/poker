@@ -20,6 +20,7 @@ import {
   type PendingChallenge,
 } from '@/lib/api';
 import { groupMembersDirty, useFriendsSocial } from '@/hooks/useFriendsSocial';
+import { useConfirm } from '@/components/ConfirmPopover';
 
 function MemberAvatarStack({
   members,
@@ -105,6 +106,7 @@ export function FriendsPanel({
   variant?: 'page' | 'embedded';
   onFriendCountChange?: (count: number) => void;
 }) {
+  const confirm = useConfirm();
   const {
     userId,
     sessionToken,
@@ -245,7 +247,13 @@ export function FriendsPanel({
 
   async function onRemoveFriend(friend: FriendProfile) {
     if (disabled || !sessionToken) return;
-    const ok = window.confirm(`Remove ${friend.name} from your friends?`);
+    const ok = await confirm({
+      title: `Remove ${friend.name}?`,
+      description: 'They will leave your friends list. You can add them again later.',
+      confirmLabel: 'Remove',
+      cancelLabel: 'Cancel',
+      tone: 'danger',
+    });
     if (!ok) return;
     setBusy(`remove-${friend.userId}`);
     setError(null);

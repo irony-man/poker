@@ -62,11 +62,21 @@ export function formatTurnSeconds(ms: number): string {
 }
 
 const BOTTOM_CENTER = 90;
-/** Degrees reserved at the top for dealer button + pot (centered at 270°). */
-const TOP_GAP_DEG = 88;
 
 function normalizeAngle(deg: number): number {
   return ((deg % 360) + 360) % 360;
+}
+
+/**
+ * Degrees reserved at the top for dealer button + pot (centered at 270°).
+ * Shrinks as maxSeats grows so opponents form a fuller circle on mobile.
+ */
+export function seatTopGapDeg(maxSeats: number): number {
+  if (maxSeats <= 2) return 100;
+  if (maxSeats <= 4) return 88;
+  if (maxSeats <= 6) return 72;
+  if (maxSeats <= 7) return 60;
+  return 50;
 }
 
 /**
@@ -75,7 +85,7 @@ function normalizeAngle(deg: number): number {
  */
 export function seatAnglesForHero(maxSeats: number, heroSeat: number | undefined): number[] {
   const hero = heroSeat ?? 0;
-  const gapHalf = TOP_GAP_DEG / 2;
+  const gapHalf = seatTopGapDeg(maxSeats) / 2;
   const arcStart = 270 + gapHalf;
   const arcEnd = 270 - gapHalf + 360;
   const arcSpan = arcEnd - arcStart;
@@ -97,4 +107,59 @@ export function seatAnglesForHero(maxSeats: number, heroSeat: number | undefined
     const posIdx = (bottomIdx + offset) % maxSeats;
     return positions[posIdx]!;
   });
+}
+
+export type SeatEllipseRadii = {
+  rx: number;
+  ry: number;
+  betRx: number;
+  betRy: number;
+};
+
+/** Place seats on the oval; denser tables pull closer to the rim. */
+export function seatEllipseRadii(opts: {
+  maxSeats: number;
+  compact?: boolean;
+  landscape?: boolean;
+}): SeatEllipseRadii {
+  const { maxSeats, compact, landscape } = opts;
+  const dense = maxSeats >= 7;
+
+  if (landscape) {
+    return {
+      rx: dense ? 43 : 41,
+      ry: dense ? 36 : 34,
+      betRx: dense ? 24 : 22,
+      betRy: dense ? 20 : 18,
+    };
+  }
+  if (compact) {
+    return {
+      rx: dense ? 44 : 42,
+      ry: dense ? 42 : 40,
+      betRx: dense ? 26 : 24,
+      betRy: dense ? 22 : 20,
+    };
+  }
+  return {
+    rx: dense ? 43 : 41,
+    ry: dense ? 39 : 37,
+    betRx: dense ? 25 : 23,
+    betRy: dense ? 21 : 19,
+  };
+}
+
+/** Ring avatar diameter in px — scales down when many seats crowd mobile. */
+export function seatSlotAvatarSize(opts: {
+  maxSeats: number;
+  compact?: boolean;
+  isSelf?: boolean;
+}): number {
+  const dense = opts.maxSeats >= 7;
+  if (opts.compact) {
+    if (dense) return opts.isSelf ? 32 : 28;
+    return opts.isSelf ? 36 : 32;
+  }
+  if (dense) return opts.isSelf ? 34 : 30;
+  return opts.isSelf ? 38 : 34;
 }

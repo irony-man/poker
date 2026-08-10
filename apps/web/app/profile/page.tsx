@@ -17,13 +17,18 @@ import {
   type MeProfile,
 } from '@/lib/api';
 import { saveAvatarId } from '@/lib/avatars';
+import {
+  TABLE_COLOR_PRESETS,
+  clampTableColorId,
+  saveTableColorId,
+} from '@/lib/tableColors';
 import { MoneyAmount } from '@/components/CurrencyIcon';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { readStoredSession, writeStoredSession } from '@/lib/session';
 import { useSession } from '@/lib/store';
 import { useLobbySession } from '@/lib/useLobbySession';
 
-type ProfileTab = 'overview' | 'contests' | 'friends';
+type ProfileTab = 'overview' | 'theme' | 'contests' | 'friends';
 
 type ContestMatchRow = {
   contest: ContestView;
@@ -33,7 +38,7 @@ type ContestMatchRow = {
 };
 
 function parseProfileTab(raw: string | null): ProfileTab {
-  if (raw === 'friends' || raw === 'contests') return raw;
+  if (raw === 'friends' || raw === 'contests' || raw === 'theme') return raw;
   return 'overview';
 }
 
@@ -58,6 +63,8 @@ function ProfilePageInner() {
   const [editingAvatar, setEditingAvatar] = useState(false);
   const [draftAvatarId, setDraftAvatarId] = useState(0);
   const [savingAvatar, setSavingAvatar] = useState(false);
+  const [draftTableColorId, setDraftTableColorId] = useState(0);
+  const [savingTableColor, setSavingTableColor] = useState(false);
 
   const token = sessionToken ?? readStoredSession()?.sessionToken ?? null;
 
@@ -94,6 +101,8 @@ function ProfilePageInner() {
       ]);
       setProfile(me);
       setDraftAvatarId(me.avatarId);
+      setDraftTableColorId(clampTableColorId(me.tableColorId));
+      saveTableColorId(me.tableColorId);
       setChipBalance(me.chipBalance);
       setContests(mine?.contests ?? []);
     } catch (err) {
@@ -143,6 +152,7 @@ function ProfilePageInner() {
       setProfile(me);
       setChipBalance(me.chipBalance);
       saveAvatarId(me.avatarId);
+      saveTableColorId(me.tableColorId);
       const stored = readStoredSession();
       if (stored) {
         writeStoredSession({ ...stored, avatarId: me.avatarId });
@@ -152,6 +162,31 @@ function ProfilePageInner() {
       setError(err instanceof Error ? err.message : 'Could not update avatar');
     } finally {
       setSavingAvatar(false);
+    }
+  };
+
+  const saveTableColor = async (nextId: number) => {
+    if (!token || !profile || savingTableColor) return;
+    const clamped = clampTableColorId(nextId);
+    if (clamped === clampTableColorId(profile.tableColorId)) {
+      setDraftTableColorId(clamped);
+      return;
+    }
+    const previous = draftTableColorId;
+    setDraftTableColorId(clamped);
+    setSavingTableColor(true);
+    setError(null);
+    try {
+      const me = await updateMe(token, { tableColorId: clamped });
+      setProfile(me);
+      setChipBalance(me.chipBalance);
+      saveTableColorId(me.tableColorId);
+      setDraftTableColorId(clampTableColorId(me.tableColorId));
+    } catch (err) {
+      setDraftTableColorId(previous);
+      setError(err instanceof Error ? err.message : 'Could not update table color');
+    } finally {
+      setSavingTableColor(false);
     }
   };
 
@@ -170,8 +205,6 @@ function ProfilePageInner() {
 
   return (
     <LobbyPageShell
-      title="Profile"
-      subtitle="Your avatar, display name, and Wuffies bankroll."
       signedIn={signedIn}
       requireAuth
     >
@@ -189,8 +222,13 @@ function ProfilePageInner() {
         <div className="flex w-full flex-col gap-5 sm:gap-6">
           <section className="overflow-hidden rounded-2xl border border-sidebar/12 bg-white shadow-[0_14px_36px_rgb(29_4_50_/_0.08)]">
             <div className="flex flex-col gap-6 p-5 sm:p-7 md:flex-row md:items-start md:gap-8">
-              <div className="flex shrink-0 flex-col items-center gap-2 md:items-start">
-                <div className="rounded-full bg-white p-1 shadow-[0_0_0_1px_rgb(29_4_50_/_0.08)]">
+              <div className="flex shrink-0 flex-col items-center md:items-start">
+                <button
+                  type="button"
+                  onClick={openAvatarEditor}
+                  className="group relative rounded-full bg-white p-1 shadow-[0_0_0_1px_rgb(29_4_50_/_0.08)] outline-none transition focus-visible:ring-2 focus-visible:ring-sidebar/40 focus-visible:ring-offset-2"
+                  aria-label="Edit avatar"
+                >
                   <PlayerAvatar
                     avatarId={profile.avatarId}
                     userId={profile.id}
@@ -198,55 +236,60 @@ function ProfilePageInner() {
                     title={profile.username}
                     className="ring-1 ring-sidebar/10"
                   />
-                </div>
-                <button
-                  type="button"
-                  onClick={openAvatarEditor}
-                  className="text-xs font-semibold text-sidebar underline-offset-2 transition hover:underline"
-                >
-                  Change avatar
+                  <span
+                    className="pointer-events-none absolute inset-1 flex items-center justify-center rounded-full bg-sidebar/70 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+                    aria-hidden
+                  >
+                    <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-mushroom">
+                      <svg
+                        className="h-4 w-4 shrink-0"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        aria-hidden
+                      >
+                        <path
+                          d="M11.5 2.5a1.4 1.4 0 0 1 2 2L5.75 12.25 2.5 13l.75-3.25L11.5 2.5Z"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      Edit
+                    </span>
+                  </span>
                 </button>
               </div>
 
               <div className="min-w-0 flex-1">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                  <div className="min-w-0">
-                    <h2 className="truncate font-display text-3xl font-bold tracking-tight text-sidebar sm:text-[2rem]">
-                      {profile.username}
-                    </h2>
-                    <p className="mt-2.5">
-                      <MoneyAmount
-                        amount={profile.chipBalance}
-                        showChips
-                        className="font-display text-xl font-bold tracking-tight text-sidebar sm:text-2xl"
-                      />
-                    </p>
-                    <p className="mt-3 text-sm leading-relaxed text-ink-strong-muted">
-                      {joined ? (
-                        <>
-                          Joined {joined}
-                          <span className="mx-1.5 text-sidebar/30" aria-hidden>
-                            ·
-                          </span>
-                        </>
-                      ) : null}
-                      <button
-                        type="button"
-                        onClick={() => selectTab('friends')}
-                        className="font-medium text-sidebar underline-offset-2 hover:underline"
-                      >
-                        {friendCount} {friendCount === 1 ? 'friend' : 'friends'}
-                      </button>
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={openAvatarEditor}
-                    className="inline-flex shrink-0 items-center justify-center rounded-full border border-sidebar bg-sidebar px-4 py-2 text-xs font-display font-bold uppercase tracking-wider text-mushroom transition hover:bg-sidebar/90 sm:mt-0.5"
-                  >
-                    Change avatar
-                  </button>
+                <div className="min-w-0">
+                  <h2 className="truncate font-display text-3xl font-bold tracking-tight text-sidebar sm:text-[2rem]">
+                    {profile.username}
+                  </h2>
+                  <p className="mt-2.5">
+                    <MoneyAmount
+                      amount={profile.chipBalance}
+                      showChips
+                      className="font-display text-xl font-bold tracking-tight text-sidebar sm:text-2xl"
+                    />
+                  </p>
+                  <p className="mt-3 text-sm leading-relaxed text-ink-strong-muted">
+                    {joined ? (
+                      <>
+                        Joined {joined}
+                        <span className="mx-1.5 text-sidebar/30" aria-hidden>
+                          ·
+                        </span>
+                      </>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => selectTab('friends')}
+                      className="font-medium text-sidebar underline-offset-2 hover:underline"
+                    >
+                      {friendCount} {friendCount === 1 ? 'friend' : 'friends'}
+                    </button>
+                  </p>
                 </div>
 
                 {editingAvatar ? (
@@ -286,6 +329,7 @@ function ProfilePageInner() {
               {(
                 [
                   { id: 'overview' as const, label: 'Overview' },
+                  { id: 'theme' as const, label: 'Theme' },
                   { id: 'contests' as const, label: 'Contests' },
                   { id: 'friends' as const, label: 'Friends' },
                 ] as const
@@ -358,6 +402,109 @@ function ProfilePageInner() {
                   Find friends
                 </button>
               </div>
+            </section>
+          ) : tab === 'theme' ? (
+            <section
+              role="tabpanel"
+              id="profile-panel-theme"
+              aria-labelledby="profile-tab-theme"
+              className="rounded-2xl border border-sidebar/12 bg-white p-5 shadow-[0_10px_28px_rgb(29_4_50_/_0.06)] sm:p-7"
+            >
+              <h3 className="font-display text-lg font-bold tracking-tight text-sidebar">
+                Table theme
+              </h3>
+              <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-strong-muted">
+                Felt, seat chrome, and chip accents you see at the table — only affects your
+                view. Status colors (fold, live, warnings) stay the same.
+              </p>
+
+              <div
+                className="table-theme mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6"
+                data-table-color={draftTableColorId}
+              >
+                <div className="flex w-full max-w-[260px] flex-col items-center gap-2">
+                  <div
+                    className="felt-surface table-rim shadow-felt relative h-20 w-full rounded-[42%] border-[8px] sm:h-24"
+                    aria-hidden
+                  />
+                  <div
+                    className="table-stack-fill w-full max-w-[8rem] rounded px-2 py-1 text-center text-[11px] font-extrabold tabular-nums"
+                    aria-hidden
+                  >
+                    1,200
+                  </div>
+                  <div
+                    className="table-stack-winner w-full max-w-[8rem] rounded px-2 py-1 text-center text-[11px] font-extrabold tabular-nums"
+                    aria-hidden
+                  >
+                    Winner
+                  </div>
+                </div>
+
+                <div
+                  className="grid w-full grid-cols-1 gap-2.5 sm:flex-1"
+                  role="radiogroup"
+                  aria-label="Table theme"
+                >
+                  {TABLE_COLOR_PRESETS.map((preset) => {
+                    const selected = draftTableColorId === preset.id;
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        disabled={savingTableColor}
+                        onClick={() => void saveTableColor(preset.id)}
+                        className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar disabled:opacity-60 ${
+                          selected
+                            ? 'border-sidebar bg-sidebar/[0.07] shadow-[0_0_0_1px_rgb(29_4_50_/_0.08)]'
+                            : 'border-sidebar/12 bg-mushroom/40 hover:border-sidebar/25 hover:bg-mushroom/70'
+                        }`}
+                      >
+                        <span
+                          className="h-9 w-9 shrink-0 rounded-full border-2 border-white shadow-[0_0_0_1px_rgb(29_4_50_/_0.18)]"
+                          style={{ backgroundColor: preset.swatch }}
+                          aria-hidden
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-semibold text-sidebar">
+                            {preset.label}
+                          </span>
+                          {selected ? (
+                            <span className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-sidebar/70">
+                              <svg
+                                className="h-3.5 w-3.5 shrink-0"
+                                viewBox="0 0 16 16"
+                                fill="none"
+                                aria-hidden
+                              >
+                                <path
+                                  d="M3.5 8.5 6.5 11.5 12.5 4.5"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                              Selected
+                            </span>
+                          ) : (
+                            <span className="mt-0.5 block text-[11px] text-ink-strong-muted">
+                              Tap to apply
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              {savingTableColor ? (
+                <p className="mt-3 text-xs text-ink-strong-muted" role="status">
+                  Saving…
+                </p>
+              ) : null}
             </section>
           ) : tab === 'contests' ? (
             <section

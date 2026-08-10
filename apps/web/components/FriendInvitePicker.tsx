@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 import { LoadingScreen } from '@/components/LoadingScreen';
-import { listFriends, type FriendGroup, type FriendProfile } from '@/lib/api';
+import type { FriendGroup } from '@/lib/api';
+import { useSession } from '@/lib/store';
 
-/** Multi-select friends list for hosting tables / contests. */
+/** Multi-select friends list for hosting tables / contests (live via social_sync). */
 export function FriendInvitePicker({
   sessionToken,
   selectedIds,
@@ -26,10 +27,11 @@ export function FriendInvitePicker({
   title?: string;
   help?: string;
 }) {
-  const [friends, setFriends] = useState<FriendProfile[]>([]);
-  const [groups, setGroups] = useState<FriendGroup[]>([]);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const social = useSession((s) => s.social);
+  const socialLoaded = useSession((s) => s.socialLoaded);
+  const friends = social?.friends ?? [];
+  const groups = social?.groups ?? [];
+  const loading = Boolean(sessionToken && !socialLoaded);
   const [onlineOnly, setOnlineOnly] = useState(false);
 
   const selected = useMemo(() => new Set(selectedIds), [selectedIds]);
@@ -50,38 +52,6 @@ export function FriendInvitePicker({
       return a.name.localeCompare(b.name);
     });
   }, [friends, excluded, onlineOnly]);
-
-  const refresh = useCallback(async () => {
-    if (!sessionToken) {
-      setFriends([]);
-      setGroups([]);
-      return;
-    }
-    setLoading(true);
-    try {
-      const data = await listFriends({ sessionToken });
-      setFriends(data.friends);
-      setGroups(data.groups ?? []);
-      setLoadError(null);
-    } catch (err) {
-      setLoadError(err instanceof Error ? err.message : 'Could not load friends');
-    } finally {
-      setLoading(false);
-    }
-  }, [sessionToken]);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
-  // Refresh online status while picker is open.
-  useEffect(() => {
-    if (!sessionToken) return;
-    const id = window.setInterval(() => {
-      void refresh();
-    }, 20_000);
-    return () => window.clearInterval(id);
-  }, [sessionToken, refresh]);
 
   // Drop selections that became excluded (joined).
   useEffect(() => {
@@ -173,12 +143,6 @@ export function FriendInvitePicker({
           </button>
         ) : null}
       </div>
-
-      {loadError && (
-        <p role="alert" className="mt-2 text-xs text-danger">
-          {loadError}
-        </p>
-      )}
 
       {groups.length > 0 && !onlineOnly && (
         <div className="mt-2.5 flex flex-wrap gap-1.5">

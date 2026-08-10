@@ -2,6 +2,9 @@ import { nanoid } from 'nanoid';
 import { isBotUserId } from '../bot.js';
 import type { Queryable } from '../database/queryable.js';
 import {
+  defaultEconomy,
+  type EconomyProvider,
+  type EconomySnapshot,
   REFILL_GRANT,
   REFILL_THRESHOLD,
   STARTING_CHIP_GRANT,
@@ -17,6 +20,9 @@ export {
   REFILL_GRANT,
   REFILL_THRESHOLD,
   STARTING_CHIP_GRANT,
+  defaultEconomy,
+  type EconomyProvider,
+  type EconomySnapshot,
   type WalletBalanceOwner,
   type WalletMutationResult,
   type WalletReason,
@@ -30,11 +36,20 @@ export {
 export class AuthWalletStore implements WalletStore {
   private chain: Promise<void> = Promise.resolve();
   private pool: Queryable | null = null;
+  private economyProvider: EconomyProvider = defaultEconomy;
 
   constructor(private readonly owner: WalletBalanceOwner) {}
 
   setPool(pool: Queryable | null): void {
     this.pool = pool;
+  }
+
+  setEconomyProvider(provider: EconomyProvider): void {
+    this.economyProvider = provider;
+  }
+
+  private economy(): EconomySnapshot {
+    return this.economyProvider();
   }
 
   getBalance(userId: string): number {
@@ -54,9 +69,10 @@ export class AuthWalletStore implements WalletStore {
       if (current !== undefined && current !== null && Number.isFinite(current)) {
         return Math.max(0, Math.floor(current));
       }
-      await this.owner.setChipBalance(userId, STARTING_CHIP_GRANT);
-      await this.appendLedger(userId, STARTING_CHIP_GRANT, 'signup_grant', '');
-      return STARTING_CHIP_GRANT;
+      const grant = this.economy().startingChipGrant;
+      await this.owner.setChipBalance(userId, grant);
+      await this.appendLedger(userId, grant, 'signup_grant', '');
+      return grant;
     });
   }
 
@@ -79,9 +95,9 @@ export class AuthWalletStore implements WalletStore {
       }
       let bal = this.owner.getChipBalance(userId);
       if (bal === undefined || bal === null || !Number.isFinite(bal)) {
-        bal = STARTING_CHIP_GRANT;
+        bal = this.economy().startingChipGrant;
         await this.owner.setChipBalance(userId, bal);
-        await this.appendLedger(userId, STARTING_CHIP_GRANT, 'signup_grant', '');
+        await this.appendLedger(userId, bal, 'signup_grant', '');
       }
       bal = Math.max(0, Math.floor(bal));
       if (bal < n) {
@@ -119,7 +135,7 @@ export class AuthWalletStore implements WalletStore {
       }
       let bal = this.owner.getChipBalance(userId);
       if (bal === undefined || bal === null || !Number.isFinite(bal)) {
-        bal = STARTING_CHIP_GRANT;
+        bal = this.economy().startingChipGrant;
       }
       bal = Math.max(0, Math.floor(bal));
       const next = bal + n;
@@ -137,22 +153,23 @@ export class AuthWalletStore implements WalletStore {
       if (!this.owner.hasUser(userId)) {
         throw new WalletError('unknown_user', 'Unknown user');
       }
+      const eco = this.economy();
       let bal = this.owner.getChipBalance(userId);
       if (bal === undefined || bal === null || !Number.isFinite(bal)) {
-        bal = STARTING_CHIP_GRANT;
+        bal = eco.startingChipGrant;
         await this.owner.setChipBalance(userId, bal);
-        await this.appendLedger(userId, STARTING_CHIP_GRANT, 'signup_grant', '');
+        await this.appendLedger(userId, eco.startingChipGrant, 'signup_grant', '');
       }
       bal = Math.max(0, Math.floor(bal));
-      if (bal >= REFILL_THRESHOLD) {
+      if (bal >= eco.refillThreshold) {
         throw new WalletError(
           'not_eligible',
-          `Refill available when balance is below ${REFILL_THRESHOLD}`,
+          `Refill available when balance is below ${eco.refillThreshold}`,
         );
       }
-      const next = bal + REFILL_GRANT;
+      const next = bal + eco.refillGrant;
       await this.owner.setChipBalance(userId, next);
-      await this.appendLedger(userId, REFILL_GRANT, 'free_refill', '');
+      await this.appendLedger(userId, eco.refillGrant, 'free_refill', '');
       return { ok: true as const, balance: next };
     });
   }
@@ -163,12 +180,13 @@ export class AuthWalletStore implements WalletStore {
     threshold: number;
     grant: number;
   } {
+    const eco = this.economy();
     const balance = this.getBalance(userId);
     return {
       balance,
-      eligible: !isBotUserId(userId) && balance < REFILL_THRESHOLD,
-      threshold: REFILL_THRESHOLD,
-      grant: REFILL_GRANT,
+      eligible: !isBotUserId(userId) && balance < eco.refillThreshold,
+      threshold: eco.refillThreshold,
+      grant: eco.refillGrant,
     };
   }
 

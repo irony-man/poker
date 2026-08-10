@@ -33,6 +33,10 @@ export class UserEntity {
   @Column({ name: 'avatar_id', type: 'int', default: 0 })
   avatarId!: number;
 
+  /** Viewer table felt theme preset (0–4). */
+  @Column({ name: 'table_color_id', type: 'int', default: 0 })
+  tableColorId!: number;
+
   @Column({ name: 'chip_balance', type: 'int', default: 10_000 })
   chipBalance!: number;
 
@@ -148,7 +152,8 @@ export type ChipLedgerReason =
   | 'cash_out'
   | 'top_up'
   | 'hand_win'
-  | 'hand_loss';
+  | 'hand_loss'
+  | 'admin_credit';
 
 @Entity({ name: 'chip_ledger' })
 @Index('chip_ledger_user_idx', ['userId'])
@@ -200,6 +205,19 @@ export class SocialStoreEntity {
   updatedAt!: Date;
 }
 
+/** Single-row site settings (announcement + economy) for admin panel. */
+@Entity({ name: 'site_config' })
+export class SiteConfigEntity {
+  @PrimaryColumn({ type: 'text', default: 'default' })
+  id!: string;
+
+  @Column({ type: 'jsonb', default: () => "'{}'::jsonb" })
+  payload!: Record<string, unknown>;
+
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  updatedAt!: Date;
+}
+
 /** All TypeORM entities registered by the server. */
 export const ALL_ENTITIES = [
   UserEntity,
@@ -210,4 +228,5 @@ export const ALL_ENTITIES = [
   ChipLedgerEntity,
   TableChipBalanceEntity,
   SocialStoreEntity,
+  SiteConfigEntity,
 ] as const;

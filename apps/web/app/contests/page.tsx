@@ -17,6 +17,17 @@ export default function ContestsListPage() {
   async function enterContestCode(code: string) {
     const session = await ensureSession();
     const { contest } = await resolveContestInvite(code);
+    if (contest.status === 'completed') {
+      throw new Error('Contest has ended');
+    }
+    if (contest.status === 'cancelled') {
+      throw new Error('Contest was cancelled');
+    }
+    if (contest.status !== 'registering') {
+      // Running — open lobby, do not re-register.
+      router.push(`/contest/${contest.id}`);
+      return;
+    }
     const { registerContest } = await import('@/lib/api');
     await registerContest(contest.id, { sessionToken: session.sessionToken });
     router.push(`/contest/${contest.id}`);

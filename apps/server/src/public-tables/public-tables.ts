@@ -8,7 +8,7 @@ export function ensurePublicTables(rooms: RoomManager): void {
   for (const stake of STAKE_PRESETS) {
     if (rooms.findPublicByStake(stake.id)) continue;
 
-    const meta = rooms.create({
+    rooms.create({
       name: `${stake.label} stakes`,
       hostUserId: HOUSE_HOST,
       isPrivate: false,
@@ -21,11 +21,5 @@ export function ensurePublicTables(rooms: RoomManager): void {
         turnTimeMs: 20_000,
       },
     });
-
-    const room = rooms.get(meta.id);
-    if (room) {
-      // Keep public tables lively when empty.
-      room.addBot(HOUSE_HOST, undefined, stake.buyIn, 2);
-    }
   }
 }

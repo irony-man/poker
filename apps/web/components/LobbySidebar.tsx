@@ -70,12 +70,14 @@ export function LobbySidebar({
   signedIn,
   displayName,
   onLogout,
+  isAdmin = false,
 }: {
   open: boolean;
   onClose: () => void;
   signedIn: boolean;
   displayName: string | null;
   onLogout: () => void;
+  isAdmin?: boolean;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -125,6 +127,19 @@ export function LobbySidebar({
           </Link>
         );
       })}
+      {signedIn && isAdmin ? (
+        <Link
+          href="/admin"
+          onClick={onClose}
+          className={`rounded-md px-3 py-2.5 text-left text-sm font-display font-semibold uppercase tracking-[0.12em] transition ${
+            pathname === '/admin' || pathname.startsWith('/admin/')
+              ? 'bg-brass/15 text-brass'
+              : 'text-brass/70 hover:bg-brass/10 hover:text-brass'
+          }`}
+        >
+          Admin
+        </Link>
+      ) : null}
     </nav>
   );
 

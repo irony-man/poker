@@ -19,7 +19,7 @@ describe('ensurePublicTables', () => {
 
     const low = lobby.find((t) => t.stakeId === 'low')!;
     expect(low.config.buyIn).toBe(1000);
-    expect(low.seatedCount).toBeGreaterThanOrEqual(2);
+    expect(low.seatedCount).toBe(0);
 
     ensurePublicTables(rooms);
     expect(rooms.listPublicLobby()).toHaveLength(STAKE_PRESETS.length);

@@ -17,6 +17,12 @@ export class PresenceService {
     this.lastSeen.set(userId, Date.now());
   }
 
+  /** Immediately mark offline (e.g. last WS socket closed). */
+  clear(userId: string): void {
+    if (!userId) return;
+    this.lastSeen.delete(userId);
+  }
+
   isOnline(userId: string): boolean {
     const t = this.lastSeen.get(userId);
     if (t == null) return false;

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { MoveTimerStrip } from './TurnTimer';
+import { ReadyPlayersRoster, type ReadyRosterPlayer } from './WinHandModal';
 import { useSession, type PrivateView, type PublicTable } from '@/lib/store';
 import { formatMoneyAmount } from '@/lib/currency';
 import { useIsLandscapePhone, useIsNarrow } from '@/lib/tableLayout';
@@ -11,15 +12,250 @@ function waitingCopy(opts: {
   street: string | undefined;
   isTurn: boolean;
   connection?: string;
+  isTournament?: boolean;
+  contestOver?: boolean;
 }): string {
   if (opts.connection && opts.connection !== 'open') {
     return opts.connection === 'connecting' ? 'Reconnecting…' : 'Disconnected — actions paused';
   }
   if (opts.spectating) return 'Spectating — you are not seated';
-  if (opts.street === 'waiting') return 'Waiting for players…';
-  if (opts.street === 'payout' || opts.street === 'showdown') return 'Hand complete — start next when ready';
+  if (opts.contestOver) return 'Contest complete';
+  if (opts.street === 'waiting') {
+    return opts.isTournament ? 'Match starting…' : 'Waiting for players…';
+  }
+  if (opts.street === 'payout' || opts.street === 'showdown') {
+    return opts.isTournament
+      ? 'Hand complete — next deals automatically'
+      : 'Hand complete — start next when ready';
+  }
   if (!opts.isTurn) return 'Waiting for your turn…';
   return '—';
+}
+
+/** Between-hand / utility controls shown inside the Actions dock when not to act. */
+export type ActionTableTools = {
+  canReady?: boolean;
+  readyLabel?: string;
+  isReady?: boolean;
+  readyCount?: number;
+  readyTotal?: number;
+  /** Eligible players for next hand — avatar strip in the Actions dock. */
+  readyPlayers?: ReadyRosterPlayer[];
+  readyHeading?: string;
+  onReady?: () => void;
+  /** Offline / alternate primary start (e.g. “Next hand”). */
+  startLabel?: string;
+  onStart?: () => void;
+  canSitOut?: boolean;
+  canCancelSitOut?: boolean;
+  sitOutLabel?: string;
+  sitOutTitle?: string;
+  onSitOut?: () => void;
+  canSitIn?: boolean;
+  sitInLabel?: string;
+  onSitIn?: () => void;
+  canTopUp?: boolean;
+  topUpLabel?: string;
+  onTopUp?: () => void;
+  needWuffies?: boolean;
+  onNeedWuffies?: () => void;
+  canSitAndPlay?: boolean;
+  onSitAndPlay?: () => void;
+  canAddBot?: boolean;
+  onAddBot?: () => void;
+  onFillBots?: () => void;
+  canRemoveBots?: boolean;
+  onRemoveBots?: () => void;
+};
+
+function hasTableTools(t: ActionTableTools | undefined): boolean {
+  if (!t) return false;
+  return Boolean(
+    t.canReady ||
+      t.onStart ||
+      t.canSitOut ||
+      t.canCancelSitOut ||
+      t.canSitIn ||
+      t.canTopUp ||
+      t.needWuffies ||
+      t.canSitAndPlay ||
+      t.canAddBot ||
+      t.canRemoveBots,
+  );
+}
+
+function TableToolsPanel({
+  tools,
+  bare,
+  copy,
+}: {
+  tools: ActionTableTools;
+  bare: boolean;
+  copy: string;
+}) {
+  const shell = bare
+    ? 'flex w-full min-h-0 flex-1 flex-col gap-2 px-3 py-2.5'
+    : 'hud-panel flex min-h-[180px] flex-col gap-2 px-3 py-3';
+
+  const primaryLabel = tools.canReady
+    ? (tools.readyLabel ?? 'Play Next Hand')
+    : tools.onStart
+      ? (tools.startLabel ?? 'Next hand')
+      : tools.canSitIn
+        ? (tools.sitInLabel ?? 'Sit in')
+        : tools.canSitAndPlay
+          ? 'Sit and play'
+          : tools.canTopUp
+            ? (tools.topUpLabel ?? 'Top up')
+            : tools.needWuffies
+              ? 'Need Wuffies'
+              : null;
+
+  const primaryOnClick = tools.canReady
+    ? tools.onReady
+    : tools.onStart
+      ? tools.onStart
+      : tools.canSitIn
+        ? tools.onSitIn
+        : tools.canSitAndPlay
+          ? tools.onSitAndPlay
+          : tools.canTopUp
+            ? tools.onTopUp
+            : tools.needWuffies
+              ? tools.onNeedWuffies
+              : undefined;
+
+  const primaryIsReady = tools.canReady && tools.isReady;
+  const showReadyCount =
+    tools.canReady &&
+    tools.readyCount != null &&
+    tools.readyTotal != null &&
+    tools.readyTotal > 0 &&
+    !(tools.readyPlayers && tools.readyPlayers.length > 0);
+
+  const primaryIsTopUp = !tools.canReady && !tools.onStart && !tools.canSitIn && !tools.canSitAndPlay && tools.canTopUp;
+  const primaryIsNeedWuffies =
+    !tools.canReady &&
+    !tools.onStart &&
+    !tools.canSitIn &&
+    !tools.canSitAndPlay &&
+    !tools.canTopUp &&
+    tools.needWuffies;
+
+  const showSecondaryTopUp = tools.canTopUp && tools.onTopUp && !primaryIsTopUp;
+  const showSecondaryNeedWuffies =
+    tools.needWuffies && tools.onNeedWuffies && !tools.canTopUp && !primaryIsNeedWuffies;
+
+  const hostRow =
+    tools.canAddBot || tools.canRemoveBots || showSecondaryTopUp || showSecondaryNeedWuffies;
+
+  return (
+    <div className={shell} role="status" aria-live="polite">
+      <p className="px-1 text-center text-[10px] font-medium leading-snug text-sidebar/75">
+        {copy}
+      </p>
+      {tools.readyPlayers && tools.readyPlayers.length > 0 ? (
+        <ReadyPlayersRoster
+          players={tools.readyPlayers}
+          readyCount={tools.readyCount}
+          readyTotal={tools.readyTotal}
+          heading={tools.readyHeading ?? 'Ready'}
+          compact
+        />
+      ) : null}
+      <div className="flex flex-wrap items-center justify-center gap-1.5">
+        {primaryLabel && primaryOnClick ? (
+          <button
+            type="button"
+            onClick={primaryOnClick}
+            className={`min-h-9 px-4 text-[11px] font-display font-bold uppercase tracking-wide ${
+              primaryIsReady ? 'btn-ghost' : 'btn-primary'
+            }`}
+          >
+            {primaryLabel}
+            {showReadyCount ? (
+              <span className="ml-1.5 font-mono font-semibold tabular-nums opacity-80">
+                {tools.readyCount}/{tools.readyTotal}
+              </span>
+            ) : null}
+          </button>
+        ) : null}
+        {(tools.canSitOut || tools.canCancelSitOut) && tools.onSitOut ? (
+          <button
+            type="button"
+            onClick={tools.onSitOut}
+            title={tools.sitOutTitle}
+            className={
+              tools.canCancelSitOut
+                ? 'min-h-10 rounded-md border border-sidebar/30 bg-sidebar/8 px-3 text-[11px] font-display font-semibold text-sidebar hover:bg-sidebar/12'
+                : 'min-h-10 rounded-md border border-amber-600/30 px-3 text-[11px] font-display font-semibold text-amber-900 hover:bg-amber-500/10'
+            }
+          >
+            {tools.sitOutLabel ?? 'Sit out'}
+          </button>
+        ) : null}
+        {/* Sit in as secondary when primary is ready/start */}
+        {tools.canSitIn && tools.onSitIn && (tools.canReady || tools.onStart) ? (
+          <button
+            type="button"
+            onClick={tools.onSitIn}
+            className="min-h-10 rounded-md border border-sidebar/30 bg-sidebar/8 px-3 text-[11px] font-display font-semibold text-sidebar hover:bg-sidebar/12"
+          >
+            {tools.sitInLabel ?? 'Sit in'}
+          </button>
+        ) : null}
+      </div>
+      {hostRow ? (
+        <div className="flex flex-wrap items-center justify-center gap-1">
+          {tools.canAddBot && tools.onAddBot ? (
+            <button
+              type="button"
+              onClick={tools.onAddBot}
+              className="rounded border border-sidebar/20 bg-white px-2.5 py-1 text-[10px] font-display font-semibold uppercase tracking-wide text-ink-strong hover:bg-sidebar/8"
+            >
+              + Bot
+            </button>
+          ) : null}
+          {tools.canAddBot && tools.onFillBots ? (
+            <button
+              type="button"
+              onClick={tools.onFillBots}
+              className="rounded border border-sidebar/12 bg-white px-2 py-1 text-[10px] font-display font-semibold uppercase tracking-wide text-ink-strong-muted hover:bg-sidebar/8"
+            >
+              Fill
+            </button>
+          ) : null}
+          {tools.canRemoveBots && tools.onRemoveBots ? (
+            <button
+              type="button"
+              onClick={tools.onRemoveBots}
+              className="rounded px-2 py-1 text-[10px] font-display font-semibold uppercase tracking-wide text-ink-strong-muted hover:text-danger"
+            >
+              − Bots
+            </button>
+          ) : null}
+          {showSecondaryTopUp ? (
+            <button
+              type="button"
+              onClick={tools.onTopUp}
+              className="rounded border border-sidebar/25 bg-sidebar/8 px-2.5 py-1 text-[10px] font-display font-semibold uppercase tracking-wide text-sidebar hover:bg-sidebar/12"
+            >
+              {tools.topUpLabel ?? 'Top up'}
+            </button>
+          ) : null}
+          {showSecondaryNeedWuffies ? (
+            <button
+              type="button"
+              onClick={tools.onNeedWuffies}
+              className="rounded border border-danger/30 bg-danger/10 px-2.5 py-1 text-[10px] font-display font-semibold uppercase tracking-wide text-danger"
+            >
+              Need Wuffies
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export function ActionControls({
@@ -30,6 +266,8 @@ export function ActionControls({
   table: tableProp,
   private: privateProp,
   userId: userIdProp,
+  onViewContest,
+  tableTools,
 }: {
   onAction: (action: string, amount?: number) => void;
   spectating?: boolean;
@@ -41,6 +279,10 @@ export function ActionControls({
   table?: PublicTable | null;
   private?: PrivateView | null;
   userId?: string | null;
+  /** Contest finished — open results page. */
+  onViewContest?: () => void;
+  /** Between-hand / sit / host controls for the Actions dock idle state. */
+  tableTools?: ActionTableTools;
 }) {
   const tableFromStore = useSession((s) => s.table);
   const privFromStore = useSession((s) => s.private);
@@ -54,7 +296,9 @@ export function ActionControls({
   const connectionOpen = connection === 'open';
   const mySeat = table?.players.find((p) => p.userId === userId)?.seat;
   const myStack = table?.players.find((p) => p.userId === userId)?.stack ?? 0;
-  const isTurn = connectionOpen && table?.toAct === mySeat && !!priv;
+  const isTournament = Boolean(table?.tournament);
+  const contestOver = Boolean(table?.tournament?.frozen);
+  const isTurn = connectionOpen && table?.toAct === mySeat && !!priv && !contestOver;
   const turnEndsAt = isTurn ? table?.turnEndsAt : null;
   const turnTotalMs = table?.config.turnTimeMs ?? 20_000;
 
@@ -79,13 +323,49 @@ export function ActionControls({
     ? 'flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden text-ink-strong'
     : 'hud-panel mx-auto w-full max-w-xl overflow-hidden p-0';
 
+  if (contestOver) {
+    return (
+      <div
+        className={
+          bare
+            ? 'flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-2.5 px-3 py-2 text-center'
+            : 'hud-panel flex min-h-[180px] flex-col items-center justify-center gap-2.5 px-3 py-3 text-center'
+        }
+        role="status"
+        aria-live="polite"
+      >
+        <p className="font-display text-xs font-bold uppercase tracking-[0.16em] text-sidebar">
+          Contest complete
+        </p>
+        <p className="max-w-[16rem] text-[11px] leading-snug text-ink-strong-muted sm:text-xs">
+          Results and placements are on the contest page.
+        </p>
+        {onViewContest ? (
+          <button
+            type="button"
+            onClick={onViewContest}
+            className="btn-primary min-h-10 w-full max-w-[16rem] px-4 text-xs font-display font-bold uppercase tracking-wide"
+          >
+            View contest results
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
   if (!isTurn || !legal || legal.types.length === 0) {
     const copy = waitingCopy({
       spectating,
       street: table?.street,
       isTurn: false,
       connection,
+      isTournament,
+      contestOver,
     });
+    // Between-hand / sit tools beat the spinner when connection is live and tools exist.
+    if (connectionOpen && hasTableTools(tableTools) && tableTools) {
+      return <TableToolsPanel tools={tableTools} bare={bare} copy={copy} />;
+    }
     return (
       <div
         className={
@@ -460,7 +740,7 @@ export function ActionControls({
                       submitBet(amount);
                     }
                   }}
-                  className="w-full rounded-md border border-sidebar/18 bg-mushroom/55 px-2 py-1.5 font-mono text-sm font-bold tabular-nums text-ink-strong outline-none focus:border-sidebar/45 focus:shadow-[0_0_0_2px_rgb(29_4_50/0.08)]"
+                  className="w-full rounded-md border border-sidebar/18 bg-white px-2 py-1.5 font-mono text-sm font-bold tabular-nums text-ink-strong outline-none focus:border-sidebar/45 focus:shadow-[0_0_0_2px_rgb(29_4_50/0.08)]"
                 />
               </label>
               {(

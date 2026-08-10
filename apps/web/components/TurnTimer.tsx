@@ -25,23 +25,7 @@ export function MoveTimerStrip({
       className={compact ? 'w-full shrink-0 px-1.5 pt-0.5' : 'w-full shrink-0 px-2 pt-1'}
       aria-label={`Time left ${secs} seconds`}
     >
-      <div className="mb-0.5 flex items-center justify-between gap-2">
-        <span
-          className={`font-display uppercase tracking-[0.16em] ${
-            compact ? 'text-[8px]' : 'text-[9px]'
-          } ${urgent ? 'text-danger' : 'text-ink-strong-muted'}`}
-        >
-          Your move
-        </span>
-        <span
-          className={`font-mono font-bold tabular-nums ${
-            compact ? 'text-[10px]' : 'text-xs'
-          } ${urgent ? 'text-danger' : 'text-sidebar'}`}
-        >
-          {secs}s
-        </span>
-      </div>
-      <div className={`w-full overflow-hidden rounded-full bg-sidebar/10 ${compact ? 'h-1' : 'h-1.5'}`}>
+      <div className={`w-full overflow-hidden rounded-full ${compact ? 'h-1' : 'h-1.5'}`}>
         <div
           className={`h-full rounded-full transition-[width] duration-100 ease-linear ${
             urgent ? 'bg-danger' : 'bg-gradient-to-r from-sidebar to-[#5a2a7a]'
@@ -152,7 +136,7 @@ export function SeatTurnRing({
         cy="28"
         r={r}
         fill="none"
-        stroke={urgent ? '#f87171' : '#E6D9D7'}
+        stroke={urgent ? '#f87171' : 'rgb(var(--table-focus-ring))'}
         strokeWidth="3.5"
         strokeLinecap="round"
         strokeDasharray={`${dash} ${c}`}

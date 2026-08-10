@@ -1,8 +1,9 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import type { TableConfig } from '@poker/engine';
 import { HistoryService } from '../history/history.service.js';
 import { KvService } from '../kv/kv.service.js';
 import { ensurePublicTables } from '../public-tables/public-tables.js';
+import { RealtimeService } from '../realtime/realtime.service.js';
 import { TableChipsService } from '../table-chips/table-chips.service.js';
 import { WalletService } from '../wallet/wallet.service.js';
 import {
@@ -26,6 +27,7 @@ export class RoomsService implements OnModuleInit, OnModuleDestroy {
     private readonly history: HistoryService,
     private readonly chips: TableChipsService,
     private readonly wallet: WalletService,
+    @Optional() private readonly realtime?: RealtimeService,
   ) {}
 
   onModuleInit(): void {
@@ -35,10 +37,12 @@ export class RoomsService implements OnModuleInit, OnModuleDestroy {
       this.chips.asStore(),
       this.wallet.asStore(),
     );
+    this.manager.setPublicLobbyChangeHandler(() => this.pushPublicTables());
     // Drop abandoned private/public tables; re-seed stake lobbies if needed.
     this.idleSweepTimer = setInterval(() => {
       this.manager.terminateIdleRooms();
       ensurePublicTables(this.manager);
+      this.pushPublicTables();
     }, ROOM_IDLE_SWEEP_MS);
     this.idleSweepTimer.unref?.();
   }
@@ -48,6 +52,11 @@ export class RoomsService implements OnModuleInit, OnModuleDestroy {
       clearInterval(this.idleSweepTimer);
       this.idleSweepTimer = null;
     }
+  }
+
+  private pushPublicTables(): void {
+    if (!this.realtime) return;
+    this.realtime.schedulePublicTablesBroadcast(this.listPublicLobby());
   }
 
   asManager(): RoomManager {
@@ -66,6 +75,7 @@ export class RoomsService implements OnModuleInit, OnModuleDestroy {
     stakeId?: string;
     inviteCode?: string;
     tournament?: TournamentTableRules;
+    playMoney?: boolean;
   }): TableMeta {
     return this.manager.create(opts);
   }
@@ -84,6 +94,10 @@ export class RoomsService implements OnModuleInit, OnModuleDestroy {
 
   listPublicLobby() {
     return this.manager.listPublicLobby();
+  }
+
+  listAllAdmin() {
+    return this.manager.listAllAdmin();
   }
 
   terminateIdleRooms() {

@@ -2,18 +2,36 @@
 
 import { formatMoneyAmount } from '@/lib/currency';
 
-/** Classic casino colors — no purple clutter at table scale. */
-const CHIP_STYLES = [
-  { min: 1000, face: '#1a1a1a', rim: '#e0b43a', ink: '#ffe29a' },
-  { min: 500, face: '#0b3d2e', rim: '#2aff9a', ink: '#d8ffe9' },
-  { min: 100, face: '#0c1a33', rim: '#e8eef5', ink: '#ffffff' },
-  { min: 25, face: '#14532d', rim: '#86efac', ink: '#ecfdf5' },
+type ChipStyle = {
+  min: number;
+  face: string;
+  rim: string;
+  ink: string;
+  /** Top denomination uses theme CSS vars under `.table-theme`. */
+  themed?: boolean;
+};
+
+/**
+ * Denomination ladder — mid tiers use navy/slate (not status green/red neon).
+ * Amount is also shown with numeric labels so value is never color-only.
+ */
+const CHIP_STYLES: readonly ChipStyle[] = [
+  {
+    min: 1000,
+    themed: true,
+    face: 'rgb(var(--table-chip-face))',
+    rim: 'rgb(var(--table-chip-rim))',
+    ink: 'rgb(var(--table-chip-ink))',
+  },
+  { min: 500, face: '#1e293b', rim: '#94a3b8', ink: '#f1f5f9' },
+  { min: 100, face: '#0c1a33', rim: '#d4dce8', ink: '#ffffff' },
+  { min: 25, face: '#1e3a5f', rim: '#93b4d4', ink: '#eff6ff' },
   { min: 10, face: '#1e3a8a', rim: '#93c5fd', ink: '#eff6ff' },
-  { min: 5, face: '#991b1b', rim: '#fca5a5', ink: '#fef2f2' },
+  { min: 5, face: '#4c1d3d', rim: '#d4a5c0', ink: '#fdf2f8' },
   { min: 1, face: '#e7e5e4', rim: '#78716c', ink: '#292524' },
 ] as const;
 
-function styleForAmount(amount: number) {
+function styleForAmount(amount: number): ChipStyle {
   for (const s of CHIP_STYLES) {
     if (amount >= s.min) return s;
   }
@@ -36,7 +54,7 @@ export function ChipDisc({
   showValue?: boolean;
 }) {
   const s = styleForAmount(amount);
-  const id = `chip-${amount}-${size}-${s.face.replace('#', '')}`;
+  const id = `chip-${amount}-${size}-${s.min}-${s.themed ? 'theme' : s.face.replace('#', '')}`;
 
   return (
     <svg
@@ -146,7 +164,7 @@ export function ChipStack({
         <ChipDisc amount={amount} size={disc} />
         {showLabel && (
           <span
-            className={`font-display font-bold tabular-nums tracking-wide ${
+            className={`font-display font-bold tabular-nums tracking-wide table-label-on-felt ${
               size === 'sm' ? 'text-[12px]' : size === 'lg' ? 'text-base' : 'text-sm'
             }`}
           >
@@ -166,7 +184,7 @@ export function ChipStack({
       {showLabel && (
         <span
           className={`pb-0.5 font-display font-bold tabular-nums tracking-wide ${
-            size === 'lg' ? 'text-lg text-gold-light' : 'text-sm'
+            size === 'lg' ? 'text-lg table-label-on-felt' : 'text-sm table-label-on-felt'
           }`}
         >
           {formatChips(amount)}

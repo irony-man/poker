@@ -1,5 +1,6 @@
 import type { AuthSession, CreateTableBody, ContestMode, ContestView } from '@poker/protocol';
 import { coerceMoney } from '@/lib/currency';
+import { clampTableColorId } from '@/lib/tableColors';
 
 export type { AuthSession, ContestMode, ContestView };
 
@@ -11,8 +12,10 @@ export interface MeProfile {
   username: string;
   name: string;
   avatarId: number;
+  tableColorId: number;
   createdAt: number;
   chipBalance: number;
+  isAdmin?: boolean;
 }
 
 function sessionHeaders(sessionToken?: string | null): HeadersInit {
@@ -136,12 +139,17 @@ export async function fetchMe(sessionToken: string): Promise<MeProfile> {
       typeof data.avatarId === 'number' && Number.isFinite(data.avatarId)
         ? Math.max(0, Math.floor(data.avatarId))
         : 0,
+    tableColorId: clampTableColorId(
+      typeof data.tableColorId === 'number' && Number.isFinite(data.tableColorId)
+        ? Math.floor(data.tableColorId)
+        : 0,
+    ),
   };
 }
 
 export async function updateMe(
   sessionToken: string,
-  body: { avatarId: number },
+  body: { avatarId?: number; tableColorId?: number },
 ): Promise<MeProfile> {
   const res = await fetch(`${API_URL}/api/me`, {
     method: 'PATCH',
@@ -157,6 +165,11 @@ export async function updateMe(
       typeof data.avatarId === 'number' && Number.isFinite(data.avatarId)
         ? Math.max(0, Math.floor(data.avatarId))
         : 0,
+    tableColorId: clampTableColorId(
+      typeof data.tableColorId === 'number' && Number.isFinite(data.tableColorId)
+        ? Math.floor(data.tableColorId)
+        : 0,
+    ),
   };
 }
 
@@ -506,4 +519,120 @@ export async function startContest(contestId: string, options: AuthOptions) {
     method: 'POST',
     body: {},
   }) as Promise<{ contest: ContestView }>;
+}
+
+// —— Admin + public site ——
+
+export interface SiteAnnouncement {
+  enabled: boolean;
+  text: string;
+}
+
+export interface SiteEconomy {
+  startingChipGrant: number;
+  refillThreshold: number;
+  refillGrant: number;
+}
+
+export interface AdminUserRow {
+  id: string;
+  username: string;
+  name: string;
+  avatarId: number;
+  chipBalance: number;
+  createdAt: number;
+}
+
+export interface AdminTableRow {
+  tableId: string;
+  inviteCode: string;
+  name: string;
+  isPrivate: boolean;
+  stakeId: string | null;
+  seatedCount: number;
+  maxSeats: number;
+  hostUserId: string;
+  handInProgress: boolean;
+  idle: boolean;
+  playMoney: boolean;
+  contestId: string | null;
+  createdAt: number;
+}
+
+export async function fetchPublicSite(): Promise<{ announcement: SiteAnnouncement }> {
+  const res = await fetch(`${API_URL}/api/site`);
+  if (!res.ok) throw new Error(await parseError(res, 'Could not load site'));
+  return res.json() as Promise<{ announcement: SiteAnnouncement }>;
+}
+
+export async function fetchAdminOverview(sessionToken: string) {
+  return authedFetch('/api/admin/overview', { sessionToken }) as Promise<{
+    userCount: number;
+    economy: SiteEconomy;
+    announcement: SiteAnnouncement;
+    liveTables: number;
+    liveContests: number;
+  }>;
+}
+
+export async function fetchAdminAnnouncement(sessionToken: string) {
+  return authedFetch('/api/admin/announcement', { sessionToken }) as Promise<SiteAnnouncement>;
+}
+
+export async function patchAdminAnnouncement(
+  sessionToken: string,
+  body: SiteAnnouncement,
+): Promise<SiteAnnouncement> {
+  return authedFetch('/api/admin/announcement', {
+    sessionToken,
+    method: 'PATCH',
+    body,
+  }) as Promise<SiteAnnouncement>;
+}
+
+export async function fetchAdminEconomy(sessionToken: string) {
+  return authedFetch('/api/admin/economy', { sessionToken }) as Promise<SiteEconomy>;
+}
+
+export async function patchAdminEconomy(
+  sessionToken: string,
+  body: Partial<SiteEconomy>,
+): Promise<SiteEconomy> {
+  return authedFetch('/api/admin/economy', {
+    sessionToken,
+    method: 'PATCH',
+    body,
+  }) as Promise<SiteEconomy>;
+}
+
+export async function fetchAdminUsers(sessionToken: string, q?: string) {
+  const qs = q?.trim() ? `?q=${encodeURIComponent(q.trim())}` : '';
+  return authedFetch(`/api/admin/users${qs}`, { sessionToken }) as Promise<{
+    users: AdminUserRow[];
+  }>;
+}
+
+export async function creditAdminUser(
+  sessionToken: string,
+  userId: string,
+  amount: number,
+): Promise<{ ok: true; userId: string; username: string; balance: number; credited: number }> {
+  return authedFetch(`/api/admin/users/${encodeURIComponent(userId)}/credit`, {
+    sessionToken,
+    method: 'POST',
+    body: { amount },
+  }) as Promise<{
+    ok: true;
+    userId: string;
+    username: string;
+    balance: number;
+    credited: number;
+  }>;
+}
+
+export async function fetchAdminGames(sessionToken: string) {
+  return authedFetch('/api/admin/games', { sessionToken }) as Promise<{
+    tables: AdminTableRow[];
+    contests: ContestView[];
+  }>;
 }

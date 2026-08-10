@@ -13,7 +13,7 @@ export function LobbyPageShell({
   error,
   children,
 }: {
-  title: string;
+  title?: string;
   /** Optional supporting line under the H1 (full-width page header). */
   subtitle?: string;
   requireAuth?: boolean;
@@ -26,9 +26,11 @@ export function LobbyPageShell({
   return (
     <div className="lobby-fade-up flex w-full flex-col justify-start">
       <header className="mb-4 w-full shrink-0 sm:mb-5">
-        <h1 className="font-display text-3xl font-bold tracking-tight text-ink-strong sm:text-4xl">
-          {title}
-        </h1>
+        {title && (
+          <h1 className="font-display text-3xl font-bold tracking-tight text-ink-strong sm:text-4xl">
+            {title}
+          </h1>
+        )}
         {subtitle && (
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-strong-muted sm:mt-2.5 sm:text-base">
             {subtitle}

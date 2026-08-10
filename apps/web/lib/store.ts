@@ -6,6 +6,14 @@ import type {
   PublicTableView,
 } from '@poker/engine';
 import { create } from 'zustand';
+import type {
+  ContestView,
+  FriendGroup,
+  FriendProfile,
+  PendingChallenge,
+  PendingRequest,
+  PublicTableSummary,
+} from '@/lib/api';
 
 export type PublicPlayer = PublicPlayerView & {
   /** Preset profile picture index (0–7). */
@@ -23,6 +31,8 @@ export type PublicTable = Omit<PublicTableView, 'players' | 'showdownHands'> & {
   turnEndsAt?: number | null;
   /** Table creator (cash host). */
   hostUserId?: string | null;
+  /** Private host tables allow bots; public stake tables do not. */
+  isPrivate?: boolean;
   /** Present on tournament tables. */
   tournament?: {
     contestId: string;
@@ -30,6 +40,10 @@ export type PublicTable = Omit<PublicTableView, 'players' | 'showdownHands'> & {
     matchId: string | null;
     frozen: boolean;
     noTopUp: boolean;
+    /** Hands finished so far (rounds contests). */
+    handsPlayed?: number;
+    /** Session length in hands for rounds; null for freezeouts. */
+    handLimit?: number | null;
   } | null;
 };
 
@@ -40,6 +54,13 @@ export interface ChatMessage {
   name: string;
   text: string;
   at: number;
+}
+
+export interface SocialSnapshot {
+  friends: FriendProfile[];
+  incoming: PendingRequest[];
+  pendingChallenges: PendingChallenge[];
+  groups: FriendGroup[];
 }
 
 interface SessionState {
@@ -61,6 +82,25 @@ interface SessionState {
   actionBurst: { seat: number; label: string; at: number } | null;
   /** Global bankroll (Wuffies) (updated via wallet_update / auth_ok / /api/me). */
   chipBalance: number | null;
+
+  /** Lobby / social push state (session WebSocket). */
+  publicTables: PublicTableSummary[];
+  publicContests: ContestView[];
+  myContests: ContestView[];
+  social: SocialSnapshot | null;
+  socialLoaded: boolean;
+  /** Latest contest_sync by id (watched contests). */
+  contestById: Record<string, ContestView>;
+  /** Latest contest event for watchers (match_assigned etc.). */
+  contestEvent: {
+    contestId: string;
+    event: string;
+    tableId?: string;
+    message?: string;
+    place?: number;
+    at: number;
+  } | null;
+
   setSession: (s: {
     userId: string;
     name: string;
@@ -79,6 +119,19 @@ interface SessionState {
   setEmoji: (e: { emoji: string; name: string; at: number } | null) => void;
   setActionBurst: (e: { seat: number; label: string; at: number } | null) => void;
   setChipBalance: (balance: number | null) => void;
+  applyPublicTables: (tables: PublicTableSummary[]) => void;
+  applyPublicContests: (contests: ContestView[]) => void;
+  applyMyContests: (contests: ContestView[]) => void;
+  applySocial: (social: SocialSnapshot) => void;
+  applyContestSync: (contest: ContestView) => void;
+  applyContestEvent: (ev: {
+    contestId: string;
+    event: string;
+    tableId?: string;
+    message?: string;
+    place?: number;
+  }) => void;
+  clearContestWatch: (contestId: string) => void;
 }
 
 export const useSession = create<SessionState>((set) => ({
@@ -97,6 +150,13 @@ export const useSession = create<SessionState>((set) => ({
   emojiBurst: null,
   actionBurst: null,
   chipBalance: null,
+  publicTables: [],
+  publicContests: [],
+  myContests: [],
+  social: null,
+  socialLoaded: false,
+  contestById: {},
+  contestEvent: null,
   setSession: (s) =>
     set({
       userId: s.userId,
@@ -123,6 +183,11 @@ export const useSession = create<SessionState>((set) => ({
       lastErrorCode: null,
       emojiBurst: null,
       actionBurst: null,
+      social: null,
+      socialLoaded: false,
+      myContests: [],
+      contestById: {},
+      contestEvent: null,
     }),
   setConnection: (connection) => set({ connection }),
   bindTable: (boundTableId) => set({ boundTableId }),
@@ -157,4 +222,22 @@ export const useSession = create<SessionState>((set) => ({
   setEmoji: (emojiBurst) => set({ emojiBurst }),
   setActionBurst: (actionBurst) => set({ actionBurst }),
   setChipBalance: (chipBalance) => set({ chipBalance }),
+  applyPublicTables: (publicTables) => set({ publicTables }),
+  applyPublicContests: (publicContests) => set({ publicContests }),
+  applyMyContests: (myContests) => set({ myContests }),
+  applySocial: (social) => set({ social, socialLoaded: true }),
+  applyContestSync: (contest) =>
+    set((s) => ({
+      contestById: { ...s.contestById, [contest.id]: contest },
+    })),
+  applyContestEvent: (ev) =>
+    set({
+      contestEvent: { ...ev, at: Date.now() },
+    }),
+  clearContestWatch: (contestId) =>
+    set((s) => {
+      const next = { ...s.contestById };
+      delete next[contestId];
+      return { contestById: next };
+    }),
 }));

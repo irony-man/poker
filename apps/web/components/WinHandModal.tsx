@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { MoneyAmount } from './CurrencyIcon';
 import { PlayerAvatar } from './PlayerAvatar';
 import { PlayingCard } from './PlayingCard';
@@ -21,6 +22,8 @@ export type ReadyRosterPlayer = {
   avatarId?: number | null;
   ready: boolean;
   isSelf?: boolean;
+  /** Seated but sitting out — shown with muted badge. */
+  sittingOut?: boolean;
 };
 
 /** Avatar strip for cash-table ready state (first hand + between hands). */
@@ -30,42 +33,81 @@ export function ReadyPlayersRoster({
   readyTotal,
   heading = 'Ready for next hand',
   className = '',
+  /** Tighter strip for the floating Actions dock. */
+  compact = false,
 }: {
   players: ReadyRosterPlayer[];
   readyCount?: number;
   readyTotal?: number;
   heading?: string;
   className?: string;
+  compact?: boolean;
 }) {
   const narrow = useIsNarrow();
   if (players.length === 0) return null;
 
   const rCount = readyCount ?? players.filter((p) => p.ready).length;
   const rTotal = readyTotal ?? players.length;
-  const rosterAvatarSize = players.length > 5 ? (narrow ? 40 : 44) : narrow ? 48 : 56;
+  const rosterAvatarSize = compact
+    ? 36
+    : players.length > 5
+      ? narrow
+        ? 40
+        : 44
+      : narrow
+        ? 48
+        : 56;
 
   return (
     <section
       aria-label={heading}
-      className={`rounded-2xl border border-sidebar/12 bg-white/95 px-3 py-3 shadow-[0_12px_32px_rgb(29_4_50_/_0.12)] sm:px-4 sm:py-3.5 ${className}`.trim()}
+      className={
+        compact
+          ? `mx-auto w-full max-w-sm rounded-lg border border-sidebar/10 bg-mushroom/40 px-2.5 py-2 ${className}`.trim()
+          : `rounded-2xl border border-sidebar/12 bg-white/95 px-3 py-3 shadow-[0_12px_32px_rgb(29_4_50_/_0.12)] sm:px-4 sm:py-3.5 ${className}`.trim()
+      }
     >
-      <div className="mb-2.5 flex items-baseline justify-between gap-2">
-        <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-sidebar/55">
+      <div
+        className={`flex items-center justify-between gap-2 ${compact ? 'mb-1.5' : 'mb-2.5'}`}
+      >
+        <h3
+          className={`font-display font-bold uppercase tracking-[0.16em] text-sidebar/70 ${
+            compact ? 'text-[9px]' : 'text-[10px]'
+          }`}
+        >
           {heading}
         </h3>
-        <p className="font-display text-[10px] font-semibold tabular-nums tracking-wide text-sidebar/50">
+        <p
+          className={`font-display font-semibold tabular-nums tracking-wide text-sidebar/65 ${
+            compact ? 'text-[9px]' : 'text-[10px]'
+          }`}
+          aria-label={`${rCount} of ${rTotal} ready`}
+        >
           {rCount}/{rTotal}
         </p>
       </div>
-      <ul className="flex flex-nowrap items-end justify-between gap-1 sm:gap-1.5">
+      <ul
+        className={
+          compact
+            ? 'flex flex-wrap items-end justify-center gap-x-3 gap-y-1.5'
+            : 'flex flex-nowrap items-end justify-between gap-1 sm:gap-1.5'
+        }
+      >
         {players.map((p) => {
           const label = p.isSelf ? `${p.name} (you)` : p.name;
           return (
-            <li key={p.seat} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+            <li
+              key={p.seat}
+              className={
+                compact
+                  ? 'flex w-[3.25rem] shrink-0 flex-col items-center gap-0.5'
+                  : 'flex min-w-0 flex-1 flex-col items-center gap-0.5 sm:gap-1'
+              }
+            >
               <div
-                className={`relative rounded-full p-[2px] transition sm:p-[3px] ${
-                  p.ready
-                    ? 'bg-gradient-to-b from-sidebar to-sidebar/80 shadow-[0_0_0_2px_rgb(29_4_50_/_0.12),0_6px_16px_rgb(29_4_50_/_0.18)]'
+                className={`relative rounded-full p-[2px] transition ${
+                  p.ready && !p.sittingOut
+                    ? 'bg-gradient-to-b from-sidebar to-sidebar/80 shadow-[0_0_0_2px_rgb(29_4_50_/_0.12),0_4px_12px_rgb(29_4_50_/_0.14)]'
                     : 'bg-sidebar/10'
                 }`}
               >
@@ -74,14 +116,23 @@ export function ReadyPlayersRoster({
                   avatarId={p.avatarId}
                   size={rosterAvatarSize}
                   title={label}
-                  className={`ring-2 ring-white ${p.ready ? '' : 'opacity-55 grayscale-[0.35]'}`}
+                  className={`ring-2 ring-white ${
+                    p.ready && !p.sittingOut ? '' : 'opacity-55 grayscale-[0.35]'
+                  }`}
                 />
-                {p.ready ? (
+                {p.ready && !p.sittingOut ? (
                   <span
-                    className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-emerald-500 text-white shadow-sm sm:h-5 sm:w-5"
+                    className={`absolute -bottom-0.5 -right-0.5 flex items-center justify-center rounded-full border-2 border-white bg-sidebar text-mushroom shadow-sm ${
+                      compact ? 'h-3.5 w-3.5' : 'h-4 w-4 sm:h-5 sm:w-5'
+                    }`}
                     aria-hidden
+                    title="Ready"
                   >
-                    <svg viewBox="0 0 12 12" className="h-2 w-2 sm:h-2.5 sm:w-2.5" fill="none">
+                    <svg
+                      viewBox="0 0 12 12"
+                      className={compact ? 'h-1.5 w-1.5' : 'h-2 w-2 sm:h-2.5 sm:w-2.5'}
+                      fill="none"
+                    >
                       <path
                         d="M2.5 6.2 5 8.7 9.5 3.5"
                         stroke="currentColor"
@@ -93,19 +144,40 @@ export function ReadyPlayersRoster({
                   </span>
                 ) : (
                   <span
-                    className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-2 border-white bg-stone-200 sm:h-5 sm:w-5"
+                    className={`absolute -bottom-0.5 -right-0.5 rounded-full border-2 border-white ${
+                      p.sittingOut ? 'bg-amber-200' : 'bg-stone-200'
+                    } ${compact ? 'h-3.5 w-3.5' : 'h-4 w-4 sm:h-5 sm:w-5'}`}
                     aria-hidden
+                    title={p.sittingOut ? 'Sitting out' : 'Not ready'}
                   />
                 )}
               </div>
               <span
-                className={`w-full truncate text-center text-[9px] font-display font-semibold leading-tight sm:text-[10px] ${
-                  p.ready ? 'text-sidebar' : 'text-sidebar/45'
+                className={`w-full truncate text-center font-display font-semibold leading-tight ${
+                  compact ? 'text-[9px]' : 'text-[9px] sm:text-[10px]'
+                } ${
+                  p.sittingOut
+                    ? 'text-amber-800/80'
+                    : p.ready
+                      ? 'text-sidebar'
+                      : 'text-sidebar/50'
                 }`}
                 title={label}
               >
                 {p.isSelf ? 'You' : p.name}
+                {p.sittingOut ? (
+                  <span className="sr-only"> — sitting out</span>
+                ) : p.ready ? (
+                  <span className="sr-only"> — ready</span>
+                ) : (
+                  <span className="sr-only"> — not ready</span>
+                )}
               </span>
+              {p.sittingOut ? (
+                <span className="text-[7px] font-bold uppercase tracking-wide text-amber-800/70">
+                  Out
+                </span>
+              ) : null}
             </li>
           );
         })}
@@ -125,11 +197,14 @@ export function WinHandModal({
   canTopUp,
   canSitOut,
   canSitIn,
+  isTournament,
+  needWuffies,
   onNextHand,
   onTopUp,
   onSitOut,
   onSitIn,
   onDismiss,
+  onNeedWuffies,
 }: {
   winners: WinLine[];
   youWon: boolean;
@@ -142,13 +217,73 @@ export function WinHandModal({
   canTopUp?: boolean;
   canSitOut?: boolean;
   canSitIn?: boolean;
+  /** Contest tables auto-deal — no ready CTA. */
+  isTournament?: boolean;
+  /** Broke at a cash table with no bankroll top-up. */
+  needWuffies?: boolean;
   onNextHand: () => void;
   onTopUp?: () => void;
   onSitOut?: () => void;
   onSitIn?: () => void;
   onDismiss: () => void;
+  onNeedWuffies?: () => void;
 }) {
   const roster = readyPlayers ?? [];
+
+  let primary: ReactNode;
+  if (canStartNext) {
+    primary = (
+      <button
+        type="button"
+        onClick={onNextHand}
+        className={`btn-primary min-h-9 min-w-0 flex-1 px-3 py-2 text-xs font-display font-bold uppercase tracking-wide ${
+          isReady ? 'ring-2 ring-sidebar/25 ring-offset-2 ring-offset-white' : ''
+        }`}
+      >
+        {isReady ? 'Not ready' : 'Play Next Hand'}
+      </button>
+    );
+  } else if (canSitIn && onSitIn) {
+    primary = (
+      <button
+        type="button"
+        onClick={onSitIn}
+        className="btn-primary min-h-9 min-w-0 flex-1 px-3 py-2 text-xs font-display font-bold uppercase tracking-wide"
+      >
+        Sit in
+      </button>
+    );
+  } else if (canTopUp && onTopUp) {
+    primary = (
+      <button
+        type="button"
+        onClick={onTopUp}
+        className="btn-primary min-h-9 min-w-0 flex-1 px-3 py-2 text-xs font-display font-bold uppercase tracking-wide"
+      >
+        Top up
+      </button>
+    );
+  } else if (needWuffies && onNeedWuffies) {
+    primary = (
+      <button
+        type="button"
+        onClick={onNeedWuffies}
+        className="btn-primary min-h-9 min-w-0 flex-1 px-3 py-2 text-xs font-display font-bold uppercase tracking-wide"
+      >
+        Need Wuffies
+      </button>
+    );
+  } else if (isTournament) {
+    primary = (
+      <p className="flex-1 text-center text-[10px] font-medium text-ink-strong-muted sm:text-xs">
+        Next hand deals automatically
+      </p>
+    );
+  } else {
+    primary = (
+      <p className="flex-1 text-center text-[10px] text-ink-strong-muted">Waiting…</p>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center bg-ink-overlay/55 p-3 backdrop-blur-[3px] sm:items-center sm:p-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
@@ -228,7 +363,8 @@ export function WinHandModal({
 
           <div className="shrink-0 border-t border-sidebar/10 bg-mushroom/25 px-3 py-2.5 sm:px-5 sm:py-3">
             <div className="flex flex-wrap items-center gap-1.5">
-              {canTopUp && onTopUp && (
+              {/* Secondary actions — top-up is primary when it's the only path forward */}
+              {canTopUp && onTopUp && canStartNext && (
                 <button
                   type="button"
                   onClick={onTopUp}
@@ -237,7 +373,7 @@ export function WinHandModal({
                   Top up
                 </button>
               )}
-              {canSitOut && onSitOut && (
+              {canSitOut && onSitOut && !isTournament && (
                 <button
                   type="button"
                   onClick={onSitOut}
@@ -246,28 +382,7 @@ export function WinHandModal({
                   Sit out
                 </button>
               )}
-              {canSitIn && onSitIn && (
-                <button
-                  type="button"
-                  onClick={onSitIn}
-                  className="rounded-md border border-sidebar/25 bg-white px-2.5 py-1.5 text-[11px] font-display font-semibold text-sidebar hover:bg-mushroom/80"
-                >
-                  Sit in
-                </button>
-              )}
-              {canStartNext ? (
-                <button
-                  type="button"
-                  onClick={onNextHand}
-                  className={`btn-primary min-h-9 min-w-0 flex-1 px-3 py-2 text-xs font-display font-bold uppercase tracking-wide ${
-                    isReady ? 'ring-2 ring-sidebar/25 ring-offset-2 ring-offset-white' : ''
-                  }`}
-                >
-                  {isReady ? 'Not ready' : 'Play Next Hand'}
-                </button>
-              ) : (
-                <p className="flex-1 text-center text-[10px] text-ink-strong-muted">Waiting…</p>
-              )}
+              {primary}
               <button
                 type="button"
                 onClick={onDismiss}
@@ -279,12 +394,14 @@ export function WinHandModal({
           </div>
         </div>
 
-        <ReadyPlayersRoster
-          players={roster}
-          readyCount={readyCount}
-          readyTotal={readyTotal}
-          heading="Ready for next hand"
-        />
+        {!isTournament && roster.length > 0 ? (
+          <ReadyPlayersRoster
+            players={roster}
+            readyCount={readyCount}
+            readyTotal={readyTotal}
+            heading="Ready for next hand"
+          />
+        ) : null}
       </div>
     </div>
   );

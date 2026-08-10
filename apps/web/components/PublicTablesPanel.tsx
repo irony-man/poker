@@ -1,10 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { LoadingScreen } from '@/components/LoadingScreen';
-import { listPublicTables, type PublicTableSummary } from '@/lib/api';
 import { STAKE_PRESETS } from '@poker/protocol';
+import { useSession } from '@/lib/store';
 
 import { formatMoneyLabel } from '@/lib/currency';
 
@@ -15,29 +15,14 @@ export function PublicTablesPanel({
   disabled: boolean;
   onJoin: (tableId: string, inviteCode: string) => void | Promise<void>;
 }) {
-  const [tables, setTables] = useState<PublicTableSummary[]>([]);
+  const tables = useSession((s) => s.publicTables);
+  const connection = useSession((s) => s.connection);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    try {
-      const data = await listPublicTables();
-      setTables(data.tables);
-      setFetchError(null);
-    } catch {
-      setFetchError("Can't reach the server");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void refresh();
-    const id = setInterval(() => void refresh(), 10_000);
-    return () => clearInterval(id);
-  }, [refresh]);
+  const loading = tables.length === 0 && connection !== 'open' && connection !== 'closed';
+  const fetchError =
+    connection === 'closed' && tables.length === 0 ? "Can't reach the server" : null;
 
   const byStake = new Map(tables.map((t) => [t.stakeId, t]));
 
@@ -67,7 +52,7 @@ export function PublicTablesPanel({
 
       {fetchError && (
         <p role="alert" className="status-chip border-danger/30 bg-danger/10 text-danger text-xs">
-          {fetchError} — try Refresh
+          {fetchError}
         </p>
       )}
 

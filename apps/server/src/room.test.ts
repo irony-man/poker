@@ -162,6 +162,31 @@ describe('RoomManager', () => {
     expect(room.state.street).not.toBe('waiting');
   });
 
+  it('sit-in auto-readies for the next hand and can deal', async () => {
+    const kv = new MemoryKv();
+    const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-sitin-ready-${Date.now()}`));
+    const rooms = new RoomManager(kv, history);
+    const meta = rooms.create({
+      name: 'SitInReady',
+      hostUserId: 'u1',
+      isPrivate: true,
+      config: { ...cashConfig() },
+    });
+    const room = rooms.get(meta.id)!;
+    await room.sit('u1', 'A', 0, 1000);
+    await room.sit('u2', 'B', 1, 1000);
+
+    expect(room.setReady('u1', true).ok).toBe(true);
+    expect(room.doSitOut('u2', 1).ok).toBe(true);
+    expect(room.state.players[1]!.status).toBe('sittingOut');
+    expect(room.state.street).toBe('waiting');
+
+    // Only u1 ready + one sitting out — no deal. Sit in auto-readies u2 → deal.
+    expect(room.doSitIn('u2', 1).ok).toBe(true);
+    expect(room.state.players[1]!.status).not.toBe('sittingOut');
+    expect(room.state.street).not.toBe('waiting');
+  });
+
   it('queues sit-out mid-hand and applies between hands; sit-in returns for next hand', async () => {
     const kv = new MemoryKv();
     const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-sitout-next-${Date.now()}`));

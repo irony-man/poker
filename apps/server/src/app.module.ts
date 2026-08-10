@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { AdminModule } from './admin/admin.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { ApiExceptionFilter } from './common/api-exception.filter.js';
 import { ContestsModule } from './contests/contests.module.js';
@@ -10,6 +11,8 @@ import { FriendsModule } from './friends/friends.module.js';
 import { GatewayModule } from './gateway/gateway.module.js';
 import { HealthModule } from './health/health.module.js';
 import { PresenceModule } from './presence/presence.module.js';
+import { RealtimeModule } from './realtime/realtime.module.js';
+import { SiteConfigModule } from './site-config/site-config.module.js';
 import { TablesModule } from './tables/tables.module.js';
 import { UsersModule } from './users/users.module.js';
 import { WalletModule } from './wallet/wallet.module.js';
@@ -29,7 +32,9 @@ import { WalletModule } from './wallet/wallet.module.js';
       },
     ]),
     DatabaseModule,
+    SiteConfigModule,
     PresenceModule,
+    RealtimeModule,
     HealthModule,
     AuthModule,
     UsersModule,
@@ -37,6 +42,7 @@ import { WalletModule } from './wallet/wallet.module.js';
     TablesModule,
     FriendsModule,
     ContestsModule,
+    AdminModule,
     GatewayModule,
   ],
   providers: [

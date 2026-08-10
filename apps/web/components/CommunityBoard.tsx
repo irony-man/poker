@@ -2,6 +2,28 @@
 
 import { PlayingCard, type CardSize } from './PlayingCard';
 
+function emptyBoardLabel(street: string | undefined): string | null {
+  switch (street) {
+    case 'preflop':
+      return 'Preflop';
+    case 'flop':
+      return 'Flop';
+    case 'turn':
+      return 'Turn';
+    case 'river':
+      return 'River';
+    case 'showdown':
+    case 'payout':
+      return null;
+    case 'waiting':
+    case undefined:
+      return null;
+    default:
+      // Brief transition before street is fully applied
+      return 'Dealing…';
+  }
+}
+
 /** Community / board cards — single row on desktop, two rows when compact. */
 export function CommunityBoard({
   cards,
@@ -9,7 +31,7 @@ export function CommunityBoard({
   cardSize = 'md',
   highlightMode = false,
   winningCards,
-  dealing = false,
+  street,
   compact = false,
   /** Phone landscape: one centered row of larger faces. */
   landscape = false,
@@ -19,13 +41,14 @@ export function CommunityBoard({
   cardSize?: CardSize;
   highlightMode?: boolean;
   winningCards?: Set<string>;
-  /** Show “Dealing…” when street is live but board is empty. */
-  dealing?: boolean;
+  /** Table street — used for empty-board status (avoid forever “Dealing…” on preflop). */
+  street?: string | null;
   /** Force phone layout (portrait or landscape) — ignore Tailwind sm: breakpoints. */
   compact?: boolean;
   landscape?: boolean;
 }) {
   const size: CardSize = landscape ? 'sm' : compact ? 'board' : cardSize;
+  const emptyLabel = emptyBoardLabel(street ?? undefined);
 
   if (cards.length === 0) {
     return (
@@ -34,8 +57,10 @@ export function CommunityBoard({
           compact || landscape ? 'min-h-[2.75rem]' : 'min-h-[4.25rem] sm:min-h-[5.25rem]'
         }`}
       >
-        {dealing ? (
-          <span className="text-cream/40 text-xs font-display uppercase tracking-wider">Dealing…</span>
+        {emptyLabel ? (
+          <span className="text-cream/45 text-xs font-display uppercase tracking-[0.18em]">
+            {emptyLabel}
+          </span>
         ) : null}
       </div>
     );

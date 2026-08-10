@@ -3,6 +3,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { AuthService } from '../auth/auth.service.js';
 import { dataSourceAsQueryable } from '../database/queryable.js';
+import { SiteConfigService } from '../site-config/site-config.service.js';
 import {
   type WalletMutationResult,
   type WalletReason,
@@ -16,13 +17,16 @@ export class WalletService implements WalletStore, OnModuleInit {
 
   constructor(
     private readonly auth: AuthService,
+    private readonly siteConfig: SiteConfigService,
     @InjectDataSource() private readonly dataSource: DataSource,
   ) {
     this.store = new AuthWalletStore(this.auth);
+    this.store.setEconomyProvider(() => this.siteConfig.getEconomy());
   }
 
   onModuleInit(): void {
     this.store.setPool(dataSourceAsQueryable(this.dataSource));
+    this.store.setEconomyProvider(() => this.siteConfig.getEconomy());
   }
 
   asStore(): WalletStore {

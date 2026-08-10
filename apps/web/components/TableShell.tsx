@@ -93,7 +93,7 @@ export function TableShell({
   /** Action controls (ActionControls). Placed bottom on mobile; float or chat on laptop. */
   actions?: ReactNode;
   actionsExpanded?: boolean;
-  /** Viewer table theme preset (0–4). Scopes `.table-theme` CSS tokens. */
+  /** Viewer table theme preset (0–8). Scopes `.table-theme` CSS tokens. */
   tableColorId?: number;
 }) {
   const narrow = useIsNarrow();

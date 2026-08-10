@@ -8,6 +8,7 @@ import { LoadingScreen } from '@/components/LoadingScreen';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { useLobbySession } from '@/lib/useLobbySession';
+import { usePageCopy } from '@/lib/usePageCopy';
 
 /** Full local range supported by the offline table. */
 const SEAT_OPTIONS = [2, 3, 4, 5, 6, 7, 8, 9] as const;
@@ -15,6 +16,7 @@ const SEAT_OPTIONS = [2, 3, 4, 5, 6, 7, 8, 9] as const;
 export default function SoloPage() {
   const router = useRouter();
   const { authReady, signedIn, name, setName } = useLobbySession();
+  const pageCopy = usePageCopy('solo');
   const [offlineSeats, setOfflineSeats] = useState(6);
 
   if (!authReady) {
@@ -34,8 +36,8 @@ export default function SoloPage() {
 
   return (
     <LobbyPageShell
-      title="Offline Arena"
-      subtitle="Train against bots on this device with the same Hold'em rules as live tables, no connection or lobby, and a seat count you choose before the first deal."
+      title={pageCopy.title}
+      subtitle={pageCopy.subtitle}
       signedIn={signedIn}
       requireAuth={false}
     >

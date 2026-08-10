@@ -15,6 +15,7 @@ export class SiteController {
         text: announcement.text,
       },
       homeFeatures: this.site.getHomeFeatures(),
+      pages: this.site.getPages(),
     };
   }
 }

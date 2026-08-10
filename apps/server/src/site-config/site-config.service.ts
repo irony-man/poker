@@ -7,6 +7,8 @@ import type { EconomySnapshot } from '../wallet/wallet.constants.js';
 import { SiteConfigStore } from './site-config.store.js';
 import type {
   HomeLandingFeature,
+  PagesCopy,
+  RoomSettings,
   SiteAnnouncement,
   SiteConfigPayload,
 } from './site-config.types.js';
@@ -49,6 +51,19 @@ export class SiteConfigService implements OnModuleInit {
     return this.store.getHomeFeatures();
   }
 
+  getPages(): PagesCopy {
+    return this.store.getPages();
+  }
+
+  getRoomSettings(): RoomSettings {
+    return this.store.getRoomSettings();
+  }
+
+  /** Idle timeout in ms for terminate sweeps (derived). */
+  getRoomInactivityMs(): number {
+    return Math.max(60_000, this.store.getRoomSettings().inactivityMinutes * 60_000);
+  }
+
   setAnnouncement(next: SiteAnnouncement): Promise<SiteAnnouncement> {
     return this.store.setAnnouncement(next);
   }
@@ -59,5 +74,13 @@ export class SiteConfigService implements OnModuleInit {
 
   setHomeFeatures(features: HomeLandingFeature[]): Promise<HomeLandingFeature[]> {
     return this.store.setHomeFeatures(features);
+  }
+
+  setPages(pages: PagesCopy): Promise<PagesCopy> {
+    return this.store.setPages(pages);
+  }
+
+  setRoomSettings(partial: Partial<RoomSettings>): Promise<RoomSettings> {
+    return this.store.setRoomSettings(partial);
   }
 }

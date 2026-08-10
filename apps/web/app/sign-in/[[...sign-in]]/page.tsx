@@ -10,11 +10,13 @@ import { authHref, safeReturnPath } from '@/lib/authRedirect';
 import { loadSavedAvatarId, saveAvatarId } from '@/lib/avatars';
 import { writeStoredSession } from '@/lib/session';
 import { useSession } from '@/lib/store';
+import { usePageCopy } from '@/lib/usePageCopy';
 
 function SignInForm() {
   const router = useRouter();
   const search = useSearchParams();
   const setSession = useSession((s) => s.setSession);
+  const pageCopy = usePageCopy('signIn');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -44,9 +46,9 @@ function SignInForm() {
     <div className="lobby-fade-up flex w-full flex-col justify-start">
       <div className="mb-4 sm:mb-5">
         <h1 className="font-display text-3xl font-bold tracking-tight text-ink-strong sm:text-4xl">
-          Sign in
+          {pageCopy.title}
         </h1>
-        <p className="mt-2 text-sm text-ink-strong-muted">Sign in with your username</p>
+        <p className="mt-2 text-sm text-ink-strong-muted">{pageCopy.subtitle}</p>
       </div>
       <form onSubmit={onSubmit}>
         <LobbySplitCard imageSrc="/home-challenge.png" imageAlt="Sit down and sign in to play">

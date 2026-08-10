@@ -217,7 +217,7 @@ export function WinHandModal({
   canTopUp?: boolean;
   canSitOut?: boolean;
   canSitIn?: boolean;
-  /** Contest tables auto-deal — no ready CTA. */
+  /** Contest table context (sit-out limits, layout). */
   isTournament?: boolean;
   /** Broke at a cash table with no bankroll top-up. */
   needWuffies?: boolean;
@@ -272,12 +272,6 @@ export function WinHandModal({
       >
         Need Wuffies
       </button>
-    );
-  } else if (isTournament) {
-    primary = (
-      <p className="flex-1 text-center text-[10px] font-medium text-ink-strong-muted sm:text-xs">
-        Next hand deals automatically
-      </p>
     );
   } else {
     primary = (

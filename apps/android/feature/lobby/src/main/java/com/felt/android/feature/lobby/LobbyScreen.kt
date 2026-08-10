@@ -264,7 +264,7 @@ fun LobbyScreen(
                         StatusChip(text = "Tournament", accent = FeltColors.Cyan)
                     }
                     Text(
-                        "Wuffies freezeout · rounds with top-ups",
+                        "Knockout freezeout · rounds with top-ups",
                         color = FeltColors.Cream.copy(alpha = 0.5f),
                         style = MaterialTheme.typography.bodySmall,
                     )
@@ -274,7 +274,7 @@ fun LobbyScreen(
                         selected = state.contestMode,
                         options = listOf("chips", "rounds"),
                         onSelect = viewModel::onContestModeChange,
-                    ) { if (it == "rounds") "Rounds" else "Wuffies" }
+                    ) { if (it == "rounds") "Rounds" else "Knockout" }
                     ChoiceRow(
                         label = "Players",
                         selected = state.contestFieldSize,

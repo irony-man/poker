@@ -7,10 +7,12 @@ import { LoadingScreen } from '@/components/LoadingScreen';
 import { PublicTablesPanel } from '@/components/PublicTablesPanel';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { useLobbySession } from '@/lib/useLobbySession';
+import { usePageCopy } from '@/lib/usePageCopy';
 
 export default function PublicTablesPage() {
   const router = useRouter();
   const { authReady, signedIn, ensureSession } = useLobbySession();
+  const pageCopy = usePageCopy('public');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,8 +36,8 @@ export default function PublicTablesPage() {
 
   return (
     <LobbyPageShell
-      title="Public tables"
-      subtitle="Open Hold'em at the stakes you choose; sit down when a seat is free or spectate if you would rather watch."
+      title={pageCopy.title}
+      subtitle={pageCopy.subtitle}
       signedIn={signedIn}
       error={error}
     >

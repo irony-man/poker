@@ -5,7 +5,7 @@ export interface User {
   /** Display name — always equals username. */
   name: string;
   avatarId: number;
-  /** Viewer table felt theme preset (0–4). */
+  /** Viewer table felt theme preset (0–8). */
   tableColorId: number;
   passwordHash: string;
   /** Global play-money balance. */

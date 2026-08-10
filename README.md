@@ -121,5 +121,5 @@ See [apps/android/README.md](apps/android/README.md).
 - Persistence: Postgres when `DATABASE_URL` is set (users, auth sessions/tickets, social, hand history); otherwise files under `DATA_DIR`.
 - Action messages require `handId` + monotonic `actionSeq`.
 - Turn timeouts auto-check or auto-fold.
-- Contests are orchestrated in-memory by `TournamentManager` on top of cash `Room`s (no rebuy; auto-deal between hands).
+- Contests are orchestrated in-memory by `TournamentManager` on top of cash `Room`s (no rebuy on knockout; Ready consensus between hands).
 - See `apps/server/data/schema.sql` (written on boot) for Postgres DDL.

@@ -12,12 +12,17 @@ import {
   fetchAdminGames,
   fetchAdminHomeFeatures,
   fetchAdminOverview,
+  fetchAdminPages,
+  fetchAdminRoomSettings,
   fetchAdminUsers,
   fetchMe,
   patchAdminAnnouncement,
   patchAdminEconomy,
   patchAdminHomeFeatures,
+  patchAdminPages,
+  patchAdminRoomSettings,
   resetAdminUserChips,
+  type AdminRoomSettings,
   type AdminTableRow,
   type AdminUserRow,
   type ContestView,
@@ -27,21 +32,41 @@ import {
 } from '@/lib/api';
 import { formatMoneyLabel } from '@/lib/currency';
 import { DEFAULT_HOME_FEATURES } from '@/components/HomeLanding';
+import {
+  clonePagesCopy,
+  DEFAULT_PAGES_COPY,
+  PAGE_COPY_KEYS,
+  PAGE_COPY_LABELS,
+  type PagesCopy,
+} from '@/lib/pageCopy';
 import { readStoredSession } from '@/lib/session';
 import { useSession } from '@/lib/store';
 import { useLobbySession } from '@/lib/useLobbySession';
+
+const MAX_HOME_BLOCKS = 12;
+
+const BLANK_HOME_BLOCK: HomeLandingFeature = {
+  title: 'New feature',
+  body: 'Describe this feature for players landing on the home page.',
+  cta: 'Learn more',
+  href: '/',
+  image: '/home-host.png',
+  imageAlt: 'POKR feature illustration',
+  imageFirst: true,
+};
 
 const fieldClass =
   'mt-1.5 w-full rounded-lg border border-sidebar/15 bg-cream px-3 py-2.5 text-sm text-ink-strong shadow-sm outline-none transition placeholder:text-ink-strong-muted/50 focus:border-sidebar/40 focus:ring-2 focus:ring-sidebar/10';
 
 const labelClass = 'block text-xs font-display font-semibold uppercase tracking-[0.12em] text-ink-strong-muted';
 
-type AdminTab = 'users' | 'content' | 'home' | 'economy' | 'games';
+type AdminTab = 'users' | 'content' | 'home' | 'pages' | 'economy' | 'games';
 
 const TABS: { id: AdminTab; label: string }[] = [
   { id: 'users', label: 'Users' },
   { id: 'content', label: 'Banner' },
   { id: 'home', label: 'Home page' },
+  { id: 'pages', label: 'Pages' },
   { id: 'economy', label: 'Economy' },
   { id: 'games', label: 'Live games' },
 ];
@@ -114,10 +139,15 @@ function AdminPageInner() {
     refillThreshold: 1000,
     refillGrant: 5000,
   });
+  const [roomSettings, setRoomSettings] = useState<AdminRoomSettings>({
+    inactivityMinutes: 15,
+  });
   const [homeFeatures, setHomeFeatures] = useState<HomeLandingFeature[]>(
     () => DEFAULT_HOME_FEATURES.map((f) => ({ ...f })),
   );
+  const [pagesCopy, setPagesCopy] = useState<PagesCopy>(() => clonePagesCopy());
   const [openBlocks, setOpenBlocks] = useState<Record<number, boolean>>({ 0: true });
+  const [openPage, setOpenPage] = useState<string | null>('host');
   const [userQuery, setUserQuery] = useState('');
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [creditAmounts, setCreditAmounts] = useState<Record<string, string>>({});
@@ -151,20 +181,24 @@ function AdminPageInner() {
         return;
       }
       setIsAdmin(true);
-      const [overview, eco, games, userList, home] = await Promise.all([
+      const [overview, eco, games, userList, home, pages, rooms] = await Promise.all([
         fetchAdminOverview(token),
         fetchAdminEconomy(token),
         fetchAdminGames(token),
         fetchAdminUsers(token),
         fetchAdminHomeFeatures(token),
+        fetchAdminPages(token),
+        fetchAdminRoomSettings(token),
       ]);
       setAnnouncement(overview.announcement);
       setEconomy(eco);
+      setRoomSettings(rooms);
       setHomeFeatures(
         home.features?.length
           ? home.features
           : DEFAULT_HOME_FEATURES.map((f) => ({ ...f })),
       );
+      setPagesCopy(pages.pages ? clonePagesCopy(pages.pages) : clonePagesCopy());
       setStats({
         userCount: overview.userCount,
         liveTables: overview.liveTables,
@@ -211,13 +245,19 @@ function AdminPageInner() {
     e.preventDefault();
     if (!token) return;
     await withBusy('economy', async () => {
-      const next = await patchAdminEconomy(token, {
-        startingChipGrant: Math.floor(Number(economy.startingChipGrant)),
-        refillThreshold: Math.floor(Number(economy.refillThreshold)),
-        refillGrant: Math.floor(Number(economy.refillGrant)),
-      });
-      setEconomy(next);
-      flash('Economy saved');
+      const [nextEco, nextRooms] = await Promise.all([
+        patchAdminEconomy(token, {
+          startingChipGrant: Math.floor(Number(economy.startingChipGrant)),
+          refillThreshold: Math.floor(Number(economy.refillThreshold)),
+          refillGrant: Math.floor(Number(economy.refillGrant)),
+        }),
+        patchAdminRoomSettings(token, {
+          inactivityMinutes: Math.floor(Number(roomSettings.inactivityMinutes)),
+        }),
+      ]);
+      setEconomy(nextEco);
+      setRoomSettings(nextRooms);
+      flash('Economy & room settings saved');
     });
   }
 
@@ -231,10 +271,37 @@ function AdminPageInner() {
     });
   }
 
+  async function savePages(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token) return;
+    await withBusy('pages', async () => {
+      const res = await patchAdminPages(token, pagesCopy);
+      setPagesCopy(clonePagesCopy(res.pages));
+      flash('Page text saved');
+    });
+  }
+
   function updateHomeFeature(index: number, patch: Partial<HomeLandingFeature>) {
     setHomeFeatures((list) =>
       list.map((f, i) => (i === index ? { ...f, ...patch } : f)),
     );
+  }
+
+  function addHomeFeature() {
+    setHomeFeatures((list) => {
+      if (list.length >= MAX_HOME_BLOCKS) return list;
+      const next = [...list, { ...BLANK_HOME_BLOCK }];
+      setOpenBlocks((m) => ({ ...m, [next.length - 1]: true }));
+      return next;
+    });
+  }
+
+  function removeHomeFeature(index: number) {
+    setHomeFeatures((list) => {
+      if (list.length <= 1) return list;
+      return list.filter((_, i) => i !== index);
+    });
+    setOpenBlocks({});
   }
 
   function moveHomeFeature(index: number, dir: -1 | 1) {
@@ -512,7 +579,17 @@ function AdminPageInner() {
         {tab === 'home' ? (
           <Section
             title="Home landing"
-            description="Feature blocks on the home page — title, body, CTA, link, and image."
+            description="Feature blocks on the home page — title, body, CTA, link, and image. Add or remove blocks as needed."
+            action={
+              <button
+                type="button"
+                disabled={busy || homeFeatures.length >= MAX_HOME_BLOCKS}
+                onClick={() => addHomeFeature()}
+                className="btn-ghost min-h-9 px-4 text-xs disabled:opacity-50"
+              >
+                Add block
+              </button>
+            }
           >
             <form onSubmit={(e) => void saveHomeFeatures(e)} className="space-y-3">
               {homeFeatures.map((feature, index) => {
@@ -538,7 +615,7 @@ function AdminPageInner() {
                           {feature.title || 'Untitled'}
                         </span>
                       </button>
-                      <div className="flex shrink-0 gap-1">
+                      <div className="flex shrink-0 flex-wrap gap-1">
                         <button
                           type="button"
                           disabled={index === 0 || busy}
@@ -554,6 +631,14 @@ function AdminPageInner() {
                           className="rounded-md border border-sidebar/15 px-2.5 py-1 text-xs font-medium text-ink-strong disabled:opacity-35"
                         >
                           Down
+                        </button>
+                        <button
+                          type="button"
+                          disabled={homeFeatures.length <= 1 || busy}
+                          onClick={() => removeHomeFeature(index)}
+                          className="rounded-md border border-danger/25 px-2.5 py-1 text-xs font-medium text-danger disabled:opacity-35"
+                        >
+                          Remove
                         </button>
                         <button
                           type="button"
@@ -651,12 +736,112 @@ function AdminPageInner() {
                   </div>
                 );
               })}
+              <div className="flex flex-wrap gap-2 pt-1">
+                <button
+                  type="button"
+                  disabled={busy || homeFeatures.length >= MAX_HOME_BLOCKS}
+                  onClick={() => addHomeFeature()}
+                  className="btn-ghost min-h-11 px-5 disabled:opacity-50"
+                >
+                  Add block
+                </button>
+                <button
+                  type="submit"
+                  disabled={busy}
+                  className="btn-primary min-h-11 w-full sm:w-auto sm:min-w-[12rem] disabled:opacity-50"
+                >
+                  {busyKey === 'home' ? 'Saving…' : 'Save home landing'}
+                </button>
+              </div>
+              <p className="text-xs text-ink-strong-muted">
+                {homeFeatures.length}/{MAX_HOME_BLOCKS} blocks
+              </p>
+            </form>
+          </Section>
+        ) : null}
+
+        {tab === 'pages' ? (
+          <Section
+            title="Page text"
+            description="Titles and subtitles for lobby and auth pages. Changes appear after save (clients refresh within ~30s or on next visit)."
+          >
+            <form onSubmit={(e) => void savePages(e)} className="space-y-3">
+              {PAGE_COPY_KEYS.map((key) => {
+                const open = openPage === key;
+                const row = pagesCopy[key] ?? DEFAULT_PAGES_COPY[key];
+                return (
+                  <div
+                    key={key}
+                    className="overflow-hidden rounded-xl border border-sidebar/12 bg-mushroom/[0.03]"
+                  >
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left sm:px-4"
+                      onClick={() => setOpenPage(open ? null : key)}
+                      aria-expanded={open}
+                    >
+                      <span>
+                        <span className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong">
+                          {PAGE_COPY_LABELS[key]}
+                        </span>
+                        <span className="mt-0.5 block truncate text-sm text-ink-strong-muted">
+                          {row.title}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-xs text-ink-strong-muted">
+                        {open ? 'Collapse' : 'Edit'}
+                      </span>
+                    </button>
+                    {open ? (
+                      <div className="space-y-3 border-t border-sidebar/8 p-3 sm:p-4">
+                        <label className="block">
+                          <span className={labelClass}>
+                            {key === 'homeAuthFooter' ? 'Lead-in text' : 'Title'}
+                          </span>
+                          <input
+                            value={row.title}
+                            onChange={(e) =>
+                              setPagesCopy((p) => ({
+                                ...p,
+                                [key]: { ...p[key], title: e.target.value },
+                              }))
+                            }
+                            className={fieldClass}
+                            maxLength={200}
+                            required
+                          />
+                        </label>
+                        <label className="block">
+                          <span className={labelClass}>
+                            {key === 'homeAuthFooter'
+                              ? 'Link labels (display only)'
+                              : 'Subtitle'}
+                          </span>
+                          <textarea
+                            value={row.subtitle}
+                            onChange={(e) =>
+                              setPagesCopy((p) => ({
+                                ...p,
+                                [key]: { ...p[key], subtitle: e.target.value },
+                              }))
+                            }
+                            rows={3}
+                            maxLength={2000}
+                            className={fieldClass}
+                            required
+                          />
+                        </label>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
               <button
                 type="submit"
                 disabled={busy}
                 className="btn-primary min-h-11 w-full sm:w-auto sm:min-w-[12rem] disabled:opacity-50"
               >
-                {busyKey === 'home' ? 'Saving…' : 'Save home landing'}
+                {busyKey === 'pages' ? 'Saving…' : 'Save page text'}
               </button>
             </form>
           </Section>
@@ -664,8 +849,8 @@ function AdminPageInner() {
 
         {tab === 'economy' ? (
           <Section
-            title="Economy"
-            description="New-player starting grant and free refill rules. Resetting a user uses the starting grant."
+            title="Economy & rooms"
+            description="New-player grants, free refills, and how long empty tables stay open before closing."
           >
             <form onSubmit={(e) => void saveEconomy(e)} className="grid gap-4 sm:grid-cols-3">
               <label className="block">
@@ -716,13 +901,33 @@ function AdminPageInner() {
                   className={`${fieldClass} tabular-nums`}
                 />
               </label>
+              <label className="block sm:col-span-2">
+                <span className={labelClass}>Room inactivity (minutes)</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={1440}
+                  step={1}
+                  value={roomSettings.inactivityMinutes}
+                  onChange={(e) =>
+                    setRoomSettings({
+                      inactivityMinutes: Number(e.target.value),
+                    })
+                  }
+                  className={`${fieldClass} tabular-nums`}
+                />
+                <span className="mt-1.5 block text-xs text-ink-strong-muted">
+                  Close private/public cash tables after this many minutes with no humans present
+                  (default 15). Contests are never auto-closed. Allowed range: 1–1440 minutes.
+                </span>
+              </label>
               <div className="sm:col-span-3">
                 <button
                   type="submit"
                   disabled={busy}
                   className="btn-primary min-h-11 w-full sm:w-auto sm:min-w-[12rem] disabled:opacity-50"
                 >
-                  {busyKey === 'economy' ? 'Saving…' : 'Save economy'}
+                  {busyKey === 'economy' ? 'Saving…' : 'Save settings'}
                 </button>
               </div>
             </form>

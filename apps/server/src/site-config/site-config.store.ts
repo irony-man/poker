@@ -5,8 +5,12 @@ import type { EconomySnapshot } from '../wallet/wallet.constants.js';
 import {
   defaultSiteConfig,
   normalizeHomeFeatures,
+  normalizePagesCopy,
+  normalizeRoomSettings,
   normalizeSiteConfig,
   type HomeLandingFeature,
+  type PagesCopy,
+  type RoomSettings,
   type SiteAnnouncement,
   type SiteConfigPayload,
 } from './site-config.types.js';
@@ -95,6 +99,10 @@ export class SiteConfigStore {
       announcement: { ...this.cache.announcement },
       economy: { ...this.cache.economy },
       homeFeatures: this.cache.homeFeatures.map((f) => ({ ...f })),
+      pages: Object.fromEntries(
+        Object.entries(this.cache.pages).map(([k, v]) => [k, { ...v }]),
+      ) as PagesCopy,
+      rooms: { ...this.cache.rooms },
     };
   }
 
@@ -108,6 +116,16 @@ export class SiteConfigStore {
 
   getHomeFeatures(): HomeLandingFeature[] {
     return this.cache.homeFeatures.map((f) => ({ ...f }));
+  }
+
+  getPages(): PagesCopy {
+    return Object.fromEntries(
+      Object.entries(this.cache.pages).map(([k, v]) => [k, { ...v }]),
+    ) as PagesCopy;
+  }
+
+  getRoomSettings(): RoomSettings {
+    return { ...this.cache.rooms };
   }
 
   async setAnnouncement(next: SiteAnnouncement): Promise<SiteAnnouncement> {
@@ -142,5 +160,25 @@ export class SiteConfigStore {
     };
     await this.serialized(() => this.persist());
     return this.getHomeFeatures();
+  }
+
+  async setPages(pages: PagesCopy): Promise<PagesCopy> {
+    await this.ensureLoaded();
+    this.cache = {
+      ...this.cache,
+      pages: normalizePagesCopy(pages),
+    };
+    await this.serialized(() => this.persist());
+    return this.getPages();
+  }
+
+  async setRoomSettings(partial: Partial<RoomSettings>): Promise<RoomSettings> {
+    await this.ensureLoaded();
+    this.cache = {
+      ...this.cache,
+      rooms: normalizeRoomSettings({ ...this.cache.rooms, ...partial }),
+    };
+    await this.serialized(() => this.persist());
+    return this.getRoomSettings();
   }
 }

@@ -305,30 +305,11 @@ export class Room {
   }
 
   /**
-   * Schedule auto-deal for tournament tables (no human start required).
-   * Skips when frozen or fewer than 2 players with chips.
+   * Contests use Ready consensus (same as cash) — no auto-deal between hands.
+   * Kept as a no-op for call-site compatibility.
    */
-  scheduleTournamentAutoStart(delayMs = 2200): void {
-    if (!this.isTournament()) return;
-    if (this.meta.tournament?.frozen) return;
-    if (this.autoStartTimer) {
-      clearTimeout(this.autoStartTimer);
-      this.autoStartTimer = null;
-    }
-    this.autoStartTimer = setTimeout(() => {
-      this.autoStartTimer = null;
-      this.tournamentAutoStart();
-    }, delayMs);
-  }
-
-  private tournamentAutoStart(): void {
-    if (!this.isTournament() || this.meta.tournament?.frozen) return;
-    if (this.state.street !== 'waiting' && this.state.street !== 'payout') return;
-    const ready = this.state.players.filter(
-      (p) => p.userId && p.stack > 0 && p.status !== 'sittingOut',
-    );
-    if (ready.length < 2) return;
-    void this.dealHand();
+  scheduleTournamentAutoStart(_delayMs = 2200): void {
+    // no-op: humans must Ready up before each deal on cash and contest tables
   }
 
   get config(): TableConfig {
@@ -830,27 +811,20 @@ export class Room {
   }
 
   maybeAutoStart(): void {
-    // Cash tables require every human to ready up (no auto-deal).
-    if (this.isTournament()) {
-      this.scheduleTournamentAutoStart(1500);
-    }
+    // Cash and contest tables require every human to ready up (no auto-deal).
   }
 
   /**
-   * Cash: toggle ready / set ready. Deals when all eligible humans are ready.
-   * Tournament: force-deals (existing host start).
+   * Toggle ready. Deals when all eligible humans are ready (cash + contest).
    */
   startHand(userId: string): { ok: boolean; error?: string } {
-    if (this.isTournament()) {
-      return this.dealHand();
-    }
     const currentlyReady = this.readyUserIds.has(userId);
     return this.setReady(userId, !currentlyReady);
   }
 
   setReady(userId: string, ready: boolean): { ok: boolean; error?: string } {
-    if (this.isTournament()) {
-      return { ok: false, error: 'Ready is only for cash tables' };
+    if (this.meta.tournament?.frozen) {
+      return { ok: false, error: 'Match is over' };
     }
     if (this.state.street !== 'waiting' && this.state.street !== 'payout') {
       return { ok: false, error: 'Hand in progress' };
@@ -892,7 +866,7 @@ export class Room {
   }
 
   private tryDealIfAllReady(): void {
-    if (this.isTournament()) return;
+    if (this.meta.tournament?.frozen) return;
     if (this.state.street !== 'waiting' && this.state.street !== 'payout') return;
     const eligible = this.eligibleForNextHand();
     if (eligible.length < 2) return;
@@ -904,7 +878,7 @@ export class Room {
     void this.dealHand();
   }
 
-  /** Actually deal — cash consensus or tournament auto-start. */
+  /** Actually deal when all eligible humans are ready. */
   private dealHand(): { ok: boolean; error?: string } {
     if (this.meta.tournament?.frozen) {
       return { ok: false, error: 'Match is over' };
@@ -1193,14 +1167,10 @@ export class Room {
     const result = sitIn(this.state, seat);
     if (!result.ok) return { ok: false, error: result.error };
     this.state = result.state;
-    // Cash: sitting in implies ready for the next deal (same as “Play Next Hand”).
-    if (!this.isTournament()) {
-      const me = this.state.players[seat];
-      if (me && me.stack > 0 && me.status !== 'sittingOut' && me.status !== 'empty') {
-        this.readyUserIds.add(userId);
-      } else {
-        this.readyUserIds.delete(userId);
-      }
+    // Sitting in implies ready for the next deal (same as “Play Next Hand”).
+    const me = this.state.players[seat];
+    if (me && me.stack > 0 && me.status !== 'sittingOut' && me.status !== 'empty') {
+      this.readyUserIds.add(userId);
     } else {
       this.readyUserIds.delete(userId);
     }
@@ -1654,7 +1624,7 @@ export class RoomManager {
   }
 
   /** All in-process rooms for admin inspection. */
-  listAllAdmin(): {
+  listAllAdmin(inactivityMs: number = ROOM_INACTIVITY_MS): {
     tableId: string;
     inviteCode: string;
     name: string;
@@ -1680,7 +1650,7 @@ export class RoomManager {
         maxSeats: r.meta.config.maxSeats,
         hostUserId: r.meta.hostUserId,
         handInProgress: Boolean(r.state.handId && r.state.handId.length > 0),
-        idle: r.isIdle(),
+        idle: r.isIdle(inactivityMs),
         playMoney: Boolean(r.meta.playMoney),
         contestId: r.meta.tournament?.contestId ?? null,
         createdAt: r.meta.createdAt,

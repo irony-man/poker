@@ -101,6 +101,7 @@ export function TableView({
   const chipBalance = useSession((s) => s.chipBalance);
   const walletChips = coerceMoney(chipBalance);
   const isTournament = Boolean(table?.tournament);
+  const contestOver = Boolean(table?.tournament?.frozen);
   /** Cash rooms: free rebuy to full buy-in. Contests: bankroll-funded (partial OK). */
   const topUpAmount =
     table == null
@@ -223,11 +224,11 @@ export function TableView({
   const readyCount = humanEligiblePlayers.filter((p) => p.ready).length;
   const myReady = !!myPlayer?.ready;
   /**
-   * Cash only: seated with chips between hands → can mark ready (“Play Next Hand”).
-   * Contests auto-deal and never use ready.
+   * Seated with chips between hands → can mark ready (“Play Next Hand”).
+   * Contests and cash both require Ready consensus (except frozen contests).
    */
   const canReady =
-    !isTournament &&
+    !contestOver &&
     betweenHands &&
     mySeat !== undefined &&
     !!myPlayer &&
@@ -253,7 +254,7 @@ export function TableView({
         isSelf: p.userId === userId,
         sittingOut: p.status === 'sittingOut',
       })) ?? [];
-  const showDockReadyRoster = !isTournament && betweenHands && readyRosterPlayers.length > 0;
+  const showDockReadyRoster = !contestOver && betweenHands && readyRosterPlayers.length > 0;
   const dockReadyHeading =
     table?.street === 'waiting' && readyCount === 0
       ? 'Players'
@@ -322,7 +323,6 @@ export function TableView({
   };
 
   const contestId = table?.tournament?.contestId || contestIdProp || null;
-  const contestOver = Boolean(table?.tournament?.frozen);
   const goToContest = () => {
     if (contestId) {
       void leaveRoom(`/contest/${contestId}`);
@@ -661,7 +661,7 @@ export function TableView({
         {table?.tournament && (
           <div className="mb-2 flex flex-wrap items-center gap-2 px-0.5">
             <span className="status-chip border-sidebar/25 bg-sidebar/8 text-sidebar">
-              {table.tournament.mode === 'rounds' ? 'Rounds' : 'Wuffies'}
+              {table.tournament.mode === 'rounds' ? 'Rounds' : 'Knockout'}
               {table.tournament.frozen ? ' · over' : ''}
             </span>
             {table.tournament.mode === 'rounds' &&
@@ -831,7 +831,7 @@ export function TableView({
                 compact={narrow}
                 landscape={landscape}
                 isDealer={table.dealerButton === p.seat}
-                showReady={betweenHands && !isTournament && !!p.ready}
+                showReady={betweenHands && !contestOver && !!p.ready}
                 canKick={
                   isHost &&
                   betweenHands &&

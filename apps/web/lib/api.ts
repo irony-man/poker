@@ -544,6 +544,8 @@ export interface HomeLandingFeature {
   imageFirst: boolean;
 }
 
+export type { PageCopy, PageCopyKey, PagesCopy } from '@/lib/pageCopy';
+
 export interface AdminUserRow {
   id: string;
   username: string;
@@ -572,12 +574,14 @@ export interface AdminTableRow {
 export async function fetchPublicSite(): Promise<{
   announcement: SiteAnnouncement;
   homeFeatures?: HomeLandingFeature[];
+  pages?: import('@/lib/pageCopy').PagesCopy;
 }> {
   const res = await fetch(`${API_URL}/api/site`);
   if (!res.ok) throw new Error(await parseError(res, 'Could not load site'));
   return res.json() as Promise<{
     announcement: SiteAnnouncement;
     homeFeatures?: HomeLandingFeature[];
+    pages?: import('@/lib/pageCopy').PagesCopy;
   }>;
 }
 
@@ -596,6 +600,23 @@ export async function patchAdminHomeFeatures(
     method: 'PATCH',
     body: { features },
   }) as Promise<{ features: HomeLandingFeature[] }>;
+}
+
+export async function fetchAdminPages(sessionToken: string) {
+  return authedFetch('/api/admin/pages', { sessionToken }) as Promise<{
+    pages: import('@/lib/pageCopy').PagesCopy;
+  }>;
+}
+
+export async function patchAdminPages(
+  sessionToken: string,
+  pages: import('@/lib/pageCopy').PagesCopy,
+): Promise<{ pages: import('@/lib/pageCopy').PagesCopy }> {
+  return authedFetch('/api/admin/pages', {
+    sessionToken,
+    method: 'PATCH',
+    body: { pages },
+  }) as Promise<{ pages: import('@/lib/pageCopy').PagesCopy }>;
 }
 
 export async function fetchAdminOverview(sessionToken: string) {
@@ -636,6 +657,25 @@ export async function patchAdminEconomy(
     method: 'PATCH',
     body,
   }) as Promise<SiteEconomy>;
+}
+
+export interface AdminRoomSettings {
+  inactivityMinutes: number;
+}
+
+export async function fetchAdminRoomSettings(sessionToken: string) {
+  return authedFetch('/api/admin/room-settings', { sessionToken }) as Promise<AdminRoomSettings>;
+}
+
+export async function patchAdminRoomSettings(
+  sessionToken: string,
+  body: AdminRoomSettings,
+): Promise<AdminRoomSettings> {
+  return authedFetch('/api/admin/room-settings', {
+    sessionToken,
+    method: 'PATCH',
+    body,
+  }) as Promise<AdminRoomSettings>;
 }
 
 export async function fetchAdminUsers(sessionToken: string, q?: string) {

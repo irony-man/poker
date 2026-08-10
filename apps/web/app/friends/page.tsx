@@ -6,10 +6,12 @@ import { LoadingScreen } from '@/components/LoadingScreen';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { useLobbySession } from '@/lib/useLobbySession';
+import { usePageCopy } from '@/lib/usePageCopy';
 
 export default function FriendsPage() {
   const router = useRouter();
   const { authReady, signedIn } = useLobbySession();
+  const pageCopy = usePageCopy('friends');
 
   if (!authReady) {
     return <LoadingScreen label="Loading…" />;
@@ -17,8 +19,8 @@ export default function FriendsPage() {
 
   return (
     <LobbyPageShell
-      title="Community and Social"
-      subtitle="Find people by username, build groups for the tables you play together, invite a group to sit down, or challenge a friend to heads-up."
+      title={pageCopy.title}
+      subtitle={pageCopy.subtitle}
       signedIn={signedIn}
       requireAuth
     >

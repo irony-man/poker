@@ -15,19 +15,16 @@ import { FriendInvitePicker } from '@/components/FriendInvitePicker';
 import { MoneyAmount } from '@/components/CurrencyIcon';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
+import { contestModeLabel } from '@/lib/contestLabels';
 import { useSession } from '@/lib/store';
 import { useContestSocket } from '@/lib/ws';
-
-function modeLabel(mode: ContestView['mode']): string {
-  return mode === 'rounds' ? 'Rounds' : 'Wuffies';
-}
 
 function modeDescription(contest: ContestView): string {
   if (contest.mode === 'rounds') {
     const limit = contest.handLimit ?? 20;
     return `Play ${limit} hands with top-ups. Highest stack when the session ends wins.`;
   }
-  return 'equal stacks, no top-ups. Last player with Wuffies wins.';
+  return 'Equal stacks, no top-ups. Last player standing wins.';
 }
 
 function statusLabel(status: ContestView['status']): string {
@@ -242,7 +239,7 @@ export default function ContestPage() {
 
       <header className="mt-4 w-full sm:mt-5">
         <p className="status-chip w-fit border-sidebar/18 bg-sidebar/6 text-sidebar">
-          {modeLabel(contest.mode)} · {statusLabel(contest.status)}
+          {contestModeLabel(contest.mode)} · {statusLabel(contest.status)}
         </p>
         <h1 className="mt-3 font-display text-3xl font-bold tracking-tight text-ink-strong sm:text-4xl">
           {contest.name}

@@ -8,10 +8,12 @@ import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { resolveContestInvite, resolveInvite } from '@/lib/api';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { useLobbySession } from '@/lib/useLobbySession';
+import { usePageCopy } from '@/lib/usePageCopy';
 
 export default function JoinPage() {
   const router = useRouter();
   const { authReady, signedIn, ensureSession } = useLobbySession();
+  const pageCopy = usePageCopy('join');
   const [invite, setInvite] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,8 +52,8 @@ export default function JoinPage() {
 
   return (
     <LobbyPageShell
-      title="Join a Table"
-      subtitle="Enter the invite code you were sent to take a seat or watch the hand, whether it is a private table or a contest."
+      title={pageCopy.title}
+      subtitle={pageCopy.subtitle}
       signedIn={signedIn}
       error={error}
     >

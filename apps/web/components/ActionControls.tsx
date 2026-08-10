@@ -21,12 +21,10 @@ function waitingCopy(opts: {
   if (opts.spectating) return 'Spectating — you are not seated';
   if (opts.contestOver) return 'Contest complete';
   if (opts.street === 'waiting') {
-    return opts.isTournament ? 'Match starting…' : 'Waiting for players…';
+    return 'Waiting for players…';
   }
   if (opts.street === 'payout' || opts.street === 'showdown') {
-    return opts.isTournament
-      ? 'Hand complete — next deals automatically'
-      : 'Hand complete — start next when ready';
+    return 'Hand complete — start next when ready';
   }
   if (!opts.isTurn) return 'Waiting for your turn…';
   return '—';

@@ -650,6 +650,94 @@ body > * {
     --table-chip-ink: 250 246 240;
   }
 
+  /* Emerald — classic casino felt */
+  .table-theme[data-table-color='5'] {
+    --felt: 14 58 40;
+    --felt-deep: 8 36 24;
+    --felt-mid: 28 78 54;
+    --felt-edge: #04140c;
+    --felt-rim: 24 32 22;
+    --felt-rim-edge: 156 180 148;
+    --table-chrome: 12 40 28;
+    --table-chrome-raised: 22 58 42;
+    --table-text-on-chrome: 240 246 238;
+    --table-text-muted: 210 224 196;
+    --table-accent: 220 198 148;
+    --table-accent-hover: 232 214 176;
+    --table-accent-active: 184 160 108;
+    --table-accent-fg: 18 16 8;
+    --table-focus-ring: 220 228 200;
+    --table-chip-face: 12 40 28;
+    --table-chip-rim: 220 198 148;
+    --table-chip-ink: 252 248 236;
+  }
+
+  /* Burgundy — wine felt, soft metal accent */
+  .table-theme[data-table-color='6'] {
+    --felt: 58 20 32;
+    --felt-deep: 36 12 20;
+    --felt-mid: 80 32 48;
+    --felt-edge: #14060a;
+    --felt-rim: 40 22 26;
+    --felt-rim-edge: 184 144 152;
+    --table-chrome: 44 16 26;
+    --table-chrome-raised: 64 28 40;
+    --table-text-on-chrome: 248 236 238;
+    --table-text-muted: 228 196 200;
+    --table-accent: 210 178 158;
+    --table-accent-hover: 226 200 184;
+    --table-accent-active: 176 142 120;
+    --table-accent-fg: 28 14 12;
+    --table-focus-ring: 232 208 212;
+    --table-chip-face: 44 16 26;
+    --table-chip-rim: 210 178 158;
+    --table-chip-ink: 255 244 240;
+  }
+
+  /* Teal */
+  .table-theme[data-table-color='7'] {
+    --felt: 14 58 64;
+    --felt-deep: 8 36 42;
+    --felt-mid: 26 78 86;
+    --felt-edge: #041416;
+    --felt-rim: 24 36 40;
+    --felt-rim-edge: 148 180 184;
+    --table-chrome: 12 42 48;
+    --table-chrome-raised: 22 60 68;
+    --table-text-on-chrome: 236 246 248;
+    --table-text-muted: 188 220 224;
+    --table-accent: 180 208 214;
+    --table-accent-hover: 204 224 228;
+    --table-accent-active: 144 176 184;
+    --table-accent-fg: 12 24 28;
+    --table-focus-ring: 200 228 232;
+    --table-chip-face: 12 42 48;
+    --table-chip-rim: 180 208 214;
+    --table-chip-ink: 244 252 254;
+  }
+
+  /* Sand — warm tobacco felt */
+  .table-theme[data-table-color='8'] {
+    --felt: 58 48 32;
+    --felt-deep: 36 28 18;
+    --felt-mid: 78 64 42;
+    --felt-edge: #141008;
+    --felt-rim: 40 32 22;
+    --felt-rim-edge: 176 156 124;
+    --table-chrome: 44 36 24;
+    --table-chrome-raised: 62 52 36;
+    --table-text-on-chrome: 246 240 228;
+    --table-text-muted: 220 206 176;
+    --table-accent: 220 204 168;
+    --table-accent-hover: 232 220 192;
+    --table-accent-active: 184 166 128;
+    --table-accent-fg: 24 18 10;
+    --table-focus-ring: 232 220 188;
+    --table-chip-face: 44 36 24;
+    --table-chip-rim: 220 204 168;
+    --table-chip-ink: 252 246 232;
+  }
+
   .table-theme :focus-visible {
     outline: 2px solid rgb(var(--table-focus-ring));
     outline-offset: 2px;

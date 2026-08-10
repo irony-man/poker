@@ -3,7 +3,7 @@ import { z } from 'zod';
 /**
  * Contest play mode:
  * - `rounds`: fixed hand count, equal start stacks, top-ups allowed; chip leader wins.
- * - `chips`: equal start stacks, no top-ups; last player with Wuffies wins.
+ * - `chips`: knockout freezeout — equal start stacks, no top-ups; last player with chips wins.
  */
 export const ContestModeSchema = z.enum(['rounds', 'chips']);
 export type ContestMode = z.infer<typeof ContestModeSchema>;

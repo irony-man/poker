@@ -24,13 +24,13 @@ const FORMAT_TABS: {
 }[] = [
   {
     id: 'chips',
-    label: 'Wuffies',
-    title: 'Wuffies freezeout',
+    label: 'Knockout',
+    title: 'Knockout freezeout',
     body: 'Equal start stack for everyone. No top-ups once play begins.',
     points: [
-      'Same Wuffies for every seat at the start',
+      'Same stack for every seat at the start',
       "Bust out and you're eliminated",
-      'Last player with Wuffies wins ranking prizes',
+      'Last player standing wins ranking Wuffies',
     ],
   },
   {

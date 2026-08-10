@@ -1,5 +1,5 @@
-/** Matches web table color presets (0–4). */
-export const TABLE_COLOR_PRESET_COUNT = 5;
+/** Matches web table color presets (0–8). */
+export const TABLE_COLOR_PRESET_COUNT = 9;
 
 export function clampTableColorId(id: number | undefined | null, fallback = 0): number {
   if (id == null || !Number.isInteger(id)) {

@@ -11,6 +11,7 @@ import { createTable } from '@/lib/api';
 import { formatMoneyLabel } from '@/lib/currency';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { useLobbySession } from '@/lib/useLobbySession';
+import { usePageCopy } from '@/lib/usePageCopy';
 import { DEFAULT_STAKE_ID, STAKE_PRESETS, stakeById } from '@poker/protocol';
 
 const SEAT_OPTIONS = [2, 3, 4, 5, 6, 7, 8, 9] as const;
@@ -18,6 +19,7 @@ const SEAT_OPTIONS = [2, 3, 4, 5, 6, 7, 8, 9] as const;
 export default function HostPage() {
   const router = useRouter();
   const { authReady, signedIn, sessionToken, ensureSession } = useLobbySession();
+  const pageCopy = usePageCopy('host');
   const [maxSeats, setMaxSeats] = useState(6);
   const [botCount, setBotCount] = useState(0);
   const [hostStakeId, setHostStakeId] = useState(DEFAULT_STAKE_ID);
@@ -86,8 +88,8 @@ export default function HostPage() {
 
   return (
     <LobbyPageShell
-      title="Create a table"
-      subtitle="Set stakes and seats, choose starting bots, and open a private Hold'em room with a code you pick or we generate."
+      title={pageCopy.title}
+      subtitle={pageCopy.subtitle}
       signedIn={signedIn}
       error={error}
     >

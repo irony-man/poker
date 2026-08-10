@@ -49,7 +49,7 @@ export const ClientMessageSchema = z.discriminatedUnion('type', [
     type: z.literal('start_hand'),
     tableId: z.string().min(1),
   }),
-  /** Cash tables: mark ready / unready between hands. Hand deals when all humans ready. */
+  /** Cash + contest tables: mark ready / unready between hands. Hand deals when all humans ready. */
   z.object({
     type: z.literal('set_ready'),
     tableId: z.string().min(1),
@@ -336,8 +336,8 @@ export const UpdateMeBodySchema = z
   .object({
     /** Preset profile picture index (0–7). */
     avatarId: z.number().int().min(0).max(7).optional(),
-    /** Preset table felt theme index (0–4). */
-    tableColorId: z.number().int().min(0).max(4).optional(),
+    /** Preset table felt theme index (0–8). */
+    tableColorId: z.number().int().min(0).max(8).optional(),
   })
   .refine((body) => body.avatarId !== undefined || body.tableColorId !== undefined, {
     message: 'At least one of avatarId or tableColorId is required',

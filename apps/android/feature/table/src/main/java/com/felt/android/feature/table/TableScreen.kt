@@ -356,6 +356,7 @@ private fun TableFooterControls(
         myPlayer?.stack == 0 &&
         (table.street == "waiting" || table.street == "payout")
     val isTournament = table.tournament != null
+    val contestOver = table.tournament?.frozen == true
     var botCount by remember { mutableIntStateOf(minOf(3, emptySeats.coerceAtLeast(1))) }
 
     Column(
@@ -365,25 +366,27 @@ private fun TableFooterControls(
         if (isTournament) {
             Text(
                 text = buildString {
-                    append(if (table.tournament?.mode == "rounds") "Rounds" else "Wuffies")
+                    append(if (table.tournament?.mode == "rounds") "Rounds" else "Knockout")
                     append(" · blinds ${table.config.smallBlind}/${table.config.bigBlind}")
                     if (table.tournament?.noTopUp == true) append(" · no rebuy")
                     else append(" · top-ups on")
-                    if (table.tournament?.frozen == true) append(" · over")
+                    if (contestOver) append(" · over")
                 },
                 color = FeltColors.Gold,
                 fontSize = 12.sp,
             )
         }
         if (
-            !isTournament &&
+            !contestOver &&
             mySeat != null &&
+            myPlayer != null &&
             myPlayer.status != "sittingOut" &&
+            myPlayer.stack > 0 &&
             playersInHand >= 2 &&
             betweenHands
         ) {
             FeltGhostButton(
-                text = "Start hand",
+                text = if (myPlayer.ready == true) "Not ready" else "Play next hand",
                 onClick = onStartHand,
                 modifier = Modifier.fillMaxWidth(),
             )

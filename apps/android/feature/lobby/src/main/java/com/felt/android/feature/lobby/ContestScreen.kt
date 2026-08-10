@@ -70,7 +70,7 @@ fun ContestScreen(
         }
 
         StatusChip(
-            text = "${if (contest.mode == "rounds") "Rounds" else "Wuffies"} · ${contest.status}",
+            text = "${if (contest.mode == "rounds") "Rounds" else "Knockout"} · ${contest.status}",
             accent = FeltColors.Gold,
         )
         Text(
@@ -93,7 +93,7 @@ fun ContestScreen(
             text = if (contest.mode == "rounds") {
                 "Fixed hands with top-ups. Chip leader wins when the session ends."
             } else {
-                "Equal stacks, no top-ups. Last player with Wuffies wins."
+                "Equal stacks, no top-ups. Last player standing wins."
             },
             color = FeltColors.Cream.copy(0.45f),
             fontSize = 12.sp,

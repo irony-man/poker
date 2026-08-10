@@ -31,6 +31,10 @@ const EconomyBody = z.object({
   refillGrant: z.number().int().positive().optional(),
 });
 
+const RoomSettingsBody = z.object({
+  inactivityMinutes: z.number().int().min(1).max(24 * 60),
+});
+
 const CreditBody = z.object({
   amount: z.number().int().positive().max(100_000_000),
 });
@@ -46,7 +50,26 @@ const HomeFeatureBody = z.object({
 });
 
 const HomeFeaturesBody = z.object({
-  features: z.array(HomeFeatureBody).min(1).max(8),
+  features: z.array(HomeFeatureBody).min(1).max(12),
+});
+
+const PageCopyBody = z.object({
+  title: z.string().min(1).max(200),
+  subtitle: z.string().min(1).max(2000),
+});
+
+const PagesBody = z.object({
+  pages: z.object({
+    host: PageCopyBody,
+    join: PageCopyBody,
+    public: PageCopyBody,
+    contests: PageCopyBody,
+    friends: PageCopyBody,
+    solo: PageCopyBody,
+    signIn: PageCopyBody,
+    signUp: PageCopyBody,
+    homeAuthFooter: PageCopyBody,
+  }),
 });
 
 @Controller('api/admin')
@@ -107,6 +130,20 @@ export class AdminController {
     return this.site.setEconomy(parsed.data);
   }
 
+  @Get('room-settings')
+  getRoomSettings() {
+    return this.site.getRoomSettings();
+  }
+
+  @Patch('room-settings')
+  async patchRoomSettings(@Body() body: unknown) {
+    const parsed = RoomSettingsBody.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({ error: parsed.error.message });
+    }
+    return this.site.setRoomSettings(parsed.data);
+  }
+
   @Get('home-features')
   getHomeFeatures() {
     return { features: this.site.getHomeFeatures() };
@@ -120,6 +157,21 @@ export class AdminController {
     }
     const features = await this.site.setHomeFeatures(parsed.data.features);
     return { features };
+  }
+
+  @Get('pages')
+  getPages() {
+    return { pages: this.site.getPages() };
+  }
+
+  @Patch('pages')
+  async patchPages(@Body() body: unknown) {
+    const parsed = PagesBody.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({ error: parsed.error.message });
+    }
+    const pages = await this.site.setPages(parsed.data.pages);
+    return { pages };
   }
 
   @Get('users')

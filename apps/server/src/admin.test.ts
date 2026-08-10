@@ -106,6 +106,22 @@ describe('site config + runtime economy', () => {
     await reloaded.init();
     expect(reloaded.getHomeFeatures()[0]!.title).toBe('Edited Contests');
   });
+
+  it('persists pages copy', async () => {
+    const pages = site.getPages();
+    pages.host = { title: 'Host now', subtitle: 'Custom host blurb' };
+    await site.setPages(pages);
+    const reloaded = new SiteConfigStore(dir);
+    await reloaded.init();
+    expect(reloaded.getPages().host.title).toBe('Host now');
+  });
+
+  it('persists room inactivity minutes', async () => {
+    await site.setRoomSettings({ inactivityMinutes: 45 });
+    const reloaded = new SiteConfigStore(dir);
+    await reloaded.init();
+    expect(reloaded.getRoomSettings().inactivityMinutes).toBe(45);
+  });
 });
 
 describe('admin live games listing', () => {

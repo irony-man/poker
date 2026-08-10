@@ -7,10 +7,12 @@ import { LoadingScreen } from '@/components/LoadingScreen';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
 import { resolveContestInvite } from '@/lib/api';
 import { useLobbySession } from '@/lib/useLobbySession';
+import { usePageCopy } from '@/lib/usePageCopy';
 
 export default function ContestsListPage() {
   const router = useRouter();
   const { authReady, signedIn, name, sessionToken, ensureSession } = useLobbySession();
+  const pageCopy = usePageCopy('contests');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,8 +41,8 @@ export default function ContestsListPage() {
 
   return (
     <LobbyPageShell
-      title="Host Contests"
-      subtitle="Host a room for friends in a Wuffies freezeout or a fixed run of hands, set the max table size, invite people, and start when the seats look right."
+      title={pageCopy.title}
+      subtitle={pageCopy.subtitle}
       signedIn={signedIn}
       error={error}
     >

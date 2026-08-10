@@ -33,7 +33,7 @@ export class UserEntity {
   @Column({ name: 'avatar_id', type: 'int', default: 0 })
   avatarId!: number;
 
-  /** Viewer table felt theme preset (0–4). */
+  /** Viewer table felt theme preset (0–8). */
   @Column({ name: 'table_color_id', type: 'int', default: 0 })
   tableColorId!: number;
 

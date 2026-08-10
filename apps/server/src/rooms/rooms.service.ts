@@ -4,6 +4,7 @@ import { HistoryService } from '../history/history.service.js';
 import { KvService } from '../kv/kv.service.js';
 import { ensurePublicTables } from '../public-tables/public-tables.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
+import { SiteConfigService } from '../site-config/site-config.service.js';
 import { TableChipsService } from '../table-chips/table-chips.service.js';
 import { WalletService } from '../wallet/wallet.service.js';
 import {
@@ -27,6 +28,7 @@ export class RoomsService implements OnModuleInit, OnModuleDestroy {
     private readonly history: HistoryService,
     private readonly chips: TableChipsService,
     private readonly wallet: WalletService,
+    private readonly siteConfig: SiteConfigService,
     @Optional() private readonly realtime?: RealtimeService,
   ) {}
 
@@ -40,7 +42,7 @@ export class RoomsService implements OnModuleInit, OnModuleDestroy {
     this.manager.setPublicLobbyChangeHandler(() => this.pushPublicTables());
     // Drop abandoned private/public tables; re-seed stake lobbies if needed.
     this.idleSweepTimer = setInterval(() => {
-      this.manager.terminateIdleRooms();
+      this.manager.terminateIdleRooms(Date.now(), this.siteConfig.getRoomInactivityMs());
       ensurePublicTables(this.manager);
       this.pushPublicTables();
     }, ROOM_IDLE_SWEEP_MS);
@@ -97,10 +99,13 @@ export class RoomsService implements OnModuleInit, OnModuleDestroy {
   }
 
   listAllAdmin() {
-    return this.manager.listAllAdmin();
+    return this.manager.listAllAdmin(this.siteConfig.getRoomInactivityMs());
   }
 
-  terminateIdleRooms() {
-    return this.manager.terminateIdleRooms();
+  terminateIdleRooms(now?: number) {
+    return this.manager.terminateIdleRooms(
+      now ?? Date.now(),
+      this.siteConfig.getRoomInactivityMs(),
+    );
   }
 }

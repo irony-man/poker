@@ -11,11 +11,13 @@ import { authHref, safeReturnPath } from '@/lib/authRedirect';
 import { loadSavedAvatarId, saveAvatarId } from '@/lib/avatars';
 import { writeStoredSession } from '@/lib/session';
 import { useSession } from '@/lib/store';
+import { usePageCopy } from '@/lib/usePageCopy';
 
 function SignUpForm() {
   const router = useRouter();
   const search = useSearchParams();
   const setSession = useSession((s) => s.setSession);
+  const pageCopy = usePageCopy('signUp');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [avatarId, setAvatarId] = useState(() =>
@@ -47,9 +49,9 @@ function SignUpForm() {
     <div className="lobby-fade-up flex w-full flex-col justify-start">
       <div className="mb-4 sm:mb-5">
         <h1 className="font-display text-3xl font-bold tracking-tight text-ink-strong sm:text-4xl">
-          Create account
+          {pageCopy.title}
         </h1>
-        <p className="mt-2 text-sm text-ink-strong-muted">Create a username and password</p>
+        <p className="mt-2 text-sm text-ink-strong-muted">{pageCopy.subtitle}</p>
       </div>
       <form onSubmit={onSubmit}>
         <LobbySplitCard imageSrc="/home-knockout.png" imageAlt="Join the table — create your account">

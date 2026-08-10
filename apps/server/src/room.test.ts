@@ -396,6 +396,51 @@ describe('RoomManager', () => {
     expect(room.state.street).not.toBe('waiting');
   });
 
+  it('start_hand toggles ready on contest tables (no auto-deal)', async () => {
+    const kv = new MemoryKv();
+    const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-contest-ready-${Date.now()}`));
+    const rooms = new RoomManager(kv, history);
+    const meta = rooms.create({
+      name: 'ContestReady',
+      hostUserId: 'u1',
+      isPrivate: true,
+      config: { ...cashConfig() },
+      tournament: { contestId: 'c-ready', mode: 'chips', allowTopUp: false },
+    });
+    const room = rooms.get(meta.id)!;
+    room.forceSeat('u1', 'A', 0, 1000);
+    room.forceSeat('u2', 'B', 1, 1000);
+
+    room.scheduleTournamentAutoStart(0);
+    expect(room.state.street).toBe('waiting');
+
+    expect(room.setReady('u1', true).ok).toBe(true);
+    expect(room.state.street).toBe('waiting');
+    expect(room.startHand('u1').ok).toBe(true); // unready
+    expect(room.state.street).toBe('waiting');
+    expect(room.setReady('u1', true).ok).toBe(true);
+    expect(room.setReady('u2', true).ok).toBe(true);
+    expect(room.state.street).not.toBe('waiting');
+  });
+
+  it('rejects ready when contest match is frozen', async () => {
+    const kv = new MemoryKv();
+    const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-frozen-ready-${Date.now()}`));
+    const rooms = new RoomManager(kv, history);
+    const meta = rooms.create({
+      name: 'Frozen',
+      hostUserId: 'u1',
+      isPrivate: true,
+      config: { ...cashConfig() },
+      tournament: { contestId: 'c-frozen', mode: 'chips', allowTopUp: false, frozen: true },
+    });
+    const room = rooms.get(meta.id)!;
+    room.forceSeat('u1', 'A', 0, 1000);
+    room.forceSeat('u2', 'B', 1, 1000);
+    expect(room.setReady('u1', true).ok).toBe(false);
+    expect(room.setReady('u1', true).error).toMatch(/over/i);
+  });
+
   it('terminates rooms after 15 minutes without humans', async () => {
     const { ROOM_INACTIVITY_MS } = await import('./rooms/room.js');
     const kv = new MemoryKv();

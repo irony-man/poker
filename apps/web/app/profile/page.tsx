@@ -21,6 +21,7 @@ import {
   TABLE_COLOR_PRESETS,
   clampTableColorId,
   saveTableColorId,
+  tableColorPreset,
 } from '@/lib/tableColors';
 import { MoneyAmount } from '@/components/CurrencyIcon';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
@@ -420,101 +421,139 @@ function ProfilePageInner() {
               aria-labelledby="profile-tab-theme"
               className="rounded-2xl border border-sidebar/12 bg-white p-5 shadow-[0_10px_28px_rgb(29_4_50_/_0.06)] sm:p-7"
             >
-              <h3 className="font-display text-lg font-bold tracking-tight text-sidebar">
-                Table theme
-              </h3>
-              <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-strong-muted">
-                Felt, seat chrome, and chip accents you see at the table — only affects your
-                view. Status colors (fold, live, warnings) stay the same.
-              </p>
+              <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+                <div className="min-w-0">
+                  <h3 className="font-display text-lg font-bold tracking-tight text-sidebar">
+                    Table theme
+                  </h3>
+                  <p className="mt-1.5 max-w-lg text-sm leading-relaxed text-ink-strong-muted">
+                    Only you see this. Status colors stay the same.
+                  </p>
+                </div>
+                {savingTableColor ? (
+                  <p className="text-xs font-medium text-ink-strong-muted" role="status">
+                    Saving…
+                  </p>
+                ) : null}
+              </div>
 
               <div
-                className="table-theme mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6"
+                className="table-theme relative mt-5 overflow-hidden rounded-2xl border border-sidebar/10 bg-mushroom/50 px-5 py-6 sm:px-8 sm:py-8"
                 data-table-color={draftTableColorId}
               >
-                <div className="flex w-full max-w-[260px] flex-col items-center gap-2">
-                  <div
-                    className="felt-surface table-rim shadow-felt relative h-20 w-full rounded-[42%] border-[8px] sm:h-24"
-                    aria-hidden
-                  />
-                  <div
-                    className="table-stack-fill w-full max-w-[8rem] rounded px-2 py-1 text-center text-[11px] font-extrabold tabular-nums"
-                    aria-hidden
-                  >
-                    1,200
-                  </div>
-                  <div
-                    className="table-stack-winner w-full max-w-[8rem] rounded px-2 py-1 text-center text-[11px] font-extrabold tabular-nums"
-                    aria-hidden
-                  >
-                    Winner
-                  </div>
-                </div>
-
                 <div
-                  className="grid w-full grid-cols-1 gap-2.5 sm:flex-1"
-                  role="radiogroup"
-                  aria-label="Table theme"
-                >
-                  {TABLE_COLOR_PRESETS.map((preset) => {
-                    const selected = draftTableColorId === preset.id;
-                    return (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        role="radio"
-                        aria-checked={selected}
-                        disabled={savingTableColor}
-                        onClick={() => void saveTableColor(preset.id)}
-                        className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar disabled:opacity-60 ${
-                          selected
-                            ? 'border-sidebar bg-sidebar/[0.07] shadow-[0_0_0_1px_rgb(29_4_50_/_0.08)]'
-                            : 'border-sidebar/12 bg-mushroom/40 hover:border-sidebar/25 hover:bg-mushroom/70'
-                        }`}
+                  className="pointer-events-none absolute inset-0 opacity-60"
+                  style={{
+                    background:
+                      'radial-gradient(ellipse 70% 55% at 50% 45%, rgb(var(--felt-mid) / 0.14), transparent 70%)',
+                  }}
+                  aria-hidden
+                />
+                <div className="relative flex flex-col items-center gap-4">
+                  <div
+                    className="felt-surface table-rim shadow-felt relative h-[7.5rem] w-full max-w-md rounded-[42%] border-[10px] sm:h-36 sm:border-[12px]"
+                    aria-hidden
+                  >
+                    <div className="absolute inset-0 flex items-center justify-center gap-2">
+                      <span
+                        className="table-chrome-disc flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-extrabold"
+                        aria-hidden
                       >
-                        <span
-                          className="h-9 w-9 shrink-0 rounded-full border-2 border-white shadow-[0_0_0_1px_rgb(29_4_50_/_0.18)]"
-                          style={{ backgroundColor: preset.swatch }}
-                          aria-hidden
-                        />
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-sm font-semibold text-sidebar">
-                            {preset.label}
-                          </span>
-                          {selected ? (
-                            <span className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-sidebar/70">
-                              <svg
-                                className="h-3.5 w-3.5 shrink-0"
-                                viewBox="0 0 16 16"
-                                fill="none"
-                                aria-hidden
-                              >
-                                <path
-                                  d="M3.5 8.5 6.5 11.5 12.5 4.5"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                              </svg>
-                              Selected
-                            </span>
-                          ) : (
-                            <span className="mt-0.5 block text-[11px] text-ink-strong-muted">
-                              Tap to apply
-                            </span>
-                          )}
-                        </span>
-                      </button>
-                    );
-                  })}
+                        D
+                      </span>
+                      <span
+                        className="inline-flex h-6 w-6 items-center justify-center rounded-full border-2 text-[9px] font-bold"
+                        style={{
+                          backgroundColor: 'rgb(var(--table-chip-face))',
+                          borderColor: 'rgb(var(--table-chip-rim))',
+                          color: 'rgb(var(--table-chip-ink))',
+                        }}
+                        aria-hidden
+                      >
+                        25
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <span
+                      className="table-stack-fill rounded-md px-3 py-1 text-center text-xs font-extrabold tabular-nums"
+                      aria-hidden
+                    >
+                      1,200
+                    </span>
+                    <span
+                      className="table-stack-winner rounded-md px-3 py-1 text-center text-xs font-extrabold"
+                      aria-hidden
+                    >
+                      Winner
+                    </span>
+                  </div>
+                  <p className="font-display text-sm font-bold tracking-tight text-sidebar">
+                    {tableColorPreset(draftTableColorId).label}
+                  </p>
                 </div>
               </div>
-              {savingTableColor ? (
-                <p className="mt-3 text-xs text-ink-strong-muted" role="status">
-                  Saving…
-                </p>
-              ) : null}
+
+              <div
+                className="mt-5 grid grid-cols-3 gap-2.5 sm:grid-cols-3 sm:gap-3"
+                role="radiogroup"
+                aria-label="Table theme"
+              >
+                {TABLE_COLOR_PRESETS.map((preset) => {
+                  const selected = draftTableColorId === preset.id;
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      aria-label={preset.label}
+                      disabled={savingTableColor}
+                      onClick={() => void saveTableColor(preset.id)}
+                      className={`group relative flex flex-col items-center gap-2 rounded-xl border px-2 py-3 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar disabled:opacity-60 sm:px-3 sm:py-3.5 ${
+                        selected
+                          ? 'border-sidebar bg-sidebar/[0.06] shadow-[0_0_0_1px_rgb(29_4_50_/_0.1)]'
+                          : 'border-sidebar/10 bg-mushroom/30 hover:border-sidebar/22 hover:bg-mushroom/55'
+                      }`}
+                    >
+                      <span
+                        className={`table-theme relative block w-full max-w-[5.5rem] transition-transform duration-200 group-hover:scale-[1.03] ${
+                          selected ? 'scale-[1.03]' : ''
+                        }`}
+                        data-table-color={preset.id}
+                        aria-hidden
+                      >
+                        <span className="felt-surface table-rim block h-10 w-full rounded-[42%] border-[5px] shadow-[inset_0_0_0_1.5px_rgb(var(--felt-rim-edge)/0.55),0_2px_8px_rgb(29_4_50/0.18)] sm:h-11 sm:border-[6px]" />
+                        {selected ? (
+                          <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-sidebar text-mushroom shadow-sm">
+                            <svg
+                              className="h-3 w-3"
+                              viewBox="0 0 16 16"
+                              fill="none"
+                              aria-hidden
+                            >
+                              <path
+                                d="M3.5 8.5 6.5 11.5 12.5 4.5"
+                                stroke="currentColor"
+                                strokeWidth="2.25"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </span>
+                        ) : null}
+                      </span>
+                      <span
+                        className={`text-center text-[11px] font-semibold leading-tight sm:text-xs ${
+                          selected ? 'text-sidebar' : 'text-sidebar/75'
+                        }`}
+                      >
+                        {preset.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </section>
           ) : tab === 'contests' ? (
             <section

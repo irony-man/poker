@@ -16,6 +16,13 @@ export class SiteController {
       },
       homeFeatures: this.site.getHomeFeatures(),
       pages: this.site.getPages(),
+      botGroups: this.site.getBotGroups().map((g) => ({
+        id: g.id,
+        name: g.name,
+        isDefault: g.isDefault,
+        nameCount: g.names.length,
+        names: g.names,
+      })),
     };
   }
 }

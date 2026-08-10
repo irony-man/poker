@@ -14,6 +14,7 @@ import {
   REFILL_GRANT,
   REFILL_THRESHOLD,
   STARTING_CHIP_GRANT,
+  STARTING_WHUFFIE_GRANT,
   WalletError,
 } from './wallet/wallet.constants.js';
 
@@ -46,6 +47,14 @@ describe('AuthWalletStore', () => {
 
   it('grants starting chips on signup/seed', () => {
     expect(wallet.getBalance('u1')).toBe(STARTING_CHIP_GRANT);
+    expect(wallet.getWhuffieBalance('u1')).toBe(STARTING_WHUFFIE_GRANT);
+  });
+
+  it('credits Whuffies without touching chips', async () => {
+    const chipsBefore = wallet.getBalance('u1');
+    await wallet.creditWhuffies('u1', 250, 'contest_prize');
+    expect(wallet.getWhuffieBalance('u1')).toBe(STARTING_WHUFFIE_GRANT + 250);
+    expect(wallet.getBalance('u1')).toBe(chipsBefore);
   });
 
   it('debits and credits balance', async () => {

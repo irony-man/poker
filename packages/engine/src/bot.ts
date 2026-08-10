@@ -13,7 +13,8 @@ export function makeBotUserId(id: string): string {
   return `${BOT_PREFIX}${id}`;
 }
 
-const BOT_NAMES = [
+/** Default display names when no admin bot group (or empty pool) is configured. */
+export const DEFAULT_BOT_NAMES = [
   'AceBot',
   'RiverRat',
   'BluffByte',
@@ -24,11 +25,15 @@ const BOT_NAMES = [
   'NutsNova',
   'CallCart',
   'RaiseRex',
-];
+] as const;
 
-export function pickBotName(taken: Set<string>): string {
-  for (const n of BOT_NAMES) {
-    if (!taken.has(n)) return n;
+export function pickBotName(
+  taken: Set<string>,
+  pool: readonly string[] = DEFAULT_BOT_NAMES,
+): string {
+  const names = pool.length > 0 ? pool : DEFAULT_BOT_NAMES;
+  for (const n of names) {
+    if (n && !taken.has(n)) return n;
   }
   return `Bot${Math.floor(Math.random() * 900) + 100}`;
 }

@@ -72,6 +72,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const setSession = useSession((s) => s.setSession);
   const clearSession = useSession((s) => s.clearSession);
   const setChipBalance = useSession((s) => s.setChipBalance);
+  const setWhuffieBalance = useSession((s) => s.setWhuffieBalance);
   const sessionName = useSession((s) => s.name);
   const sessionToken = useSession((s) => s.sessionToken);
   const [signedIn, setSignedIn] = useState(() => {
@@ -121,6 +122,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!sessionToken) {
       setChipBalance(null);
+      setWhuffieBalance(null);
       setIsAdmin(false);
       return;
     }
@@ -129,6 +131,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
       .then((me) => {
         if (cancelled) return;
         setChipBalance(me.chipBalance);
+        setWhuffieBalance(me.whuffieBalance);
         setIsAdmin(Boolean(me.isAdmin));
         saveAvatarId(me.avatarId);
         saveTableColorId(me.tableColorId);
@@ -139,7 +142,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [sessionToken, setChipBalance, pathname]);
+  }, [sessionToken, setChipBalance, setWhuffieBalance, pathname]);
 
   useEffect(() => {
     setMenuOpen(false);

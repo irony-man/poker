@@ -13,6 +13,7 @@ import {
   type WalletMutationResult,
   type WalletReason,
   type WalletStore,
+  type WhuffieReason,
 } from './wallet.constants.js';
 
 export {
@@ -20,18 +21,20 @@ export {
   REFILL_GRANT,
   REFILL_THRESHOLD,
   STARTING_CHIP_GRANT,
+  STARTING_WHUFFIE_GRANT,
   defaultEconomy,
   type EconomyProvider,
   type EconomySnapshot,
   type WalletBalanceOwner,
   type WalletMutationResult,
   type WalletReason,
+  type WhuffieReason,
   type WalletStore,
 } from './wallet.constants.js';
 
 /**
- * Durable global chip wallet. Persists balances via AuthStore;
- * optional Postgres ledger for audit.
+ * Durable global chip wallet + Whuffie rating store.
+ * Persists balances via AuthStore; optional Postgres chip ledger for audit.
  */
 export class AuthWalletStore implements WalletStore {
   private chain: Promise<void> = Promise.resolve();
@@ -59,6 +62,13 @@ export class AuthWalletStore implements WalletStore {
     return Math.max(0, Math.floor(bal));
   }
 
+  getWhuffieBalance(userId: string): number {
+    if (isBotUserId(userId)) return Number.MAX_SAFE_INTEGER;
+    const bal = this.owner.getWhuffieBalance(userId);
+    if (typeof bal !== 'number' || !Number.isFinite(bal)) return 0;
+    return Math.max(0, Math.floor(bal));
+  }
+
   async ensureStartingBalance(userId: string): Promise<number> {
     if (isBotUserId(userId)) return Number.MAX_SAFE_INTEGER;
     return this.serialized(async () => {
@@ -72,6 +82,22 @@ export class AuthWalletStore implements WalletStore {
       const grant = this.economy().startingChipGrant;
       await this.owner.setChipBalance(userId, grant);
       await this.appendLedger(userId, grant, 'signup_grant', '');
+      return grant;
+    });
+  }
+
+  async ensureStartingWhuffies(userId: string): Promise<number> {
+    if (isBotUserId(userId)) return Number.MAX_SAFE_INTEGER;
+    return this.serialized(async () => {
+      if (!this.owner.hasUser(userId)) {
+        throw new WalletError('unknown_user', 'Unknown user');
+      }
+      const current = this.owner.getWhuffieBalance(userId);
+      if (current !== undefined && current !== null && Number.isFinite(current)) {
+        return Math.max(0, Math.floor(current));
+      }
+      const grant = this.economy().startingWhuffieGrant;
+      await this.owner.setWhuffieBalance(userId, grant);
       return grant;
     });
   }
@@ -101,10 +127,7 @@ export class AuthWalletStore implements WalletStore {
       }
       bal = Math.max(0, Math.floor(bal));
       if (bal < n) {
-        throw new WalletError(
-          'insufficient',
-          `Need ${n} Wuffies (you have ${bal})`,
-        );
+        throw new WalletError('insufficient', `Need ${n} chips (you have ${bal})`);
       }
       const next = bal - n;
       await this.owner.setChipBalance(userId, next);
@@ -145,9 +168,72 @@ export class AuthWalletStore implements WalletStore {
     });
   }
 
+  async creditWhuffies(
+    userId: string,
+    amount: number,
+    _reason: WhuffieReason,
+    _tableId = '',
+  ): Promise<WalletMutationResult> {
+    if (isBotUserId(userId)) {
+      return { ok: true, balance: Number.MAX_SAFE_INTEGER };
+    }
+    const n = Math.floor(amount);
+    if (!Number.isFinite(n) || n < 0) {
+      throw new WalletError('invalid_amount', 'Invalid credit amount');
+    }
+    if (n === 0) {
+      return { ok: true, balance: this.getWhuffieBalance(userId) };
+    }
+    return this.serialized(async () => {
+      if (!this.owner.hasUser(userId)) {
+        throw new WalletError('unknown_user', 'Unknown user');
+      }
+      let bal = this.owner.getWhuffieBalance(userId);
+      if (bal === undefined || bal === null || !Number.isFinite(bal)) {
+        bal = this.economy().startingWhuffieGrant;
+      }
+      bal = Math.max(0, Math.floor(bal));
+      const next = bal + n;
+      await this.owner.setWhuffieBalance(userId, next);
+      return { ok: true as const, balance: next };
+    });
+  }
+
+  async debitWhuffies(
+    userId: string,
+    amount: number,
+    _reason: WhuffieReason,
+    _tableId = '',
+  ): Promise<WalletMutationResult> {
+    if (isBotUserId(userId)) {
+      return { ok: true, balance: Number.MAX_SAFE_INTEGER };
+    }
+    const n = Math.floor(amount);
+    if (!Number.isFinite(n) || n <= 0) {
+      throw new WalletError('invalid_amount', 'Invalid debit amount');
+    }
+    return this.serialized(async () => {
+      if (!this.owner.hasUser(userId)) {
+        throw new WalletError('unknown_user', 'Unknown user');
+      }
+      let bal = this.owner.getWhuffieBalance(userId);
+      if (bal === undefined || bal === null || !Number.isFinite(bal)) {
+        bal = this.economy().startingWhuffieGrant;
+        await this.owner.setWhuffieBalance(userId, bal);
+      }
+      bal = Math.max(0, Math.floor(bal));
+      if (bal < n) {
+        throw new WalletError('insufficient', `Need ${n} Whuffies (you have ${bal})`);
+      }
+      const next = bal - n;
+      await this.owner.setWhuffieBalance(userId, next);
+      return { ok: true as const, balance: next };
+    });
+  }
+
   async claimRefill(userId: string): Promise<WalletMutationResult> {
     if (isBotUserId(userId)) {
-      throw new WalletError('not_eligible', 'Bots cannot claim Wuffies');
+      throw new WalletError('not_eligible', 'Bots cannot claim chips');
     }
     return this.serialized(async () => {
       if (!this.owner.hasUser(userId)) {
@@ -223,7 +309,13 @@ export class UnlimitedWalletStore implements WalletStore {
   getBalance(_userId: string): number {
     return Number.MAX_SAFE_INTEGER;
   }
+  getWhuffieBalance(_userId: string): number {
+    return Number.MAX_SAFE_INTEGER;
+  }
   async ensureStartingBalance(_userId: string): Promise<number> {
+    return Number.MAX_SAFE_INTEGER;
+  }
+  async ensureStartingWhuffies(_userId: string): Promise<number> {
     return Number.MAX_SAFE_INTEGER;
   }
   async debit(
@@ -238,6 +330,22 @@ export class UnlimitedWalletStore implements WalletStore {
     _userId: string,
     _amount: number,
     _reason: WalletReason,
+    _tableId?: string,
+  ): Promise<WalletMutationResult> {
+    return { ok: true, balance: Number.MAX_SAFE_INTEGER };
+  }
+  async creditWhuffies(
+    _userId: string,
+    _amount: number,
+    _reason: WhuffieReason,
+    _tableId?: string,
+  ): Promise<WalletMutationResult> {
+    return { ok: true, balance: Number.MAX_SAFE_INTEGER };
+  }
+  async debitWhuffies(
+    _userId: string,
+    _amount: number,
+    _reason: WhuffieReason,
     _tableId?: string,
   ): Promise<WalletMutationResult> {
     return { ok: true, balance: Number.MAX_SAFE_INTEGER };

@@ -16,6 +16,7 @@ import { CurrentUser, SessionAuthGuard } from '../common/session-auth.guard.js';
 import { FriendsService } from '../friends/friends.service.js';
 import { HistoryService } from '../history/history.service.js';
 import { RoomsService } from '../rooms/rooms.service.js';
+import { SiteConfigService } from '../site-config/site-config.service.js';
 
 @Controller('api/tables')
 export class TablesController {
@@ -23,6 +24,7 @@ export class TablesController {
     private readonly rooms: RoomsService,
     private readonly friends: FriendsService,
     private readonly history: HistoryService,
+    private readonly site: SiteConfigService,
   ) {}
 
   @Post()
@@ -65,7 +67,8 @@ export class TablesController {
     }
     const room = this.rooms.get(meta.id)!;
     if (bots > 0) {
-      room.addBot(user.id, undefined, d.buyIn, bots);
+      const namePool = this.site.getBotNamePool(d.botGroupId);
+      room.addBot(user.id, undefined, d.buyIn, bots, namePool);
     }
 
     let inviteCount = 0;

@@ -7,7 +7,7 @@ import { FriendInvitePicker } from '@/components/FriendInvitePicker';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
-import { createTable } from '@/lib/api';
+import { createTable, fetchPublicBotGroups, type PublicBotGroup } from '@/lib/api';
 import { formatMoneyLabel } from '@/lib/currency';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { useLobbySession } from '@/lib/useLobbySession';
@@ -22,6 +22,8 @@ export default function HostPage() {
   const pageCopy = usePageCopy('host');
   const [maxSeats, setMaxSeats] = useState(6);
   const [botCount, setBotCount] = useState(0);
+  const [botGroups, setBotGroups] = useState<PublicBotGroup[]>([]);
+  const [botGroupId, setBotGroupId] = useState<string | null>(null);
   const [hostStakeId, setHostStakeId] = useState(DEFAULT_STAKE_ID);
   const [customRoomCode, setCustomRoomCode] = useState('');
   const [inviteFriendIds, setInviteFriendIds] = useState<string[]>([]);
@@ -38,6 +40,21 @@ export default function HostPage() {
   useEffect(() => {
     if (botCount > maxBots) setBotCount(maxBots);
   }, [maxSeats, botCount, maxBots]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchPublicBotGroups().then((groups) => {
+      if (cancelled) return;
+      setBotGroups(groups);
+      setBotGroupId((cur) => {
+        if (cur && groups.some((g) => g.id === cur)) return cur;
+        return groups.find((g) => g.isDefault)?.id ?? groups[0]?.id ?? null;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (inviteFriendIds.length > maxFriendInvites) {
@@ -68,6 +85,7 @@ export default function HostPage() {
           turnTimeMs: 20000,
           maxSeats,
           botCount,
+          ...(botCount > 0 && botGroupId ? { botGroupId } : {}),
           isPrivate: true,
           ...(code ? { inviteCode: code } : {}),
           inviteFriendIds,
@@ -149,6 +167,30 @@ export default function HostPage() {
                 onSelect={setBotCount}
                 format={(n) => (n === 0 ? 'None' : String(n))}
               />
+              {botCount > 0 && botGroups.length > 0 ? (
+                <ChoiceRow
+                  label="Bot name pack"
+                  name="host-bot-group"
+                  selected={botGroupId ?? botGroups[0]!.id}
+                  options={botGroups.map((g) => g.id)}
+                  onSelect={setBotGroupId}
+                  format={(id) => {
+                    const g = botGroups.find((x) => x.id === id);
+                    if (!g) return id;
+                    return (
+                      <span className="inline-flex flex-col items-start leading-tight">
+                        <span>
+                          {g.name}
+                          {g.isDefault ? ' · default' : ''}
+                        </span>
+                        <span className="text-[10px] font-medium opacity-70">
+                          {g.nameCount} name{g.nameCount === 1 ? '' : 's'}
+                        </span>
+                      </span>
+                    );
+                  }}
+                />
+              ) : null}
               <label className="block">
                 <span className="hud-label">Room code (optional)</span>
                 <input

@@ -3,6 +3,7 @@ import { AuthModule } from '../auth/auth.module.js';
 import { ContestsModule } from '../contests/contests.module.js';
 import { FriendsModule } from '../friends/friends.module.js';
 import { RoomsModule } from '../rooms/rooms.module.js';
+import { SiteConfigModule } from '../site-config/site-config.module.js';
 import { WalletModule } from '../wallet/wallet.module.js';
 import { PokerGateway } from './poker.gateway.js';
 
@@ -12,6 +13,7 @@ import { PokerGateway } from './poker.gateway.js';
     forwardRef(() => WalletModule),
     RoomsModule,
     ContestsModule,
+    SiteConfigModule,
     forwardRef(() => FriendsModule),
   ],
   providers: [PokerGateway],

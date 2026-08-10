@@ -6,6 +6,7 @@ import { dataSourceAsQueryable } from '../database/queryable.js';
 import type { EconomySnapshot } from '../wallet/wallet.constants.js';
 import { SiteConfigStore } from './site-config.store.js';
 import type {
+  BotGroup,
   HomeLandingFeature,
   PagesCopy,
   RoomSettings,
@@ -59,6 +60,14 @@ export class SiteConfigService implements OnModuleInit {
     return this.store.getRoomSettings();
   }
 
+  getBotGroups(): BotGroup[] {
+    return this.store.getBotGroups();
+  }
+
+  getBotNamePool(groupId?: string | null): string[] {
+    return this.store.getBotNamePool(groupId);
+  }
+
   /** Idle timeout in ms for terminate sweeps (derived). */
   getRoomInactivityMs(): number {
     return Math.max(60_000, this.store.getRoomSettings().inactivityMinutes * 60_000);
@@ -82,5 +91,9 @@ export class SiteConfigService implements OnModuleInit {
 
   setRoomSettings(partial: Partial<RoomSettings>): Promise<RoomSettings> {
     return this.store.setRoomSettings(partial);
+  }
+
+  setBotGroups(groups: BotGroup[]): Promise<BotGroup[]> {
+    return this.store.setBotGroups(groups);
   }
 }

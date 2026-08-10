@@ -49,13 +49,13 @@ export const ContestPlacementSchema = z.object({
   userId: z.string(),
   name: z.string(),
   place: z.number().int().positive(),
-  /** House-funded Wuffies awarded for this place (0 if none). */
-  prizeWuffies: z.number().int().nonnegative().optional(),
+  /** House-funded Whuffies (rating) awarded for this place (0 if none). */
+  prizeWhuffies: z.number().int().nonnegative().optional(),
 });
 export type ContestPlacement = z.infer<typeof ContestPlacementSchema>;
 
 /**
- * Placement bonus in Wuffies (house-funded), independent of residual stack cash-out.
+ * Placement bonus in Whuffies (rating points), independent of residual stack cash-out.
  * Top 3 (or both heads-up players) share a pool of ~10% of buy-in × field size.
  */
 export function contestPlacementPrize(

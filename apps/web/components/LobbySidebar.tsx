@@ -84,6 +84,7 @@ export function LobbySidebar({
   const userId = useSession((s) => s.userId);
   const username = useSession((s) => s.username);
   const chipBalance = useSession((s) => s.chipBalance);
+  const whuffieBalance = useSession((s) => s.whuffieBalance);
   const { pendingCount } = useOnlineFriends();
   const [avatarId, setAvatarId] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -185,13 +186,20 @@ export function LobbySidebar({
                     {handle || 'Player'}
                   </span>
                   {chipBalance != null ? (
-                    <MoneyAmount
-                      amount={chipBalance}
-                      showChips
-                      className="mt-1 text-[11px] font-medium text-mushroom/75"
-                      iconClassName="opacity-70"
-                      chipsClassName="!h-3.5 sm:!h-3.5"
-                    />
+                    <span className="mt-1 flex flex-col gap-0.5">
+                      <MoneyAmount
+                        amount={chipBalance}
+                        showChips
+                        className="text-[11px] font-medium text-mushroom/75"
+                        iconClassName="opacity-70"
+                        chipsClassName="!h-3.5 sm:!h-3.5"
+                      />
+                      {whuffieBalance != null ? (
+                        <span className="text-[10px] font-medium tabular-nums text-mushroom/55">
+                          {whuffieBalance.toLocaleString()} Whuffies
+                        </span>
+                      ) : null}
+                    </span>
                   ) : (
                     <span className="mt-1 block text-[11px] text-mushroom/40">Bankroll…</span>
                   )}

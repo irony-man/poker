@@ -49,11 +49,17 @@ function dispatchMessage(msg: { type?: string; [key: string]: unknown }): void {
       if (typeof msg.chipBalance === 'number') {
         s.setChipBalance(msg.chipBalance);
       }
+      if (typeof msg.whuffieBalance === 'number') {
+        s.setWhuffieBalance(msg.whuffieBalance);
+      }
       break;
     }
     case 'wallet_update': {
       if (typeof msg.chipBalance === 'number') {
         s.setChipBalance(msg.chipBalance);
+      }
+      if (typeof msg.whuffieBalance === 'number') {
+        s.setWhuffieBalance(msg.whuffieBalance);
       }
       break;
     }
@@ -142,6 +148,11 @@ function dispatchMessage(msg: { type?: string; [key: string]: unknown }): void {
   }
 }
 
+/** Tickets that must never be sent as WebSocket auth. */
+function isClientOnlyTicket(ticket: string | null | undefined): boolean {
+  return !ticket || ticket === 'offline';
+}
+
 function connectShared(): void {
   if (typeof window === 'undefined') return;
   if (holdCount <= 0) return;
@@ -152,6 +163,7 @@ function connectShared(): void {
     if (
       sharedWs.readyState === WebSocket.OPEN &&
       sharedTicket &&
+      !isClientOnlyTicket(sharedTicket) &&
       authSentForTicket !== sharedTicket
     ) {
       authSentForTicket = sharedTicket;
@@ -167,7 +179,7 @@ function connectShared(): void {
 
   ws.onopen = () => {
     if (sharedWs !== ws) return;
-    if (sharedTicket) {
+    if (sharedTicket && !isClientOnlyTicket(sharedTicket)) {
       authSentForTicket = sharedTicket;
       ws.send(JSON.stringify({ type: 'auth', ticket: sharedTicket }));
     } else {
@@ -256,9 +268,9 @@ export function useSessionSocket(): void {
 
   useEffect(() => {
     sharedTicket = ticket;
-    if (!ticket) {
-      // Logged out: reopen as guest so server drops the user socket registration.
-      if (sharedWs) {
+    if (!ticket || isClientOnlyTicket(ticket)) {
+      // Logged out / offline practice: reopen as guest so server drops user registration.
+      if (sharedWs && authSentForTicket) {
         intentionalClose = true;
         sharedWs.close();
         sharedWs = null;

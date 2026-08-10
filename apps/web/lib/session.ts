@@ -2,7 +2,7 @@
 
 export const FELT_SESSION_KEY = 'felt-session';
 
-/** Locally persisted auth fields (chipBalance is refreshed from the server). */
+/** Locally persisted auth fields (balances are refreshed from the server). */
 export type StoredSession = {
   userId: string;
   username: string;
@@ -11,6 +11,7 @@ export type StoredSession = {
   sessionToken: string;
   avatarId?: number;
   chipBalance?: number;
+  whuffieBalance?: number;
 };
 
 export function readStoredSession(): StoredSession | null {
@@ -28,6 +29,7 @@ export function readStoredSession(): StoredSession | null {
       sessionToken: s.sessionToken,
       avatarId: s.avatarId,
       ...(typeof s.chipBalance === 'number' ? { chipBalance: s.chipBalance } : {}),
+      ...(typeof s.whuffieBalance === 'number' ? { whuffieBalance: s.whuffieBalance } : {}),
     };
   } catch {
     return null;

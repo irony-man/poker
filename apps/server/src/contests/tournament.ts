@@ -310,6 +310,14 @@ export class TournamentManager {
       .map((c) => this.toView(c));
   }
 
+  /** Contests still open for play (not finished/cancelled). */
+  listLive(): ContestView[] {
+    return [...this.contests.values()]
+      .filter((c) => c.status === 'registering' || c.status === 'running')
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .map((c) => this.toView(c));
+  }
+
   /** Contests the user hosts or is registered in (active first). */
   listForUser(userId: string): ContestView[] {
     return [...this.contests.values()]
@@ -551,7 +559,7 @@ export class TournamentManager {
     if (winner) {
       room.systemChatPublic(
         'Dealer',
-        `${winner.name ?? 'Player'} wins with ${winner.stack} Wuffies!`,
+        `${winner.name ?? 'Player'} wins with ${winner.stack} chips!`,
       );
     }
     room.freezeTournamentMatch();
@@ -582,17 +590,17 @@ export class TournamentManager {
   private placePlayer(c: ContestState, userId: string, place: number): void {
     if (c.placements.some((p) => p.userId === userId)) return;
     const entrant = c.entrants.find((e) => e.userId === userId);
-    const prizeWuffies = contestPlacementPrize(place, c.entrants.length, c.startingStack);
+    const prizeWhuffies = contestPlacementPrize(place, c.entrants.length, c.startingStack);
     c.placements.push({
       userId,
       name: entrant?.name ?? 'Player',
       place,
-      prizeWuffies,
+      prizeWhuffies,
     });
     c.placements.sort((a, b) => a.place - b.place);
   }
 
-  /** House-funded placement bonuses (separate from residual stack cash-out). */
+  /** House-funded placement Whuffies (separate from residual stack cash-out). */
   private payPlacementPrizes(c: ContestState, room: Room | null): void {
     let paid = this.prizeSettled.get(c.id);
     if (!paid) {
@@ -601,25 +609,26 @@ export class TournamentManager {
     }
     for (const p of c.placements) {
       if (isBotUserId(p.userId) || paid.has(p.userId)) continue;
-      const amount = p.prizeWuffies ?? contestPlacementPrize(p.place, c.entrants.length, c.startingStack);
-      p.prizeWuffies = amount;
+      const amount =
+        p.prizeWhuffies ?? contestPlacementPrize(p.place, c.entrants.length, c.startingStack);
+      p.prizeWhuffies = amount;
       if (amount <= 0) {
         paid.add(p.userId);
         continue;
       }
       paid.add(p.userId);
       void this.wallet
-        .credit(p.userId, amount, 'contest_prize', c.tableId ?? c.id)
+        .creditWhuffies(p.userId, amount, 'contest_prize', c.tableId ?? c.id)
         .then((result) => {
-          room?.notifyWallet(p.userId, result.balance);
+          room?.notifyWallet(p.userId, { whuffieBalance: result.balance });
           const entrant = c.entrants.find((e) => e.userId === p.userId);
           room?.systemChatPublic(
             'Dealer',
-            `${entrant?.name ?? p.name} earned ${amount} Wuffies for ${p.place}${this.ordinalSuffix(p.place)} place`,
+            `${entrant?.name ?? p.name} earned ${amount} Whuffies for ${p.place}${this.ordinalSuffix(p.place)} place`,
           );
         })
         .catch((err) => {
-          console.error('[wallet] contest prize failed', err);
+          console.error('[wallet] contest Whuffie prize failed', err);
           paid!.delete(p.userId);
         });
     }

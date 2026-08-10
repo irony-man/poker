@@ -11,7 +11,11 @@ import { SiteConfigStore } from './site-config/site-config.store.js';
 import { MemoryTableChipStore } from './table-chips/table-chips.store.js';
 import { TournamentManager } from './contests/tournament.js';
 import { AuthWalletStore } from './wallet/wallet.store.js';
-import { STARTING_CHIP_GRANT, WalletError } from './wallet/wallet.constants.js';
+import {
+  STARTING_CHIP_GRANT,
+  STARTING_WHUFFIE_GRANT,
+  WalletError,
+} from './wallet/wallet.constants.js';
 
 function memoryHistory(): HandHistoryStore {
   return {
@@ -58,13 +62,16 @@ describe('site config + runtime economy', () => {
   it('defaults match wallet constants', () => {
     const eco = site.getEconomy();
     expect(eco.startingChipGrant).toBe(STARTING_CHIP_GRANT);
+    expect(eco.startingWhuffieGrant).toBe(STARTING_WHUFFIE_GRANT);
   });
 
-  it('signup uses configured starting grant', async () => {
-    await site.setEconomy({ startingChipGrant: 42_000 });
+  it('signup uses configured starting grants', async () => {
+    await site.setEconomy({ startingChipGrant: 42_000, startingWhuffieGrant: 100 });
     const session = await auth.signup('newbie', 'password12');
     expect(session.chipBalance).toBe(42_000);
+    expect(session.whuffieBalance).toBe(100);
     expect(wallet.getBalance(session.userId)).toBe(42_000);
+    expect(wallet.getWhuffieBalance(session.userId)).toBe(100);
   });
 
   it('refill respects configured threshold and grant', async () => {
@@ -122,6 +129,35 @@ describe('site config + runtime economy', () => {
     await reloaded.init();
     expect(reloaded.getRoomSettings().inactivityMinutes).toBe(45);
   });
+
+  it('defaults and persists bot name groups', async () => {
+    const groups = site.getBotGroups();
+    expect(groups.length).toBeGreaterThanOrEqual(1);
+    expect(groups.some((g) => g.isDefault)).toBe(true);
+    expect(site.getBotNamePool().length).toBeGreaterThan(0);
+
+    await site.setBotGroups([
+      {
+        id: 'friends',
+        name: 'Friendly table',
+        names: ['Buddy', 'Pal', 'Mate'],
+        isDefault: true,
+      },
+      {
+        id: 'villains',
+        name: 'Villains',
+        names: ['BluffKing', 'RiverGod'],
+        isDefault: false,
+      },
+    ]);
+    expect(site.getBotNamePool()).toEqual(['Buddy', 'Pal', 'Mate']);
+    expect(site.getBotNamePool('villains')).toEqual(['BluffKing', 'RiverGod']);
+
+    const reloaded = new SiteConfigStore(dir);
+    await reloaded.init();
+    expect(reloaded.getBotGroups()).toHaveLength(2);
+    expect(reloaded.getBotNamePool('friends')[0]).toBe('Buddy');
+  });
 });
 
 describe('admin live games listing', () => {
@@ -143,8 +179,22 @@ describe('admin live games listing', () => {
         maxSeats: 6,
       },
     });
+    rooms.create({
+      name: 'Low stakes',
+      hostUserId: 'house',
+      isPrivate: false,
+      stakeId: 'low',
+      config: {
+        smallBlind: 5,
+        bigBlind: 10,
+        buyIn: 1000,
+        turnTimeMs: 20_000,
+        maxSeats: 6,
+      },
+    });
     const all = rooms.listAllAdmin();
     expect(all.some((t) => t.tableId === meta.id && t.isPrivate)).toBe(true);
+    expect(all.every((t) => t.isPrivate || !t.stakeId)).toBe(true);
 
     const tm = new TournamentManager(rooms);
     await tm.create({
@@ -165,5 +215,6 @@ describe('admin live games listing', () => {
     expect(contests).toHaveLength(1);
     expect(contests[0]!.isPrivate).toBe(true);
     expect(tm.listPublic()).toHaveLength(0);
+    expect(tm.listLive()).toHaveLength(1);
   });
 });

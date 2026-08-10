@@ -55,8 +55,8 @@ export type ActionTableTools = {
   canTopUp?: boolean;
   topUpLabel?: string;
   onTopUp?: () => void;
-  needWuffies?: boolean;
-  onNeedWuffies?: () => void;
+  needChips?: boolean;
+  onNeedChips?: () => void;
   canSitAndPlay?: boolean;
   onSitAndPlay?: () => void;
   canAddBot?: boolean;
@@ -64,6 +64,10 @@ export type ActionTableTools = {
   onFillBots?: () => void;
   canRemoveBots?: boolean;
   onRemoveBots?: () => void;
+  /** Bot display-name packs from site config. */
+  botGroups?: { id: string; name: string }[];
+  botGroupId?: string | null;
+  onBotGroupChange?: (id: string) => void;
 };
 
 function hasTableTools(t: ActionTableTools | undefined): boolean {
@@ -75,7 +79,7 @@ function hasTableTools(t: ActionTableTools | undefined): boolean {
       t.canCancelSitOut ||
       t.canSitIn ||
       t.canTopUp ||
-      t.needWuffies ||
+      t.needChips ||
       t.canSitAndPlay ||
       t.canAddBot ||
       t.canRemoveBots,
@@ -105,8 +109,8 @@ function TableToolsPanel({
           ? 'Sit and play'
           : tools.canTopUp
             ? (tools.topUpLabel ?? 'Top up')
-            : tools.needWuffies
-              ? 'Need Wuffies'
+            : tools.needChips
+              ? 'Need chips'
               : null;
 
   const primaryOnClick = tools.canReady
@@ -119,8 +123,8 @@ function TableToolsPanel({
           ? tools.onSitAndPlay
           : tools.canTopUp
             ? tools.onTopUp
-            : tools.needWuffies
-              ? tools.onNeedWuffies
+            : tools.needChips
+              ? tools.onNeedChips
               : undefined;
 
   const primaryIsReady = tools.canReady && tools.isReady;
@@ -132,20 +136,20 @@ function TableToolsPanel({
     !(tools.readyPlayers && tools.readyPlayers.length > 0);
 
   const primaryIsTopUp = !tools.canReady && !tools.onStart && !tools.canSitIn && !tools.canSitAndPlay && tools.canTopUp;
-  const primaryIsNeedWuffies =
+  const primaryIsNeedChips =
     !tools.canReady &&
     !tools.onStart &&
     !tools.canSitIn &&
     !tools.canSitAndPlay &&
     !tools.canTopUp &&
-    tools.needWuffies;
+    tools.needChips;
 
   const showSecondaryTopUp = tools.canTopUp && tools.onTopUp && !primaryIsTopUp;
-  const showSecondaryNeedWuffies =
-    tools.needWuffies && tools.onNeedWuffies && !tools.canTopUp && !primaryIsNeedWuffies;
+  const showSecondaryNeedChips =
+    tools.needChips && tools.onNeedChips && !tools.canTopUp && !primaryIsNeedChips;
 
   const hostRow =
-    tools.canAddBot || tools.canRemoveBots || showSecondaryTopUp || showSecondaryNeedWuffies;
+    tools.canAddBot || tools.canRemoveBots || showSecondaryTopUp || showSecondaryNeedChips;
 
   return (
     <div className={shell} role="status" aria-live="polite">
@@ -204,7 +208,25 @@ function TableToolsPanel({
         ) : null}
       </div>
       {hostRow ? (
-        <div className="flex flex-wrap items-center justify-center gap-1">
+        <div className="flex flex-col items-center gap-1.5">
+          {tools.canAddBot && tools.botGroups && tools.botGroups.length > 0 && tools.onBotGroupChange ? (
+            <label className="flex items-center gap-1.5 text-[10px] font-display font-semibold uppercase tracking-wide text-ink-strong-muted">
+              <span className="sr-only sm:not-sr-only">Bots</span>
+              <select
+                value={tools.botGroupId ?? tools.botGroups[0]!.id}
+                onChange={(e) => tools.onBotGroupChange?.(e.target.value)}
+                className="max-w-[10rem] rounded border border-sidebar/20 bg-white px-1.5 py-1 text-[10px] font-semibold normal-case tracking-normal text-ink-strong outline-none focus:border-sidebar/40"
+                aria-label="Bot name pack"
+              >
+                {tools.botGroups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <div className="flex flex-wrap items-center justify-center gap-1">
           {tools.canAddBot && tools.onAddBot ? (
             <button
               type="button"
@@ -241,15 +263,16 @@ function TableToolsPanel({
               {tools.topUpLabel ?? 'Top up'}
             </button>
           ) : null}
-          {showSecondaryNeedWuffies ? (
+          {showSecondaryNeedChips ? (
             <button
               type="button"
-              onClick={tools.onNeedWuffies}
+              onClick={tools.onNeedChips}
               className="rounded border border-danger/30 bg-danger/10 px-2.5 py-1 text-[10px] font-display font-semibold uppercase tracking-wide text-danger"
             >
-              Need Wuffies
+              Need chips
             </button>
           ) : null}
+          </div>
         </div>
       ) : null}
     </div>

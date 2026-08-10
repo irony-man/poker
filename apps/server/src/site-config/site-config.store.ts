@@ -4,10 +4,13 @@ import type { Queryable } from '../database/queryable.js';
 import type { EconomySnapshot } from '../wallet/wallet.constants.js';
 import {
   defaultSiteConfig,
+  normalizeBotGroups,
   normalizeHomeFeatures,
   normalizePagesCopy,
   normalizeRoomSettings,
   normalizeSiteConfig,
+  resolveBotNamePool,
+  type BotGroup,
   type HomeLandingFeature,
   type PagesCopy,
   type RoomSettings,
@@ -103,6 +106,12 @@ export class SiteConfigStore {
         Object.entries(this.cache.pages).map(([k, v]) => [k, { ...v }]),
       ) as PagesCopy,
       rooms: { ...this.cache.rooms },
+      botGroups: this.cache.botGroups.map((g) => ({
+        id: g.id,
+        name: g.name,
+        names: [...g.names],
+        isDefault: g.isDefault,
+      })),
     };
   }
 
@@ -126,6 +135,20 @@ export class SiteConfigStore {
 
   getRoomSettings(): RoomSettings {
     return { ...this.cache.rooms };
+  }
+
+  getBotGroups(): BotGroup[] {
+    return this.cache.botGroups.map((g) => ({
+      id: g.id,
+      name: g.name,
+      names: [...g.names],
+      isDefault: g.isDefault,
+    }));
+  }
+
+  /** Display-name pool for seating; uses default group when id is missing. */
+  getBotNamePool(groupId?: string | null): string[] {
+    return resolveBotNamePool(this.cache.botGroups, groupId);
   }
 
   async setAnnouncement(next: SiteAnnouncement): Promise<SiteAnnouncement> {
@@ -180,5 +203,15 @@ export class SiteConfigStore {
     };
     await this.serialized(() => this.persist());
     return this.getRoomSettings();
+  }
+
+  async setBotGroups(groups: BotGroup[]): Promise<BotGroup[]> {
+    await this.ensureLoaded();
+    this.cache = {
+      ...this.cache,
+      botGroups: normalizeBotGroups(groups),
+    };
+    await this.serialized(() => this.persist());
+    return this.getBotGroups();
   }
 }

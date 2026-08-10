@@ -1,8 +1,9 @@
 /**
- * In-app money unit name (play-money bankroll, buy-ins, stacks, pots).
+ * In-app play-money unit name (bankroll, buy-ins, stacks, pots).
  * Prefer `CurrencyIcon` / `MoneyAmount` in UI instead of rendering this string.
+ * Contest ranking uses Whuffies (rating), not this token.
  */
-export const MONEY_TOKEN = 'Wuffies';
+export const MONEY_TOKEN = 'chips';
 
 /** Public path for the money mark (use with CurrencyIcon). */
 export const CURRENCY_ICON_SRC = '/currency.svg';

@@ -35,6 +35,7 @@ export class UsersController {
   @Get('me')
   async me(@CurrentUser() user: User) {
     await this.wallet.ensureStartingBalance(user.id);
+    await this.wallet.ensureStartingWhuffies(user.id);
     const fresh = this.auth.getUser(user.id);
     if (!fresh) {
       throw new UnauthorizedException({ error: 'Unknown user' });
@@ -47,6 +48,7 @@ export class UsersController {
       tableColorId: fresh.tableColorId,
       createdAt: fresh.createdAt,
       chipBalance: this.wallet.getBalance(user.id),
+      whuffieBalance: this.wallet.getWhuffieBalance(user.id),
       isAdmin: this.isAdmin(fresh),
     };
   }
@@ -78,6 +80,7 @@ export class UsersController {
       tableColorId: updated.tableColorId,
       createdAt: updated.createdAt,
       chipBalance: this.wallet.getBalance(user.id),
+      whuffieBalance: this.wallet.getWhuffieBalance(user.id),
       isAdmin: this.isAdmin(updated),
     };
   }

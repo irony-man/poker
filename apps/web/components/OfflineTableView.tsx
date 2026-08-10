@@ -148,12 +148,14 @@ function announceEvents(
 export function OfflineTableView({
   config,
   playerName,
+  botNames,
 }: {
   config: TableConfig;
   playerName: string;
+  /** Admin bot group names; falls back to built-in engine defaults. */
+  botNames?: readonly string[];
 }) {
   const pushChat = useSession((s) => s.pushChat);
-  const setSession = useSession((s) => s.setSession);
   const setEmoji = useSession((s) => s.setEmoji);
   const setActionBurst = useSession((s) => s.setActionBurst);
   const narrow = useIsNarrow();
@@ -190,8 +192,16 @@ export function OfflineTableView({
     [pushChat, setActionBurst],
   );
 
-  // Seed human + bots once
+  // Seed human + bots once.
+  // Do not touch ticket/sessionToken — a fake "offline" ticket makes the
+  // app-level WebSocket re-auth and the server answers "Invalid or expired ticket".
   useEffect(() => {
+    const prior = useSession.getState();
+    const restore = {
+      userId: prior.userId,
+      username: prior.username,
+      name: prior.name,
+    };
     useSession.setState({
       chat: [],
       table: null,
@@ -199,18 +209,20 @@ export function OfflineTableView({
       lastError: null,
       lastErrorCode: null,
       actionBurst: null,
+      userId: HUMAN_ID,
+      name: playerName,
     });
-    setSession({ userId: HUMAN_ID, name: playerName, ticket: 'offline' });
     let s = createEmptyTable(config);
     const seated = sitDown(s, 0, HUMAN_ID, playerName, config.buyIn);
     if (!seated.ok) return;
     s = seated.state;
     const taken = new Set([playerName]);
+    const namePool = botNames && botNames.length > 0 ? botNames : undefined;
     const bots = Math.max(1, config.maxSeats - 1);
     for (let i = 0; i < bots; i++) {
       const empty = s.players.find((p) => p.status === 'empty');
       if (!empty) break;
-      const botName = pickBotName(taken);
+      const botName = pickBotName(taken, namePool);
       taken.add(botName);
       const r = sitDown(s, empty.seat, makeBotUserId(`off-${i}`), botName, config.buyIn);
       if (r.ok) s = r.state;
@@ -223,7 +235,21 @@ export function OfflineTableView({
       at: Date.now(),
     });
     setBootstrapped(true);
-  }, [config, playerName, pushChat, setSession]);
+    return () => {
+      useSession.setState({
+        userId: restore.userId,
+        username: restore.username,
+        name: restore.name,
+        table: null,
+        private: null,
+        chat: [],
+        actionBurst: null,
+        lastError: null,
+        lastErrorCode: null,
+      });
+    };
+  }, [config, playerName, botNames, pushChat]);
+
 
   const publicTable: PublicTable | null = useMemo(() => {
     if (!bootstrapped) return null;

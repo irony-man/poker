@@ -13,6 +13,7 @@ import { FriendsService } from '../friends/friends.service.js';
 import { PresenceService } from '../presence/presence.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 import { RoomsService } from '../rooms/rooms.service.js';
+import { SiteConfigService } from '../site-config/site-config.service.js';
 import { WalletService } from '../wallet/wallet.service.js';
 
 type SocketState = {
@@ -36,6 +37,7 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly friends: FriendsService,
     private readonly presence: PresenceService,
     private readonly realtime: RealtimeService,
+    private readonly site: SiteConfigService,
   ) {}
 
   handleConnection(@ConnectedSocket() client: WebSocket): void {
@@ -120,6 +122,7 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
       st.userId = user.id;
       st.name = user.name;
       void this.wallet.ensureStartingBalance(user.id);
+      void this.wallet.ensureStartingWhuffies(user.id);
       this.presence.touch(user.id);
       const firstSocket = this.realtime.registerUser(user.id, send);
       send({
@@ -128,6 +131,7 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
         name: user.name,
         avatarId: user.avatarId,
         chipBalance: this.wallet.getBalance(user.id),
+        whuffieBalance: this.wallet.getWhuffieBalance(user.id),
       });
       await this.realtime.sendAuthSnapshots(user.id, send);
       if (firstSocket && !wasOnline) {
@@ -269,7 +273,14 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
           send({ type: 'error', message: 'Cannot add bots mid-tournament' });
           break;
         }
-        const result = r.addBot(userId, msg.seat, msg.buyIn, msg.count ?? 1);
+        // Prefer explicit group; else keep table pool from create; else site default.
+        let namePool: string[] | undefined;
+        if (msg.botGroupId) {
+          namePool = this.site.getBotNamePool(msg.botGroupId);
+        } else if (!r.getBotNamePool()) {
+          namePool = this.site.getBotNamePool();
+        }
+        const result = r.addBot(userId, msg.seat, msg.buyIn, msg.count ?? 1, namePool);
         if (!result.ok) send({ type: 'error', message: result.error ?? 'Add bot failed' });
         break;
       }

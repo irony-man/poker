@@ -53,6 +53,10 @@ export class ContestsService implements OnModuleInit {
     return this.tournaments.listAll();
   }
 
+  listLive() {
+    return this.tournaments.listLive();
+  }
+
   listForUser(userId: string) {
     return this.tournaments.listForUser(userId);
   }

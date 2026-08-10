@@ -8,6 +8,7 @@ export interface UserRow {
   passwordHash: string | null;
   avatarId: number;
   chipBalance: number;
+  whuffieBalance: number;
   createdAt: Date;
 }
 

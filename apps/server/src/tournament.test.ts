@@ -5,7 +5,11 @@ import type { HandHistoryStore } from './history/history.store.js';
 import { RoomManager } from './rooms/room.js';
 import { TournamentManager } from './contests/tournament.js';
 import { UnlimitedWalletStore, type WalletStore } from './wallet/wallet.store.js';
-import type { WalletMutationResult, WalletReason } from './wallet/wallet.constants.js';
+import type {
+  WalletMutationResult,
+  WalletReason,
+  WhuffieReason,
+} from './wallet/wallet.constants.js';
 
 function memoryHistory(): HandHistoryStore {
   return {
@@ -20,6 +24,7 @@ function memoryHistory(): HandHistoryStore {
 class TrackingWallet extends UnlimitedWalletStore implements WalletStore {
   credits: { userId: string; amount: number; reason: WalletReason }[] = [];
   debits: { userId: string; amount: number; reason: WalletReason }[] = [];
+  whuffieCredits: { userId: string; amount: number; reason: WhuffieReason }[] = [];
   async debit(
     userId: string,
     amount: number,
@@ -37,6 +42,15 @@ class TrackingWallet extends UnlimitedWalletStore implements WalletStore {
   ): Promise<WalletMutationResult> {
     this.credits.push({ userId, amount, reason });
     return super.credit(userId, amount, reason, tableId);
+  }
+  async creditWhuffies(
+    userId: string,
+    amount: number,
+    reason: WhuffieReason,
+    tableId?: string,
+  ): Promise<WalletMutationResult> {
+    this.whuffieCredits.push({ userId, amount, reason });
+    return super.creditWhuffies(userId, amount, reason, tableId);
   }
 }
 
@@ -207,7 +221,7 @@ describe('TournamentManager', () => {
     expect(c.placements.find((p) => p.userId === others[2]!)?.place).toBe(2);
   });
 
-  it('pays ranking Wuffies prizes to the human winner', async () => {
+  it('pays ranking Whuffies prizes to the human winner', async () => {
     const created = await tournaments.create({
       name: 'Prize freezeout',
       mode: 'chips',
@@ -232,12 +246,14 @@ describe('TournamentManager', () => {
     expect(c.status).toBe('completed');
     const first = c.placements.find((p) => p.place === 1)!;
     expect(first.userId).toBe('host');
-    expect(first.prizeWuffies).toBe(contestPlacementPrize(1, 4, 1000));
+    expect(first.prizeWhuffies).toBe(contestPlacementPrize(1, 4, 1000));
 
     await new Promise((r) => setTimeout(r, 0));
-    const prizeCredits = wallet.credits.filter((x) => x.reason === 'contest_prize');
-    // All four humans place — first place only for host when we elim 3 others first?
-    // Other placements also get prizes; host is first.
+    const prizeCredits = wallet.whuffieCredits.filter((x) => x.reason === 'contest_prize');
+    // Placement awards go to Whuffies (rating), not chip bankroll.
+    expect(wallet.credits.filter((x) => (x as { reason: string }).reason === 'contest_prize')).toEqual(
+      [],
+    );
     expect(prizeCredits).toContainEqual({
       userId: 'host',
       amount: contestPlacementPrize(1, 4, 1000),

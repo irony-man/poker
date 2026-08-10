@@ -25,6 +25,7 @@ import { useHandPresentation } from '@/hooks/useHandPresentation';
 import { seatAnglesForHero, useIsLandscapePhone, useIsNarrow } from '@/lib/tableLayout';
 import { loadSavedTableColorId } from '@/lib/tableColors';
 import { useConfirm } from './ConfirmPopover';
+import { fetchPublicBotGroups, type PublicBotGroup } from '@/lib/api';
 
 export function TableView({
   tableId,
@@ -55,10 +56,39 @@ export function TableView({
   const botAddCount = 3;
   const [spectating, setSpectating] = useState(initialSpectate);
   const [tableColorId, setTableColorId] = useState(0);
+  const [botGroups, setBotGroups] = useState<PublicBotGroup[]>([]);
+  const [botGroupId, setBotGroupId] = useState<string | null>(null);
 
   useEffect(() => {
     setTableColorId(loadSavedTableColorId());
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchPublicBotGroups().then((groups) => {
+      if (cancelled) return;
+      setBotGroups(groups);
+      setBotGroupId((cur) => {
+        if (cur && groups.some((g) => g.id === cur)) return cur;
+        return groups.find((g) => g.isDefault)?.id ?? groups[0]?.id ?? null;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function sendAddBot(opts: { seat?: number; count?: number }) {
+    if (!table) return;
+    send({
+      type: 'add_bot',
+      tableId,
+      buyIn: table.config.buyIn,
+      ...(opts.seat !== undefined ? { seat: opts.seat } : {}),
+      ...(opts.count !== undefined ? { count: opts.count } : {}),
+      ...(botGroupId ? { botGroupId } : {}),
+    });
+  }
   const [dismissedWinHandId, setDismissedWinHandId] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(true);
@@ -163,7 +193,7 @@ export function TableView({
     betweenHands;
   const canTopUp = brokeAtTable && topUpAmount > 0;
   const brokeNoWallet = isTournament && brokeAtTable && topUpAmount <= 0 && chipBalance !== null;
-  const needWuffies = isTournament && brokeAtTable && topUpAmount <= 0;
+  const needChips = isTournament && brokeAtTable && topUpAmount <= 0;
 
   /** Cash: free table rebuy. Contest: funded from global bankroll (partial OK). */
   const doTopUp = () => {
@@ -453,23 +483,14 @@ export function TableView({
           id: 'add-bot',
           label: '+ Bot',
           onClick: () =>
-            send({
-              type: 'add_bot',
-              tableId,
-              buyIn: table!.config.buyIn,
+            sendAddBot({
               count: Math.min(Math.max(1, botAddCount), emptySeats),
             }),
         },
         {
           id: 'fill',
           label: 'Fill empty seats',
-          onClick: () =>
-            send({
-              type: 'add_bot',
-              tableId,
-              buyIn: table!.config.buyIn,
-              count: emptySeats,
-            }),
+          onClick: () => sendAddBot({ count: emptySeats }),
         },
       );
     }
@@ -506,7 +527,7 @@ export function TableView({
     } else if (brokeNoWallet) {
       mobileOverflowItems.push({
         id: 'need-wuffies',
-        label: 'Need Wuffies — Profile',
+        label: 'Need chips — Profile',
         onClick: () => {
           void leaveRoom('/profile');
         },
@@ -572,8 +593,8 @@ export function TableView({
                 ? `Top up ${formatMoneyAmount(topUpAmount)}`
                 : 'Top up',
             onTopUp: doTopUp,
-            needWuffies: brokeNoWallet,
-            onNeedWuffies: () => {
+            needChips: brokeNoWallet,
+            onNeedChips: () => {
               void leaveRoom('/profile');
             },
             canSitAndPlay: isSpectating,
@@ -584,21 +605,17 @@ export function TableView({
             },
             canAddBot: !isSpectating && botsAllowed && emptySeats > 0,
             onAddBot: () =>
-              send({
-                type: 'add_bot',
-                tableId,
-                buyIn: table!.config.buyIn,
+              sendAddBot({
                 count: Math.min(Math.max(1, botAddCount), emptySeats),
               }),
-            onFillBots: () =>
-              send({
-                type: 'add_bot',
-                tableId,
-                buyIn: table!.config.buyIn,
-                count: emptySeats,
-              }),
+            onFillBots: () => sendAddBot({ count: emptySeats }),
             canRemoveBots: !isSpectating && botsAllowed && botSeats > 0,
             onRemoveBots: () => send({ type: 'remove_all_bots', tableId }),
+            botGroups: botsAllowed
+              ? botGroups.map((g) => ({ id: g.id, name: g.name }))
+              : undefined,
+            botGroupId,
+            onBotGroupChange: botsAllowed ? setBotGroupId : undefined,
           }}
         />
       }
@@ -856,13 +873,7 @@ export function TableView({
                 }
                 onAddBot={
                   botsAllowed
-                    ? () =>
-                        send({
-                          type: 'add_bot',
-                          tableId,
-                          seat: p.seat,
-                          buyIn: table.config.buyIn,
-                        })
+                    ? () => sendAddBot({ seat: p.seat })
                     : undefined
                 }
                 onRemoveBot={
@@ -893,7 +904,7 @@ export function TableView({
               canSitOut={canSitOut}
               canSitIn={canSitIn}
               isTournament={isTournament}
-              needWuffies={needWuffies}
+              needChips={needChips}
               winners={(() => {
                 const bySeat = new Map<
                   number,
@@ -933,7 +944,7 @@ export function TableView({
                 if (mySeat === undefined) return;
                 send({ type: 'sit_in', tableId, seat: mySeat });
               }}
-              onNeedWuffies={() => {
+              onNeedChips={() => {
                 void leaveRoom('/profile');
               }}
               onDismiss={() => setDismissedWinHandId(table.handId)}

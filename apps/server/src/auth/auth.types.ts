@@ -8,8 +8,10 @@ export interface User {
   /** Viewer table felt theme preset (0–8). */
   tableColorId: number;
   passwordHash: string;
-  /** Global play-money balance. */
+  /** Global play-money balance (chips). */
   chipBalance: number;
+  /** Contest ranking rating (Whuffies); not spendable. */
+  whuffieBalance: number;
   createdAt: number;
 }
 
@@ -21,6 +23,7 @@ export interface PublicUser {
   tableColorId: number;
   createdAt: number;
   chipBalance: number;
+  whuffieBalance: number;
 }
 
 export interface WsTicket {
@@ -43,6 +46,7 @@ export interface AuthSessionPayload {
   sessionToken: string;
   avatarId: number;
   chipBalance: number;
+  whuffieBalance: number;
 }
 
 export type AuthErrorCode = 'username_taken' | 'invalid_credentials' | 'invalid_username';

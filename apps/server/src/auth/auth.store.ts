@@ -10,6 +10,7 @@ import {
   defaultEconomy,
   type EconomyProvider,
   STARTING_CHIP_GRANT,
+  STARTING_WHUFFIE_GRANT,
 } from '../wallet/wallet.constants.js';
 import {
   AuthError,
@@ -35,23 +36,29 @@ function toPublic(u: User): PublicUser {
     tableColorId: u.tableColorId,
     createdAt: u.createdAt,
     chipBalance: u.chipBalance,
+    whuffieBalance: u.whuffieBalance,
   };
 }
 
-function normalizeUser(u: User, fallbackBalance = STARTING_CHIP_GRANT): User {
+function normalizeUser(
+  u: User,
+  fallbackChips = STARTING_CHIP_GRANT,
+  fallbackWhuffies = STARTING_WHUFFIE_GRANT,
+): User {
   return {
     ...u,
     avatarId: clampAvatarId(u.avatarId),
     tableColorId: clampTableColorId(u.tableColorId),
-    chipBalance: normalizeChipBalance(u.chipBalance, fallbackBalance),
+    chipBalance: normalizeNonNegInt(u.chipBalance, fallbackChips),
+    whuffieBalance: normalizeNonNegInt(u.whuffieBalance, fallbackWhuffies),
   };
 }
 
-function normalizeChipBalance(value: unknown, fallback = STARTING_CHIP_GRANT): number {
+function normalizeNonNegInt(value: unknown, fallback: number): number {
   if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
     return Math.floor(value);
   }
-  return fallback;
+  return Math.max(0, Math.floor(fallback));
 }
 
 /** File-backed (or Postgres-backed via Queryable) user + session + ticket store. */
@@ -84,6 +91,10 @@ export class AuthStore {
     return this.economyProvider().startingChipGrant;
   }
 
+  private startingWhuffies(): number {
+    return this.economyProvider().startingWhuffieGrant;
+  }
+
   async init(): Promise<void> {
     await this.ensureLoaded();
   }
@@ -113,7 +124,11 @@ export class AuthStore {
           normalizeUser({
             ...u,
             tableColorId: (u as User).tableColorId ?? 0,
-            chipBalance: normalizeChipBalance((u as User).chipBalance),
+            chipBalance: normalizeNonNegInt((u as User).chipBalance, STARTING_CHIP_GRANT),
+            whuffieBalance: normalizeNonNegInt(
+              (u as User).whuffieBalance,
+              STARTING_WHUFFIE_GRANT,
+            ),
           }),
         );
       }
@@ -134,7 +149,7 @@ export class AuthStore {
   private async loadFromPostgres(): Promise<void> {
     if (!this.pool) return;
     const result = await this.pool.query(
-      `SELECT id, name, username, password_hash, avatar_id, table_color_id, chip_balance, created_at
+      `SELECT id, name, username, password_hash, avatar_id, table_color_id, chip_balance, whuffie_balance, created_at
        FROM users
        WHERE password_hash IS NOT NULL AND username IS NOT NULL`,
     );
@@ -151,6 +166,7 @@ export class AuthStore {
       avatar_id: number;
       table_color_id?: number | null;
       chip_balance?: number | null;
+      whuffie_balance?: number | null;
       created_at: Date | string;
     }[]) {
       const createdAt =
@@ -164,7 +180,8 @@ export class AuthStore {
         passwordHash: row.password_hash,
         avatarId: clampAvatarId(row.avatar_id ?? 0),
         tableColorId: clampTableColorId(row.table_color_id ?? 0),
-        chipBalance: normalizeChipBalance(row.chip_balance),
+        chipBalance: normalizeNonNegInt(row.chip_balance, STARTING_CHIP_GRANT),
+        whuffieBalance: normalizeNonNegInt(row.whuffie_balance, STARTING_WHUFFIE_GRANT),
         createdAt,
       };
       this.indexUser(user);
@@ -284,8 +301,8 @@ export class AuthStore {
   private async persistUserToPostgres(user: User): Promise<void> {
     if (!this.pool) return;
     await this.pool.query(
-      `INSERT INTO users (id, name, username, username_lower, password_hash, avatar_id, table_color_id, chip_balance, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, to_timestamp($9 / 1000.0))
+      `INSERT INTO users (id, name, username, username_lower, password_hash, avatar_id, table_color_id, chip_balance, whuffie_balance, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, to_timestamp($10 / 1000.0))
        ON CONFLICT (id) DO UPDATE SET
          name = EXCLUDED.name,
          username = EXCLUDED.username,
@@ -293,7 +310,8 @@ export class AuthStore {
          password_hash = EXCLUDED.password_hash,
          avatar_id = EXCLUDED.avatar_id,
          table_color_id = EXCLUDED.table_color_id,
-         chip_balance = EXCLUDED.chip_balance`,
+         chip_balance = EXCLUDED.chip_balance,
+         whuffie_balance = EXCLUDED.whuffie_balance`,
       [
         user.id,
         user.name,
@@ -303,6 +321,7 @@ export class AuthStore {
         user.avatarId,
         user.tableColorId,
         user.chipBalance,
+        user.whuffieBalance,
         user.createdAt,
       ],
     );
@@ -329,6 +348,7 @@ export class AuthStore {
       avatarId: avatarId !== undefined ? clampAvatarId(avatarId) : avatarIdFromUserId(id),
       tableColorId: 0,
       chipBalance: this.startingGrant(),
+      whuffieBalance: this.startingWhuffies(),
       createdAt: Date.now(),
     };
     this.indexUser(user);
@@ -379,6 +399,7 @@ export class AuthStore {
       sessionToken,
       avatarId: user.avatarId,
       chipBalance: user.chipBalance,
+      whuffieBalance: user.whuffieBalance,
     };
   }
 
@@ -427,6 +448,24 @@ export class AuthStore {
     if (this.pool) {
       await this.pool.query(`UPDATE users SET chip_balance = $1 WHERE id = $2`, [
         user.chipBalance,
+        userId,
+      ]);
+    } else {
+      await this.persistFile();
+    }
+  }
+
+  getWhuffieBalance(userId: string): number | undefined {
+    return this.users.get(userId)?.whuffieBalance;
+  }
+
+  async setWhuffieBalance(userId: string, balance: number): Promise<void> {
+    const user = this.users.get(userId);
+    if (!user) return;
+    user.whuffieBalance = Math.max(0, Math.floor(balance));
+    if (this.pool) {
+      await this.pool.query(`UPDATE users SET whuffie_balance = $1 WHERE id = $2`, [
+        user.whuffieBalance,
         userId,
       ]);
     } else {
@@ -525,6 +564,7 @@ export class AuthStore {
       avatarId: clampAvatarId(avatarId),
       tableColorId: 0,
       chipBalance: this.startingGrant(),
+      whuffieBalance: this.startingWhuffies(),
       createdAt: Date.now(),
     };
     this.indexUser(user);

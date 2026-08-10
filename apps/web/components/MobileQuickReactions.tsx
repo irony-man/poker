@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
+import { AppleEmoji } from '@/components/AppleEmoji';
 
 /** Fast-tap reactions for the mobile table (also used as chat frequent row). */
 export const QUICK_REACTIONS = [
@@ -112,10 +113,10 @@ export function MobileQuickReactions({ onEmoji }: { onEmoji: (emoji: string) => 
                 key={e}
                 type="button"
                 onClick={() => react(e)}
-                className="flex h-11 items-center justify-center rounded-lg text-xl transition active:scale-90 hover:bg-sidebar/8"
+                className="flex h-11 items-center justify-center rounded-lg transition active:scale-90 hover:bg-sidebar/8"
                 aria-label={`React ${e}`}
               >
-                {e}
+                <AppleEmoji emoji={e} size={26} decorative />
               </button>
             ))}
           </div>
@@ -133,10 +134,10 @@ export function MobileQuickReactions({ onEmoji }: { onEmoji: (emoji: string) => 
               key={e}
               type="button"
               onClick={() => react(e)}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg transition active:scale-90 hover:bg-sidebar/8"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition active:scale-90 hover:bg-sidebar/8"
               aria-label={`React ${e}`}
             >
-              {e}
+              <AppleEmoji emoji={e} size={22} decorative />
             </button>
           ))}
         </div>

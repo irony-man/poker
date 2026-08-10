@@ -119,6 +119,13 @@ export class Room {
   /** Fired when public table seated count changes (lobby push). */
   private onSeatingChange: (() => void) | null = null;
   private lastLobbySeats = -1;
+  /** Name pool from an admin bot group; sticks for later seats on this table. */
+  private botNamePool: string[] | null = null;
+
+  /** Resolved name pool used for bots on this room (or null if not set). */
+  getBotNamePool(): string[] | null {
+    return this.botNamePool ? [...this.botNamePool] : null;
+  }
 
   constructor(
     meta: TableMeta,
@@ -154,10 +161,23 @@ export class Room {
     this.onSeatingChange?.();
   }
 
-  /** Notify this user of their current wallet balance when connected. */
-  notifyWallet(userId: string, balance: number): void {
+  /** Notify this user of chip and/or Whuffie balances when connected. */
+  notifyWallet(
+    userId: string,
+    update: number | { chipBalance?: number; whuffieBalance?: number },
+  ): void {
     if (isBotUserId(userId)) return;
-    this.connections.get(userId)?.send({ type: 'wallet_update', chipBalance: balance });
+    const payload =
+      typeof update === 'number'
+        ? { type: 'wallet_update' as const, chipBalance: update }
+        : {
+            type: 'wallet_update' as const,
+            ...(update.chipBalance !== undefined ? { chipBalance: update.chipBalance } : {}),
+            ...(update.whuffieBalance !== undefined
+              ? { whuffieBalance: update.whuffieBalance }
+              : {}),
+          };
+    this.connections.get(userId)?.send(payload);
   }
 
   /**
@@ -599,6 +619,7 @@ export class Room {
     seat?: number,
     buyIn?: number,
     count = 1,
+    namePool?: readonly string[],
   ): { ok: boolean; error?: string; added?: number } {
     // Public cash tables are humans-only (bots are private host / practice).
     if (!this.meta.isPrivate) {
@@ -612,6 +633,10 @@ export class Room {
     const amount = buyIn ?? this.config.buyIn;
     if (amount !== this.config.buyIn) {
       return { ok: false, error: 'Buy-in must match table buy-in' };
+    }
+
+    if (namePool && namePool.length > 0) {
+      this.botNamePool = [...namePool];
     }
 
     // Specific seat → always one bot
@@ -630,7 +655,7 @@ export class Room {
       }
 
       const taken = new Set(this.state.players.filter((p) => p.name).map((p) => p.name!));
-      const name = pickBotName(taken);
+      const name = pickBotName(taken, this.botNamePool ?? undefined);
       const userId = makeBotUserId(nanoid(8));
       const result = sitDown(this.state, nextSeat, userId, name, amount);
       if (!result.ok) break;
@@ -893,7 +918,7 @@ export class Room {
       (p) => p.userId && p.stack > 0 && p.status !== 'sittingOut',
     ).length;
     if (readyCount < 2) {
-      return { ok: false, error: 'Need at least 2 players with Wuffies' };
+      return { ok: false, error: 'Need at least 2 players with chips' };
     }
     this.readyUserIds.clear();
     const handId = nanoid(10);
@@ -1623,7 +1648,7 @@ export class RoomManager {
       }));
   }
 
-  /** All in-process rooms for admin inspection. */
+  /** In-process rooms for admin — excludes permanent public stake lobbies. */
   listAllAdmin(inactivityMs: number = ROOM_INACTIVITY_MS): {
     tableId: string;
     inviteCode: string;
@@ -1634,27 +1659,40 @@ export class RoomManager {
     maxSeats: number;
     hostUserId: string;
     handInProgress: boolean;
+    street: string;
     idle: boolean;
     playMoney: boolean;
     contestId: string | null;
+    contestFrozen: boolean;
     createdAt: number;
   }[] {
     return [...this.rooms.values()]
-      .map((r) => ({
-        tableId: r.meta.id,
-        inviteCode: r.meta.inviteCode,
-        name: r.meta.name,
-        isPrivate: r.meta.isPrivate,
-        stakeId: r.meta.stakeId ?? null,
-        seatedCount: r.seatedCount(),
-        maxSeats: r.meta.config.maxSeats,
-        hostUserId: r.meta.hostUserId,
-        handInProgress: Boolean(r.state.handId && r.state.handId.length > 0),
-        idle: r.isIdle(inactivityMs),
-        playMoney: Boolean(r.meta.playMoney),
-        contestId: r.meta.tournament?.contestId ?? null,
-        createdAt: r.meta.createdAt,
-      }))
+      .filter((r) => {
+        // Always-on public cash tables are not "live games" for ops.
+        if (!r.meta.isPrivate && r.meta.stakeId) return false;
+        return true;
+      })
+      .map((r) => {
+        const street = r.state.street;
+        const handInProgress = street !== 'waiting' && street !== 'payout';
+        return {
+          tableId: r.meta.id,
+          inviteCode: r.meta.inviteCode,
+          name: r.meta.name,
+          isPrivate: r.meta.isPrivate,
+          stakeId: r.meta.stakeId ?? null,
+          seatedCount: r.seatedCount(),
+          maxSeats: r.meta.config.maxSeats,
+          hostUserId: r.meta.hostUserId,
+          handInProgress,
+          street,
+          idle: r.isIdle(inactivityMs),
+          playMoney: Boolean(r.meta.playMoney),
+          contestId: r.meta.tournament?.contestId ?? null,
+          contestFrozen: Boolean(r.meta.tournament?.frozen),
+          createdAt: r.meta.createdAt,
+        };
+      })
       .sort((a, b) => b.createdAt - a.createdAt);
   }
 }

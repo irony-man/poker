@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useSession } from '@/lib/store';
+import { AppleEmoji, AppleEmojiText } from '@/components/AppleEmoji';
 import { ALL_EMOJIS, FREQUENT } from '@/lib/emojiCatalog';
+import { useSession } from '@/lib/store';
 
 function uniqueEmojis(list: string[]) {
   return [...new Set(list)];
@@ -68,8 +69,8 @@ export function ChatPanel({
       >
         {chat.length === 0 ? (
           <div className="flex h-full min-h-[10rem] flex-col items-center justify-center px-4 text-center">
-            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-sidebar/10 bg-white text-2xl shadow-[0_6px_18px_rgb(29_4_50/0.08)]">
-              💬
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-sidebar/10 bg-white shadow-[0_6px_18px_rgb(29_4_50/0.08)]">
+              <AppleEmoji emoji="💬" size={28} decorative />
             </div>
             <p className="font-display text-sm font-semibold uppercase tracking-wider text-sidebar">
               Quiet so far
@@ -128,7 +129,9 @@ export function ChatPanel({
                 <p className="font-display text-[11px] font-bold uppercase tracking-[0.12em] text-sidebar">
                   {m.name}
                 </p>
-                <p className="mt-1 break-words text-sm leading-snug text-ink-strong">{m.text}</p>
+                <p className="mt-1 break-words text-sm leading-snug text-ink-strong">
+                  <AppleEmojiText text={m.text} emojiSize={20} />
+                </p>
               </div>
             );
           })
@@ -136,8 +139,8 @@ export function ChatPanel({
       </div>
 
       {emojiBurst && (
-        <div className="pointer-events-none absolute inset-x-0 top-1/4 z-10 text-center text-4xl animate-bounce">
-          {emojiBurst.emoji}
+        <div className="pointer-events-none absolute inset-x-0 top-1/4 z-10 flex justify-center animate-bounce">
+          <AppleEmoji emoji={emojiBurst.emoji} size={44} decorative />
         </div>
       )}
 
@@ -168,10 +171,10 @@ export function ChatPanel({
                       key={`${group.label}-${e}`}
                       type="button"
                       onClick={() => pick(e)}
-                      className="flex h-9 w-9 items-center justify-center rounded-xl text-lg transition hover:bg-sidebar/8 active:scale-90"
+                      className="flex h-9 w-9 items-center justify-center rounded-xl transition hover:bg-sidebar/8 active:scale-90"
                       aria-label={`React ${e}`}
                     >
-                      {e}
+                      <AppleEmoji emoji={e} size={22} decorative />
                     </button>
                   ))}
                 </div>
@@ -189,10 +192,10 @@ export function ChatPanel({
               key={e}
               type="button"
               onClick={() => pick(e)}
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-transparent text-lg transition hover:border-sidebar/12 hover:bg-sidebar/8 active:scale-90"
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-transparent transition hover:border-sidebar/12 hover:bg-sidebar/8 active:scale-90"
               aria-label={`React ${e}`}
             >
-              {e}
+              <AppleEmoji emoji={e} size={22} decorative />
             </button>
           ))}
           <button

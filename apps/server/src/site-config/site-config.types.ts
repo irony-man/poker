@@ -4,6 +4,7 @@ import {
   REFILL_GRANT,
   REFILL_THRESHOLD,
   STARTING_CHIP_GRANT,
+  STARTING_WHUFFIE_GRANT,
 } from '../wallet/wallet.constants.js';
 
 export interface SiteAnnouncement {
@@ -48,11 +49,48 @@ export interface RoomSettings {
   inactivityMinutes: number;
 }
 
+/** Named list of bot display names; hosts can pick a group when seating bots. */
+export interface BotGroup {
+  id: string;
+  name: string;
+  names: string[];
+  /** Exactly one group should be default; used when no group id is chosen. */
+  isDefault: boolean;
+}
+
 export const DEFAULT_ROOM_INACTIVITY_MINUTES = 15;
 /** Floor for admin control (at least 1 minute). */
 export const MIN_ROOM_INACTIVITY_MINUTES = 1;
 /** Cap at 24 hours. */
 export const MAX_ROOM_INACTIVITY_MINUTES = 24 * 60;
+
+export const MAX_BOT_GROUPS = 20;
+export const MAX_BOT_NAMES_PER_GROUP = 40;
+export const MAX_BOT_GROUP_NAME_LEN = 48;
+export const MAX_BOT_DISPLAY_NAME_LEN = 24;
+
+/** Matches engine DEFAULT_BOT_NAMES; fallback when config is empty. */
+export const DEFAULT_BOT_DISPLAY_NAMES: string[] = [
+  'AceBot',
+  'RiverRat',
+  'BluffByte',
+  'PotOdds',
+  'ChipShark',
+  'FoldBot',
+  'AllInAnnie',
+  'NutsNova',
+  'CallCart',
+  'RaiseRex',
+];
+
+export const DEFAULT_BOT_GROUPS: BotGroup[] = [
+  {
+    id: 'classic',
+    name: 'Classic',
+    names: [...DEFAULT_BOT_DISPLAY_NAMES],
+    isDefault: true,
+  },
+];
 
 export interface SiteConfigPayload {
   announcement: SiteAnnouncement;
@@ -60,6 +98,7 @@ export interface SiteConfigPayload {
   homeFeatures: HomeLandingFeature[];
   pages: PagesCopy;
   rooms: RoomSettings;
+  botGroups: BotGroup[];
 }
 
 export const MAX_HOME_FEATURES = 12;
@@ -77,7 +116,7 @@ export const BLANK_HOME_FEATURE: HomeLandingFeature = {
 export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
   {
     title: 'Play Contests',
-    body: "Knockout tables with no buy-in, where you play until your stack is gone, and fixed-hand games where you choose how many deals run before anyone looks at a card and buy in again whenever you need more Wuffies.",
+    body: "Knockout tables with no buy-in, where you play until your stack is gone, and fixed-hand games where you choose how many deals run before anyone looks at a card and buy in again whenever you need more chips.",
     cta: 'Browse Contests',
     href: '/contests',
     image: '/home-knockout.png',
@@ -86,11 +125,11 @@ export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
   },
   {
     title: 'Open Tables',
-    body: "Hold'em that runs the way a home game does, no set number of hands and no cap on buy-ins, so you can add Wuffies whenever your stack runs low and leave when the night feels done.",
+    body: "Hold'em that runs the way a home game does, no set number of hands and no cap on buy-ins, so you can add chips whenever your stack runs low and leave when the night feels done.",
     cta: 'Join a Table',
     href: '/join',
     image: '/poker-chip-shuffle.svg',
-    imageAlt: 'POKR Wuffies stacking for a fixed-round session',
+    imageAlt: 'POKR chips stacking for a fixed-round session',
     imageFirst: false,
   },
   {
@@ -99,7 +138,7 @@ export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
     cta: 'Play with Friends',
     href: '/friends',
     image: '/home-host.png',
-    imageAlt: 'Gloved hand holding a branded Wuffie token',
+    imageAlt: 'Gloved hand holding a branded chip token',
     imageFirst: true,
   },
   {
@@ -117,7 +156,7 @@ export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
     cta: 'Offline',
     href: '/solo',
     image: '/home-offline.png',
-    imageAlt: 'Stack of red and white Wuffies',
+    imageAlt: 'Stack of red and white chips',
     imageFirst: true,
   },
 ];
@@ -198,7 +237,99 @@ export function defaultSiteConfig(): SiteConfigPayload {
     homeFeatures: DEFAULT_HOME_FEATURES.map((f) => ({ ...f })),
     pages: clonePages(DEFAULT_PAGES_COPY),
     rooms: { inactivityMinutes: DEFAULT_ROOM_INACTIVITY_MINUTES },
+    botGroups: DEFAULT_BOT_GROUPS.map((g) => cloneBotGroup(g)),
   };
+}
+
+function cloneBotGroup(g: BotGroup): BotGroup {
+  return { id: g.id, name: g.name, names: [...g.names], isDefault: g.isDefault };
+}
+
+function slugId(raw: string, fallback: string): string {
+  const s = raw
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 64);
+  return s.length > 0 ? s : fallback;
+}
+
+function normalizeBotDisplayName(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const t = raw.trim().slice(0, MAX_BOT_DISPLAY_NAME_LEN);
+  return t.length > 0 ? t : null;
+}
+
+export function normalizeBotGroup(raw: unknown, index: number): BotGroup | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  const fallbackId = `group-${index + 1}`;
+  const id =
+    typeof o.id === 'string' && o.id.trim()
+      ? slugId(o.id.trim(), fallbackId)
+      : fallbackId;
+  const name = asTrimmedString(o.name, MAX_BOT_GROUP_NAME_LEN, `Group ${index + 1}`);
+  const namesRaw = Array.isArray(o.names) ? o.names : [];
+  const names: string[] = [];
+  const seen = new Set<string>();
+  for (const n of namesRaw) {
+    if (names.length >= MAX_BOT_NAMES_PER_GROUP) break;
+    const nameStr = normalizeBotDisplayName(n);
+    if (!nameStr) continue;
+    const key = nameStr.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    names.push(nameStr);
+  }
+  if (names.length === 0) {
+    names.push(...DEFAULT_BOT_DISPLAY_NAMES);
+  }
+  return {
+    id,
+    name,
+    names,
+    isDefault: Boolean(o.isDefault),
+  };
+}
+
+export function normalizeBotGroups(raw: unknown): BotGroup[] {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return DEFAULT_BOT_GROUPS.map((g) => cloneBotGroup(g));
+  }
+  const out: BotGroup[] = [];
+  const usedIds = new Set<string>();
+  const max = Math.min(raw.length, MAX_BOT_GROUPS);
+  for (let i = 0; i < max; i++) {
+    const g = normalizeBotGroup(raw[i], i);
+    if (!g) continue;
+    let id = g.id;
+    let n = 2;
+    while (usedIds.has(id)) {
+      id = `${g.id}-${n++}`.slice(0, 64);
+    }
+    usedIds.add(id);
+    out.push({ ...g, id });
+  }
+  if (out.length === 0) {
+    return DEFAULT_BOT_GROUPS.map((g) => cloneBotGroup(g));
+  }
+  // Exactly one default: prefer first marked, else first group.
+  const defaultIdx = out.findIndex((g) => g.isDefault);
+  for (let i = 0; i < out.length; i++) {
+    out[i]!.isDefault = i === (defaultIdx >= 0 ? defaultIdx : 0);
+  }
+  return out;
+}
+
+/** Resolve name list for seating bots (default group if id missing/invalid). */
+export function resolveBotNamePool(groups: BotGroup[], groupId?: string | null): string[] {
+  const list = groups.length > 0 ? groups : DEFAULT_BOT_GROUPS;
+  if (groupId) {
+    const match = list.find((g) => g.id === groupId);
+    if (match) return [...match.names];
+  }
+  const def = list.find((g) => g.isDefault) ?? list[0]!;
+  return [...def.names];
 }
 
 function clonePages(pages: PagesCopy): PagesCopy {
@@ -213,6 +344,13 @@ function clampPositiveInt(value: unknown, fallback: number): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
   const n = Math.floor(value);
   return n > 0 ? n : fallback;
+}
+
+/** Non-negative int (allows 0), e.g. starting Whuffies. */
+function clampNonNegInt(value: unknown, fallback: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return Math.max(0, Math.floor(fallback));
+  const n = Math.floor(value);
+  return n >= 0 ? n : Math.max(0, Math.floor(fallback));
 }
 
 function asTrimmedString(value: unknown, max: number, fallback: string): string {
@@ -316,6 +454,7 @@ export function normalizeSiteConfig(raw: unknown): SiteConfigPayload {
       startingChipGrant: clampPositiveInt(e.startingChipGrant, STARTING_CHIP_GRANT),
       refillThreshold: clampPositiveInt(e.refillThreshold, REFILL_THRESHOLD),
       refillGrant: clampPositiveInt(e.refillGrant, REFILL_GRANT),
+      startingWhuffieGrant: clampNonNegInt(e.startingWhuffieGrant, STARTING_WHUFFIE_GRANT),
     };
   }
 
@@ -326,5 +465,8 @@ export function normalizeSiteConfig(raw: unknown): SiteConfigPayload {
 
   const rooms = o.rooms !== undefined ? normalizeRoomSettings(o.rooms) : defaults.rooms;
 
-  return { announcement, economy, homeFeatures, pages, rooms };
+  const botGroups =
+    o.botGroups !== undefined ? normalizeBotGroups(o.botGroups) : defaults.botGroups;
+
+  return { announcement, economy, homeFeatures, pages, rooms, botGroups };
 }

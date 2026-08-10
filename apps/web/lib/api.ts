@@ -15,6 +15,7 @@ export interface MeProfile {
   tableColorId: number;
   createdAt: number;
   chipBalance: number;
+  whuffieBalance: number;
   isAdmin?: boolean;
 }
 
@@ -115,6 +116,7 @@ export async function refreshTicket(sessionToken: string): Promise<{
   username: string;
   avatarId: number;
   chipBalance?: number;
+  whuffieBalance?: number;
 }> {
   const res = await fetch(`${API_URL}/api/ticket`, {
     method: 'POST',
@@ -135,6 +137,7 @@ export async function fetchMe(sessionToken: string): Promise<MeProfile> {
   return {
     ...data,
     chipBalance: coerceMoney(data.chipBalance),
+    whuffieBalance: coerceMoney(data.whuffieBalance),
     avatarId:
       typeof data.avatarId === 'number' && Number.isFinite(data.avatarId)
         ? Math.max(0, Math.floor(data.avatarId))
@@ -161,6 +164,7 @@ export async function updateMe(
   return {
     ...data,
     chipBalance: coerceMoney(data.chipBalance),
+    whuffieBalance: coerceMoney(data.whuffieBalance),
     avatarId:
       typeof data.avatarId === 'number' && Number.isFinite(data.avatarId)
         ? Math.max(0, Math.floor(data.avatarId))
@@ -532,6 +536,7 @@ export interface SiteEconomy {
   startingChipGrant: number;
   refillThreshold: number;
   refillGrant: number;
+  startingWhuffieGrant: number;
 }
 
 export interface HomeLandingFeature {
@@ -552,6 +557,7 @@ export interface AdminUserRow {
   name: string;
   avatarId: number;
   chipBalance: number;
+  whuffieBalance: number;
   createdAt: number;
 }
 
@@ -565,9 +571,11 @@ export interface AdminTableRow {
   maxSeats: number;
   hostUserId: string;
   handInProgress: boolean;
+  street?: string;
   idle: boolean;
   playMoney: boolean;
   contestId: string | null;
+  contestFrozen?: boolean;
   createdAt: number;
 }
 
@@ -575,6 +583,7 @@ export async function fetchPublicSite(): Promise<{
   announcement: SiteAnnouncement;
   homeFeatures?: HomeLandingFeature[];
   pages?: import('@/lib/pageCopy').PagesCopy;
+  botGroups?: PublicBotGroup[];
 }> {
   const res = await fetch(`${API_URL}/api/site`);
   if (!res.ok) throw new Error(await parseError(res, 'Could not load site'));
@@ -582,6 +591,7 @@ export async function fetchPublicSite(): Promise<{
     announcement: SiteAnnouncement;
     homeFeatures?: HomeLandingFeature[];
     pages?: import('@/lib/pageCopy').PagesCopy;
+    botGroups?: PublicBotGroup[];
   }>;
 }
 
@@ -728,9 +738,101 @@ export async function resetAdminUserChips(
   }>;
 }
 
+export async function creditAdminUserWhuffies(
+  sessionToken: string,
+  userId: string,
+  amount: number,
+): Promise<{ ok: true; userId: string; username: string; balance: number; credited: number }> {
+  return authedFetch(`/api/admin/users/${encodeURIComponent(userId)}/credit-whuffies`, {
+    sessionToken,
+    method: 'POST',
+    body: { amount },
+  }) as Promise<{
+    ok: true;
+    userId: string;
+    username: string;
+    balance: number;
+    credited: number;
+  }>;
+}
+
+export async function resetAdminUserWhuffies(
+  sessionToken: string,
+  userId: string,
+): Promise<{
+  ok: true;
+  userId: string;
+  username: string;
+  balance: number;
+  previousBalance: number;
+  resetTo: number;
+}> {
+  return authedFetch(`/api/admin/users/${encodeURIComponent(userId)}/reset-whuffies`, {
+    sessionToken,
+    method: 'POST',
+    body: {},
+  }) as Promise<{
+    ok: true;
+    userId: string;
+    username: string;
+    balance: number;
+    previousBalance: number;
+    resetTo: number;
+  }>;
+}
+
 export async function fetchAdminGames(sessionToken: string) {
   return authedFetch('/api/admin/games', { sessionToken }) as Promise<{
     tables: AdminTableRow[];
-    contests: ContestView[];
+    contests: AdminContestRow[];
   }>;
+}
+
+export type AdminContestRow = ContestView & {
+  tableSeatedCount?: number;
+  activePlayers?: number;
+  eliminatedCount?: number;
+};
+
+export interface BotGroup {
+  id: string;
+  name: string;
+  names: string[];
+  isDefault: boolean;
+}
+
+/** Public list of bot groups for host / table / offline. */
+export interface PublicBotGroup {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  nameCount: number;
+  /** Display names used when seating bots (offline needs these client-side). */
+  names?: string[];
+}
+
+export async function fetchAdminBotGroups(sessionToken: string) {
+  return authedFetch('/api/admin/bot-groups', { sessionToken }) as Promise<{
+    groups: BotGroup[];
+  }>;
+}
+
+export async function patchAdminBotGroups(
+  sessionToken: string,
+  groups: BotGroup[],
+): Promise<{ groups: BotGroup[] }> {
+  return authedFetch('/api/admin/bot-groups', {
+    sessionToken,
+    method: 'PATCH',
+    body: { groups },
+  }) as Promise<{ groups: BotGroup[] }>;
+}
+
+export async function fetchPublicBotGroups(): Promise<PublicBotGroup[]> {
+  try {
+    const site = await fetchPublicSite();
+    return site.botGroups ?? [];
+  } catch {
+    return [];
+  }
 }

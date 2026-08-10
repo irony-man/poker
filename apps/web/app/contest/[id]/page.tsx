@@ -418,12 +418,10 @@ export default function ContestPage() {
                 >
                   <span className="min-w-0 truncate font-medium text-ink-strong">{p.name}</span>
                   <span className="flex shrink-0 items-center gap-2 font-mono text-xs font-semibold text-sidebar">
-                    {(p.prizeWuffies ?? 0) > 0 ? (
-                      <MoneyAmount
-                        amount={p.prizeWuffies ?? 0}
-                        prefix="+"
-                        className="text-brass-dim"
-                      />
+                    {(p.prizeWhuffies ?? 0) > 0 ? (
+                      <span className="text-brass-dim">
+                        +{(p.prizeWhuffies ?? 0).toLocaleString()} Whuffies
+                      </span>
                     ) : null}
                     <span>#{p.place}</span>
                   </span>

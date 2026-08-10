@@ -40,6 +40,10 @@ export class UserEntity {
   @Column({ name: 'chip_balance', type: 'int', default: 10_000 })
   chipBalance!: number;
 
+  /** Contest ranking rating (Whuffies); not spendable bankroll. */
+  @Column({ name: 'whuffie_balance', type: 'int', default: 0 })
+  whuffieBalance!: number;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 }

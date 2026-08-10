@@ -1,13 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useId, useState, type ReactNode } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useId, useState, type ReactNode } from 'react';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { MoneyAmount } from '@/components/CurrencyIcon';
 import { useConfirm } from '@/components/ConfirmPopover';
 import {
   creditAdminUser,
+  creditAdminUserWhuffies,
+  fetchAdminBotGroups,
   fetchAdminEconomy,
   fetchAdminGames,
   fetchAdminHomeFeatures,
@@ -17,15 +20,18 @@ import {
   fetchAdminUsers,
   fetchMe,
   patchAdminAnnouncement,
+  patchAdminBotGroups,
   patchAdminEconomy,
   patchAdminHomeFeatures,
   patchAdminPages,
   patchAdminRoomSettings,
   resetAdminUserChips,
+  resetAdminUserWhuffies,
+  type AdminContestRow,
   type AdminRoomSettings,
   type AdminTableRow,
   type AdminUserRow,
-  type ContestView,
+  type BotGroup,
   type HomeLandingFeature,
   type SiteAnnouncement,
   type SiteEconomy,
@@ -44,6 +50,9 @@ import { useSession } from '@/lib/store';
 import { useLobbySession } from '@/lib/useLobbySession';
 
 const MAX_HOME_BLOCKS = 12;
+const MAX_BOT_GROUPS = 20;
+const DEFAULT_BOT_NAMES =
+  'AceBot\nRiverRat\nBluffByte\nPotOdds\nChipShark\nFoldBot\nAllInAnnie\nNutsNova\nCallCart\nRaiseRex';
 
 const BLANK_HOME_BLOCK: HomeLandingFeature = {
   title: 'New feature',
@@ -60,16 +69,69 @@ const fieldClass =
 
 const labelClass = 'block text-xs font-display font-semibold uppercase tracking-[0.12em] text-ink-strong-muted';
 
-type AdminTab = 'users' | 'content' | 'home' | 'pages' | 'economy' | 'games';
+type AdminTab = 'users' | 'content' | 'home' | 'pages' | 'bots' | 'economy' | 'games';
+
+const ADMIN_TABS: AdminTab[] = [
+  'users',
+  'content',
+  'home',
+  'pages',
+  'bots',
+  'economy',
+  'games',
+];
 
 const TABS: { id: AdminTab; label: string }[] = [
   { id: 'users', label: 'Users' },
   { id: 'content', label: 'Banner' },
   { id: 'home', label: 'Home page' },
   { id: 'pages', label: 'Pages' },
+  { id: 'bots', label: 'Bot groups' },
   { id: 'economy', label: 'Economy' },
   { id: 'games', label: 'Live games' },
 ];
+
+function parseAdminTab(raw: string | null): AdminTab {
+  if (raw && (ADMIN_TABS as string[]).includes(raw)) return raw as AdminTab;
+  return 'users';
+}
+
+function emptyBotGroup(): BotGroup {
+  return {
+    id: `group-${Date.now().toString(36)}`,
+    name: 'New group',
+    names: DEFAULT_BOT_NAMES.split('\n'),
+    isDefault: false,
+  };
+}
+
+function namesToText(names: string[]): string {
+  return names.join('\n');
+}
+
+function textToNames(text: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const line of text.split(/[\n,]+/)) {
+    const n = line.trim().slice(0, 24);
+    if (!n) continue;
+    const key = n.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(n);
+    if (out.length >= 40) break;
+  }
+  return out.length > 0 ? out : DEFAULT_BOT_NAMES.split('\n');
+}
+
+function slugBotGroupId(raw: string, fallback: string): string {
+  const s = raw
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 64);
+  return s.length > 0 ? s : fallback;
+}
 
 function Section({
   id,
@@ -117,6 +179,8 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
 }
 
 function AdminPageInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { authReady, signedIn } = useLobbySession();
   const confirm = useConfirm();
   const sessionToken = useSession((s) => s.sessionToken);
@@ -127,7 +191,7 @@ function AdminPageInner() {
   const [checking, setChecking] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState<string | null>(null);
-  const [tab, setTab] = useState<AdminTab>('users');
+  const [tab, setTab] = useState<AdminTab>(() => parseAdminTab(searchParams.get('tab')));
   const [busyKey, setBusyKey] = useState<string | null>(null);
 
   const [announcement, setAnnouncement] = useState<SiteAnnouncement>({
@@ -138,6 +202,7 @@ function AdminPageInner() {
     startingChipGrant: 25000,
     refillThreshold: 1000,
     refillGrant: 5000,
+    startingWhuffieGrant: 0,
   });
   const [roomSettings, setRoomSettings] = useState<AdminRoomSettings>({
     inactivityMinutes: 15,
@@ -146,18 +211,47 @@ function AdminPageInner() {
     () => DEFAULT_HOME_FEATURES.map((f) => ({ ...f })),
   );
   const [pagesCopy, setPagesCopy] = useState<PagesCopy>(() => clonePagesCopy());
+  const [botGroups, setBotGroups] = useState<BotGroup[]>(() => [
+    {
+      id: 'classic',
+      name: 'Classic',
+      names: DEFAULT_BOT_NAMES.split('\n'),
+      isDefault: true,
+    },
+  ]);
+  const [botNameDrafts, setBotNameDrafts] = useState<Record<string, string>>({});
+  const [openBotGroup, setOpenBotGroup] = useState<string | null>('classic');
+  const [botNameInput, setBotNameInput] = useState('');
+  const [showBulkEdit, setShowBulkEdit] = useState(false);
   const [openBlocks, setOpenBlocks] = useState<Record<number, boolean>>({ 0: true });
   const [openPage, setOpenPage] = useState<string | null>('host');
   const [userQuery, setUserQuery] = useState('');
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [creditAmounts, setCreditAmounts] = useState<Record<string, string>>({});
+  const [whuffieCreditAmounts, setWhuffieCreditAmounts] = useState<Record<string, string>>({});
   const [tables, setTables] = useState<AdminTableRow[]>([]);
-  const [contests, setContests] = useState<ContestView[]>([]);
+  const [contests, setContests] = useState<AdminContestRow[]>([]);
   const [stats, setStats] = useState<{ userCount: number; liveTables: number; liveContests: number } | null>(
     null,
   );
 
   const busy = busyKey !== null;
+
+  useEffect(() => {
+    setTab(parseAdminTab(searchParams.get('tab')));
+  }, [searchParams]);
+
+  const selectTab = useCallback(
+    (next: AdminTab) => {
+      setTab(next);
+      const params = new URLSearchParams(searchParams.toString());
+      if (next === 'users') params.delete('tab');
+      else params.set('tab', next);
+      const q = params.toString();
+      router.replace(q ? `/admin?${q}` : '/admin', { scroll: false });
+    },
+    [router, searchParams],
+  );
 
   const flash = useCallback((msg: string) => {
     setOkMsg(msg);
@@ -181,7 +275,7 @@ function AdminPageInner() {
         return;
       }
       setIsAdmin(true);
-      const [overview, eco, games, userList, home, pages, rooms] = await Promise.all([
+      const [overview, eco, games, userList, home, pages, rooms, bots] = await Promise.all([
         fetchAdminOverview(token),
         fetchAdminEconomy(token),
         fetchAdminGames(token),
@@ -189,6 +283,7 @@ function AdminPageInner() {
         fetchAdminHomeFeatures(token),
         fetchAdminPages(token),
         fetchAdminRoomSettings(token),
+        fetchAdminBotGroups(token),
       ]);
       setAnnouncement(overview.announcement);
       setEconomy(eco);
@@ -199,6 +294,19 @@ function AdminPageInner() {
           : DEFAULT_HOME_FEATURES.map((f) => ({ ...f })),
       );
       setPagesCopy(pages.pages ? clonePagesCopy(pages.pages) : clonePagesCopy());
+      const groups = bots.groups?.length
+        ? bots.groups
+        : [
+            {
+              id: 'classic',
+              name: 'Classic',
+              names: DEFAULT_BOT_NAMES.split('\n'),
+              isDefault: true,
+            },
+          ];
+      setBotGroups(groups);
+      setBotNameDrafts(Object.fromEntries(groups.map((g) => [g.id, namesToText(g.names)])));
+      setOpenBotGroup((cur) => cur ?? groups[0]?.id ?? null);
       setStats({
         userCount: overview.userCount,
         liveTables: overview.liveTables,
@@ -250,6 +358,7 @@ function AdminPageInner() {
           startingChipGrant: Math.floor(Number(economy.startingChipGrant)),
           refillThreshold: Math.floor(Number(economy.refillThreshold)),
           refillGrant: Math.floor(Number(economy.refillGrant)),
+          startingWhuffieGrant: Math.floor(Number(economy.startingWhuffieGrant)),
         }),
         patchAdminRoomSettings(token, {
           inactivityMinutes: Math.floor(Number(roomSettings.inactivityMinutes)),
@@ -279,6 +388,100 @@ function AdminPageInner() {
       setPagesCopy(clonePagesCopy(res.pages));
       flash('Page text saved');
     });
+  }
+
+  async function saveBotGroups(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token) return;
+    await withBusy('bots', async () => {
+      const payload = botGroups.map((g) => ({
+        ...g,
+        names: textToNames(botNameDrafts[g.id] ?? namesToText(g.names)),
+      }));
+      if (!payload.some((g) => g.isDefault) && payload[0]) {
+        payload[0] = { ...payload[0], isDefault: true };
+      }
+      const res = await patchAdminBotGroups(token, payload);
+      setBotGroups(res.groups);
+      setBotNameDrafts(Object.fromEntries(res.groups.map((g) => [g.id, namesToText(g.names)])));
+      flash('Bot groups saved');
+    });
+  }
+
+  function updateBotGroup(id: string, patch: Partial<BotGroup>) {
+    setBotGroups((list) => {
+      let next = list.map((g) => (g.id === id ? { ...g, ...patch } : g));
+      if (patch.isDefault) {
+        next = next.map((g) => ({ ...g, isDefault: g.id === id }));
+      }
+      return next;
+    });
+  }
+
+  function addBotGroup() {
+    setBotGroups((list) => {
+      if (list.length >= MAX_BOT_GROUPS) return list;
+      const g = emptyBotGroup();
+      if (list.length === 0) g.isDefault = true;
+      setBotNameDrafts((m) => ({ ...m, [g.id]: namesToText(g.names) }));
+      setOpenBotGroup(g.id);
+      return [...list, g];
+    });
+  }
+
+  function removeBotGroup(id: string) {
+    setBotGroups((list) => {
+      if (list.length <= 1) return list;
+      const next = list.filter((g) => g.id !== id);
+      if (!next.some((g) => g.isDefault) && next[0]) {
+        next[0] = { ...next[0], isDefault: true };
+      }
+      setBotNameDrafts((m) => {
+        const copy = { ...m };
+        delete copy[id];
+        return copy;
+      });
+      setOpenBotGroup((cur) => (cur === id ? next[0]?.id ?? null : cur));
+      return next;
+    });
+  }
+
+  function renameBotGroupId(fromId: string, rawNext: string) {
+    const nextId = slugBotGroupId(rawNext, fromId);
+    if (nextId === fromId) return;
+    setBotGroups((list) => {
+      if (list.some((g) => g.id === nextId && g.id !== fromId)) return list;
+      return list.map((g) => (g.id === fromId ? { ...g, id: nextId } : g));
+    });
+    setBotNameDrafts((m) => {
+      const text = m[fromId];
+      if (text === undefined) return m;
+      const copy = { ...m };
+      delete copy[fromId];
+      copy[nextId] = text;
+      return copy;
+    });
+    setOpenBotGroup((cur) => (cur === fromId ? nextId : cur));
+  }
+
+  function setBotGroupNames(id: string, names: string[]) {
+    setBotNameDrafts((m) => ({ ...m, [id]: namesToText(names) }));
+  }
+
+  function addBotNameToGroup(id: string, raw: string) {
+    const n = raw.trim().slice(0, 24);
+    if (!n) return;
+    const current = textToNames(botNameDrafts[id] ?? namesToText(botGroups.find((g) => g.id === id)?.names ?? []));
+    if (current.some((x) => x.toLowerCase() === n.toLowerCase())) return;
+    if (current.length >= 40) return;
+    setBotGroupNames(id, [...current, n]);
+    setBotNameInput('');
+  }
+
+  function removeBotNameFromGroup(id: string, name: string) {
+    const current = textToNames(botNameDrafts[id] ?? namesToText(botGroups.find((g) => g.id === id)?.names ?? []));
+    const next = current.filter((x) => x !== name);
+    setBotGroupNames(id, next.length > 0 ? next : current);
   }
 
   function updateHomeFeature(index: number, patch: Partial<HomeLandingFeature>) {
@@ -335,8 +538,25 @@ function AdminPageInner() {
     }
     await withBusy(`topup-${userId}`, async () => {
       const res = await creditAdminUser(token, userId, amount);
-      flash(`Credited ${formatMoneyLabel(res.credited)} to ${res.username}`);
+      flash(`Credited ${formatMoneyLabel(res.credited)} chips to ${res.username}`);
       setCreditAmounts((m) => ({ ...m, [userId]: '' }));
+      const list = await fetchAdminUsers(token, userQuery);
+      setUsers(list.users);
+    });
+  }
+
+  async function topUpWhuffies(userId: string) {
+    if (!token) return;
+    const raw = whuffieCreditAmounts[userId] ?? '';
+    const amount = Math.floor(Number(raw));
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setError('Enter a positive Whuffies amount');
+      return;
+    }
+    await withBusy(`topup-whuffie-${userId}`, async () => {
+      const res = await creditAdminUserWhuffies(token, userId, amount);
+      flash(`Credited ${formatMoneyLabel(res.credited)} Whuffies to ${res.username}`);
+      setWhuffieCreditAmounts((m) => ({ ...m, [userId]: '' }));
       const list = await fetchAdminUsers(token, userQuery);
       setUsers(list.users);
     });
@@ -347,7 +567,7 @@ function AdminPageInner() {
     const grant = formatMoneyLabel(economy.startingChipGrant);
     const ok = await confirm({
       title: `Reset ${user.username}?`,
-      description: `Set their bankroll to the starting grant (${grant}). Current: ${formatMoneyLabel(user.chipBalance)}.`,
+      description: `Set their chip bankroll to the starting grant (${grant}). Current: ${formatMoneyLabel(user.chipBalance)}.`,
       confirmLabel: 'Reset chips',
       cancelLabel: 'Cancel',
       tone: 'danger',
@@ -355,7 +575,26 @@ function AdminPageInner() {
     if (!ok) return;
     await withBusy(`reset-${user.id}`, async () => {
       const res = await resetAdminUserChips(token, user.id);
-      flash(`Reset ${res.username} to ${formatMoneyLabel(res.balance)}`);
+      flash(`Reset ${res.username} chips to ${formatMoneyLabel(res.balance)}`);
+      const list = await fetchAdminUsers(token, userQuery);
+      setUsers(list.users);
+    });
+  }
+
+  async function resetWhuffies(user: AdminUserRow) {
+    if (!token) return;
+    const grant = formatMoneyLabel(economy.startingWhuffieGrant);
+    const ok = await confirm({
+      title: `Reset ${user.username} Whuffies?`,
+      description: `Set their Whuffies rating to the starting grant (${grant}). Current: ${formatMoneyLabel(user.whuffieBalance)}.`,
+      confirmLabel: 'Reset Whuffies',
+      cancelLabel: 'Cancel',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    await withBusy(`reset-whuffie-${user.id}`, async () => {
+      const res = await resetAdminUserWhuffies(token, user.id);
+      flash(`Reset ${res.username} Whuffies to ${formatMoneyLabel(res.balance)}`);
       const list = await fetchAdminUsers(token, userQuery);
       setUsers(list.users);
     });
@@ -416,7 +655,8 @@ function AdminPageInner() {
           <StatCard label="Users" value={stats.userCount} />
           <StatCard label="Live tables" value={stats.liveTables} />
           <StatCard label="Contests" value={stats.liveContests} />
-          <StatCard label="Start grant" value={formatMoneyLabel(economy.startingChipGrant)} />
+          <StatCard label="Start chips" value={formatMoneyLabel(economy.startingChipGrant)} />
+          <StatCard label="Start Whuffies" value={formatMoneyLabel(economy.startingWhuffieGrant)} />
         </div>
       ) : null}
 
@@ -431,7 +671,8 @@ function AdminPageInner() {
               key={t.id}
               type="button"
               id={`${navId}-${t.id}`}
-              onClick={() => setTab(t.id)}
+              onClick={() => selectTab(t.id)}
+              aria-current={active ? 'page' : undefined}
               className={`shrink-0 rounded-full px-4 py-2 text-xs font-display font-bold uppercase tracking-[0.14em] transition ${
                 active
                   ? 'bg-sidebar text-mushroom shadow-[0_6px_16px_rgb(29_4_50/0.18)]'
@@ -448,7 +689,7 @@ function AdminPageInner() {
         {tab === 'users' ? (
           <Section
             title="Users"
-            description="Search accounts, top up Wuffies, or reset bankrolls to the starting grant."
+            description="Search accounts, top up chips or Whuffies, or reset to the starting grants."
           >
             <form onSubmit={(e) => void searchUsers(e)} className="flex flex-col gap-2 sm:flex-row">
               <input
@@ -471,10 +712,12 @@ function AdminPageInner() {
               {users.map((u) => {
                 const topping = busyKey === `topup-${u.id}`;
                 const resetting = busyKey === `reset-${u.id}`;
+                const toppingW = busyKey === `topup-whuffie-${u.id}`;
+                const resettingW = busyKey === `reset-whuffie-${u.id}`;
                 return (
                   <li
                     key={u.id}
-                    className="flex flex-col gap-3 p-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                    className="flex flex-col gap-3 p-3.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
                   >
                     <div className="min-w-0">
                       <p className="truncate font-display text-base font-semibold text-ink-strong">
@@ -482,6 +725,9 @@ function AdminPageInner() {
                       </p>
                       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-strong-muted">
                         <MoneyAmount amount={u.chipBalance} showChips className="text-sm" />
+                        <span className="tabular-nums text-sm">
+                          {formatMoneyLabel(u.whuffieBalance)} Whuffies
+                        </span>
                         <span className="text-xs tabular-nums opacity-70">
                           joined {new Date(u.createdAt).toLocaleDateString()}
                         </span>
@@ -493,13 +739,13 @@ function AdminPageInner() {
                           type="number"
                           min={1}
                           step={1}
-                          placeholder="Top-up amount"
+                          placeholder="Chips"
                           value={creditAmounts[u.id] ?? ''}
                           onChange={(e) =>
                             setCreditAmounts((m) => ({ ...m, [u.id]: e.target.value }))
                           }
-                          className="w-32 rounded-lg border border-sidebar/15 bg-cream px-2.5 py-2 text-sm tabular-nums text-ink-strong outline-none focus:border-sidebar/40"
-                          aria-label={`Top-up amount for ${u.username}`}
+                          className="w-28 rounded-lg border border-sidebar/15 bg-cream px-2.5 py-2 text-sm tabular-nums text-ink-strong outline-none focus:border-sidebar/40"
+                          aria-label={`Chip top-up for ${u.username}`}
                         />
                         <button
                           type="button"
@@ -507,7 +753,7 @@ function AdminPageInner() {
                           onClick={() => void topUp(u.id)}
                           className="rounded-lg border border-positive/35 bg-positive/10 px-3 py-2 text-sm font-medium text-positive transition hover:bg-positive/15 disabled:opacity-50"
                         >
-                          {topping ? '…' : 'Top up'}
+                          {topping ? '…' : 'Top up chips'}
                         </button>
                         <button
                           type="button"
@@ -517,6 +763,37 @@ function AdminPageInner() {
                           title={`Reset to ${formatMoneyLabel(economy.startingChipGrant)}`}
                         >
                           {resetting ? '…' : 'Reset chips'}
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <input
+                          type="number"
+                          min={1}
+                          step={1}
+                          placeholder="Whuffies"
+                          value={whuffieCreditAmounts[u.id] ?? ''}
+                          onChange={(e) =>
+                            setWhuffieCreditAmounts((m) => ({ ...m, [u.id]: e.target.value }))
+                          }
+                          className="w-28 rounded-lg border border-sidebar/15 bg-cream px-2.5 py-2 text-sm tabular-nums text-ink-strong outline-none focus:border-sidebar/40"
+                          aria-label={`Whuffies credit for ${u.username}`}
+                        />
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void topUpWhuffies(u.id)}
+                          className="rounded-lg border border-positive/35 bg-positive/10 px-3 py-2 text-sm font-medium text-positive transition hover:bg-positive/15 disabled:opacity-50"
+                        >
+                          {toppingW ? '…' : 'Add Whuffies'}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void resetWhuffies(u)}
+                          className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-sm font-medium text-danger transition hover:bg-danger/10 disabled:opacity-50"
+                          title={`Reset to ${formatMoneyLabel(economy.startingWhuffieGrant)}`}
+                        >
+                          {resettingW ? '…' : 'Reset Whuffies'}
                         </button>
                       </div>
                     </div>
@@ -847,14 +1124,274 @@ function AdminPageInner() {
           </Section>
         ) : null}
 
+        {tab === 'bots' ? (
+          <Section
+            title="Bot groups"
+            description="Name packs hosts and tables use when seating bots. Set one default for new tables."
+            action={
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs tabular-nums text-ink-strong-muted">
+                  {botGroups.length}/{MAX_BOT_GROUPS}
+                </span>
+                <button
+                  type="button"
+                  disabled={busy || botGroups.length >= MAX_BOT_GROUPS}
+                  onClick={() => {
+                    addBotGroup();
+                    setShowBulkEdit(false);
+                    setBotNameInput('');
+                  }}
+                  className="btn-ghost min-h-9 px-4 text-xs disabled:opacity-50"
+                >
+                  Add group
+                </button>
+              </div>
+            }
+          >
+            <form onSubmit={(e) => void saveBotGroups(e)} className="space-y-4">
+              <div className="grid gap-4 lg:grid-cols-[minmax(12rem,16rem)_minmax(0,1fr)]">
+                {/* Group list */}
+                <div
+                  className="flex flex-col gap-1.5 rounded-xl border border-sidebar/10 bg-mushroom/[0.04] p-2"
+                  role="listbox"
+                  aria-label="Bot groups"
+                >
+                  {botGroups.map((group) => {
+                    const selected = openBotGroup === group.id;
+                    const draft = botNameDrafts[group.id] ?? namesToText(group.names);
+                    const nameCount = textToNames(draft).length;
+                    return (
+                      <button
+                        key={group.id}
+                        type="button"
+                        role="option"
+                        aria-selected={selected}
+                        onClick={() => {
+                          setOpenBotGroup(group.id);
+                          setBotNameInput('');
+                          setShowBulkEdit(false);
+                        }}
+                        className={`rounded-lg px-3 py-2.5 text-left transition ${
+                          selected
+                            ? 'bg-sidebar text-mushroom shadow-[0_4px_12px_rgb(29_4_50/0.16)]'
+                            : 'text-ink-strong hover:bg-sidebar/8'
+                        }`}
+                      >
+                        <span className="flex items-center justify-between gap-2">
+                          <span
+                            className={`truncate font-display text-sm font-semibold uppercase tracking-wider ${
+                              selected ? 'text-mushroom' : 'text-ink-strong'
+                            }`}
+                          >
+                            {group.name || 'Untitled'}
+                          </span>
+                          {group.isDefault ? (
+                            <span
+                              className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] ${
+                                selected
+                                  ? 'bg-mushroom/20 text-mushroom'
+                                  : 'bg-sidebar/10 text-sidebar'
+                              }`}
+                            >
+                              Default
+                            </span>
+                          ) : null}
+                        </span>
+                        <span
+                          className={`mt-0.5 block text-xs tabular-nums ${
+                            selected ? 'text-mushroom/75' : 'text-ink-strong-muted'
+                          }`}
+                        >
+                          {nameCount} name{nameCount === 1 ? '' : 's'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Editor */}
+                {(() => {
+                  const group = botGroups.find((g) => g.id === openBotGroup) ?? botGroups[0];
+                  if (!group) {
+                    return (
+                      <p className="rounded-xl border border-dashed border-sidebar/15 px-4 py-10 text-center text-sm text-ink-strong-muted">
+                        Add a bot group to get started.
+                      </p>
+                    );
+                  }
+                  const draft = botNameDrafts[group.id] ?? namesToText(group.names);
+                  const names = textToNames(draft);
+                  return (
+                    <div className="min-w-0 space-y-4 rounded-xl border border-sidebar/12 bg-cream p-4 sm:p-5">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1 space-y-3">
+                          <label className="block max-w-md">
+                            <span className={labelClass}>Group name</span>
+                            <input
+                              value={group.name}
+                              onChange={(e) => updateBotGroup(group.id, { name: e.target.value })}
+                              className={fieldClass}
+                              maxLength={48}
+                              required
+                              placeholder="e.g. Classic, Friends, Villains"
+                            />
+                          </label>
+                          <p className="text-xs text-ink-strong-muted">
+                            Key{' '}
+                            <code className="rounded bg-sidebar/5 px-1.5 py-0.5 font-mono text-[11px] text-ink-strong">
+                              {group.id}
+                            </code>
+                            <button
+                              type="button"
+                              className="ml-2 font-medium text-sidebar underline-offset-2 hover:underline"
+                              onClick={() => {
+                                const next = window.prompt('Stable id (letters, numbers, - _)', group.id);
+                                if (next != null) renameBotGroupId(group.id, next);
+                              }}
+                            >
+                              Change
+                            </button>
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 flex-wrap gap-2">
+                          {group.isDefault ? (
+                            <span className="inline-flex min-h-9 items-center rounded-full border border-sidebar/20 bg-sidebar/8 px-3 text-[10px] font-display font-bold uppercase tracking-[0.14em] text-sidebar">
+                              Default pack
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => updateBotGroup(group.id, { isDefault: true })}
+                              className="btn-ghost min-h-9 px-3 text-xs disabled:opacity-50"
+                            >
+                              Make default
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            disabled={busy || botGroups.length <= 1}
+                            onClick={() => {
+                              if (botGroups.length <= 1) return;
+                              removeBotGroup(group.id);
+                            }}
+                            className="min-h-9 rounded-lg border border-danger/25 px-3 text-xs font-medium text-danger hover:bg-danger/5 disabled:opacity-40"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
+                          <div>
+                            <span className={labelClass}>Display names</span>
+                            <p className="mt-0.5 text-xs text-ink-strong-muted">
+                              {names.length}/40 · shown at the table when bots sit
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowBulkEdit((v) => !v)}
+                            className="text-xs font-medium text-sidebar underline-offset-2 hover:underline"
+                          >
+                            {showBulkEdit ? 'Chip editor' : 'Bulk edit'}
+                          </button>
+                        </div>
+
+                        {showBulkEdit ? (
+                          <label className="block">
+                            <span className="sr-only">Bot names, one per line</span>
+                            <textarea
+                              value={draft}
+                              onChange={(e) =>
+                                setBotNameDrafts((m) => ({ ...m, [group.id]: e.target.value }))
+                              }
+                              rows={10}
+                              className={`${fieldClass} font-mono text-xs leading-relaxed`}
+                              placeholder={DEFAULT_BOT_NAMES}
+                            />
+                          </label>
+                        ) : (
+                          <div className="rounded-xl border border-sidebar/12 bg-mushroom/[0.04] p-3">
+                            <ul className="flex flex-wrap gap-1.5">
+                              {names.map((n) => (
+                                <li key={n}>
+                                  <span className="inline-flex items-center gap-1 rounded-full border border-sidebar/12 bg-cream py-1 pl-2.5 pr-1 text-sm text-ink-strong shadow-sm">
+                                    <span className="max-w-[10rem] truncate font-medium">{n}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeBotNameFromGroup(group.id, n)}
+                                      className="flex h-6 w-6 items-center justify-center rounded-full text-ink-strong-muted transition hover:bg-danger/10 hover:text-danger"
+                                      aria-label={`Remove ${n}`}
+                                      title="Remove"
+                                    >
+                                      ×
+                                    </button>
+                                  </span>
+                                </li>
+                              ))}
+                              {names.length === 0 ? (
+                                <li className="text-sm text-ink-strong-muted">No names yet.</li>
+                              ) : null}
+                            </ul>
+                            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                              <input
+                                value={botNameInput}
+                                onChange={(e) => setBotNameInput(e.target.value.slice(0, 24))}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    addBotNameToGroup(group.id, botNameInput);
+                                  }
+                                }}
+                                className={`${fieldClass} mt-0 sm:max-w-xs`}
+                                placeholder="Add a name…"
+                                maxLength={24}
+                                disabled={names.length >= 40}
+                                aria-label="New bot name"
+                              />
+                              <button
+                                type="button"
+                                disabled={busy || names.length >= 40 || !botNameInput.trim()}
+                                onClick={() => addBotNameToGroup(group.id, botNameInput)}
+                                className="btn-ghost min-h-11 px-4 disabled:opacity-50"
+                              >
+                                Add name
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-sidebar/8 pt-4">
+                <p className="text-xs text-ink-strong-muted">
+                  Host create, table +Bot, and offline solo all read these packs.
+                </p>
+                <button
+                  type="submit"
+                  disabled={busy}
+                  className="btn-primary min-h-11 w-full sm:w-auto sm:min-w-[12rem] disabled:opacity-50"
+                >
+                  {busyKey === 'bots' ? 'Saving…' : 'Save bot groups'}
+                </button>
+              </div>
+            </form>
+          </Section>
+        ) : null}
+
         {tab === 'economy' ? (
           <Section
             title="Economy & rooms"
-            description="New-player grants, free refills, and how long empty tables stay open before closing."
+            description="New-player chip grants, free chip refills, starting Whuffies rating, and how long empty tables stay open."
           >
             <form onSubmit={(e) => void saveEconomy(e)} className="grid gap-4 sm:grid-cols-3">
               <label className="block">
-                <span className={labelClass}>Starting grant</span>
+                <span className={labelClass}>Starting chips</span>
                 <input
                   type="number"
                   min={1}
@@ -901,6 +1438,25 @@ function AdminPageInner() {
                   className={`${fieldClass} tabular-nums`}
                 />
               </label>
+              <label className="block">
+                <span className={labelClass}>Starting Whuffies</span>
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={economy.startingWhuffieGrant}
+                  onChange={(e) =>
+                    setEconomy((eco) => ({
+                      ...eco,
+                      startingWhuffieGrant: Number(e.target.value),
+                    }))
+                  }
+                  className={`${fieldClass} tabular-nums`}
+                />
+                <span className="mt-1.5 block text-xs text-ink-strong-muted">
+                  Rating granted on signup. Contest placements add more Whuffies (not spendable chips).
+                </span>
+              </label>
               <label className="block sm:col-span-2">
                 <span className={labelClass}>Room inactivity (minutes)</span>
                 <input
@@ -937,7 +1493,7 @@ function AdminPageInner() {
         {tab === 'games' ? (
           <Section
             title="Live games"
-            description="In-memory tables and contests on this server process."
+            description="Private tables and active contests on this server. Permanent public stake lobbies and finished contests are omitted."
             action={
               <button
                 type="button"
@@ -973,15 +1529,19 @@ function AdminPageInner() {
                         </td>
                         <td className="px-3 py-2.5 text-ink-strong-muted">
                           {t.contestId
-                            ? 'Contest'
-                            : t.isPrivate
-                              ? t.playMoney
-                                ? 'Private (play)'
-                                : 'Private'
-                              : t.stakeId ?? 'Public'}
+                            ? 'Contest table'
+                            : t.playMoney
+                              ? 'Private (play)'
+                              : 'Private'}
                         </td>
                         <td className="px-3 py-2.5 text-ink-strong-muted">
-                          {t.handInProgress ? 'Active' : t.idle ? 'Idle' : 'Waiting'}
+                          {t.handInProgress
+                            ? t.street
+                              ? t.street
+                              : 'In hand'
+                            : t.idle
+                              ? 'Idle'
+                              : 'Waiting'}
                         </td>
                         <td className="px-3 py-2.5">
                           <Link
@@ -1006,28 +1566,43 @@ function AdminPageInner() {
                 Contests
               </h3>
               <ul className="overflow-hidden rounded-xl border border-sidebar/10">
-                {contests.map((c) => (
-                  <li
-                    key={c.id}
-                    className="flex flex-wrap items-center justify-between gap-2 border-b border-sidebar/6 px-3 py-2.5 text-sm last:border-0"
-                  >
-                    <span className="text-ink-strong">
-                      <span className="font-medium">{c.name}</span>{' '}
-                      <span className="text-ink-strong-muted">
-                        · {c.status} · {c.entrants.length}/{c.fieldSize}
-                        {c.isPrivate ? ' · private' : ''}
-                      </span>
-                    </span>
-                    <Link
-                      href={`/contest/${c.id}`}
-                      className="font-medium text-sidebar underline-offset-2 hover:underline"
+                {contests.map((c) => {
+                  const atTable = c.tableSeatedCount ?? null;
+                  const active = c.activePlayers ?? null;
+                  return (
+                    <li
+                      key={c.id}
+                      className="flex flex-wrap items-center justify-between gap-2 border-b border-sidebar/6 px-3 py-2.5 text-sm last:border-0"
                     >
-                      Open
-                    </Link>
-                  </li>
-                ))}
+                      <span className="text-ink-strong">
+                        <span className="font-medium">{c.name}</span>{' '}
+                        <span className="text-ink-strong-muted">
+                          · {c.status} · {c.mode}
+                          {c.isPrivate ? ' · private' : ''}
+                          <br className="sm:hidden" />
+                          <span className="sm:before:content-['·_']">
+                            {c.entrants.length}/{c.fieldSize} registered
+                            {active != null ? ` · ${active} still in` : ''}
+                            {atTable != null && c.status === 'running'
+                              ? ` · ${atTable} at table`
+                              : ''}
+                            {c.eliminatedCount ? ` · ${c.eliminatedCount} out` : ''}
+                          </span>
+                        </span>
+                      </span>
+                      <Link
+                        href={`/contest/${c.id}`}
+                        className="font-medium text-sidebar underline-offset-2 hover:underline"
+                      >
+                        Open
+                      </Link>
+                    </li>
+                  );
+                })}
                 {contests.length === 0 ? (
-                  <li className="px-3 py-6 text-center text-sm text-ink-strong-muted">No contests.</li>
+                  <li className="px-3 py-6 text-center text-sm text-ink-strong-muted">
+                    No active contests.
+                  </li>
                 ) : null}
               </ul>
             </div>
@@ -1039,5 +1614,9 @@ function AdminPageInner() {
 }
 
 export default function AdminPage() {
-  return <AdminPageInner />;
+  return (
+    <Suspense fallback={<LoadingScreen label="Loading admin…" />}>
+      <AdminPageInner />
+    </Suspense>
+  );
 }

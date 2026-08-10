@@ -80,8 +80,10 @@ interface SessionState {
   emojiBurst: { emoji: string; name: string; at: number } | null;
   /** Last poker action shown as a seat popup. */
   actionBurst: { seat: number; label: string; at: number } | null;
-  /** Global bankroll (Wuffies) (updated via wallet_update / auth_ok / /api/me). */
+  /** Global chip bankroll (updated via wallet_update / auth_ok / /api/me). */
   chipBalance: number | null;
+  /** Contest ranking rating (Whuffies). */
+  whuffieBalance: number | null;
 
   /** Lobby / social push state (session WebSocket). */
   publicTables: PublicTableSummary[];
@@ -108,6 +110,7 @@ interface SessionState {
     username?: string;
     sessionToken?: string;
     chipBalance?: number;
+    whuffieBalance?: number;
   }) => void;
   clearSession: () => void;
   setConnection: (c: SessionState['connection']) => void;
@@ -119,6 +122,7 @@ interface SessionState {
   setEmoji: (e: { emoji: string; name: string; at: number } | null) => void;
   setActionBurst: (e: { seat: number; label: string; at: number } | null) => void;
   setChipBalance: (balance: number | null) => void;
+  setWhuffieBalance: (balance: number | null) => void;
   applyPublicTables: (tables: PublicTableSummary[]) => void;
   applyPublicContests: (contests: ContestView[]) => void;
   applyMyContests: (contests: ContestView[]) => void;
@@ -150,6 +154,7 @@ export const useSession = create<SessionState>((set) => ({
   emojiBurst: null,
   actionBurst: null,
   chipBalance: null,
+  whuffieBalance: null,
   publicTables: [],
   publicContests: [],
   myContests: [],
@@ -165,6 +170,7 @@ export const useSession = create<SessionState>((set) => ({
       username: s.username ?? s.name,
       sessionToken: s.sessionToken ?? null,
       ...(s.chipBalance !== undefined ? { chipBalance: s.chipBalance } : {}),
+      ...(s.whuffieBalance !== undefined ? { whuffieBalance: s.whuffieBalance } : {}),
     }),
   clearSession: () =>
     set({
@@ -174,6 +180,7 @@ export const useSession = create<SessionState>((set) => ({
       ticket: null,
       sessionToken: null,
       chipBalance: null,
+      whuffieBalance: null,
       connection: 'idle',
       boundTableId: null,
       table: null,
@@ -222,6 +229,7 @@ export const useSession = create<SessionState>((set) => ({
   setEmoji: (emojiBurst) => set({ emojiBurst }),
   setActionBurst: (actionBurst) => set({ actionBurst }),
   setChipBalance: (chipBalance) => set({ chipBalance }),
+  setWhuffieBalance: (whuffieBalance) => set({ whuffieBalance }),
   applyPublicTables: (publicTables) => set({ publicTables }),
   applyPublicContests: (publicContests) => set({ publicContests }),
   applyMyContests: (myContests) => set({ myContests }),

@@ -70,6 +70,14 @@ export class AuthService implements OnModuleInit {
     return this.store.setChipBalance(userId, balance);
   }
 
+  getWhuffieBalance(userId: string): number | undefined {
+    return this.store.getWhuffieBalance(userId);
+  }
+
+  setWhuffieBalance(userId: string, balance: number): Promise<void> {
+    return this.store.setWhuffieBalance(userId, balance);
+  }
+
   setAvatarId(userId: string, avatarId: number): Promise<User | null> {
     return this.store.setAvatarId(userId, avatarId);
   }

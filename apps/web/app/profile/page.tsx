@@ -33,7 +33,7 @@ type ProfileTab = 'overview' | 'theme' | 'contests' | 'friends';
 type ContestMatchRow = {
   contest: ContestView;
   place: number | null;
-  prizeWuffies: number;
+  prizeWhuffies: number;
   playedAt: number;
 };
 
@@ -53,6 +53,7 @@ function ProfilePageInner() {
   const { authReady, signedIn } = useLobbySession();
   const sessionToken = useSession((s) => s.sessionToken);
   const setChipBalance = useSession((s) => s.setChipBalance);
+  const setWhuffieBalance = useSession((s) => s.setWhuffieBalance);
   const { pendingCount } = useOnlineFriends();
   const [profile, setProfile] = useState<MeProfile | null>(null);
   const [friendCount, setFriendCount] = useState(0);
@@ -104,13 +105,14 @@ function ProfilePageInner() {
       setDraftTableColorId(clampTableColorId(me.tableColorId));
       saveTableColorId(me.tableColorId);
       setChipBalance(me.chipBalance);
+      setWhuffieBalance(me.whuffieBalance);
       setContests(mine?.contests ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load profile');
     } finally {
       setLoading(false);
     }
-  }, [token, setChipBalance]);
+  }, [token, setChipBalance, setWhuffieBalance]);
 
   useEffect(() => {
     if (!authReady || !signedIn) return;
@@ -130,7 +132,7 @@ function ProfilePageInner() {
         return {
           contest,
           place: placement?.place ?? assignment?.place ?? null,
-          prizeWuffies: placement?.prizeWuffies ?? 0,
+          prizeWhuffies: placement?.prizeWhuffies ?? 0,
           playedAt: contest.completedAt ?? contest.startedAt ?? contest.createdAt,
         };
       })
@@ -151,6 +153,7 @@ function ProfilePageInner() {
       const me = await updateMe(token, { avatarId: draftAvatarId });
       setProfile(me);
       setChipBalance(me.chipBalance);
+      setWhuffieBalance(me.whuffieBalance);
       saveAvatarId(me.avatarId);
       saveTableColorId(me.tableColorId);
       const stored = readStoredSession();
@@ -180,6 +183,7 @@ function ProfilePageInner() {
       const me = await updateMe(token, { tableColorId: clamped });
       setProfile(me);
       setChipBalance(me.chipBalance);
+      setWhuffieBalance(me.whuffieBalance);
       saveTableColorId(me.tableColorId);
       setDraftTableColorId(clampTableColorId(me.tableColorId));
     } catch (err) {
@@ -266,12 +270,18 @@ function ProfilePageInner() {
                   <h2 className="truncate font-display text-3xl font-bold tracking-tight text-sidebar sm:text-[2rem]">
                     {profile.username}
                   </h2>
-                  <p className="mt-2.5">
+                  <p className="mt-2.5 flex flex-wrap items-baseline gap-x-4 gap-y-1">
                     <MoneyAmount
                       amount={profile.chipBalance}
                       showChips
                       className="font-display text-xl font-bold tracking-tight text-sidebar sm:text-2xl"
                     />
+                    <span className="font-display text-lg font-semibold tabular-nums tracking-tight text-sidebar/80 sm:text-xl">
+                      {profile.whuffieBalance.toLocaleString()}
+                      <span className="ml-1.5 text-sm font-medium text-ink-strong-muted">
+                        Whuffies
+                      </span>
+                    </span>
                   </p>
                   <p className="mt-3 text-sm leading-relaxed text-ink-strong-muted">
                     {joined ? (
@@ -563,12 +573,10 @@ function ProfilePageInner() {
                             <span className="font-mono text-sm font-semibold text-sidebar">
                               {placeLabel(row.place)}
                             </span>
-                            {row.prizeWuffies > 0 ? (
-                              <MoneyAmount
-                                amount={row.prizeWuffies}
-                                prefix="+"
-                                className="text-xs font-semibold text-brass-dim"
-                              />
+                            {row.prizeWhuffies > 0 ? (
+                              <span className="text-xs font-semibold tabular-nums text-brass-dim">
+                                +{row.prizeWhuffies.toLocaleString()} Whuffies
+                              </span>
                             ) : (
                               <span className="text-[11px] text-ink-strong-muted">No prize</span>
                             )}

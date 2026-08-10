@@ -198,13 +198,13 @@ export function WinHandModal({
   canSitOut,
   canSitIn,
   isTournament,
-  needWuffies,
+  needChips,
   onNextHand,
   onTopUp,
   onSitOut,
   onSitIn,
   onDismiss,
-  onNeedWuffies,
+  onNeedChips,
 }: {
   winners: WinLine[];
   youWon: boolean;
@@ -220,13 +220,13 @@ export function WinHandModal({
   /** Contest table context (sit-out limits, layout). */
   isTournament?: boolean;
   /** Broke at a cash table with no bankroll top-up. */
-  needWuffies?: boolean;
+  needChips?: boolean;
   onNextHand: () => void;
   onTopUp?: () => void;
   onSitOut?: () => void;
   onSitIn?: () => void;
   onDismiss: () => void;
-  onNeedWuffies?: () => void;
+  onNeedChips?: () => void;
 }) {
   const roster = readyPlayers ?? [];
 
@@ -263,14 +263,14 @@ export function WinHandModal({
         Top up
       </button>
     );
-  } else if (needWuffies && onNeedWuffies) {
+  } else if (needChips && onNeedChips) {
     primary = (
       <button
         type="button"
-        onClick={onNeedWuffies}
+        onClick={onNeedChips}
         className="btn-primary min-h-9 min-w-0 flex-1 px-3 py-2 text-xs font-display font-bold uppercase tracking-wide"
       >
-        Need Wuffies
+        Need chips
       </button>
     );
   } else {

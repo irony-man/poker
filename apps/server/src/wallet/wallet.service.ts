@@ -8,6 +8,7 @@ import {
   type WalletMutationResult,
   type WalletReason,
   type WalletStore,
+  type WhuffieReason,
 } from './wallet.constants.js';
 import { AuthWalletStore } from './wallet.store.js';
 
@@ -37,8 +38,16 @@ export class WalletService implements WalletStore, OnModuleInit {
     return this.store.getBalance(userId);
   }
 
+  getWhuffieBalance(userId: string): number {
+    return this.store.getWhuffieBalance(userId);
+  }
+
   ensureStartingBalance(userId: string): Promise<number> {
     return this.store.ensureStartingBalance(userId);
+  }
+
+  ensureStartingWhuffies(userId: string): Promise<number> {
+    return this.store.ensureStartingWhuffies(userId);
   }
 
   debit(
@@ -57,6 +66,24 @@ export class WalletService implements WalletStore, OnModuleInit {
     tableId?: string,
   ): Promise<WalletMutationResult> {
     return this.store.credit(userId, amount, reason, tableId);
+  }
+
+  creditWhuffies(
+    userId: string,
+    amount: number,
+    reason: WhuffieReason,
+    tableId?: string,
+  ): Promise<WalletMutationResult> {
+    return this.store.creditWhuffies(userId, amount, reason, tableId);
+  }
+
+  debitWhuffies(
+    userId: string,
+    amount: number,
+    reason: WhuffieReason,
+    tableId?: string,
+  ): Promise<WalletMutationResult> {
+    return this.store.debitWhuffies(userId, amount, reason, tableId);
   }
 
   claimRefill(userId: string): Promise<WalletMutationResult> {

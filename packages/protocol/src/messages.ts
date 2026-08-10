@@ -86,6 +86,8 @@ export const ClientMessageSchema = z.discriminatedUnion('type', [
     buyIn: z.number().int().positive().optional(),
     /** How many bots to seat (ignored when `seat` is set). Default 1. */
     count: z.number().int().min(1).max(9).optional(),
+    /** Admin bot name group; default group when omitted and table has no pool yet. */
+    botGroupId: z.string().min(1).max(64).optional(),
   }),
   z.object({
     type: z.literal('remove_bot'),
@@ -144,10 +146,12 @@ export const ServerMessageSchema = z.discriminatedUnion('type', [
     name: z.string(),
     avatarId: z.number().int().optional(),
     chipBalance: z.number().int().nonnegative().optional(),
+    whuffieBalance: z.number().int().nonnegative().optional(),
   }),
   z.object({
     type: z.literal('wallet_update'),
-    chipBalance: z.number().int().nonnegative(),
+    chipBalance: z.number().int().nonnegative().optional(),
+    whuffieBalance: z.number().int().nonnegative().optional(),
   }),
   z.object({
     type: z.literal('error'),
@@ -245,6 +249,8 @@ export const CreateTableBodySchema = z.object({
   maxSeats: z.number().int().min(2).max(9).default(6),
   /** Seat bots when the table is created (host still needs to sit). */
   botCount: z.number().int().min(0).max(8).default(0),
+  /** Admin-configured bot name group (uses site default when omitted). */
+  botGroupId: z.string().min(1).max(64).optional(),
   isPrivate: z.boolean().default(true),
   /** Optional custom numerical invite / room code (4–8 digits). */
   inviteCode: z
@@ -330,6 +336,7 @@ export const AuthSessionSchema = z.object({
   sessionToken: z.string(),
   avatarId: z.number().int().min(0).max(7),
   chipBalance: z.number().int().nonnegative().optional(),
+  whuffieBalance: z.number().int().nonnegative().optional(),
 });
 
 export const UpdateMeBodySchema = z

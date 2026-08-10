@@ -8,6 +8,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
+import { AppleEmoji } from './AppleEmoji';
 import { ChatPanel } from './ChatPanel';
 import {
   ChatActionDock,
@@ -64,7 +65,9 @@ function EmojiOverlay() {
   return (
     <div className="pointer-events-none fixed inset-0 z-[60] flex items-center justify-center">
       <div className="flex flex-col items-center gap-2 animate-bounce">
-        <span className="text-7xl drop-shadow-[0_8px_24px_rgba(0,0,0,0.65)]">{burst.emoji}</span>
+        <span className="drop-shadow-[0_8px_24px_rgba(0,0,0,0.65)]">
+          <AppleEmoji emoji={burst.emoji} size={72} decorative />
+        </span>
         <span className="rounded-full border border-mushroom/40 bg-sidebar/90 px-3 py-1 text-xs font-display font-semibold uppercase tracking-wider text-mushroom backdrop-blur">
           {burst.name}
         </span>

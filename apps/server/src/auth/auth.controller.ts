@@ -97,6 +97,7 @@ export class AuthController {
       username: user.username,
       avatarId: user.avatarId,
       chipBalance: user.chipBalance,
+      whuffieBalance: user.whuffieBalance,
     };
   }
 }

@@ -284,9 +284,9 @@ function AdminPageInner() {
             <button
               type="submit"
               disabled={busy}
-              className="rounded-md border border-mushroom/25 bg-mushroom/15 px-4 py-2 text-sm font-display font-semibold uppercase tracking-wider text-mushroom disabled:opacity-50"
+              className="btn-primary min-h-11 w-full sm:w-auto sm:min-w-[12rem]"
             >
-              Save text
+              {busy ? 'Saving…' : 'Save site text'}
             </button>
           </form>
         </Section>

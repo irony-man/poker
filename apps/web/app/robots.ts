@@ -6,7 +6,16 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: '*',
       allow: '/',
-      disallow: ['/table/', '/contest/', '/offline', '/sign-in', '/sign-up', '/friends'],
+      disallow: [
+        '/table/',
+        '/contest/',
+        '/offline',
+        '/sign-in',
+        '/sign-up',
+        '/friends',
+        '/admin',
+        '/profile',
+      ],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
     host: SITE_HOST,

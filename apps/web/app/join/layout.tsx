@@ -1,18 +1,23 @@
 import type { Metadata } from 'next';
+import { pageJsonLd, publicPageMetadata } from '@/lib/site';
 
-export const metadata: Metadata = {
-  title: 'Join a Table',
-  description:
-    "Join a Texas Hold'em table with an invite code or shared link. Sit down and play free on pokr.site.",
-  alternates: { canonical: '/join' },
-  openGraph: {
-    title: 'Join a Table | pokr.site',
-    description:
-      "Join a Texas Hold'em table with an invite code or shared link. Sit down and play free.",
-    url: '/join',
-  },
-};
+const title = 'Join a Table';
+const description =
+  "Join a Texas Hold'em table with an invite code or shared link. Sit down and play free on pokr.site.";
+const path = '/join';
+
+export const metadata: Metadata = publicPageMetadata({ title, description, path });
 
 export default function JoinLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(pageJsonLd({ path, name: title, description })),
+        }}
+      />
+      {children}
+    </>
+  );
 }

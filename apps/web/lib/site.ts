@@ -1,3 +1,5 @@
+import type { Metadata } from 'next';
+
 /** Canonical public site URL for metadata, sitemap, and structured data. */
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://pokr.site').replace(/\/$/, '');
 
@@ -9,6 +11,9 @@ export const SITE_DESCRIPTION =
   "Play free No-Limit Texas Hold'em online with friends and family. Host private tables, join contests, or practice offline on pokr.site.";
 
 export const SITE_TITLE_DEFAULT = "Play free Texas Hold'em online | pokr.site";
+
+/** Stable sitemap lastModified (avoids a new date on every request). */
+export const SITEMAP_LAST_MODIFIED = new Date('2026-03-01T00:00:00.000Z');
 
 /** Apex hostname (no protocol), e.g. pokr.site */
 export const SITE_HOST = (() => {
@@ -39,8 +44,49 @@ export function siteVerification(): {
   };
 }
 
+/** Absolute URL for a site path (`/` or `/host`, etc.). */
+export function absoluteUrl(path: string): string {
+  if (!path || path === '/') return SITE_URL;
+  return `${SITE_URL}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
+/** Metadata for indexable public routes (title, canonical, OG + Twitter parity). */
+export function publicPageMetadata({
+  title,
+  description,
+  path,
+}: {
+  title: string;
+  description: string;
+  path: string;
+}): Metadata {
+  const url = path.startsWith('/') ? path : `/${path}`;
+  const ogTitle = `${title} | ${SITE_NAME}`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title: ogTitle,
+      description,
+      url,
+      siteName: SITE_NAME,
+      locale: 'en_US',
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: ogTitle,
+      description,
+    },
+  };
+}
+
 /** JSON-LD graph for homepage rich-result / Knowledge eligibility signals. */
 export function homeJsonLd() {
+  const logoUrl = `${SITE_URL}/icon-512.png`;
+
   return {
     '@context': 'https://schema.org',
     '@graph': [
@@ -50,7 +96,12 @@ export function homeJsonLd() {
         name: SITE_BRAND,
         alternateName: SITE_NAME,
         url: SITE_URL,
-        logo: `${SITE_URL}/icon-512.png`,
+        logo: {
+          '@type': 'ImageObject',
+          url: logoUrl,
+          width: 512,
+          height: 512,
+        },
       },
       {
         '@type': 'WebSite',
@@ -79,6 +130,54 @@ export function homeJsonLd() {
         },
         isPartOf: { '@id': `${SITE_URL}/#website` },
         publisher: { '@id': `${SITE_URL}/#organization` },
+      },
+    ],
+  };
+}
+
+/** WebPage + BreadcrumbList JSON-LD for indexable non-home public routes. */
+export function pageJsonLd({
+  path,
+  name,
+  description,
+}: {
+  path: string;
+  name: string;
+  description: string;
+}) {
+  const url = absoluteUrl(path);
+  const pageId = `${url}#webpage`;
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'WebPage',
+        '@id': pageId,
+        url,
+        name,
+        description,
+        isPartOf: { '@id': `${SITE_URL}/#website` },
+        about: { '@id': `${SITE_URL}/#app` },
+        inLanguage: 'en',
+      },
+      {
+        '@type': 'BreadcrumbList',
+        '@id': `${url}#breadcrumb`,
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: SITE_BRAND,
+            item: SITE_URL,
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name,
+            item: url,
+          },
+        ],
       },
     ],
   };

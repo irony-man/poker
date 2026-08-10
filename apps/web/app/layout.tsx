@@ -22,10 +22,28 @@ export const metadata: Metadata = {
   },
   description: SITE_DESCRIPTION,
   applicationName: SITE_NAME,
-  manifest: '/manifest.webmanifest',
-  alternates: {
-    canonical: '/',
+  keywords: [
+    'poker',
+    "Texas Hold'em",
+    'free poker',
+    'online poker',
+    'private poker table',
+    'poker with friends',
+    'pokr',
+    'pokr.site',
+  ],
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1,
+    },
   },
+  manifest: '/manifest.webmanifest',
   openGraph: {
     type: 'website',
     url: '/',

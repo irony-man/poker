@@ -10,7 +10,9 @@ import {
   normalizeRoomSettings,
   normalizeSiteConfig,
   resolveBotNamePool,
+  resolveBotSeatingConfig,
   type BotGroup,
+  type BotSeatingConfig,
   type HomeLandingFeature,
   type PagesCopy,
   type RoomSettings,
@@ -111,6 +113,8 @@ export class SiteConfigStore {
         name: g.name,
         names: [...g.names],
         isDefault: g.isDefault,
+        defaultPersonality: g.defaultPersonality,
+        namePersonalities: { ...g.namePersonalities },
       })),
     };
   }
@@ -143,12 +147,19 @@ export class SiteConfigStore {
       name: g.name,
       names: [...g.names],
       isDefault: g.isDefault,
+      defaultPersonality: g.defaultPersonality,
+      namePersonalities: { ...g.namePersonalities },
     }));
   }
 
   /** Display-name pool for seating; uses default group when id is missing. */
   getBotNamePool(groupId?: string | null): string[] {
     return resolveBotNamePool(this.cache.botGroups, groupId);
+  }
+
+  /** Name pool + personality styles for seating bots from a group. */
+  getBotSeatingConfig(groupId?: string | null): BotSeatingConfig {
+    return resolveBotSeatingConfig(this.cache.botGroups, groupId);
   }
 
   async setAnnouncement(next: SiteAnnouncement): Promise<SiteAnnouncement> {

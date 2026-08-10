@@ -13,6 +13,10 @@ function OfflineInner() {
   const seats = Math.min(9, Math.max(2, Number(search.get('seats')) || 6));
   const botGroup = search.get('botGroup');
   const [botNames, setBotNames] = useState<string[] | undefined>(undefined);
+  const [botStyles, setBotStyles] = useState<{
+    defaultPersonality: import('@/lib/api').BotPersonalityId | null;
+    namePersonalities: Record<string, import('@/lib/api').BotPersonalityId>;
+  } | null>(null);
   const [namesReady, setNamesReady] = useState(false);
 
   useEffect(() => {
@@ -26,6 +30,14 @@ function OfflineInner() {
           groups[0];
         const names = g?.names?.filter(Boolean) ?? [];
         setBotNames(names.length > 0 ? names : undefined);
+        setBotStyles(
+          g
+            ? {
+                defaultPersonality: g.defaultPersonality ?? null,
+                namePersonalities: { ...(g.namePersonalities ?? {}) },
+              }
+            : null,
+        );
       })
       .finally(() => {
         if (!cancelled) setNamesReady(true);
@@ -51,7 +63,12 @@ function OfflineInner() {
   }
 
   return (
-    <OfflineTableView config={config} playerName={name} botNames={botNames} />
+    <OfflineTableView
+      config={config}
+      playerName={name}
+      botNames={botNames}
+      botStyles={botStyles}
+    />
   );
 }
 

@@ -49,6 +49,34 @@ export interface RoomSettings {
   inactivityMinutes: number;
 }
 
+/** Playing styles admins can assign to a bot set or individual name. */
+export type BotPersonalityId =
+  | 'balanced'
+  | 'tight'
+  | 'loose'
+  | 'aggro'
+  | 'passive'
+  | 'maniac'
+  | 'caller'
+  | 'nit'
+  | 'lag';
+
+export const BOT_PERSONALITY_IDS: readonly BotPersonalityId[] = [
+  'balanced',
+  'tight',
+  'loose',
+  'aggro',
+  'passive',
+  'maniac',
+  'caller',
+  'nit',
+  'lag',
+] as const;
+
+export function isBotPersonalityId(value: string | null | undefined): value is BotPersonalityId {
+  return !!value && (BOT_PERSONALITY_IDS as readonly string[]).includes(value);
+}
+
 /** Named list of bot display names; hosts can pick a group when seating bots. */
 export interface BotGroup {
   id: string;
@@ -56,6 +84,20 @@ export interface BotGroup {
   names: string[];
   /** Exactly one group should be default; used when no group id is chosen. */
   isDefault: boolean;
+  /**
+   * Group-wide style when a name has no per-name override.
+   * `null` = engine auto (built-in roster names, else stable hash).
+   */
+  defaultPersonality: BotPersonalityId | null;
+  /** Per display-name style overrides (keys match `names`). */
+  namePersonalities: Record<string, BotPersonalityId>;
+}
+
+/** Name pool + styles used when seating bots from a group. */
+export interface BotSeatingConfig {
+  names: string[];
+  defaultPersonality: BotPersonalityId | null;
+  namePersonalities: Record<string, BotPersonalityId>;
 }
 
 export const DEFAULT_ROOM_INACTIVITY_MINUTES = 15;
@@ -83,12 +125,28 @@ export const DEFAULT_BOT_DISPLAY_NAMES: string[] = [
   'RaiseRex',
 ];
 
+/** Seed styles for the default Classic pack (mirrors engine `BOT_NAME_PERSONALITIES`). */
+export const DEFAULT_BOT_NAME_PERSONALITIES: Record<string, BotPersonalityId> = {
+  AceBot: 'aggro',
+  RiverRat: 'caller',
+  BluffByte: 'lag',
+  PotOdds: 'balanced',
+  ChipShark: 'aggro',
+  FoldBot: 'nit',
+  AllInAnnie: 'maniac',
+  NutsNova: 'tight',
+  CallCart: 'caller',
+  RaiseRex: 'aggro',
+};
+
 export const DEFAULT_BOT_GROUPS: BotGroup[] = [
   {
     id: 'classic',
     name: 'Classic',
     names: [...DEFAULT_BOT_DISPLAY_NAMES],
     isDefault: true,
+    defaultPersonality: null,
+    namePersonalities: { ...DEFAULT_BOT_NAME_PERSONALITIES },
   },
 ];
 
@@ -242,7 +300,31 @@ export function defaultSiteConfig(): SiteConfigPayload {
 }
 
 function cloneBotGroup(g: BotGroup): BotGroup {
-  return { id: g.id, name: g.name, names: [...g.names], isDefault: g.isDefault };
+  return {
+    id: g.id,
+    name: g.name,
+    names: [...g.names],
+    isDefault: g.isDefault,
+    defaultPersonality: g.defaultPersonality,
+    namePersonalities: { ...g.namePersonalities },
+  };
+}
+
+function normalizeNamePersonalities(
+  raw: unknown,
+  names: string[],
+): Record<string, BotPersonalityId> {
+  const out: Record<string, BotPersonalityId> = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  const map = raw as Record<string, unknown>;
+  const byLower = new Map(names.map((n) => [n.toLowerCase(), n] as const));
+  for (const [key, value] of Object.entries(map)) {
+    if (typeof value !== 'string' || !isBotPersonalityId(value)) continue;
+    const canonical = byLower.get(key.trim().toLowerCase());
+    if (!canonical) continue;
+    out[canonical] = value;
+  }
+  return out;
 }
 
 function slugId(raw: string, fallback: string): string {
@@ -284,11 +366,29 @@ export function normalizeBotGroup(raw: unknown, index: number): BotGroup | null 
   if (names.length === 0) {
     names.push(...DEFAULT_BOT_DISPLAY_NAMES);
   }
+  const defaultPersonality =
+    typeof o.defaultPersonality === 'string' && isBotPersonalityId(o.defaultPersonality)
+      ? o.defaultPersonality
+      : null;
+  const namePersonalities = normalizeNamePersonalities(o.namePersonalities, names);
+  // Seed classic-style overrides for groups that never had personality config yet.
+  if (
+    Object.keys(namePersonalities).length === 0 &&
+    o.namePersonalities === undefined &&
+    o.defaultPersonality === undefined
+  ) {
+    for (const n of names) {
+      const seed = DEFAULT_BOT_NAME_PERSONALITIES[n];
+      if (seed) namePersonalities[n] = seed;
+    }
+  }
   return {
     id,
     name,
     names,
     isDefault: Boolean(o.isDefault),
+    defaultPersonality,
+    namePersonalities,
   };
 }
 
@@ -321,15 +421,31 @@ export function normalizeBotGroups(raw: unknown): BotGroup[] {
   return out;
 }
 
-/** Resolve name list for seating bots (default group if id missing/invalid). */
-export function resolveBotNamePool(groups: BotGroup[], groupId?: string | null): string[] {
+function pickBotGroup(groups: BotGroup[], groupId?: string | null): BotGroup {
   const list = groups.length > 0 ? groups : DEFAULT_BOT_GROUPS;
   if (groupId) {
     const match = list.find((g) => g.id === groupId);
-    if (match) return [...match.names];
+    if (match) return match;
   }
-  const def = list.find((g) => g.isDefault) ?? list[0]!;
-  return [...def.names];
+  return list.find((g) => g.isDefault) ?? list[0]!;
+}
+
+/** Resolve name list for seating bots (default group if id missing/invalid). */
+export function resolveBotNamePool(groups: BotGroup[], groupId?: string | null): string[] {
+  return [...pickBotGroup(groups, groupId).names];
+}
+
+/** Name pool + personality settings for seating bots from a group. */
+export function resolveBotSeatingConfig(
+  groups: BotGroup[],
+  groupId?: string | null,
+): BotSeatingConfig {
+  const g = pickBotGroup(groups, groupId);
+  return {
+    names: [...g.names],
+    defaultPersonality: g.defaultPersonality,
+    namePersonalities: { ...g.namePersonalities },
+  };
 }
 
 function clonePages(pages: PagesCopy): PagesCopy {

@@ -7,6 +7,7 @@ import type { EconomySnapshot } from '../wallet/wallet.constants.js';
 import { SiteConfigStore } from './site-config.store.js';
 import type {
   BotGroup,
+  BotSeatingConfig,
   HomeLandingFeature,
   PagesCopy,
   RoomSettings,
@@ -66,6 +67,10 @@ export class SiteConfigService implements OnModuleInit {
 
   getBotNamePool(groupId?: string | null): string[] {
     return this.store.getBotNamePool(groupId);
+  }
+
+  getBotSeatingConfig(groupId?: string | null): BotSeatingConfig {
+    return this.store.getBotSeatingConfig(groupId);
   }
 
   /** Idle timeout in ms for terminate sweeps (derived). */

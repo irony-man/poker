@@ -24,7 +24,8 @@ import type { HandHistoryStore } from '../history/history.store.js';
 import type { TableChipStore } from '../table-chips/table-chips.store.js';
 import { MemoryTableChipStore } from '../table-chips/table-chips.store.js';
 import { avatarIdFromUserId, clampAvatarId } from '../avatars.js';
-import { chooseBotAction, isBotUserId, makeBotUserId, pickBotName } from '../bot.js';
+import { chooseBotAction, isBotUserId, makeBotUserId, pickBotName, resolveBotPersonalityId } from '../bot.js';
+import type { BotStyleOptions } from '@poker/engine';
 import type { WalletStore } from '../wallet/wallet.constants.js';
 import { UnlimitedWalletStore, WalletError } from '../wallet/wallet.store.js';
 
@@ -121,10 +122,21 @@ export class Room {
   private lastLobbySeats = -1;
   /** Name pool from an admin bot group; sticks for later seats on this table. */
   private botNamePool: string[] | null = null;
+  /** Style map from an admin bot group; sticks with the name pool. */
+  private botStyles: BotStyleOptions | null = null;
 
   /** Resolved name pool used for bots on this room (or null if not set). */
   getBotNamePool(): string[] | null {
     return this.botNamePool ? [...this.botNamePool] : null;
+  }
+
+  getBotStyles(): BotStyleOptions | null {
+    return this.botStyles
+      ? {
+          defaultPersonality: this.botStyles.defaultPersonality ?? null,
+          namePersonalities: { ...(this.botStyles.namePersonalities ?? {}) },
+        }
+      : null;
   }
 
   constructor(
@@ -620,6 +632,7 @@ export class Room {
     buyIn?: number,
     count = 1,
     namePool?: readonly string[],
+    styles?: BotStyleOptions | null,
   ): { ok: boolean; error?: string; added?: number } {
     // Public cash tables are humans-only (bots are private host / practice).
     if (!this.meta.isPrivate) {
@@ -637,6 +650,12 @@ export class Room {
 
     if (namePool && namePool.length > 0) {
       this.botNamePool = [...namePool];
+    }
+    if (styles) {
+      this.botStyles = {
+        defaultPersonality: styles.defaultPersonality ?? null,
+        namePersonalities: { ...(styles.namePersonalities ?? {}) },
+      };
     }
 
     // Specific seat → always one bot
@@ -656,7 +675,9 @@ export class Room {
 
       const taken = new Set(this.state.players.filter((p) => p.name).map((p) => p.name!));
       const name = pickBotName(taken, this.botNamePool ?? undefined);
-      const userId = makeBotUserId(nanoid(8));
+      const bareId = nanoid(8);
+      const personality = resolveBotPersonalityId(name, bareId, this.botStyles);
+      const userId = makeBotUserId(bareId, personality);
       const result = sitDown(this.state, nextSeat, userId, name, amount);
       if (!result.ok) break;
       this.state = result.state;

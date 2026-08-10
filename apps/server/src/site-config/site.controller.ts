@@ -22,6 +22,8 @@ export class SiteController {
         isDefault: g.isDefault,
         nameCount: g.names.length,
         names: g.names,
+        defaultPersonality: g.defaultPersonality,
+        namePersonalities: g.namePersonalities,
       })),
     };
   }

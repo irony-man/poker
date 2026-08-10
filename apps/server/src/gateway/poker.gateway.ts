@@ -275,12 +275,19 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
         }
         // Prefer explicit group; else keep table pool from create; else site default.
         let namePool: string[] | undefined;
+        let styles: ReturnType<SiteConfigService['getBotSeatingConfig']> | undefined;
         if (msg.botGroupId) {
-          namePool = this.site.getBotNamePool(msg.botGroupId);
+          const seating = this.site.getBotSeatingConfig(msg.botGroupId);
+          namePool = seating.names;
+          styles = seating;
         } else if (!r.getBotNamePool()) {
-          namePool = this.site.getBotNamePool();
+          const seating = this.site.getBotSeatingConfig();
+          namePool = seating.names;
+          styles = seating;
+        } else if (!r.getBotStyles()) {
+          styles = this.site.getBotSeatingConfig();
         }
-        const result = r.addBot(userId, msg.seat, msg.buyIn, msg.count ?? 1, namePool);
+        const result = r.addBot(userId, msg.seat, msg.buyIn, msg.count ?? 1, namePool, styles);
         if (!result.ok) send({ type: 'error', message: result.error ?? 'Add bot failed' });
         break;
       }

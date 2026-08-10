@@ -73,11 +73,25 @@ const PagesBody = z.object({
   }),
 });
 
+const BotPersonalityIdSchema = z.enum([
+  'balanced',
+  'tight',
+  'loose',
+  'aggro',
+  'passive',
+  'maniac',
+  'caller',
+  'nit',
+  'lag',
+]);
+
 const BotGroupBody = z.object({
   id: z.string().min(1).max(64).optional(),
   name: z.string().min(1).max(48),
   names: z.array(z.string().min(1).max(24)).min(1).max(40),
   isDefault: z.boolean().optional(),
+  defaultPersonality: BotPersonalityIdSchema.nullable().optional(),
+  namePersonalities: z.record(BotPersonalityIdSchema).optional(),
 });
 
 const BotGroupsBody = z.object({
@@ -206,6 +220,8 @@ export class AdminController {
         name: g.name,
         names: g.names,
         isDefault: Boolean(g.isDefault),
+        defaultPersonality: g.defaultPersonality ?? null,
+        namePersonalities: g.namePersonalities ?? {},
       })),
     );
     return { groups };

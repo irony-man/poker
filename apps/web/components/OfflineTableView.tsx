@@ -11,6 +11,7 @@ import {
   isBotUserId,
   makeBotUserId,
   pickBotName,
+  resolveBotPersonalityId,
   returnToWaiting,
   sitDown,
   sitIn,
@@ -19,6 +20,7 @@ import {
   topUp,
   toPrivateView,
   toPublicView,
+  type BotStyleOptions,
   type EngineEvent,
   type HandState,
   type TableConfig,
@@ -149,11 +151,14 @@ export function OfflineTableView({
   config,
   playerName,
   botNames,
+  botStyles,
 }: {
   config: TableConfig;
   playerName: string;
   /** Admin bot group names; falls back to built-in engine defaults. */
   botNames?: readonly string[];
+  /** Admin bot group styles (group default + per-name). */
+  botStyles?: BotStyleOptions | null;
 }) {
   const pushChat = useSession((s) => s.pushChat);
   const setEmoji = useSession((s) => s.setEmoji);
@@ -224,7 +229,9 @@ export function OfflineTableView({
       if (!empty) break;
       const botName = pickBotName(taken, namePool);
       taken.add(botName);
-      const r = sitDown(s, empty.seat, makeBotUserId(`off-${i}`), botName, config.buyIn);
+      const bareId = `off-${i}`;
+      const personality = resolveBotPersonalityId(botName, bareId, botStyles);
+      const r = sitDown(s, empty.seat, makeBotUserId(bareId, personality), botName, config.buyIn);
       if (r.ok) s = r.state;
     }
     setState(s);

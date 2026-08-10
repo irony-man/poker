@@ -7,6 +7,7 @@ import { LobbyPageShell } from '@/components/LobbyPageShell';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { MoneyAmount } from '@/components/CurrencyIcon';
 import { useConfirm } from '@/components/ConfirmPopover';
+import { BOT_PERSONALITY_IDS, type BotPersonalityId } from '@poker/engine';
 import {
   creditAdminUser,
   creditAdminUserWhuffies,
@@ -52,7 +53,9 @@ import { useLobbySession } from '@/lib/useLobbySession';
 const MAX_HOME_BLOCKS = 12;
 const MAX_BOT_GROUPS = 20;
 const DEFAULT_BOT_NAMES =
-  'AceBot\nRiverRat\nBluffByte\nPotOdds\nChipShark\nFoldBot\nAllInAnnie\nNutsNova\nCallCart\nRaiseRex';
+  'AceBot, aggro\nRiverRat, caller\nBluffByte, lag\nPotOdds, balanced\nChipShark, aggro\nFoldBot, nit\nAllInAnnie, maniac\nNutsNova, tight\nCallCart, caller\nRaiseRex, aggro';
+
+const DEFAULT_BOT_NAME_LIST = DEFAULT_BOT_NAMES.split('\n').map((line) => line.split(',')[0]!.trim());
 
 const BLANK_HOME_BLOCK: HomeLandingFeature = {
   title: 'New feature',
@@ -97,31 +100,174 @@ function parseAdminTab(raw: string | null): AdminTab {
 }
 
 function emptyBotGroup(): BotGroup {
+  const parsed = parseBulkBotRoster(DEFAULT_BOT_NAMES);
+  const names = parsed.ok ? parsed.names : DEFAULT_BOT_NAME_LIST;
+  const namePersonalities = parsed.ok ? parsed.namePersonalities : {};
   return {
     id: `group-${Date.now().toString(36)}`,
     name: 'New group',
-    names: DEFAULT_BOT_NAMES.split('\n'),
+    names,
     isDefault: false,
+    defaultPersonality: null,
+    namePersonalities,
   };
 }
 
-function namesToText(names: string[]): string {
-  return names.join('\n');
+const PERSONALITY_LABELS: Record<BotPersonalityId, string> = {
+  balanced: 'Balanced',
+  tight: 'Tight',
+  loose: 'Loose',
+  aggro: 'Aggressive',
+  passive: 'Passive',
+  maniac: 'Maniac',
+  caller: 'Caller',
+  nit: 'Nit',
+  lag: 'LAG',
+};
+
+const PERSONALITY_TOKEN_TO_ID: Record<string, BotPersonalityId> = (() => {
+  const map: Record<string, BotPersonalityId> = {};
+  for (const id of BOT_PERSONALITY_IDS) {
+    map[id.toLowerCase()] = id;
+    map[PERSONALITY_LABELS[id].toLowerCase()] = id;
+  }
+  return map;
+})();
+
+function resolvePersonalityToken(raw: string): BotPersonalityId | null {
+  const key = raw.trim().toLowerCase();
+  if (!key) return null;
+  return PERSONALITY_TOKEN_TO_ID[key] ?? null;
 }
 
-function textToNames(text: string): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const line of text.split(/[\n,]+/)) {
-    const n = line.trim().slice(0, 24);
-    if (!n) continue;
-    const key = n.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(n);
-    if (out.length >= 40) break;
+function pruneNamePersonalities(
+  names: string[],
+  map: Record<string, BotPersonalityId> | undefined,
+): Record<string, BotPersonalityId> {
+  const out: Record<string, BotPersonalityId> = {};
+  if (!map) return out;
+  for (const n of names) {
+    const id = map[n];
+    if (id && (BOT_PERSONALITY_IDS as readonly string[]).includes(id)) out[n] = id;
   }
-  return out.length > 0 ? out : DEFAULT_BOT_NAMES.split('\n');
+  return out;
+}
+
+function normalizeAdminBotGroup(g: BotGroup): BotGroup {
+  const names = g.names?.length ? g.names : DEFAULT_BOT_NAME_LIST;
+  return {
+    id: g.id,
+    name: g.name,
+    names,
+    isDefault: Boolean(g.isDefault),
+    defaultPersonality: g.defaultPersonality ?? null,
+    namePersonalities: pruneNamePersonalities(names, g.namePersonalities),
+  };
+}
+
+/** Serialize names + optional styles for bulk edit: one `Name` or `Name, style` per line. */
+function rosterToBulkText(
+  names: string[],
+  namePersonalities: Record<string, BotPersonalityId> | undefined,
+): string {
+  return names
+    .map((n) => {
+      const p = namePersonalities?.[n];
+      return p ? `${n}, ${p}` : n;
+    })
+    .join('\n');
+}
+
+type BulkBotRosterResult =
+  | { ok: true; names: string[]; namePersonalities: Record<string, BotPersonalityId> }
+  | { ok: false; errors: string[] };
+
+/**
+ * Bulk format: one bot per line.
+ * - `Name` — display name only (group default / auto style)
+ * - `Name, style` — style must be a known personality id or label
+ */
+function parseBulkBotRoster(text: string): BulkBotRosterResult {
+  const errors: string[] = [];
+  const names: string[] = [];
+  const namePersonalities: Record<string, BotPersonalityId> = {};
+  const seen = new Set<string>();
+  const validHint = BOT_PERSONALITY_IDS.join(', ');
+  const lines = text.split('\n');
+
+  for (let i = 0; i < lines.length; i++) {
+    const lineNo = i + 1;
+    const raw = lines[i]!.trim();
+    if (!raw) continue;
+
+    const firstComma = raw.indexOf(',');
+    let namePart: string;
+    let stylePart: string | null = null;
+
+    if (firstComma >= 0) {
+      namePart = raw.slice(0, firstComma).trim();
+      stylePart = raw.slice(firstComma + 1).trim();
+      if (stylePart.includes(',')) {
+        errors.push(`Line ${lineNo}: use one personality after the comma (valid: ${validHint})`);
+        continue;
+      }
+    } else {
+      namePart = raw;
+    }
+
+    if (!namePart) {
+      errors.push(`Line ${lineNo}: missing display name before the comma`);
+      continue;
+    }
+    if (namePart.length > 24) {
+      errors.push(`Line ${lineNo}: name longer than 24 characters ("${namePart.slice(0, 24)}…")`);
+      continue;
+    }
+
+    if (stylePart !== null) {
+      if (!stylePart) {
+        errors.push(
+          `Line ${lineNo}: missing personality after comma for "${namePart}" (valid: ${validHint})`,
+        );
+        continue;
+      }
+      const styleId = resolvePersonalityToken(stylePart);
+      if (!styleId) {
+        errors.push(
+          `Line ${lineNo}: unknown personality "${stylePart}" for "${namePart}" (valid: ${validHint})`,
+        );
+        continue;
+      }
+      namePersonalities[namePart] = styleId;
+    }
+
+    const key = namePart.toLowerCase();
+    if (seen.has(key)) {
+      errors.push(`Line ${lineNo}: duplicate name "${namePart}"`);
+      continue;
+    }
+    seen.add(key);
+    names.push(namePart);
+
+    if (names.length > 40) {
+      errors.push('Too many names (max 40)');
+      break;
+    }
+  }
+
+  if (names.length === 0 && errors.length === 0) {
+    errors.push('Add at least one bot name (one per line; optional ", style")');
+  }
+
+  if (errors.length > 0) return { ok: false, errors };
+  return { ok: true, names, namePersonalities };
+}
+
+function groupBulkText(
+  group: BotGroup,
+  drafts: Record<string, string>,
+): string {
+  return drafts[group.id] ?? rosterToBulkText(group.names, group.namePersonalities);
 }
 
 function slugBotGroupId(raw: string, fallback: string): string {
@@ -211,15 +357,18 @@ function AdminPageInner() {
     () => DEFAULT_HOME_FEATURES.map((f) => ({ ...f })),
   );
   const [pagesCopy, setPagesCopy] = useState<PagesCopy>(() => clonePagesCopy());
-  const [botGroups, setBotGroups] = useState<BotGroup[]>(() => [
-    {
-      id: 'classic',
-      name: 'Classic',
-      names: DEFAULT_BOT_NAMES.split('\n'),
-      isDefault: true,
-    },
-  ]);
-  const [botNameDrafts, setBotNameDrafts] = useState<Record<string, string>>({});
+  const [botGroups, setBotGroups] = useState<BotGroup[]>(() => {
+    const g = emptyBotGroup();
+    g.id = 'classic';
+    g.name = 'Classic';
+    g.isDefault = true;
+    return [g];
+  });
+  const [botNameDrafts, setBotNameDrafts] = useState<Record<string, string>>(() => {
+    const g = emptyBotGroup();
+    g.id = 'classic';
+    return { classic: rosterToBulkText(g.names, g.namePersonalities) };
+  });
   const [openBotGroup, setOpenBotGroup] = useState<string | null>('classic');
   const [botNameInput, setBotNameInput] = useState('');
   const [showBulkEdit, setShowBulkEdit] = useState(false);
@@ -294,18 +443,25 @@ function AdminPageInner() {
           : DEFAULT_HOME_FEATURES.map((f) => ({ ...f })),
       );
       setPagesCopy(pages.pages ? clonePagesCopy(pages.pages) : clonePagesCopy());
-      const groups = bots.groups?.length
+      const groups = (bots.groups?.length
         ? bots.groups
         : [
             {
               id: 'classic',
               name: 'Classic',
-              names: DEFAULT_BOT_NAMES.split('\n'),
+              names: DEFAULT_BOT_NAME_LIST,
               isDefault: true,
+              defaultPersonality: null as BotPersonalityId | null,
+              namePersonalities: {} as Record<string, BotPersonalityId>,
             },
-          ];
+          ]
+      ).map(normalizeAdminBotGroup);
       setBotGroups(groups);
-      setBotNameDrafts(Object.fromEntries(groups.map((g) => [g.id, namesToText(g.names)])));
+      setBotNameDrafts(
+        Object.fromEntries(
+          groups.map((g) => [g.id, rosterToBulkText(g.names, g.namePersonalities)]),
+        ),
+      );
       setOpenBotGroup((cur) => cur ?? groups[0]?.id ?? null);
       setStats({
         userCount: overview.userCount,
@@ -394,16 +550,39 @@ function AdminPageInner() {
     e.preventDefault();
     if (!token) return;
     await withBusy('bots', async () => {
-      const payload = botGroups.map((g) => ({
-        ...g,
-        names: textToNames(botNameDrafts[g.id] ?? namesToText(g.names)),
-      }));
+      const payload: BotGroup[] = [];
+      for (const g of botGroups) {
+        const text = groupBulkText(g, botNameDrafts);
+        const parsed = parseBulkBotRoster(text);
+        if (!parsed.ok) {
+          setOpenBotGroup(g.id);
+          setShowBulkEdit(true);
+          throw new Error(
+            `${g.name || g.id}: ${parsed.errors[0]}${
+              parsed.errors.length > 1 ? ` (+${parsed.errors.length - 1} more)` : ''
+            }`,
+          );
+        }
+        payload.push({
+          ...g,
+          names: parsed.names,
+          defaultPersonality: g.defaultPersonality ?? null,
+          namePersonalities: parsed.namePersonalities,
+        });
+      }
       if (!payload.some((g) => g.isDefault) && payload[0]) {
         payload[0] = { ...payload[0], isDefault: true };
       }
       const res = await patchAdminBotGroups(token, payload);
-      setBotGroups(res.groups);
-      setBotNameDrafts(Object.fromEntries(res.groups.map((g) => [g.id, namesToText(g.names)])));
+      setBotGroups(res.groups.map(normalizeAdminBotGroup));
+      setBotNameDrafts(
+        Object.fromEntries(
+          res.groups.map((g) => [
+            g.id,
+            rosterToBulkText(g.names, g.namePersonalities),
+          ]),
+        ),
+      );
       flash('Bot groups saved');
     });
   }
@@ -423,7 +602,7 @@ function AdminPageInner() {
       if (list.length >= MAX_BOT_GROUPS) return list;
       const g = emptyBotGroup();
       if (list.length === 0) g.isDefault = true;
-      setBotNameDrafts((m) => ({ ...m, [g.id]: namesToText(g.names) }));
+      setBotNameDrafts((m) => ({ ...m, [g.id]: rosterToBulkText(g.names, g.namePersonalities) }));
       setOpenBotGroup(g.id);
       return [...list, g];
     });
@@ -465,13 +644,57 @@ function AdminPageInner() {
   }
 
   function setBotGroupNames(id: string, names: string[]) {
-    setBotNameDrafts((m) => ({ ...m, [id]: namesToText(names) }));
+    setBotGroups((list) => {
+      const next = list.map((g) => {
+        if (g.id !== id) return g;
+        const updated = {
+          ...g,
+          names,
+          namePersonalities: pruneNamePersonalities(names, g.namePersonalities),
+        };
+        setBotNameDrafts((m) => ({
+          ...m,
+          [id]: rosterToBulkText(updated.names, updated.namePersonalities),
+        }));
+        return updated;
+      });
+      return next;
+    });
+  }
+
+  function setBotGroupDefaultPersonality(id: string, value: string) {
+    const defaultPersonality =
+      value && (BOT_PERSONALITY_IDS as readonly string[]).includes(value)
+        ? (value as BotPersonalityId)
+        : null;
+    updateBotGroup(id, { defaultPersonality });
+  }
+
+  function setBotNamePersonality(groupId: string, name: string, value: string) {
+    setBotGroups((list) =>
+      list.map((g) => {
+        if (g.id !== groupId) return g;
+        const namePersonalities = { ...g.namePersonalities };
+        if (value && (BOT_PERSONALITY_IDS as readonly string[]).includes(value)) {
+          namePersonalities[name] = value as BotPersonalityId;
+        } else {
+          delete namePersonalities[name];
+        }
+        const updated = { ...g, namePersonalities };
+        setBotNameDrafts((m) => ({
+          ...m,
+          [groupId]: rosterToBulkText(updated.names, updated.namePersonalities),
+        }));
+        return updated;
+      }),
+    );
   }
 
   function addBotNameToGroup(id: string, raw: string) {
     const n = raw.trim().slice(0, 24);
     if (!n) return;
-    const current = textToNames(botNameDrafts[id] ?? namesToText(botGroups.find((g) => g.id === id)?.names ?? []));
+    const group = botGroups.find((g) => g.id === id);
+    const current = group?.names ?? [];
     if (current.some((x) => x.toLowerCase() === n.toLowerCase())) return;
     if (current.length >= 40) return;
     setBotGroupNames(id, [...current, n]);
@@ -479,9 +702,11 @@ function AdminPageInner() {
   }
 
   function removeBotNameFromGroup(id: string, name: string) {
-    const current = textToNames(botNameDrafts[id] ?? namesToText(botGroups.find((g) => g.id === id)?.names ?? []));
+    const group = botGroups.find((g) => g.id === id);
+    const current = group?.names ?? [];
     const next = current.filter((x) => x !== name);
-    setBotGroupNames(id, next.length > 0 ? next : current);
+    if (next.length === 0) return;
+    setBotGroupNames(id, next);
   }
 
   function updateHomeFeature(index: number, patch: Partial<HomeLandingFeature>) {
@@ -1127,7 +1352,7 @@ function AdminPageInner() {
         {tab === 'bots' ? (
           <Section
             title="Bot groups"
-            description="Name packs hosts and tables use when seating bots. Set one default for new tables."
+            description="Name packs and playing styles hosts use when seating bots. Pick a group default style and optional per-name overrides."
             action={
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs tabular-nums text-ink-strong-muted">
@@ -1158,8 +1383,9 @@ function AdminPageInner() {
                 >
                   {botGroups.map((group) => {
                     const selected = openBotGroup === group.id;
-                    const draft = botNameDrafts[group.id] ?? namesToText(group.names);
-                    const nameCount = textToNames(draft).length;
+                    const draft = groupBulkText(group, botNameDrafts);
+                    const parsed = parseBulkBotRoster(draft);
+                    const nameCount = parsed.ok ? parsed.names.length : group.names.length;
                     return (
                       <button
                         key={group.id}
@@ -1219,8 +1445,14 @@ function AdminPageInner() {
                       </p>
                     );
                   }
-                  const draft = botNameDrafts[group.id] ?? namesToText(group.names);
-                  const names = textToNames(draft);
+                  const draft = groupBulkText(group, botNameDrafts);
+                  const parsed = parseBulkBotRoster(draft);
+                  const bulkErrors = showBulkEdit && !parsed.ok ? parsed.errors : [];
+                  // Prefer live bulk parse when valid so drafts stay source of truth.
+                  const names = parsed.ok ? parsed.names : group.names;
+                  const displayPersonalities = parsed.ok
+                    ? parsed.namePersonalities
+                    : group.namePersonalities;
                   return (
                     <div className="min-w-0 space-y-4 rounded-xl border border-sidebar/12 bg-cream p-4 sm:p-5">
                       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1283,16 +1515,78 @@ function AdminPageInner() {
                       </div>
 
                       <div>
+                        <label className="mb-2 block max-w-md">
+                          <span className={labelClass}>Default style</span>
+                          <select
+                            value={group.defaultPersonality ?? ''}
+                            onChange={(e) => setBotGroupDefaultPersonality(group.id, e.target.value)}
+                            className={fieldClass}
+                            disabled={busy}
+                          >
+                            <option value="">Auto (by name / hash)</option>
+                            {BOT_PERSONALITY_IDS.map((id) => (
+                              <option key={id} value={id}>
+                                {PERSONALITY_LABELS[id]}
+                              </option>
+                            ))}
+                          </select>
+                          <p className="mt-1 text-xs text-ink-strong-muted">
+                            Used when a name has no style override. Auto keeps classic name map.
+                          </p>
+                        </label>
+                      </div>
+
+                      <div>
                         <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
                           <div>
-                            <span className={labelClass}>Display names</span>
+                            <span className={labelClass}>Display names & styles</span>
                             <p className="mt-0.5 text-xs text-ink-strong-muted">
                               {names.length}/40 · shown at the table when bots sit
                             </p>
                           </div>
                           <button
                             type="button"
-                            onClick={() => setShowBulkEdit((v) => !v)}
+                            onClick={() => {
+                              if (showBulkEdit) {
+                                const check = parseBulkBotRoster(
+                                  groupBulkText(group, botNameDrafts),
+                                );
+                                if (!check.ok) {
+                                  setError(
+                                    `${group.name || group.id}: fix bulk edit errors before using chip editor — ${check.errors[0]}`,
+                                  );
+                                  return;
+                                }
+                                setBotGroups((list) =>
+                                  list.map((g) =>
+                                    g.id === group.id
+                                      ? {
+                                          ...g,
+                                          names: check.names,
+                                          namePersonalities: check.namePersonalities,
+                                        }
+                                      : g,
+                                  ),
+                                );
+                                setBotNameDrafts((m) => ({
+                                  ...m,
+                                  [group.id]: rosterToBulkText(
+                                    check.names,
+                                    check.namePersonalities,
+                                  ),
+                                }));
+                              } else {
+                                setBotNameDrafts((m) => ({
+                                  ...m,
+                                  [group.id]: rosterToBulkText(
+                                    group.names,
+                                    group.namePersonalities,
+                                  ),
+                                }));
+                              }
+                              setError(null);
+                              setShowBulkEdit((v) => !v);
+                            }}
                             className="text-xs font-medium text-sidebar underline-offset-2 hover:underline"
                           >
                             {showBulkEdit ? 'Chip editor' : 'Bulk edit'}
@@ -1300,35 +1594,94 @@ function AdminPageInner() {
                         </div>
 
                         {showBulkEdit ? (
-                          <label className="block">
-                            <span className="sr-only">Bot names, one per line</span>
-                            <textarea
-                              value={draft}
-                              onChange={(e) =>
-                                setBotNameDrafts((m) => ({ ...m, [group.id]: e.target.value }))
-                              }
-                              rows={10}
-                              className={`${fieldClass} font-mono text-xs leading-relaxed`}
-                              placeholder={DEFAULT_BOT_NAMES}
-                            />
-                          </label>
+                          <div className="space-y-2">
+                            <label className="block">
+                              <span className="sr-only">Bot names and styles, one per line</span>
+                              <textarea
+                                value={draft}
+                                onChange={(e) => {
+                                  const text = e.target.value;
+                                  setBotNameDrafts((m) => ({ ...m, [group.id]: text }));
+                                  const next = parseBulkBotRoster(text);
+                                  if (!next.ok) return;
+                                  setBotGroups((list) =>
+                                    list.map((g) =>
+                                      g.id === group.id
+                                        ? {
+                                            ...g,
+                                            names: next.names,
+                                            namePersonalities: next.namePersonalities,
+                                          }
+                                        : g,
+                                    ),
+                                  );
+                                }}
+                                rows={10}
+                                className={`${fieldClass} font-mono text-xs leading-relaxed ${
+                                  bulkErrors.length > 0
+                                    ? 'border-danger/40 focus:border-danger/50 focus:ring-danger/15'
+                                    : ''
+                                }`}
+                                placeholder={DEFAULT_BOT_NAMES}
+                                aria-invalid={bulkErrors.length > 0}
+                              />
+                            </label>
+                            <p className="text-xs text-ink-strong-muted">
+                              One bot per line: <code className="font-mono text-[11px]">Name</code> or{' '}
+                              <code className="font-mono text-[11px]">Name, style</code>. Styles:{' '}
+                              {BOT_PERSONALITY_IDS.join(', ')}.
+                            </p>
+                            {bulkErrors.length > 0 ? (
+                              <ul
+                                className="space-y-1 rounded-lg border border-danger/25 bg-danger/5 px-3 py-2 text-xs text-danger"
+                                role="alert"
+                              >
+                                {bulkErrors.map((err) => (
+                                  <li key={err}>{err}</li>
+                                ))}
+                              </ul>
+                            ) : null}
+                          </div>
                         ) : (
                           <div className="rounded-xl border border-sidebar/12 bg-mushroom/[0.04] p-3">
-                            <ul className="flex flex-wrap gap-1.5">
+                            <ul className="space-y-2">
                               {names.map((n) => (
-                                <li key={n}>
-                                  <span className="inline-flex items-center gap-1 rounded-full border border-sidebar/12 bg-cream py-1 pl-2.5 pr-1 text-sm text-ink-strong shadow-sm">
-                                    <span className="max-w-[10rem] truncate font-medium">{n}</span>
-                                    <button
-                                      type="button"
-                                      onClick={() => removeBotNameFromGroup(group.id, n)}
-                                      className="flex h-6 w-6 items-center justify-center rounded-full text-ink-strong-muted transition hover:bg-danger/10 hover:text-danger"
-                                      aria-label={`Remove ${n}`}
-                                      title="Remove"
-                                    >
-                                      ×
-                                    </button>
+                                <li
+                                  key={n}
+                                  className="flex flex-wrap items-center gap-2 rounded-lg border border-sidebar/10 bg-cream px-2.5 py-1.5 shadow-sm"
+                                >
+                                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink-strong">
+                                    {n}
                                   </span>
+                                  <select
+                                    value={displayPersonalities[n] ?? ''}
+                                    onChange={(e) =>
+                                      setBotNamePersonality(group.id, n, e.target.value)
+                                    }
+                                    className="min-h-8 max-w-[10rem] rounded-md border border-sidebar/15 bg-white px-2 text-xs text-ink-strong"
+                                    aria-label={`Style for ${n}`}
+                                    disabled={busy}
+                                  >
+                                    <option value="">
+                                      {group.defaultPersonality
+                                        ? `Default (${PERSONALITY_LABELS[group.defaultPersonality]})`
+                                        : 'Default (auto)'}
+                                    </option>
+                                    {BOT_PERSONALITY_IDS.map((id) => (
+                                      <option key={id} value={id}>
+                                        {PERSONALITY_LABELS[id]}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeBotNameFromGroup(group.id, n)}
+                                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink-strong-muted transition hover:bg-danger/10 hover:text-danger"
+                                    aria-label={`Remove ${n}`}
+                                    title="Remove"
+                                  >
+                                    ×
+                                  </button>
                                 </li>
                               ))}
                               {names.length === 0 ? (
@@ -1370,11 +1723,14 @@ function AdminPageInner() {
 
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-sidebar/8 pt-4">
                 <p className="text-xs text-ink-strong-muted">
-                  Host create, table +Bot, and offline solo all read these packs.
+                  Host create, table +Bot, and offline solo all apply these names and styles.
                 </p>
                 <button
                   type="submit"
-                  disabled={busy}
+                  disabled={
+                    busy ||
+                    botGroups.some((g) => !parseBulkBotRoster(groupBulkText(g, botNameDrafts)).ok)
+                  }
                   className="btn-primary min-h-11 w-full sm:w-auto sm:min-w-[12rem] disabled:opacity-50"
                 >
                   {busyKey === 'bots' ? 'Saving…' : 'Save bot groups'}

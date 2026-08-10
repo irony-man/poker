@@ -9,8 +9,64 @@ export function isBotUserId(userId: string | null | undefined): boolean {
   return !!userId && userId.startsWith(BOT_PREFIX);
 }
 
-export function makeBotUserId(id: string): string {
-  return `${BOT_PREFIX}${id}`;
+/** Stable playing style for a bot seat. */
+export type BotPersonalityId =
+  | 'balanced'
+  | 'tight'
+  | 'loose'
+  | 'aggro'
+  | 'passive'
+  | 'maniac'
+  | 'caller'
+  | 'nit'
+  | 'lag';
+
+export const BOT_PERSONALITY_IDS: readonly BotPersonalityId[] = [
+  'balanced',
+  'tight',
+  'loose',
+  'aggro',
+  'passive',
+  'maniac',
+  'caller',
+  'nit',
+  'lag',
+] as const;
+
+export function isBotPersonalityId(value: string | null | undefined): value is BotPersonalityId {
+  return !!value && (BOT_PERSONALITY_IDS as readonly string[]).includes(value);
+}
+
+/**
+ * Build a bot user id. When `personality` is set, encode it as
+ * `bot:{style}:{id}` so seating-time admin styles stick for every decision.
+ */
+export function makeBotUserId(id: string, personality?: BotPersonalityId | null): string {
+  let bare = id.startsWith(BOT_PREFIX) ? id.slice(BOT_PREFIX.length) : id;
+  // Avoid double-encoding if an already-styled id is passed as the bare part.
+  const existing = personalityIdFromRest(bare);
+  if (existing) {
+    bare = bare.slice(existing.length + 1);
+  }
+  if (personality && isBotPersonalityId(personality)) {
+    return `${BOT_PREFIX}${personality}:${bare}`;
+  }
+  return `${BOT_PREFIX}${bare}`;
+}
+
+function personalityIdFromRest(rest: string): BotPersonalityId | null {
+  const i = rest.indexOf(':');
+  if (i <= 0) return null;
+  const head = rest.slice(0, i);
+  return isBotPersonalityId(head) ? head : null;
+}
+
+/** Read seating-time style from a bot user id (`bot:maniac:xyz` → maniac). */
+export function personalityIdFromBotUserId(
+  userId: string | null | undefined,
+): BotPersonalityId | null {
+  if (!isBotUserId(userId)) return null;
+  return personalityIdFromRest(userId!.slice(BOT_PREFIX.length));
 }
 
 /** Default display names when no admin bot group (or empty pool) is configured. */
@@ -36,6 +92,183 @@ export function pickBotName(
     if (n && !taken.has(n)) return n;
   }
   return `Bot${Math.floor(Math.random() * 900) + 100}`;
+}
+
+export interface BotPersonality {
+  id: BotPersonalityId;
+  /** Subtracted from Chen open / 3-bet / push bars (positive = looser). */
+  rangeOffset: number;
+  /** Scales bet pot-fractions and open sizes (1 = baseline). */
+  aggression: number;
+  /** Scales light 3-bet / semi-bluff roll odds (1 = baseline). */
+  bluffRate: number;
+  /** Added to hand equity when deciding calls (positive = sticky). */
+  callBias: number;
+  /** Lowers stack-off / push equity bar when positive. */
+  jamBias: number;
+}
+
+export const BOT_PERSONALITIES: Record<BotPersonalityId, BotPersonality> = {
+  balanced: {
+    id: 'balanced',
+    rangeOffset: 0,
+    aggression: 1,
+    bluffRate: 1,
+    callBias: 0,
+    jamBias: 0,
+  },
+  tight: {
+    id: 'tight',
+    rangeOffset: -1.8,
+    aggression: 0.95,
+    bluffRate: 0.45,
+    callBias: -0.04,
+    jamBias: -0.03,
+  },
+  loose: {
+    id: 'loose',
+    rangeOffset: 2.2,
+    aggression: 0.95,
+    bluffRate: 0.9,
+    callBias: 0.05,
+    jamBias: 0.02,
+  },
+  aggro: {
+    id: 'aggro',
+    rangeOffset: 0.6,
+    aggression: 1.35,
+    bluffRate: 1.35,
+    callBias: -0.02,
+    jamBias: 0.04,
+  },
+  passive: {
+    id: 'passive',
+    rangeOffset: -0.4,
+    aggression: 0.55,
+    bluffRate: 0.25,
+    callBias: 0.04,
+    jamBias: -0.05,
+  },
+  maniac: {
+    id: 'maniac',
+    rangeOffset: 3.2,
+    aggression: 1.55,
+    bluffRate: 1.9,
+    callBias: 0.02,
+    jamBias: 0.12,
+  },
+  caller: {
+    id: 'caller',
+    rangeOffset: 1.4,
+    aggression: 0.5,
+    bluffRate: 0.2,
+    callBias: 0.1,
+    jamBias: -0.04,
+  },
+  nit: {
+    id: 'nit',
+    rangeOffset: -3.2,
+    aggression: 0.75,
+    bluffRate: 0.15,
+    callBias: -0.08,
+    jamBias: -0.06,
+  },
+  lag: {
+    id: 'lag',
+    rangeOffset: 1.8,
+    aggression: 1.3,
+    bluffRate: 1.5,
+    callBias: 0.01,
+    jamBias: 0.05,
+  },
+};
+
+/** Default roster → distinct styles (names alone used to be pure fluff). */
+export const BOT_NAME_PERSONALITIES: Readonly<Record<string, BotPersonalityId>> = {
+  AceBot: 'aggro',
+  RiverRat: 'caller',
+  BluffByte: 'lag',
+  PotOdds: 'balanced',
+  ChipShark: 'aggro',
+  FoldBot: 'nit',
+  AllInAnnie: 'maniac',
+  NutsNova: 'tight',
+  CallCart: 'caller',
+  RaiseRex: 'aggro',
+};
+
+/** Admin / seating overrides for how names resolve to styles. */
+export interface BotStyleOptions {
+  /** Per display-name style (exact key preferred; case-insensitive fallback). */
+  namePersonalities?: Readonly<Record<string, BotPersonalityId>>;
+  /**
+   * When a name has no override, use this style.
+   * When null/absent, fall back to the built-in name map then a stable hash.
+   */
+  defaultPersonality?: BotPersonalityId | null;
+}
+
+/**
+ * Pick a personality id for a bot about to sit: per-name override → group
+ * default → built-in roster → hash of seed.
+ */
+export function resolveBotPersonalityId(
+  name: string | null | undefined,
+  seed: string,
+  options?: BotStyleOptions | null,
+): BotPersonalityId {
+  if (name && options?.namePersonalities) {
+    const direct = options.namePersonalities[name];
+    if (direct && isBotPersonalityId(direct)) return direct;
+    const key = Object.keys(options.namePersonalities).find(
+      (k) => k.toLowerCase() === name.toLowerCase(),
+    );
+    if (key) {
+      const id = options.namePersonalities[key];
+      if (id && isBotPersonalityId(id)) return id;
+    }
+  }
+  if (options?.defaultPersonality && isBotPersonalityId(options.defaultPersonality)) {
+    return options.defaultPersonality;
+  }
+  if (name) {
+    const byName = BOT_NAME_PERSONALITIES[name];
+    if (byName) return byName;
+    const key = Object.keys(BOT_NAME_PERSONALITIES).find(
+      (k) => k.toLowerCase() === name.toLowerCase(),
+    );
+    if (key) return BOT_NAME_PERSONALITIES[key]!;
+  }
+  const h = seed && seed.length > 0 ? seed : name ?? 'bot';
+  return BOT_PERSONALITY_IDS[hashString(h) % BOT_PERSONALITY_IDS.length]!;
+}
+
+function hashString(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+/**
+ * Stable personality for a bot: encoded userId first, then admin options,
+ * built-in name map, else hash of userId.
+ */
+export function personalityForBot(
+  userId: string | null | undefined,
+  name?: string | null,
+  options?: BotStyleOptions | null,
+): BotPersonality {
+  const fromId = personalityIdFromBotUserId(userId);
+  if (fromId) return BOT_PERSONALITIES[fromId];
+  const id = resolveBotPersonalityId(name, userId ?? name ?? 'bot', options);
+  return BOT_PERSONALITIES[id];
+}
+
+function clamp01(n: number): number {
+  return Math.max(0, Math.min(1, n));
 }
 
 function snapToBb(amount: number, bb: number, min: number, max: number): number {
@@ -208,13 +441,14 @@ function raiseOrBet(
 }
 
 /**
- * Pro-style bot: Chen preflop ranges, Monte-Carlo postflop equity,
- * pot-odds calling, value-heavy aggression, selective semi-bluffs.
+ * Chen preflop + Monte-Carlo postflop equity, pot-odds calling, and selective
+ * bluffs — scaled per seat by {@link BotPersonality} (name map or userId hash).
  */
 export function chooseBotAction(
   state: HandState,
   seat: number,
   config: TableConfig,
+  personality?: BotPersonality,
 ): ActionIntent | null {
   const legal = legalActions(state, seat, config);
   if (legal.types.length === 0) return null;
@@ -222,6 +456,7 @@ export function chooseBotAction(
   const types = new Set(legal.types);
   const seq = state.actionSeq;
   const player = state.players[seat]!;
+  const style = personality ?? personalityForBot(player.userId, player.name);
   const bb = config.bigBlind;
   const pot = Math.max(1, state.pot);
   const hole = player.holeCards;
@@ -232,6 +467,8 @@ export function chooseBotAction(
   const effectiveStackBb = player.stack / Math.max(1, bb);
   const street = state.street;
   const preflop = street === 'preflop';
+  const agg = Math.max(0.35, style.aggression);
+  const bluff = Math.max(0, style.bluffRate);
 
   if (!hole) {
     if (types.has('check')) return { type: 'check', seq };
@@ -250,10 +487,12 @@ export function chooseBotAction(
   const callAmt = legal.callAmount;
   const potOdds = callAmt > 0 ? callAmt / (pot + callAmt) : 0;
   const commitFrac = callAmt / Math.max(1, player.stack);
+  const callEq = equity + style.callBias;
 
   // —— Short-stack push/fold ——
   if (preflop && effectiveStackBb <= 12) {
-    const pushChen = 6 + (1 - late) * 3 + (opponents >= 3 ? 1.5 : 0);
+    const pushChen =
+      6 + (1 - late) * 3 + (opponents >= 3 ? 1.5 : 0) - style.rangeOffset - style.jamBias * 4;
     if (chen >= pushChen) {
       if (types.has('allin')) return { type: 'allin', seq };
       if (types.has('raise')) return { type: 'raise', amount: legal.maxRaiseTo, seq };
@@ -261,14 +500,23 @@ export function chooseBotAction(
       if (types.has('call')) return { type: 'call', seq };
     }
     if (types.has('check')) return { type: 'check', seq };
-    if (types.has('call') && potOdds <= 0.28 && chen >= 4.5) return { type: 'call', seq };
+    if (
+      types.has('call') &&
+      potOdds <= 0.28 + style.callBias &&
+      chen >= 4.5 - style.rangeOffset * 0.4
+    ) {
+      return { type: 'call', seq };
+    }
     if (types.has('fold')) return { type: 'fold', seq };
   }
 
   // —— Free action ——
   if (types.has('check')) {
-    if (equity >= 0.7 || (!preflop && equity >= 0.6)) {
-      const jam = equity >= 0.9 && effectiveStackBb <= 18;
+    const valueThr = (preflop ? 0.7 : 0.6) - (agg - 1) * 0.06;
+    if (equity >= valueThr) {
+      const jam =
+        equity >= 0.9 - style.jamBias && effectiveStackBb <= 18 + style.jamBias * 20;
+      const potFrac = (equity >= 0.85 ? 0.75 : 0.55) * agg;
       const bet = raiseOrBet(
         types,
         'bet',
@@ -277,7 +525,7 @@ export function chooseBotAction(
         state.currentBet,
         player.bet,
         bb,
-        equity >= 0.85 ? 0.75 : 0.55,
+        potFrac,
         player.stack,
         seq,
         jam,
@@ -286,15 +534,17 @@ export function chooseBotAction(
     }
 
     if (preflop && types.has('bet')) {
-      const openChen = 10 - late * 4;
-      if (chen >= openChen || (chen >= openChen - 1.5 && r < 0.22)) {
-        const openTo = snapToBb(bb * (2.2 + late * 0.35), bb, legal.minRaiseTo, legal.maxRaiseTo);
+      const openChen = 10 - late * 4 - style.rangeOffset;
+      const stealOdds = clamp01(0.22 * bluff);
+      if (chen >= openChen || (chen >= openChen - 1.5 && r < stealOdds)) {
+        const openBb = (2.2 + late * 0.35) * Math.min(1.6, 0.85 + agg * 0.15);
+        const openTo = snapToBb(bb * openBb, bb, legal.minRaiseTo, legal.maxRaiseTo);
         return { type: 'bet', amount: openTo, seq };
       }
     }
 
-    if (!preflop && opponents <= 2 && equity >= 0.28 && equity < 0.55) {
-      if (r < 0.4 + late * 0.12) {
+    if (!preflop && opponents <= 2 && equity >= 0.28 - style.rangeOffset * 0.02 && equity < 0.55) {
+      if (r < clamp01((0.4 + late * 0.12) * bluff * Math.min(1.4, agg))) {
         const bet = raiseOrBet(
           types,
           'bet',
@@ -303,7 +553,7 @@ export function chooseBotAction(
           state.currentBet,
           player.bet,
           bb,
-          0.4,
+          0.4 * agg,
           player.stack,
           seq,
           false,
@@ -312,10 +562,10 @@ export function chooseBotAction(
       }
     }
 
-    if (preflop && chen >= 12 && types.has('bet')) {
+    if (preflop && chen >= 12 - style.rangeOffset * 0.35 && types.has('bet')) {
       return {
         type: 'bet',
-        amount: snapToBb(bb * 2.5, bb, legal.minRaiseTo, legal.maxRaiseTo),
+        amount: snapToBb(bb * 2.5 * Math.min(1.4, agg), bb, legal.minRaiseTo, legal.maxRaiseTo),
         seq,
       };
     }
@@ -327,14 +577,15 @@ export function chooseBotAction(
   const multiwayPenalty = opponents >= 3 ? 0.08 : opponents === 2 ? 0.03 : 0;
   const streetBuffer =
     street === 'river' ? 0.04 : street === 'turn' ? 0.02 : preflop ? 0.03 : 0.01;
-  const required = potOdds + multiwayPenalty + streetBuffer;
+  const required = potOdds + multiwayPenalty + streetBuffer - style.callBias * 0.5;
 
   const preferRaise: 'raise' | 'bet' = types.has('raise') ? 'raise' : 'bet';
-  const thrRaise = preflop ? 0.6 : 0.68;
+  const thrRaise = (preflop ? 0.6 : 0.68) - (agg - 1) * 0.05 - style.jamBias * 0.04;
+  const raiseChen = 10 - style.rangeOffset * 0.6;
   if (
     (types.has('raise') || types.has('bet')) &&
     equity >= thrRaise &&
-    (preflop ? chen >= 10 : true)
+    (preflop ? chen >= raiseChen : true)
   ) {
     const action = raiseOrBet(
       types,
@@ -344,10 +595,10 @@ export function chooseBotAction(
       state.currentBet,
       player.bet,
       bb,
-      equity >= 0.82 ? 0.9 : 0.65,
+      (equity >= 0.82 ? 0.9 : 0.65) * agg,
       player.stack,
       seq,
-      equity >= 0.88 && commitFrac > 0.2,
+      equity >= 0.88 - style.jamBias && commitFrac > 0.2 - style.jamBias,
     );
     if (action) return action;
   }
@@ -356,12 +607,12 @@ export function chooseBotAction(
   if (
     preflop &&
     types.has('raise') &&
-    chen >= 6 &&
-    chen < 10 &&
-    late > 0.55 &&
+    chen >= 6 - style.rangeOffset * 0.5 &&
+    chen < 10 + style.rangeOffset * 0.3 &&
+    late > 0.55 - (bluff > 1 ? 0.12 : 0) &&
     opponents <= 2 &&
-    r < 0.12 &&
-    commitFrac < 0.18
+    r < clamp01(0.12 * bluff) &&
+    commitFrac < 0.18 + style.jamBias * 0.1
   ) {
     const threeBet = raiseOrBet(
       types,
@@ -371,10 +622,10 @@ export function chooseBotAction(
       state.currentBet,
       player.bet,
       bb,
-      0.85,
+      0.85 * Math.min(1.5, agg),
       player.stack,
       seq,
-      false,
+      style.jamBias > 0.08 && r < 0.25,
     );
     if (threeBet) return threeBet;
   }
@@ -383,11 +634,11 @@ export function chooseBotAction(
   if (
     !preflop &&
     types.has('raise') &&
-    equity >= 0.38 &&
+    equity >= 0.38 - style.rangeOffset * 0.015 &&
     equity < 0.62 &&
-    potOdds < 0.35 &&
+    potOdds < 0.35 + style.callBias * 0.2 &&
     opponents <= 2 &&
-    r < 0.18
+    r < clamp01(0.18 * bluff)
   ) {
     const raise = raiseOrBet(
       types,
@@ -397,7 +648,7 @@ export function chooseBotAction(
       state.currentBet,
       player.bet,
       bb,
-      0.7,
+      0.7 * agg,
       player.stack,
       seq,
       false,
@@ -408,27 +659,41 @@ export function chooseBotAction(
   if (types.has('call')) {
     const deep = stackBb > 40;
     const implied =
-      !preflop && deep && equity > potOdds - 0.04 && equity < required ? 0.06 : 0;
+      !preflop && deep && callEq > potOdds - 0.04 && callEq < required ? 0.06 : 0;
     const callThr = required - implied;
+    const commitCap = 0.55 + style.callBias * 0.8 + (style.id === 'caller' ? 0.12 : 0);
 
-    if (equity + 0.02 >= callThr && commitFrac < 0.55) return { type: 'call', seq };
-    if (preflop && chen >= 14 && commitFrac < 0.45) return { type: 'call', seq };
-    if (preflop && potOdds <= 0.3 && chen >= 5 + (1 - late) * 2) return { type: 'call', seq };
-    if (street === 'river' && potOdds < 0.28 && equity >= potOdds && r < 0.35) {
+    if (callEq + 0.02 >= callThr && commitFrac < commitCap) return { type: 'call', seq };
+    if (preflop && chen >= 14 - style.rangeOffset * 0.4 && commitFrac < 0.45 + style.callBias) {
+      return { type: 'call', seq };
+    }
+    if (
+      preflop &&
+      potOdds <= 0.3 + style.callBias * 0.5 &&
+      chen >= 5 + (1 - late) * 2 - style.rangeOffset
+    ) {
+      return { type: 'call', seq };
+    }
+    if (
+      street === 'river' &&
+      potOdds < 0.28 + style.callBias &&
+      callEq >= potOdds &&
+      r < clamp01(0.35 + style.callBias * 2)
+    ) {
       return { type: 'call', seq };
     }
   }
 
   if (
     types.has('allin') &&
-    (commitFrac > 0.4 || effectiveStackBb <= 8) &&
-    equity >= required - 0.02
+    (commitFrac > 0.4 - style.jamBias || effectiveStackBb <= 8 + style.jamBias * 10) &&
+    callEq >= required - 0.02 - style.jamBias
   ) {
     return { type: 'allin', seq };
   }
 
   if (types.has('fold')) return { type: 'fold', seq };
-  if (types.has('call') && equity >= potOdds) return { type: 'call', seq };
+  if (types.has('call') && callEq >= potOdds) return { type: 'call', seq };
   if (types.has('check')) return { type: 'check', seq };
 
   const fallback = (legal.types.find((t) => t !== 'fold') ?? legal.types[0]) as ActionType;

@@ -142,21 +142,29 @@ describe('site config + runtime economy', () => {
         name: 'Friendly table',
         names: ['Buddy', 'Pal', 'Mate'],
         isDefault: true,
+        defaultPersonality: 'passive',
+        namePersonalities: { Buddy: 'aggro' },
       },
       {
         id: 'villains',
         name: 'Villains',
         names: ['BluffKing', 'RiverGod'],
         isDefault: false,
+        defaultPersonality: 'maniac',
+        namePersonalities: {},
       },
     ]);
     expect(site.getBotNamePool()).toEqual(['Buddy', 'Pal', 'Mate']);
     expect(site.getBotNamePool('villains')).toEqual(['BluffKing', 'RiverGod']);
+    expect(site.getBotSeatingConfig().defaultPersonality).toBe('passive');
+    expect(site.getBotSeatingConfig().namePersonalities.Buddy).toBe('aggro');
+    expect(site.getBotSeatingConfig('villains').defaultPersonality).toBe('maniac');
 
     const reloaded = new SiteConfigStore(dir);
     await reloaded.init();
     expect(reloaded.getBotGroups()).toHaveLength(2);
     expect(reloaded.getBotNamePool('friends')[0]).toBe('Buddy');
+    expect(reloaded.getBotSeatingConfig('friends').namePersonalities.Buddy).toBe('aggro');
   });
 });
 

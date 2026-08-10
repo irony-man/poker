@@ -35,6 +35,8 @@ services:
         sync: false
       - key: CLERK_SECRET_KEY
         sync: false
+      - key: ADMIN_USERNAMES
+        value: shivam,slick
 
   - type: web
     name: felt-web

@@ -794,11 +794,26 @@ export type AdminContestRow = ContestView & {
   eliminatedCount?: number;
 };
 
+export type BotPersonalityId =
+  | 'balanced'
+  | 'tight'
+  | 'loose'
+  | 'aggro'
+  | 'passive'
+  | 'maniac'
+  | 'caller'
+  | 'nit'
+  | 'lag';
+
 export interface BotGroup {
   id: string;
   name: string;
   names: string[];
   isDefault: boolean;
+  /** Group style when a name has no override; null = auto (engine by name/hash). */
+  defaultPersonality: BotPersonalityId | null;
+  /** Per display-name style overrides. */
+  namePersonalities: Record<string, BotPersonalityId>;
 }
 
 /** Public list of bot groups for host / table / offline. */
@@ -809,6 +824,8 @@ export interface PublicBotGroup {
   nameCount: number;
   /** Display names used when seating bots (offline needs these client-side). */
   names?: string[];
+  defaultPersonality?: BotPersonalityId | null;
+  namePersonalities?: Record<string, BotPersonalityId>;
 }
 
 export async function fetchAdminBotGroups(sessionToken: string) {

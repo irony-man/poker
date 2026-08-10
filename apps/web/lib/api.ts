@@ -534,6 +534,16 @@ export interface SiteEconomy {
   refillGrant: number;
 }
 
+export interface HomeLandingFeature {
+  title: string;
+  body: string;
+  cta: string;
+  href: string;
+  image: string;
+  imageAlt: string;
+  imageFirst: boolean;
+}
+
 export interface AdminUserRow {
   id: string;
   username: string;
@@ -559,10 +569,33 @@ export interface AdminTableRow {
   createdAt: number;
 }
 
-export async function fetchPublicSite(): Promise<{ announcement: SiteAnnouncement }> {
+export async function fetchPublicSite(): Promise<{
+  announcement: SiteAnnouncement;
+  homeFeatures?: HomeLandingFeature[];
+}> {
   const res = await fetch(`${API_URL}/api/site`);
   if (!res.ok) throw new Error(await parseError(res, 'Could not load site'));
-  return res.json() as Promise<{ announcement: SiteAnnouncement }>;
+  return res.json() as Promise<{
+    announcement: SiteAnnouncement;
+    homeFeatures?: HomeLandingFeature[];
+  }>;
+}
+
+export async function fetchAdminHomeFeatures(sessionToken: string) {
+  return authedFetch('/api/admin/home-features', { sessionToken }) as Promise<{
+    features: HomeLandingFeature[];
+  }>;
+}
+
+export async function patchAdminHomeFeatures(
+  sessionToken: string,
+  features: HomeLandingFeature[],
+): Promise<{ features: HomeLandingFeature[] }> {
+  return authedFetch('/api/admin/home-features', {
+    sessionToken,
+    method: 'PATCH',
+    body: { features },
+  }) as Promise<{ features: HomeLandingFeature[] }>;
 }
 
 export async function fetchAdminOverview(sessionToken: string) {
@@ -627,6 +660,31 @@ export async function creditAdminUser(
     username: string;
     balance: number;
     credited: number;
+  }>;
+}
+
+export async function resetAdminUserChips(
+  sessionToken: string,
+  userId: string,
+): Promise<{
+  ok: true;
+  userId: string;
+  username: string;
+  balance: number;
+  previousBalance: number;
+  resetTo: number;
+}> {
+  return authedFetch(`/api/admin/users/${encodeURIComponent(userId)}/reset-chips`, {
+    sessionToken,
+    method: 'POST',
+    body: {},
+  }) as Promise<{
+    ok: true;
+    userId: string;
+    username: string;
+    balance: number;
+    previousBalance: number;
+    resetTo: number;
   }>;
 }
 

@@ -1,19 +1,13 @@
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { HomeAuthFooter } from '@/components/HomeAuthFooter';
+import { fetchPublicSite, type HomeLandingFeature } from '@/lib/api';
 
-type Feature = {
-  title: string;
-  body: string;
-  cta: string;
-  href: string;
-  image: string;
-  imageAlt: string;
-  /** Illustration on the left at desktop width (matches zigzag layout). */
-  imageFirst: boolean;
-};
-
-const FEATURES: Feature[] = [
+/** Defaults match original static HomeLanding blocks (used until /api/site loads). */
+export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
   {
     title: 'Play Contests',
     body: "Knockout tables with no buy-in, where you play until your stack is gone, and fixed-hand games where you choose how many deals run before anyone looks at a card and buy in again whenever you need more Wuffies.",
@@ -62,11 +56,30 @@ const FEATURES: Feature[] = [
 ];
 
 export function HomeLanding() {
+  const [features, setFeatures] = useState<HomeLandingFeature[]>(DEFAULT_HOME_FEATURES);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchPublicSite()
+      .then((data) => {
+        if (cancelled) return;
+        if (Array.isArray(data.homeFeatures) && data.homeFeatures.length > 0) {
+          setFeatures(data.homeFeatures);
+        }
+      })
+      .catch(() => {
+        /* keep defaults */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="mx-auto w-full mt-32 max-w-5xl pb-12 pt-2 sm:pb-20 sm:pt-4 lg:pt-6">
       <div className="flex flex-col gap-16 sm:gap-20 lg:gap-28">
-        {FEATURES.map((feature, i) => (
-          <FeatureRow key={feature.title} feature={feature} index={i} />
+        {features.map((feature, i) => (
+          <FeatureRow key={`${feature.title}-${i}`} feature={feature} index={i} />
         ))}
       </div>
 
@@ -75,7 +88,7 @@ export function HomeLanding() {
   );
 }
 
-function FeatureRow({ feature, index }: { feature: Feature; index: number }) {
+function FeatureRow({ feature, index }: { feature: HomeLandingFeature; index: number }) {
   const delayClass =
     index === 0
       ? ''

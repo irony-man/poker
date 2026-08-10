@@ -96,6 +96,16 @@ describe('site config + runtime economy', () => {
     await reloaded.init();
     expect(reloaded.getAnnouncement()).toEqual({ enabled: true, text: 'Hello players' });
   });
+
+  it('persists home landing features', async () => {
+    const features = site.getHomeFeatures();
+    expect(features.length).toBeGreaterThanOrEqual(5);
+    features[0] = { ...features[0]!, title: 'Edited Contests' };
+    await site.setHomeFeatures(features);
+    const reloaded = new SiteConfigStore(dir);
+    await reloaded.init();
+    expect(reloaded.getHomeFeatures()[0]!.title).toBe('Edited Contests');
+  });
 });
 
 describe('admin live games listing', () => {

@@ -28,7 +28,8 @@ export type WalletReason =
   | 'cash_out'
   | 'top_up'
   | 'contest_prize'
-  | 'admin_credit';
+  | 'admin_credit'
+  | 'admin_reset';
 
 export class WalletError extends Error {
   constructor(

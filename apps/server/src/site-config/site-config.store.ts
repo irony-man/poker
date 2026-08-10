@@ -1,13 +1,15 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { Queryable } from '../database/queryable.js';
+import type { EconomySnapshot } from '../wallet/wallet.constants.js';
 import {
   defaultSiteConfig,
+  normalizeHomeFeatures,
   normalizeSiteConfig,
+  type HomeLandingFeature,
   type SiteAnnouncement,
   type SiteConfigPayload,
 } from './site-config.types.js';
-import type { EconomySnapshot } from '../wallet/wallet.constants.js';
 
 /** Durable site settings — Postgres `site_config` when pool is set, else data/site-config.json. */
 export class SiteConfigStore {
@@ -92,6 +94,7 @@ export class SiteConfigStore {
     return {
       announcement: { ...this.cache.announcement },
       economy: { ...this.cache.economy },
+      homeFeatures: this.cache.homeFeatures.map((f) => ({ ...f })),
     };
   }
 
@@ -101,6 +104,10 @@ export class SiteConfigStore {
 
   getEconomy(): EconomySnapshot {
     return { ...this.cache.economy };
+  }
+
+  getHomeFeatures(): HomeLandingFeature[] {
+    return this.cache.homeFeatures.map((f) => ({ ...f }));
   }
 
   async setAnnouncement(next: SiteAnnouncement): Promise<SiteAnnouncement> {
@@ -125,5 +132,15 @@ export class SiteConfigStore {
     this.cache = merged;
     await this.serialized(() => this.persist());
     return this.getEconomy();
+  }
+
+  async setHomeFeatures(features: HomeLandingFeature[]): Promise<HomeLandingFeature[]> {
+    await this.ensureLoaded();
+    this.cache = {
+      ...this.cache,
+      homeFeatures: normalizeHomeFeatures(features),
+    };
+    await this.serialized(() => this.persist());
+    return this.getHomeFeatures();
   }
 }

@@ -5,7 +5,11 @@ import { DataSource } from 'typeorm';
 import { dataSourceAsQueryable } from '../database/queryable.js';
 import type { EconomySnapshot } from '../wallet/wallet.constants.js';
 import { SiteConfigStore } from './site-config.store.js';
-import type { SiteAnnouncement, SiteConfigPayload } from './site-config.types.js';
+import type {
+  HomeLandingFeature,
+  SiteAnnouncement,
+  SiteConfigPayload,
+} from './site-config.types.js';
 
 @Injectable()
 export class SiteConfigService implements OnModuleInit {
@@ -41,11 +45,19 @@ export class SiteConfigService implements OnModuleInit {
     return this.store.getEconomy();
   }
 
+  getHomeFeatures(): HomeLandingFeature[] {
+    return this.store.getHomeFeatures();
+  }
+
   setAnnouncement(next: SiteAnnouncement): Promise<SiteAnnouncement> {
     return this.store.setAnnouncement(next);
   }
 
   setEconomy(partial: Partial<EconomySnapshot>): Promise<EconomySnapshot> {
     return this.store.setEconomy(partial);
+  }
+
+  setHomeFeatures(features: HomeLandingFeature[]): Promise<HomeLandingFeature[]> {
+    return this.store.setHomeFeatures(features);
   }
 }

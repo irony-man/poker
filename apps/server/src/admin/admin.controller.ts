@@ -35,6 +35,20 @@ const CreditBody = z.object({
   amount: z.number().int().positive().max(100_000_000),
 });
 
+const HomeFeatureBody = z.object({
+  title: z.string().min(1).max(120),
+  body: z.string().min(1).max(2000),
+  cta: z.string().min(1).max(80),
+  href: z.string().min(1).max(500),
+  image: z.string().min(1).max(500),
+  imageAlt: z.string().min(1).max(200),
+  imageFirst: z.boolean(),
+});
+
+const HomeFeaturesBody = z.object({
+  features: z.array(HomeFeatureBody).min(1).max(8),
+});
+
 @Controller('api/admin')
 @UseGuards(SessionAuthGuard, AdminGuard)
 export class AdminController {
@@ -93,6 +107,21 @@ export class AdminController {
     return this.site.setEconomy(parsed.data);
   }
 
+  @Get('home-features')
+  getHomeFeatures() {
+    return { features: this.site.getHomeFeatures() };
+  }
+
+  @Patch('home-features')
+  async patchHomeFeatures(@Body() body: unknown) {
+    const parsed = HomeFeaturesBody.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({ error: parsed.error.message });
+    }
+    const features = await this.site.setHomeFeatures(parsed.data.features);
+    return { features };
+  }
+
   @Get('users')
   listUsers(@Query('q') q?: string) {
     const query = (q ?? '').trim().toLowerCase();
@@ -139,6 +168,40 @@ export class AdminController {
         username: user.username,
         balance: result.balance,
         credited: parsed.data.amount,
+      };
+    } catch (err) {
+      if (err instanceof WalletError) {
+        throw new BadRequestException({ error: err.message, code: err.code });
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * Reset bankroll to the configured starting grant (admin_reset ledger delta).
+   */
+  @Post('users/:userId/reset-chips')
+  async resetUserChips(@Param('userId') userId: string) {
+    const user = this.auth.getUser(userId);
+    if (!user) {
+      throw new NotFoundException({ error: 'User not found' });
+    }
+    const target = this.site.getEconomy().startingChipGrant;
+    const current = this.wallet.getBalance(userId);
+    const delta = target - current;
+    try {
+      if (delta > 0) {
+        await this.wallet.credit(userId, delta, 'admin_reset');
+      } else if (delta < 0) {
+        await this.wallet.debit(userId, -delta, 'admin_reset');
+      }
+      return {
+        ok: true as const,
+        userId,
+        username: user.username,
+        balance: this.wallet.getBalance(userId),
+        previousBalance: current,
+        resetTo: target,
       };
     } catch (err) {
       if (err instanceof WalletError) {

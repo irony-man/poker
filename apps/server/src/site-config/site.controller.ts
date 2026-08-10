@@ -14,6 +14,7 @@ export class SiteController {
         enabled: announcement.enabled && announcement.text.trim().length > 0,
         text: announcement.text,
       },
+      homeFeatures: this.site.getHomeFeatures(),
     };
   }
 }

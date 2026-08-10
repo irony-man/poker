@@ -153,7 +153,8 @@ export type ChipLedgerReason =
   | 'top_up'
   | 'hand_win'
   | 'hand_loss'
-  | 'admin_credit';
+  | 'admin_credit'
+  | 'admin_reset';
 
 @Entity({ name: 'chip_ledger' })
 @Index('chip_ledger_user_idx', ['userId'])

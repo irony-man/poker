@@ -34,11 +34,11 @@ import { isSeatActionLabel } from '@/lib/seatAction';
 import { TableOverflowMenu, type OverflowItem } from './TableOverflowMenu';
 import { TableShell } from './TableShell';
 import { WinHandModal } from './WinHandModal';
-import { playTick } from '@/lib/audio';
 import { avatarIdFromUserId, loadSavedAvatarId } from '@/lib/avatars';
 import { loadSavedTableColorId } from '@/lib/tableColors';
 import { coerceMoney, formatMoneyAmount } from '@/lib/currency';
 import { useHandPresentation } from '@/hooks/useHandPresentation';
+import { useTableSounds } from '@/hooks/useTableSounds';
 import { useSession, type ChatMessage, type PrivateView, type PublicTable } from '@/lib/store';
 import { seatAnglesForHero, useIsLandscapePhone, useIsNarrow } from '@/lib/tableLayout';
 import type { ActionType } from '@poker/engine';
@@ -93,13 +93,13 @@ function announceEvents(
   state: HandState,
   events: EngineEvent[],
   push: (m: ChatMessage) => void,
-  onSeatAction?: (seat: number, label: string) => void,
+  onSeatAction?: (seat: number, label: string, action: ActionType) => void,
 ) {
   for (const e of events) {
     if (e.type === 'action') {
       const name = state.players[e.seat]?.name ?? `Seat ${e.seat}`;
       push({ userId: 'system', name, text: formatAction(e.action, e.amount), at: Date.now() });
-      onSeatAction?.(e.seat, formatActionPopup(e.action, e.amount));
+      onSeatAction?.(e.seat, formatActionPopup(e.action, e.amount), e.action);
     } else if (e.type === 'street') {
       const label = e.street.charAt(0).toUpperCase() + e.street.slice(1);
       push({
@@ -177,7 +177,6 @@ export function OfflineTableView({
     setTableColorId(loadSavedTableColorId());
   }, []);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const prevVersion = useRef<number | null>(null);
 
   const clearTimer = () => {
     if (timerRef.current) {
@@ -189,9 +188,9 @@ export function OfflineTableView({
 
   const syncChat = useCallback(
     (next: HandState, events: EngineEvent[]) => {
-      announceEvents(next, events, pushChat, (seat, label) => {
+      announceEvents(next, events, pushChat, (seat, label, action) => {
         if (!isSeatActionLabel(label)) return;
-        setActionBurst({ seat, label, at: Date.now() });
+        setActionBurst({ seat, label, at: Date.now(), action });
       });
     },
     [pushChat, setActionBurst],
@@ -356,15 +355,7 @@ export function OfflineTableView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bootstrapped, state.version, state.toAct, state.street, runBotOrTimeout]);
 
-  useEffect(() => {
-    if (!publicTable) return;
-    if (prevVersion.current !== null && publicTable.version !== prevVersion.current) {
-      if (publicTable.street === 'payout') playTick('win');
-      else if (publicTable.community.length > 0) playTick('deal');
-      else playTick('action');
-    }
-    prevVersion.current = publicTable.version;
-  }, [publicTable]);
+  useTableSounds(publicTable);
 
   const onAction = (action: string, amount?: number) => {
     if (mySeat === undefined || state.toAct !== mySeat) return;

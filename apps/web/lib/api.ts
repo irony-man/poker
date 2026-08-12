@@ -584,6 +584,7 @@ export async function fetchPublicSite(): Promise<{
   homeFeatures?: HomeLandingFeature[];
   pages?: import('@/lib/pageCopy').PagesCopy;
   botGroups?: PublicBotGroup[];
+  sounds?: TableSoundsConfig;
 }> {
   const res = await fetch(`${API_URL}/api/site`);
   if (!res.ok) throw new Error(await parseError(res, 'Could not load site'));
@@ -592,6 +593,7 @@ export async function fetchPublicSite(): Promise<{
     homeFeatures?: HomeLandingFeature[];
     pages?: import('@/lib/pageCopy').PagesCopy;
     botGroups?: PublicBotGroup[];
+    sounds?: TableSoundsConfig;
   }>;
 }
 
@@ -843,6 +845,88 @@ export async function patchAdminBotGroups(
     method: 'PATCH',
     body: { groups },
   }) as Promise<{ groups: BotGroup[] }>;
+}
+
+export type TableSoundKind =
+  | 'fold'
+  | 'check'
+  | 'call'
+  | 'bet'
+  | 'raise'
+  | 'allin'
+  | 'deal'
+  | 'flop'
+  | 'turn'
+  | 'river'
+  | 'win';
+
+export const TABLE_SOUND_KINDS: readonly TableSoundKind[] = [
+  'fold',
+  'check',
+  'call',
+  'bet',
+  'raise',
+  'allin',
+  'deal',
+  'flop',
+  'turn',
+  'river',
+  'win',
+] as const;
+
+export const DEFAULT_TABLE_SOUND_URLS: Record<TableSoundKind, string> = {
+  fold: '/sounds/fold.mp3',
+  check: '/sounds/check.mp3',
+  call: '/sounds/call.mp3',
+  bet: '/sounds/bet.mp3',
+  raise: '/sounds/raise.mp3',
+  allin: '/sounds/allin.mp3',
+  deal: '/sounds/deal.mp3',
+  flop: '/sounds/flop.mp3',
+  turn: '/sounds/turn.mp3',
+  river: '/sounds/river.mp3',
+  win: '/sounds/win.mp3',
+};
+
+export const TABLE_SOUND_LABELS: Record<TableSoundKind, string> = {
+  fold: 'Fold',
+  check: 'Check',
+  call: 'Call',
+  bet: 'Bet',
+  raise: 'Raise',
+  allin: 'All-in',
+  deal: 'Deal (hole cards)',
+  flop: 'Flop',
+  turn: 'Turn',
+  river: 'River',
+  win: 'Win / payout',
+};
+
+export interface TableSoundsConfig {
+  enabled: boolean;
+  urls: Partial<Record<TableSoundKind, string>>;
+}
+
+export function defaultTableSoundsConfig(): TableSoundsConfig {
+  return {
+    enabled: true,
+    urls: { ...DEFAULT_TABLE_SOUND_URLS },
+  };
+}
+
+export async function fetchAdminSounds(sessionToken: string): Promise<TableSoundsConfig> {
+  return authedFetch('/api/admin/sounds', { sessionToken }) as Promise<TableSoundsConfig>;
+}
+
+export async function patchAdminSounds(
+  sessionToken: string,
+  body: TableSoundsConfig,
+): Promise<TableSoundsConfig> {
+  return authedFetch('/api/admin/sounds', {
+    sessionToken,
+    method: 'PATCH',
+    body,
+  }) as Promise<TableSoundsConfig>;
 }
 
 export async function fetchPublicBotGroups(): Promise<PublicBotGroup[]> {

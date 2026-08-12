@@ -15,13 +15,13 @@ import { TableOverflowMenu, type OverflowItem } from './TableOverflowMenu';
 import { TableShell } from './TableShell';
 import { VoiceCallBar } from './VoiceCallBar';
 import { WinHandModal } from './WinHandModal';
-import { playTick } from '@/lib/audio';
 import { buildTableJoinShareText } from '@/lib/tableLink';
 import { coerceMoney, formatMoneyAmount } from '@/lib/currency';
 import { usePokerSocket } from '@/lib/ws';
 import { useSession } from '@/lib/store';
 import { useVoiceCall } from '@/hooks/useVoiceCall';
 import { useHandPresentation } from '@/hooks/useHandPresentation';
+import { useTableSounds } from '@/hooks/useTableSounds';
 import { seatAnglesForHero, useIsLandscapePhone, useIsNarrow } from '@/lib/tableLayout';
 import { loadSavedTableColorId } from '@/lib/tableColors';
 import { useConfirm } from './ConfirmPopover';
@@ -92,8 +92,9 @@ export function TableView({
   const [dismissedWinHandId, setDismissedWinHandId] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(true);
-  const prevVersion = useRef<number | null>(null);
   const autoSitSent = useRef(false);
+
+  useTableSounds(table);
 
   useEffect(() => {
     if (lastErrorCode !== 'not_found' && lastErrorCode !== 'kicked') return;
@@ -114,16 +115,6 @@ export function TableView({
     setError,
     router,
   ]);
-
-  useEffect(() => {
-    if (!table) return;
-    if (prevVersion.current !== null && table.version !== prevVersion.current) {
-      if (table.street === 'payout') playTick('win');
-      else if (table.community.length > 0) playTick('deal');
-      else playTick('action');
-    }
-    prevVersion.current = table.version;
-  }, [table]);
 
   const mySeat = table?.players.find((p) => p.userId === userId)?.seat;
   const myPlayer = mySeat !== undefined ? table?.players[mySeat] : undefined;

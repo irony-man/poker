@@ -150,6 +150,56 @@ export const DEFAULT_BOT_GROUPS: BotGroup[] = [
   },
 ];
 
+/** Table SFX kinds played during a hand (admin-editable URLs). */
+export type TableSoundKind =
+  | 'fold'
+  | 'check'
+  | 'call'
+  | 'bet'
+  | 'raise'
+  | 'allin'
+  | 'deal'
+  | 'flop'
+  | 'turn'
+  | 'river'
+  | 'win';
+
+export const TABLE_SOUND_KINDS: readonly TableSoundKind[] = [
+  'fold',
+  'check',
+  'call',
+  'bet',
+  'raise',
+  'allin',
+  'deal',
+  'flop',
+  'turn',
+  'river',
+  'win',
+] as const;
+
+export const DEFAULT_TABLE_SOUND_URLS: Record<TableSoundKind, string> = {
+  fold: '/sounds/fold.mp3',
+  check: '/sounds/check.mp3',
+  call: '/sounds/call.mp3',
+  bet: '/sounds/bet.mp3',
+  raise: '/sounds/raise.mp3',
+  allin: '/sounds/allin.mp3',
+  deal: '/sounds/deal.mp3',
+  flop: '/sounds/flop.mp3',
+  turn: '/sounds/turn.mp3',
+  river: '/sounds/river.mp3',
+  win: '/sounds/win.mp3',
+};
+
+export const MAX_TABLE_SOUND_URL_LEN = 512;
+
+export interface TableSoundsConfig {
+  enabled: boolean;
+  /** Absolute path or full URL per kind; missing keys fall back to defaults. Empty string disables that kind. */
+  urls: Partial<Record<TableSoundKind, string>>;
+}
+
 export interface SiteConfigPayload {
   announcement: SiteAnnouncement;
   economy: EconomySnapshot;
@@ -157,6 +207,7 @@ export interface SiteConfigPayload {
   pages: PagesCopy;
   rooms: RoomSettings;
   botGroups: BotGroup[];
+  sounds: TableSoundsConfig;
 }
 
 export const MAX_HOME_FEATURES = 12;
@@ -288,6 +339,13 @@ export const PAGE_COPY_LABELS: Record<PageCopyKey, string> = {
   homeAuthFooter: 'Home auth footer',
 };
 
+export function defaultTableSounds(): TableSoundsConfig {
+  return {
+    enabled: true,
+    urls: { ...DEFAULT_TABLE_SOUND_URLS },
+  };
+}
+
 export function defaultSiteConfig(): SiteConfigPayload {
   return {
     announcement: { enabled: false, text: '' },
@@ -296,6 +354,7 @@ export function defaultSiteConfig(): SiteConfigPayload {
     pages: clonePages(DEFAULT_PAGES_COPY),
     rooms: { inactivityMinutes: DEFAULT_ROOM_INACTIVITY_MINUTES },
     botGroups: DEFAULT_BOT_GROUPS.map((g) => cloneBotGroup(g)),
+    sounds: defaultTableSounds(),
   };
 }
 
@@ -549,6 +608,43 @@ export function normalizeRoomSettings(raw: unknown): RoomSettings {
   return { inactivityMinutes: minutes };
 }
 
+function isAllowedSoundUrl(value: string): boolean {
+  if (value.startsWith('/') && !value.startsWith('//')) return true;
+  try {
+    const u = new URL(value);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+/** Merge overrides with defaults; empty string keeps that kind disabled. */
+export function normalizeTableSounds(raw: unknown): TableSoundsConfig {
+  const defaults = defaultTableSounds();
+  if (!raw || typeof raw !== 'object') return defaults;
+  const o = raw as Record<string, unknown>;
+  const enabled = o.enabled === undefined ? true : Boolean(o.enabled);
+  const urls: Partial<Record<TableSoundKind, string>> = { ...defaults.urls };
+  const rawUrls = o.urls;
+  if (rawUrls && typeof rawUrls === 'object') {
+    const src = rawUrls as Record<string, unknown>;
+    for (const kind of TABLE_SOUND_KINDS) {
+      if (!(kind in src)) continue;
+      const v = src[kind];
+      if (typeof v !== 'string') continue;
+      const trimmed = v.trim().slice(0, MAX_TABLE_SOUND_URL_LEN);
+      if (trimmed === '') {
+        urls[kind] = '';
+        continue;
+      }
+      if (isAllowedSoundUrl(trimmed)) {
+        urls[kind] = trimmed;
+      }
+    }
+  }
+  return { enabled, urls };
+}
+
 export function normalizeSiteConfig(raw: unknown): SiteConfigPayload {
   const defaults = defaultSiteConfig();
   if (!raw || typeof raw !== 'object') return defaults;
@@ -584,5 +680,7 @@ export function normalizeSiteConfig(raw: unknown): SiteConfigPayload {
   const botGroups =
     o.botGroups !== undefined ? normalizeBotGroups(o.botGroups) : defaults.botGroups;
 
-  return { announcement, economy, homeFeatures, pages, rooms, botGroups };
+  const sounds = o.sounds !== undefined ? normalizeTableSounds(o.sounds) : defaults.sounds;
+
+  return { announcement, economy, homeFeatures, pages, rooms, botGroups, sounds };
 }

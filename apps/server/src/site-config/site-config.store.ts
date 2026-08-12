@@ -9,6 +9,7 @@ import {
   normalizePagesCopy,
   normalizeRoomSettings,
   normalizeSiteConfig,
+  normalizeTableSounds,
   resolveBotNamePool,
   resolveBotSeatingConfig,
   type BotGroup,
@@ -18,6 +19,7 @@ import {
   type RoomSettings,
   type SiteAnnouncement,
   type SiteConfigPayload,
+  type TableSoundsConfig,
 } from './site-config.types.js';
 
 /** Durable site settings — Postgres `site_config` when pool is set, else data/site-config.json. */
@@ -116,6 +118,10 @@ export class SiteConfigStore {
         defaultPersonality: g.defaultPersonality,
         namePersonalities: { ...g.namePersonalities },
       })),
+      sounds: {
+        enabled: this.cache.sounds.enabled,
+        urls: { ...this.cache.sounds.urls },
+      },
     };
   }
 
@@ -150,6 +156,13 @@ export class SiteConfigStore {
       defaultPersonality: g.defaultPersonality,
       namePersonalities: { ...g.namePersonalities },
     }));
+  }
+
+  getSounds(): TableSoundsConfig {
+    return {
+      enabled: this.cache.sounds.enabled,
+      urls: { ...this.cache.sounds.urls },
+    };
   }
 
   /** Display-name pool for seating; uses default group when id is missing. */
@@ -224,5 +237,15 @@ export class SiteConfigStore {
     };
     await this.serialized(() => this.persist());
     return this.getBotGroups();
+  }
+
+  async setSounds(next: TableSoundsConfig): Promise<TableSoundsConfig> {
+    await this.ensureLoaded();
+    this.cache = {
+      ...this.cache,
+      sounds: normalizeTableSounds(next),
+    };
+    await this.serialized(() => this.persist());
+    return this.getSounds();
   }
 }

@@ -13,6 +13,7 @@ import type {
   RoomSettings,
   SiteAnnouncement,
   SiteConfigPayload,
+  TableSoundsConfig,
 } from './site-config.types.js';
 
 @Injectable()
@@ -65,6 +66,10 @@ export class SiteConfigService implements OnModuleInit {
     return this.store.getBotGroups();
   }
 
+  getSounds(): TableSoundsConfig {
+    return this.store.getSounds();
+  }
+
   getBotNamePool(groupId?: string | null): string[] {
     return this.store.getBotNamePool(groupId);
   }
@@ -100,5 +105,9 @@ export class SiteConfigService implements OnModuleInit {
 
   setBotGroups(groups: BotGroup[]): Promise<BotGroup[]> {
     return this.store.setBotGroups(groups);
+  }
+
+  setSounds(next: TableSoundsConfig): Promise<TableSoundsConfig> {
+    return this.store.setSounds(next);
   }
 }

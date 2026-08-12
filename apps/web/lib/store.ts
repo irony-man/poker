@@ -4,6 +4,7 @@ import type {
   PrivateView as EnginePrivateView,
   PublicPlayerView,
   PublicTableView,
+  ActionType,
 } from '@poker/engine';
 import { create } from 'zustand';
 import type {
@@ -14,6 +15,13 @@ import type {
   PendingRequest,
   PublicTableSummary,
 } from '@/lib/api';
+
+export type ActionBurst = {
+  seat: number;
+  label: string;
+  at: number;
+  action?: ActionType;
+};
 
 export type PublicPlayer = PublicPlayerView & {
   /** Preset profile picture index (0–7). */
@@ -79,7 +87,7 @@ interface SessionState {
   lastErrorCode: string | null;
   emojiBurst: { emoji: string; name: string; at: number } | null;
   /** Last poker action shown as a seat popup. */
-  actionBurst: { seat: number; label: string; at: number } | null;
+  actionBurst: ActionBurst | null;
   /** Global chip bankroll (updated via wallet_update / auth_ok / /api/me). */
   chipBalance: number | null;
   /** Contest ranking rating (Whuffies). */
@@ -120,7 +128,7 @@ interface SessionState {
   pushChat: (m: ChatMessage) => void;
   setError: (e: string | null, code?: string | null) => void;
   setEmoji: (e: { emoji: string; name: string; at: number } | null) => void;
-  setActionBurst: (e: { seat: number; label: string; at: number } | null) => void;
+  setActionBurst: (e: ActionBurst | null) => void;
   setChipBalance: (balance: number | null) => void;
   setWhuffieBalance: (balance: number | null) => void;
   applyPublicTables: (tables: PublicTableSummary[]) => void;

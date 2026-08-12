@@ -111,10 +111,21 @@ function dispatchMessage(msg: { type?: string; [key: string]: unknown }): void {
       const label =
         typeof msg.label === 'string' ? msg.label : String(msg.action ?? '');
       if (isSeatActionLabel(label)) {
+        const actionRaw = typeof msg.action === 'string' ? msg.action : undefined;
+        const action =
+          actionRaw === 'fold' ||
+          actionRaw === 'check' ||
+          actionRaw === 'call' ||
+          actionRaw === 'bet' ||
+          actionRaw === 'raise' ||
+          actionRaw === 'allin'
+            ? actionRaw
+            : undefined;
         s.setActionBurst({
           seat: typeof msg.seat === 'number' ? msg.seat : 0,
           label,
           at: typeof msg.at === 'number' ? msg.at : Date.now(),
+          action,
         });
       }
       break;

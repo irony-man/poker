@@ -18,6 +18,7 @@ import {
   fetchAdminOverview,
   fetchAdminPages,
   fetchAdminRoomSettings,
+  fetchAdminSounds,
   fetchAdminUsers,
   fetchMe,
   patchAdminAnnouncement,
@@ -26,6 +27,7 @@ import {
   patchAdminHomeFeatures,
   patchAdminPages,
   patchAdminRoomSettings,
+  patchAdminSounds,
   resetAdminUserChips,
   resetAdminUserWhuffies,
   type AdminContestRow,
@@ -36,6 +38,12 @@ import {
   type HomeLandingFeature,
   type SiteAnnouncement,
   type SiteEconomy,
+  type TableSoundKind,
+  type TableSoundsConfig,
+  DEFAULT_TABLE_SOUND_URLS,
+  TABLE_SOUND_KINDS,
+  TABLE_SOUND_LABELS,
+  defaultTableSoundsConfig,
 } from '@/lib/api';
 import { formatMoneyLabel } from '@/lib/currency';
 import { DEFAULT_HOME_FEATURES } from '@/components/HomeLanding';
@@ -72,7 +80,7 @@ const fieldClass =
 
 const labelClass = 'block text-xs font-display font-semibold uppercase tracking-[0.12em] text-ink-strong-muted';
 
-type AdminTab = 'users' | 'content' | 'home' | 'pages' | 'bots' | 'economy' | 'games';
+type AdminTab = 'users' | 'content' | 'home' | 'pages' | 'bots' | 'economy' | 'sounds' | 'games';
 
 const ADMIN_TABS: AdminTab[] = [
   'users',
@@ -81,6 +89,7 @@ const ADMIN_TABS: AdminTab[] = [
   'pages',
   'bots',
   'economy',
+  'sounds',
   'games',
 ];
 
@@ -91,6 +100,7 @@ const TABS: { id: AdminTab; label: string }[] = [
   { id: 'pages', label: 'Pages' },
   { id: 'bots', label: 'Bot groups' },
   { id: 'economy', label: 'Economy' },
+  { id: 'sounds', label: 'Sounds' },
   { id: 'games', label: 'Live games' },
 ];
 
@@ -353,6 +363,7 @@ function AdminPageInner() {
   const [roomSettings, setRoomSettings] = useState<AdminRoomSettings>({
     inactivityMinutes: 15,
   });
+  const [sounds, setSounds] = useState<TableSoundsConfig>(() => defaultTableSoundsConfig());
   const [homeFeatures, setHomeFeatures] = useState<HomeLandingFeature[]>(
     () => DEFAULT_HOME_FEATURES.map((f) => ({ ...f })),
   );
@@ -424,7 +435,7 @@ function AdminPageInner() {
         return;
       }
       setIsAdmin(true);
-      const [overview, eco, games, userList, home, pages, rooms, bots] = await Promise.all([
+      const [overview, eco, games, userList, home, pages, rooms, bots, soundCfg] = await Promise.all([
         fetchAdminOverview(token),
         fetchAdminEconomy(token),
         fetchAdminGames(token),
@@ -433,10 +444,15 @@ function AdminPageInner() {
         fetchAdminPages(token),
         fetchAdminRoomSettings(token),
         fetchAdminBotGroups(token),
+        fetchAdminSounds(token),
       ]);
       setAnnouncement(overview.announcement);
       setEconomy(eco);
       setRoomSettings(rooms);
+      setSounds({
+        enabled: soundCfg.enabled !== false,
+        urls: { ...DEFAULT_TABLE_SOUND_URLS, ...soundCfg.urls },
+      });
       setHomeFeatures(
         home.features?.length
           ? home.features
@@ -585,6 +601,40 @@ function AdminPageInner() {
       );
       flash('Bot groups saved');
     });
+  }
+
+  async function saveSounds(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token) return;
+    await withBusy('sounds', async () => {
+      const next = await patchAdminSounds(token, {
+        enabled: sounds.enabled,
+        urls: Object.fromEntries(
+          TABLE_SOUND_KINDS.map((k) => [k, sounds.urls[k] ?? '']),
+        ) as Partial<Record<TableSoundKind, string>>,
+      });
+      setSounds({
+        enabled: next.enabled !== false,
+        urls: { ...DEFAULT_TABLE_SOUND_URLS, ...next.urls },
+      });
+      flash('Table sounds saved');
+    });
+  }
+
+  function previewSound(kind: TableSoundKind) {
+    const url = (sounds.urls[kind] ?? DEFAULT_TABLE_SOUND_URLS[kind]).trim();
+    if (!url) {
+      setError(`No URL for ${TABLE_SOUND_LABELS[kind]}`);
+      return;
+    }
+    try {
+      const audio = new Audio(url);
+      void audio.play().catch(() => {
+        setError(`Could not play ${TABLE_SOUND_LABELS[kind]}`);
+      });
+    } catch {
+      setError(`Could not play ${TABLE_SOUND_LABELS[kind]}`);
+    }
   }
 
   function updateBotGroup(id: string, patch: Partial<BotGroup>) {
@@ -1840,6 +1890,84 @@ function AdminPageInner() {
                   className="btn-primary min-h-11 w-full sm:w-auto sm:min-w-[12rem] disabled:opacity-50"
                 >
                   {busyKey === 'economy' ? 'Saving…' : 'Save settings'}
+                </button>
+              </div>
+            </form>
+          </Section>
+        ) : null}
+
+        {tab === 'sounds' ? (
+          <Section
+            title="Table sounds"
+            description="Sample URLs for fold, check, streets, and win. Defaults live under /sounds/. Leave a field blank to disable that event. Paste a path or https URL to override."
+          >
+            <form onSubmit={(e) => void saveSounds(e)} className="space-y-4">
+              <label className="flex items-center gap-3 rounded-xl border border-sidebar/10 bg-cream px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={sounds.enabled}
+                  onChange={(e) =>
+                    setSounds((s) => ({ ...s, enabled: e.target.checked }))
+                  }
+                  className="size-4 rounded border-sidebar/30 text-sidebar focus:ring-sidebar/30"
+                />
+                <span className="text-sm font-medium text-ink-strong">
+                  Enable table sounds site-wide
+                </span>
+              </label>
+              <div className="grid gap-3">
+                {TABLE_SOUND_KINDS.map((kind) => (
+                  <div
+                    key={kind}
+                    className="grid gap-2 rounded-xl border border-sidebar/8 bg-cream/60 p-3 sm:grid-cols-[8rem_1fr_auto] sm:items-end"
+                  >
+                    <label className="block">
+                      <span className={labelClass}>{TABLE_SOUND_LABELS[kind]}</span>
+                      <span className="mt-1 block font-mono text-[11px] text-ink-strong-muted">
+                        {kind}
+                      </span>
+                    </label>
+                    <label className="block sm:col-span-1">
+                      <span className="sr-only">URL for {TABLE_SOUND_LABELS[kind]}</span>
+                      <input
+                        type="text"
+                        value={sounds.urls[kind] ?? ''}
+                        placeholder={DEFAULT_TABLE_SOUND_URLS[kind]}
+                        onChange={(e) =>
+                          setSounds((s) => ({
+                            ...s,
+                            urls: { ...s.urls, [kind]: e.target.value },
+                          }))
+                        }
+                        className={`${fieldClass} font-mono text-xs`}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => previewSound(kind)}
+                      className="btn-ghost min-h-10 px-4 text-xs disabled:opacity-50"
+                    >
+                      Preview
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="submit"
+                  disabled={busy}
+                  className="btn-primary min-h-11 w-full sm:w-auto sm:min-w-[12rem] disabled:opacity-50"
+                >
+                  {busyKey === 'sounds' ? 'Saving…' : 'Save sounds'}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => setSounds(defaultTableSoundsConfig())}
+                  className="btn-ghost min-h-11 px-4 text-xs disabled:opacity-50"
+                >
+                  Reset to defaults
                 </button>
               </div>
             </form>

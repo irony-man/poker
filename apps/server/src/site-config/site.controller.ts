@@ -25,6 +25,7 @@ export class SiteController {
         defaultPersonality: g.defaultPersonality,
         namePersonalities: g.namePersonalities,
       })),
+      sounds: this.site.getSounds(),
     };
   }
 }

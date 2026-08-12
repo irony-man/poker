@@ -98,6 +98,25 @@ const BotGroupsBody = z.object({
   groups: z.array(BotGroupBody).min(1).max(20),
 });
 
+const TableSoundKindSchema = z.enum([
+  'fold',
+  'check',
+  'call',
+  'bet',
+  'raise',
+  'allin',
+  'deal',
+  'flop',
+  'turn',
+  'river',
+  'win',
+]);
+
+const SoundsBody = z.object({
+  enabled: z.boolean(),
+  urls: z.record(TableSoundKindSchema, z.string().max(512)).optional(),
+});
+
 @Controller('api/admin')
 @UseGuards(SessionAuthGuard, AdminGuard)
 export class AdminController {
@@ -225,6 +244,23 @@ export class AdminController {
       })),
     );
     return { groups };
+  }
+
+  @Get('sounds')
+  getSounds() {
+    return this.site.getSounds();
+  }
+
+  @Patch('sounds')
+  async patchSounds(@Body() body: unknown) {
+    const parsed = SoundsBody.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({ error: parsed.error.message });
+    }
+    return this.site.setSounds({
+      enabled: parsed.data.enabled,
+      urls: parsed.data.urls ?? {},
+    });
   }
 
   @Get('users')

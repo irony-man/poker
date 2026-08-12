@@ -8,8 +8,10 @@ import {
   Patch,
   Post,
   Query,
+  ServiceUnavailableException,
   UseGuards,
 } from '@nestjs/common';
+import { SoundUploadUrlBodySchema } from '@poker/protocol';
 import { z } from 'zod';
 import { AuthService } from '../auth/auth.service.js';
 import { AdminGuard } from '../common/admin.guard.js';
@@ -17,6 +19,10 @@ import { SessionAuthGuard } from '../common/session-auth.guard.js';
 import { ContestsService } from '../contests/contests.service.js';
 import { RoomsService } from '../rooms/rooms.service.js';
 import { SiteConfigService } from '../site-config/site-config.service.js';
+import {
+  ALLOWED_SOUND_CONTENT_TYPES,
+} from '../storage/storage.constants.js';
+import { StorageService } from '../storage/storage.service.js';
 import { WalletError } from '../wallet/wallet.constants.js';
 import { WalletService } from '../wallet/wallet.service.js';
 
@@ -126,6 +132,7 @@ export class AdminController {
     private readonly wallet: WalletService,
     private readonly rooms: RoomsService,
     private readonly contests: ContestsService,
+    private readonly storage: StorageService,
   ) {}
 
   @Get('overview')
@@ -260,6 +267,24 @@ export class AdminController {
     return this.site.setSounds({
       enabled: parsed.data.enabled,
       urls: parsed.data.urls ?? {},
+    });
+  }
+
+  @Post('sounds/upload-url')
+  async soundUploadUrl(@Body() body: unknown) {
+    if (!this.storage.isConfigured()) {
+      throw new ServiceUnavailableException({ error: 'File storage is not configured' });
+    }
+    const parsed = SoundUploadUrlBodySchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({ error: parsed.error.message });
+    }
+    const ext = ALLOWED_SOUND_CONTENT_TYPES[parsed.data.contentType];
+    const key = this.storage.soundUploadKey(parsed.data.kind, ext);
+    return this.storage.createPresignedUpload({
+      key,
+      contentType: parsed.data.contentType,
+      contentLength: parsed.data.contentLength,
     });
   }
 

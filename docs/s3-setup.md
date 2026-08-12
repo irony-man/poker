@@ -1,6 +1,6 @@
 # S3 bucket setup
 
-Static assets (avatars, sounds, marketing images) and user-uploaded profile photos are stored in AWS S3.
+Static assets (avatars, sounds, marketing images), user-uploaded profile photos, and admin-uploaded table sounds are stored in AWS S3.
 
 ## Bucket layout
 
@@ -10,6 +10,7 @@ Static assets (avatars, sounds, marketing images) and user-uploaded profile phot
 | `static/sounds/` | Table SFX MP3s | Public read |
 | `static/images/` | Marketing PNGs/SVGs | Public read |
 | `uploads/avatars/{userId}/` | User-uploaded profile images | Public read |
+| `uploads/sounds/{kind}/` | Admin-uploaded table sound overrides | Public read |
 
 ## 1. Create bucket
 
@@ -32,7 +33,8 @@ Replace `pokr-static` and attach under **Permissions → Bucket policy**:
       "Action": "s3:GetObject",
       "Resource": [
         "arn:aws:s3:::pokr-static/static/*",
-        "arn:aws:s3:::pokr-static/uploads/avatars/*"
+        "arn:aws:s3:::pokr-static/uploads/avatars/*",
+        "arn:aws:s3:::pokr-static/uploads/sounds/*"
       ]
     }
   ]

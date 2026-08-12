@@ -102,11 +102,13 @@ export function TableView({
     leaveTable();
     clearTable();
     setError(null);
-    router.replace('/');
+    const contestFallback = contestIdProp || null;
+    router.replace(contestFallback ? `/contest/${contestFallback}` : '/');
   }, [
     lastErrorCode,
     boundTableId,
     tableId,
+    contestIdProp,
     voice.leaveVoice,
     leaveTable,
     clearTable,
@@ -344,7 +346,11 @@ export function TableView({
   if (!table && lastErrorCode === 'not_found') {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-ink-strong-muted">Table not found — returning home…</p>
+        <p className="text-ink-strong-muted">
+          {contestIdProp
+            ? 'Table closed — opening contest results…'
+            : 'Table not found — returning home…'}
+        </p>
       </div>
     );
   }
@@ -634,7 +640,7 @@ export function TableView({
           <div className="mb-2 flex flex-wrap items-center gap-2 px-0.5">
             <span className="status-chip border-sidebar/25 bg-sidebar/8 text-sidebar">
               {table.tournament.mode === 'rounds' ? 'Rounds' : 'Knockout'}
-              {table.tournament.frozen ? ' · over' : ''}
+              {table.tournament.frozen ? ' · Completed' : ''}
             </span>
             {table.tournament.mode === 'rounds' &&
             typeof table.tournament.handLimit === 'number' &&
@@ -695,29 +701,35 @@ export function TableView({
           {!narrow && (
             <div
               className={
-                connection === 'open'
-                  ? 'pointer-events-none absolute bottom-2 left-2 z-30 status-chip border-positive/35 bg-positive/10 text-positive'
-                  : connection === 'connecting'
-                    ? 'pointer-events-none absolute bottom-2 left-2 z-30 status-chip border-amber-500/35 bg-amber-500/10 text-amber-800'
-                    : 'pointer-events-none absolute bottom-2 left-2 z-30 status-chip border-danger/35 bg-danger/10 text-danger'
+                contestOver
+                  ? 'pointer-events-none absolute bottom-2 left-2 z-30 status-chip border-sidebar/25 bg-sidebar/8 text-sidebar'
+                  : connection === 'open'
+                    ? 'pointer-events-none absolute bottom-2 left-2 z-30 status-chip border-positive/35 bg-positive/10 text-positive'
+                    : connection === 'connecting'
+                      ? 'pointer-events-none absolute bottom-2 left-2 z-30 status-chip border-amber-500/35 bg-amber-500/10 text-amber-800'
+                      : 'pointer-events-none absolute bottom-2 left-2 z-30 status-chip border-danger/35 bg-danger/10 text-danger'
               }
-              title={connection}
+              title={contestOver ? 'Contest completed' : connection}
             >
               <span
                 className={`h-1.5 w-1.5 rounded-full ${
-                  connection === 'open'
-                    ? 'bg-felt-neon animate-live-blink'
-                    : connection === 'connecting'
-                      ? 'bg-amber-300 animate-live-blink'
-                      : 'bg-red-400'
+                  contestOver
+                    ? 'bg-sidebar/50'
+                    : connection === 'open'
+                      ? 'bg-felt-neon animate-live-blink'
+                      : connection === 'connecting'
+                        ? 'bg-amber-300 animate-live-blink'
+                        : 'bg-red-400'
                 }`}
               />
               <span>
-                {connection === 'open'
-                  ? 'Live'
-                  : connection === 'connecting'
-                    ? 'Reconnecting'
-                    : 'Offline'}
+                {contestOver
+                  ? 'Completed'
+                  : connection === 'open'
+                    ? 'Live'
+                    : connection === 'connecting'
+                      ? 'Reconnecting'
+                      : 'Offline'}
               </span>
             </div>
           )}

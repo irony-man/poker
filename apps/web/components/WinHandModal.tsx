@@ -27,7 +27,7 @@ export type ReadyRosterPlayer = {
   sittingOut?: boolean;
 };
 
-/** Avatar strip for cash-table ready state (first hand + between hands). */
+/** Avatar strip for ready state (first hand + between hands). */
 export function ReadyPlayersRoster({
   players,
   readyCount,
@@ -390,7 +390,7 @@ export function WinHandModal({
           </div>
         </div>
 
-        {!isTournament && roster.length > 0 ? (
+        {roster.length > 0 ? (
           <ReadyPlayersRoster
             players={roster}
             readyCount={readyCount}

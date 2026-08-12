@@ -20,6 +20,7 @@ let config: SoundConfig = {
 };
 
 const elements = new Map<TableSoundKind, HTMLAudioElement>();
+let audioUnlocked = false;
 
 function mergeUrls(
   overrides?: Partial<Record<TableSoundKind, string>>,
@@ -43,7 +44,7 @@ function getOrCreateAudio(kind: TableSoundKind, url: string): HTMLAudioElement |
     el.preload = 'auto';
     elements.set(kind, el);
   }
-  if (el.src !== new URL(url, window.location.origin).href && el.getAttribute('data-src') !== url) {
+  if (el.getAttribute('data-src') !== url) {
     el.setAttribute('data-src', url);
     el.src = url;
     try {
@@ -53,6 +54,44 @@ function getOrCreateAudio(kind: TableSoundKind, url: string): HTMLAudioElement |
     }
   }
   return el;
+}
+
+function playElement(el: HTMLAudioElement): void {
+  el.currentTime = 0;
+  const attempt = () => {
+    void el.play().catch(() => {
+      /* ignore autoplay restrictions */
+    });
+  };
+  if (el.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+    attempt();
+  } else {
+    el.addEventListener('canplay', attempt, { once: true });
+  }
+}
+
+/** Call once from a user gesture so table SFX can play on WebSocket events. */
+export function unlockTableSounds(): void {
+  if (typeof window === 'undefined' || audioUnlocked) return;
+  audioUnlocked = true;
+  for (const kind of TABLE_SOUND_KINDS) {
+    const url = config.urls[kind];
+    if (!url) continue;
+    const el = getOrCreateAudio(kind, url);
+    if (!el) continue;
+    const volume = el.volume;
+    el.volume = 0;
+    void el
+      .play()
+      .then(() => {
+        el.pause();
+        el.currentTime = 0;
+        el.volume = volume;
+      })
+      .catch(() => {
+        el.volume = volume;
+      });
+  }
 }
 
 /** Apply site/admin sound config (enable + per-kind URLs). */
@@ -100,10 +139,7 @@ export function playSound(kind: TableSoundKind): void {
   try {
     const el = getOrCreateAudio(kind, url);
     if (!el) return;
-    el.currentTime = 0;
-    void el.play().catch(() => {
-      /* ignore autoplay restrictions */
-    });
+    playElement(el);
   } catch {
     /* ignore */
   }

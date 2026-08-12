@@ -19,11 +19,10 @@ export default function ContestsListPage() {
   async function enterContestCode(code: string) {
     const session = await ensureSession();
     const { contest } = await resolveContestInvite(code);
-    if (contest.status === 'completed') {
-      throw new Error('Contest has ended');
-    }
-    if (contest.status === 'cancelled') {
-      throw new Error('Contest was cancelled');
+    if (contest.status === 'completed' || contest.status === 'cancelled') {
+      // Details page shows standings / cancelled state — don't try to join a dead table.
+      router.push(`/contest/${contest.id}`);
+      return;
     }
     if (contest.status !== 'registering') {
       // Running — open lobby, do not re-register.

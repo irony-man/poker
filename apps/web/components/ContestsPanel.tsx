@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { contestModeLabel } from '@/lib/contestLabels';
 import {
@@ -70,14 +71,27 @@ function statusLabel(status: ContestView['status']): string {
   }
 }
 
+function statusChipClass(status: ContestView['status']): string {
+  switch (status) {
+    case 'completed':
+      return 'border-sidebar/20 bg-sidebar/8 text-sidebar';
+    case 'running':
+      return 'border-positive/30 bg-positive/10 text-positive';
+    case 'cancelled':
+      return 'border-danger/30 bg-danger/10 text-danger';
+    default:
+      return 'border-sidebar/15 bg-mushroom/70 text-ink-strong-muted';
+  }
+}
+
 function ContestListItem({
   contest,
-  subtitle,
+  meta,
   disabled,
   onOpen,
 }: {
   contest: ContestView;
-  subtitle: string;
+  meta?: string;
   disabled?: boolean;
   onOpen: () => void;
 }) {
@@ -91,7 +105,16 @@ function ContestListItem({
       >
         <span className="min-w-0">
           <span className="block truncate font-medium text-ink-strong">{contest.name}</span>
-          <span className="mt-0.5 block text-[11px] text-ink-strong-muted">{subtitle}</span>
+          <span className="mt-1 flex flex-wrap items-center gap-1.5">
+            <span
+              className={`status-chip px-1.5 py-0.5 text-[9px] font-display font-semibold uppercase tracking-[0.12em] ${statusChipClass(contest.status)}`}
+            >
+              {statusLabel(contest.status)}
+            </span>
+            {meta ? (
+              <span className="text-[11px] text-ink-strong-muted">{meta}</span>
+            ) : null}
+          </span>
         </span>
         <span className="shrink-0 text-xs tabular-nums text-ink-strong-muted">
           {contestModeLabel(contest.mode)} · {contest.entrants.length}/{contest.fieldSize}
@@ -117,9 +140,7 @@ export function ContestsPanel({
   onOpenContest: (contestId: string) => void;
   onJoinCode: (code: string) => Promise<void>;
 }) {
-  const userId = useSession((s) => s.userId);
   const open = useSession((s) => s.publicContests);
-  const joined = useSession((s) => s.myContests);
   const [mode, setMode] = useState<ContestMode>('chips');
   const [fieldSize, setFieldSize] = useState(6);
   const [handLimit, setHandLimit] = useState(20);
@@ -203,28 +224,6 @@ export function ContestsPanel({
       imageAlt="Multi-seat tournament table ready to fill"
       alignTop
     >
-      {joined.length > 0 && (
-        <div className="rounded-xl border border-sidebar/12 bg-mushroom/45 p-3.5 sm:p-4">
-          <div className="mb-2.5 flex items-baseline justify-between gap-2">
-            <p className="font-display text-[0.68rem] font-bold uppercase tracking-[0.18em] text-ink-strong/45">
-              Your contests
-            </p>
-            <span className="text-xs tabular-nums text-ink-strong-muted">{joined.length}</span>
-          </div>
-          <ul className="max-h-48 space-y-1.5 overflow-y-auto pr-0.5">
-            {joined.map((c) => (
-              <ContestListItem
-                key={c.id}
-                contest={c}
-                subtitle={`${statusLabel(c.status)}${userId && c.hostUserId === userId ? ' · host' : ' · joined'}`}
-                disabled={disabled || busy}
-                onOpen={() => onOpenContest(c.id)}
-              />
-            ))}
-          </ul>
-        </div>
-      )}
-
       <form onSubmit={onCreate} className="flex flex-col gap-5">
         <div className="min-w-0">
           <div
@@ -375,7 +374,6 @@ export function ContestsPanel({
               <ContestListItem
                 key={c.id}
                 contest={c}
-                subtitle={statusLabel(c.status)}
                 disabled={disabled || busy}
                 onOpen={() => onOpenContest(c.id)}
               />
@@ -392,6 +390,25 @@ export function ContestsPanel({
           {error ?? listError}
         </p>
       )}
+
+      {sessionToken ? (
+        <Link
+          href="/profile?tab=contests"
+          className="flex items-center justify-between gap-3 rounded-xl border border-sidebar/12 bg-mushroom/45 px-3.5 py-3 transition hover:border-sidebar/25 hover:bg-sidebar/[0.04] sm:px-4"
+        >
+          <span className="min-w-0">
+            <span className="block font-display text-[0.68rem] font-bold uppercase tracking-[0.18em] text-ink-strong/45">
+              Your contests
+            </span>
+            <span className="mt-1 block text-sm font-medium text-ink-strong">
+              View contest history on your profile
+            </span>
+          </span>
+          <span className="shrink-0 text-xs font-display font-semibold uppercase tracking-[0.12em] text-sidebar">
+            Profile →
+          </span>
+        </Link>
+      ) : null}
     </LobbySplitCard>
   );
 }

@@ -113,16 +113,20 @@ export default function ContestPage() {
 
   useEffect(() => {
     if (!contestEvent || contestEvent.contestId !== contestId) return;
+    if (contestEvent.event === 'contest_completed') {
+      navigatedTable.current = null;
+      return;
+    }
+    // Never auto-route into a table once the contest has ended (stale match_assigned).
+    if (contest && contest.status !== 'running') return;
     if (contestEvent.event === 'match_assigned' && contestEvent.tableId) {
       if (navigatedTable.current !== contestEvent.tableId) {
         navigatedTable.current = contestEvent.tableId;
         enterMobileFullscreen();
         router.push(`/table/${contestEvent.tableId}?contest=${contestId}`);
       }
-    } else if (contestEvent.event === 'contest_completed') {
-      navigatedTable.current = null;
     }
-  }, [contestEvent, contestId, router]);
+  }, [contestEvent, contest, contestId, router]);
 
   // Auto-navigate when assignment appears via sync (only while contest is live)
   useEffect(() => {
@@ -239,7 +243,15 @@ export default function ContestPage() {
       </Link>
 
       <header className="mt-4 w-full sm:mt-5">
-        <p className="status-chip w-fit border-sidebar/18 bg-sidebar/6 text-sidebar">
+        <p
+          className={`status-chip w-fit ${
+            contest.status === 'completed'
+              ? 'border-sidebar/20 bg-sidebar/8 text-sidebar'
+              : contest.status === 'cancelled'
+                ? 'border-danger/30 bg-danger/10 text-danger'
+                : 'border-sidebar/18 bg-sidebar/6 text-sidebar'
+          }`}
+        >
           {contestModeLabel(contest.mode)} · {statusLabel(contest.status)}
         </p>
         <h1 className="mt-3 font-display text-3xl font-bold tracking-tight text-ink-strong sm:text-4xl">

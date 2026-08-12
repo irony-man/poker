@@ -61,8 +61,18 @@ export class StorageService {
     return key.startsWith('uploads/avatars/');
   }
 
+  isAllowedSoundUrl(url: string): boolean {
+    const key = this.keyFromPublicUrl(url);
+    if (!key) return false;
+    return key.startsWith('uploads/sounds/');
+  }
+
   avatarUploadKey(userId: string, ext: string): string {
     return `uploads/avatars/${userId}/${nanoid()}.${ext}`;
+  }
+
+  soundUploadKey(kind: string, ext: string): string {
+    return `uploads/sounds/${kind}/${nanoid()}.${ext}`;
   }
 
   async createPresignedUpload(params: {

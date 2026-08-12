@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useEffect, useId, useState, type ReactNode } from 'react';
+import { Suspense, useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { MoneyAmount } from '@/components/CurrencyIcon';
@@ -28,6 +28,7 @@ import {
   patchAdminPages,
   patchAdminRoomSettings,
   patchAdminSounds,
+  requestAdminSoundUploadUrl,
   resetAdminUserChips,
   resetAdminUserWhuffies,
   type AdminContestRow,
@@ -364,6 +365,10 @@ function AdminPageInner() {
     inactivityMinutes: 15,
   });
   const [sounds, setSounds] = useState<TableSoundsConfig>(() => defaultTableSoundsConfig());
+  const [uploadingSound, setUploadingSound] = useState<TableSoundKind | null>(null);
+  const [soundUploadDisabled, setSoundUploadDisabled] = useState(false);
+  const soundUploadKindRef = useRef<TableSoundKind | null>(null);
+  const soundFileInputRef = useRef<HTMLInputElement>(null);
   const [homeFeatures, setHomeFeatures] = useState<HomeLandingFeature[]>(
     () => DEFAULT_HOME_FEATURES.map((f) => ({ ...f })),
   );
@@ -635,6 +640,77 @@ function AdminPageInner() {
     } catch {
       setError(`Could not play ${TABLE_SOUND_LABELS[kind]}`);
     }
+  }
+
+  function triggerSoundUpload(kind: TableSoundKind) {
+    soundUploadKindRef.current = kind;
+    soundFileInputRef.current?.click();
+  }
+
+  async function uploadSound(kind: TableSoundKind, file: File) {
+    if (!token || uploadingSound) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Sound file must be 5 MB or smaller');
+      return;
+    }
+    const contentType = file.type === 'audio/mp3' ? 'audio/mp3' : 'audio/mpeg';
+    if (file.type && file.type !== 'audio/mpeg' && file.type !== 'audio/mp3') {
+      setError('Use MP3 audio files only');
+      return;
+    }
+    setUploadingSound(kind);
+    setError(null);
+    try {
+      const { uploadUrl, publicUrl } = await requestAdminSoundUploadUrl(token, {
+        kind,
+        contentType,
+        contentLength: file.size,
+      });
+      const putRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': contentType },
+      });
+      if (!putRes.ok) throw new Error('Upload to storage failed');
+      const nextUrls = {
+        ...Object.fromEntries(TABLE_SOUND_KINDS.map((k) => [k, sounds.urls[k] ?? ''])),
+        [kind]: publicUrl,
+      } as Partial<Record<TableSoundKind, string>>;
+      const next = await patchAdminSounds(token, {
+        enabled: sounds.enabled,
+        urls: nextUrls,
+      });
+      setSounds({
+        enabled: next.enabled !== false,
+        urls: { ...DEFAULT_TABLE_SOUND_URLS, ...next.urls },
+      });
+      flash(`${TABLE_SOUND_LABELS[kind]} uploaded and saved`);
+      try {
+        const audio = new Audio(publicUrl);
+        void audio.play().catch(() => {
+          setError(`Could not play ${TABLE_SOUND_LABELS[kind]}`);
+        });
+      } catch {
+        setError(`Could not play ${TABLE_SOUND_LABELS[kind]}`);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Could not upload sound';
+      if (msg.includes('storage is not configured') || msg.includes('503')) {
+        setSoundUploadDisabled(true);
+      }
+      setError(msg);
+    } finally {
+      setUploadingSound(null);
+      soundUploadKindRef.current = null;
+    }
+  }
+
+  async function onSoundFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    const kind = soundUploadKindRef.current;
+    e.target.value = '';
+    if (!file || !kind) return;
+    await uploadSound(kind, file);
   }
 
   function updateBotGroup(id: string, patch: Partial<BotGroup>) {
@@ -1899,9 +1975,21 @@ function AdminPageInner() {
         {tab === 'sounds' ? (
           <Section
             title="Table sounds"
-            description="Sample URLs for fold, check, streets, and win. Defaults live under /sounds/. Leave a field blank to disable that event. Paste a path or https URL to override."
+            description="Upload MP3 files or paste URLs for fold, check, streets, and win. Uploads save immediately to S3. Leave a field blank to disable that event."
           >
             <form onSubmit={(e) => void saveSounds(e)} className="space-y-4">
+              <input
+                ref={soundFileInputRef}
+                type="file"
+                accept="audio/mpeg,audio/mp3,.mp3"
+                className="sr-only"
+                onChange={(e) => void onSoundFileSelected(e)}
+              />
+              {soundUploadDisabled ? (
+                <p className="text-xs text-ink-strong-muted">
+                  File uploads require AWS env vars on the server (S3_BUCKET, AWS_ACCESS_KEY_ID, etc.).
+                </p>
+              ) : null}
               <label className="flex items-center gap-3 rounded-xl border border-sidebar/10 bg-cream px-4 py-3">
                 <input
                   type="checkbox"
@@ -1942,14 +2030,24 @@ function AdminPageInner() {
                         className={`${fieldClass} font-mono text-xs`}
                       />
                     </label>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => previewSound(kind)}
-                      className="btn-ghost min-h-10 px-4 text-xs disabled:opacity-50"
-                    >
-                      Preview
-                    </button>
+                    <div className="flex flex-wrap gap-2 sm:justify-end">
+                      <button
+                        type="button"
+                        disabled={busy || soundUploadDisabled || uploadingSound !== null}
+                        onClick={() => triggerSoundUpload(kind)}
+                        className="btn-ghost min-h-10 px-4 text-xs disabled:opacity-50"
+                      >
+                        {uploadingSound === kind ? 'Uploading…' : 'Upload'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => previewSound(kind)}
+                        className="btn-ghost min-h-10 px-4 text-xs disabled:opacity-50"
+                      >
+                        Preview
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

@@ -346,6 +346,26 @@ export const AvatarUploadUrlBodySchema = z.object({
   contentLength: z.number().int().positive().max(2 * 1024 * 1024),
 });
 
+export const TableSoundKindSchema = z.enum([
+  'fold',
+  'check',
+  'call',
+  'bet',
+  'raise',
+  'allin',
+  'deal',
+  'flop',
+  'turn',
+  'river',
+  'win',
+]);
+
+export const SoundUploadUrlBodySchema = z.object({
+  kind: TableSoundKindSchema,
+  contentType: z.enum(['audio/mpeg', 'audio/mp3']),
+  contentLength: z.number().int().positive().max(5 * 1024 * 1024),
+});
+
 export const UpdateMeBodySchema = z
   .object({
     /** Preset profile picture index (0–7). */
@@ -369,6 +389,8 @@ export type SignupBody = z.infer<typeof SignupBodySchema>;
 export type LoginBody = z.infer<typeof LoginBodySchema>;
 export type AuthSession = z.infer<typeof AuthSessionSchema>;
 export type AvatarUploadUrlBody = z.infer<typeof AvatarUploadUrlBodySchema>;
+export type TableSoundKind = z.infer<typeof TableSoundKindSchema>;
+export type SoundUploadUrlBody = z.infer<typeof SoundUploadUrlBodySchema>;
 export type UpdateMeBody = z.infer<typeof UpdateMeBodySchema>;
 
 /** @deprecated Use SignupBodySchema / LoginBodySchema */

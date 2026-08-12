@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { configureTableSounds, playSound } from '@/lib/audio';
+import { configureTableSounds, playSound, unlockTableSounds } from '@/lib/audio';
 import {
   DEFAULT_TABLE_SOUND_URLS,
   fetchPublicSite,
@@ -42,25 +42,38 @@ export function useTableSounds(table: PublicTable | null | undefined): void {
     version: number | null;
   }>({ street: null, handId: null, version: null });
   const lastActionAt = useRef<number | null>(null);
-  const soundsLoaded = useRef(false);
 
   useEffect(() => {
-    if (soundsLoaded.current) return;
-    soundsLoaded.current = true;
     let cancelled = false;
-    void fetchPublicSite()
-      .then((site) => {
-        if (cancelled) return;
-        configureTableSounds(
-          site.sounds ?? { enabled: true, urls: { ...DEFAULT_TABLE_SOUND_URLS } },
-        );
-      })
-      .catch(() => {
-        if (cancelled) return;
-        configureTableSounds({ enabled: true, urls: { ...DEFAULT_TABLE_SOUND_URLS } });
-      });
+    const loadSounds = () => {
+      void fetchPublicSite()
+        .then((site) => {
+          if (cancelled) return;
+          configureTableSounds(
+            site.sounds ?? { enabled: true, urls: { ...DEFAULT_TABLE_SOUND_URLS } },
+          );
+        })
+        .catch(() => {
+          if (cancelled) return;
+          configureTableSounds({ enabled: true, urls: { ...DEFAULT_TABLE_SOUND_URLS } });
+        });
+    };
+    loadSounds();
+    const onFocus = () => loadSounds();
+    window.addEventListener('focus', onFocus);
     return () => {
       cancelled = true;
+      window.removeEventListener('focus', onFocus);
+    };
+  }, []);
+
+  useEffect(() => {
+    const unlock = () => unlockTableSounds();
+    window.addEventListener('pointerdown', unlock, { once: true, capture: true });
+    window.addEventListener('keydown', unlock, { once: true, capture: true });
+    return () => {
+      window.removeEventListener('pointerdown', unlock, { capture: true });
+      window.removeEventListener('keydown', unlock, { capture: true });
     };
   }, []);
 

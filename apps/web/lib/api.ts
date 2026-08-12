@@ -947,6 +947,23 @@ export async function patchAdminSounds(
   }) as Promise<TableSoundsConfig>;
 }
 
+export async function requestAdminSoundUploadUrl(
+  sessionToken: string,
+  body: {
+    kind: TableSoundKind;
+    contentType: 'audio/mpeg' | 'audio/mp3';
+    contentLength: number;
+  },
+): Promise<{ uploadUrl: string; publicUrl: string; expiresIn: number }> {
+  const res = await fetch(`${API_URL}/api/admin/sounds/upload-url`, {
+    method: 'POST',
+    headers: sessionHeaders(sessionToken),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await parseError(res, 'Could not start sound upload'));
+  return res.json() as Promise<{ uploadUrl: string; publicUrl: string; expiresIn: number }>;
+}
+
 export async function fetchPublicBotGroups(): Promise<PublicBotGroup[]> {
   try {
     const site = await fetchPublicSite();

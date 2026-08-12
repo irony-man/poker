@@ -188,6 +188,7 @@ export default function ContestPage() {
     try {
       const result = await inviteContestFriends(contestId, inviteFriendIds, { sessionToken });
       setInviteFriendIds([]);
+      if (result.contest) setContest(result.contest);
       setInviteToast(
         result.inviteCount > 0
           ? `Invited ${result.inviteCount} friend${result.inviteCount === 1 ? '' : 's'}`
@@ -320,7 +321,7 @@ export default function ContestPage() {
           <h2 className="hud-label">Entrants</h2>
           <span className="text-xs font-medium tabular text-ink-strong-muted">{seatsLabel}</span>
         </div>
-        {contest.entrants.length === 0 ? (
+        {contest.entrants.length === 0 && (contest.pendingInvites?.length ?? 0) === 0 ? (
           <p className="mt-3 text-sm text-ink-strong-muted">No one registered yet.</p>
         ) : (
           <ul className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -352,6 +353,19 @@ export default function ContestPage() {
                 </li>
               );
             })}
+            {(contest.pendingInvites ?? []).map((inv) => (
+              <li
+                key={`invite-${inv.userId}`}
+                className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-sidebar/18 bg-mushroom/35 px-3 py-2.5"
+              >
+                <span className="min-w-0 truncate text-sm font-medium text-ink-strong-muted">
+                  {inv.name}
+                </span>
+                <span className="shrink-0 text-[10px] font-display font-semibold uppercase tracking-wide text-sidebar/65">
+                  Invited
+                </span>
+              </li>
+            ))}
           </ul>
         )}
       </section>
@@ -363,10 +377,21 @@ export default function ContestPage() {
             selectedIds={inviteFriendIds}
             onChange={setInviteFriendIds}
             disabled={busy}
-            excludeUserIds={contest.entrants.map((e) => e.userId)}
-            maxSelect={Math.min(8, Math.max(0, contest.fieldSize - contest.entrants.length))}
+            excludeUserIds={[
+              ...contest.entrants.map((e) => e.userId),
+              ...(contest.pendingInvites ?? []).map((inv) => inv.userId),
+            ]}
+            maxSelect={Math.min(
+              8,
+              Math.max(
+                0,
+                contest.fieldSize -
+                  contest.entrants.length -
+                  (contest.pendingInvites?.length ?? 0),
+              ),
+            )}
             title="Invite friends"
-            help="Send a contest invite. Friends already seated are hidden. Empty seats can fill with bots when you start."
+            help="Send a contest invite. Friends already seated or invited are hidden. Empty seats can fill with bots when you start."
           />
           {inviteToast && (
             <p className="text-sm font-medium text-sidebar" role="status">

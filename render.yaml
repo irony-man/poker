@@ -37,6 +37,16 @@ services:
         sync: false
       - key: ADMIN_USERNAMES
         value: shivam,slick
+      - key: AWS_REGION
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_PUBLIC_BASE_URL
+        sync: false
 
   - type: web
     name: felt-web
@@ -70,3 +80,5 @@ services:
         value: /sign-in
       - key: NEXT_PUBLIC_CLERK_SIGN_UP_URL
         value: /sign-up
+      - key: NEXT_PUBLIC_ASSETS_URL
+        sync: false

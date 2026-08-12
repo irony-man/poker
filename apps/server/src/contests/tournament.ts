@@ -7,6 +7,7 @@ import {
   type ContestBlindInfo,
   type ContestEntrant,
   type ContestMode,
+  type ContestPendingInvite,
   type ContestPlacement,
   type ContestPlayerAssignment,
   type ContestStatus,
@@ -60,6 +61,8 @@ export interface ContestState {
   handLimit: number | null;
   handsPlayed: number;
   entrants: ContestEntrantInternal[];
+  /** Invited friends awaiting registration. */
+  pendingInvites: ContestPendingInvite[];
   placements: ContestPlacement[];
   tableId: string | null;
   levelIndex: number;
@@ -136,6 +139,7 @@ export class TournamentManager {
       handLimit,
       handsPlayed: 0,
       entrants: [],
+      pendingInvites: [],
       placements: [],
       tableId: null,
       levelIndex: 0,
@@ -213,6 +217,7 @@ export class TournamentManager {
       isBot,
       registeredAt: Date.now(),
     });
+    c.pendingInvites = c.pendingInvites.filter((inv) => inv.userId !== userId);
     this.broadcast(c.id);
     this.notifyListChange(c);
 
@@ -290,6 +295,35 @@ export class TournamentManager {
   get(contestId: string): ContestView | undefined {
     const c = this.contests.get(contestId);
     return c ? this.toView(c) : undefined;
+  }
+
+  /**
+   * Record friends invited to this contest (host-facing lobby list).
+   * Merges by userId; skips anyone already registered.
+   */
+  recordPendingInvites(
+    contestId: string,
+    invites: Array<{ userId: string; name: string }>,
+  ): ContestView | undefined {
+    const c = this.contests.get(contestId);
+    if (!c) return undefined;
+    if (c.status !== 'registering') return this.toView(c);
+    const now = Date.now();
+    const seated = new Set(c.entrants.map((e) => e.userId));
+    const byId = new Map(c.pendingInvites.map((inv) => [inv.userId, inv]));
+    for (const inv of invites) {
+      if (seated.has(inv.userId)) continue;
+      const existing = byId.get(inv.userId);
+      byId.set(inv.userId, {
+        userId: inv.userId,
+        name: inv.name,
+        invitedAt: existing?.invitedAt ?? now,
+      });
+    }
+    c.pendingInvites = [...byId.values()].sort((a, b) => a.invitedAt - b.invitedAt);
+    this.broadcast(c.id);
+    this.notifyListChange(c);
+    return this.toView(c);
   }
 
   getByInvite(code: string): ContestView | undefined {
@@ -742,6 +776,11 @@ export class TournamentManager {
         name: e.name,
         isBot: e.isBot,
         registeredAt: e.registeredAt,
+      })),
+      pendingInvites: c.pendingInvites.map((inv) => ({
+        userId: inv.userId,
+        name: inv.name,
+        invitedAt: inv.invitedAt,
       })),
       placements: [...c.placements],
       tableId: c.tableId,

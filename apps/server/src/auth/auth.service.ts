@@ -82,6 +82,10 @@ export class AuthService implements OnModuleInit {
     return this.store.setAvatarId(userId, avatarId);
   }
 
+  setAvatarUrl(userId: string, avatarUrl: string | null): Promise<User | null> {
+    return this.store.setAvatarUrl(userId, avatarUrl);
+  }
+
   setTableColorId(userId: string, tableColorId: number): Promise<User | null> {
     return this.store.setTableColorId(userId, tableColorId);
   }

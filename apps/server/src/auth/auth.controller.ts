@@ -96,6 +96,7 @@ export class AuthController {
       name: user.name,
       username: user.username,
       avatarId: user.avatarId,
+      avatarUrl: user.avatarUrl,
       chipBalance: user.chipBalance,
       whuffieBalance: user.whuffieBalance,
     };

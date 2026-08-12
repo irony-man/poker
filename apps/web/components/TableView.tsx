@@ -10,7 +10,6 @@ import { HowToPlayHelp } from './HowToPlayHelp';
 import { LoadingScreen } from './LoadingScreen';
 import { SeatView } from './SeatView';
 import { CopyRoomLink } from './CopyRoomLink';
-import { TableLeaderboard, LeaderboardToggle, saveShowLeaderboard } from './TableLeaderboard';
 import { TableOverflowMenu, type OverflowItem } from './TableOverflowMenu';
 import { TableShell } from './TableShell';
 import { VoiceCallBar } from './VoiceCallBar';
@@ -91,7 +90,6 @@ export function TableView({
   }
   const [dismissedWinHandId, setDismissedWinHandId] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
-  const [showLeaderboard, setShowLeaderboard] = useState(true);
   const autoSitSent = useRef(false);
 
   useTableSounds(table);
@@ -271,6 +269,7 @@ export function TableView({
         name: p.name ?? `Seat ${p.seat}`,
         userId: p.userId,
         avatarId: p.avatarId,
+        avatarUrl: p.avatarUrl,
         ready: !!p.ready,
         isSelf: p.userId === userId,
         sittingOut: p.status === 'sittingOut',
@@ -282,27 +281,6 @@ export function TableView({
       : table?.street === 'waiting'
         ? 'Ready to start'
         : 'Ready for next hand';
-
-  const toggleLeaderboard = () => {
-    setShowLeaderboard((prev) => {
-      const next = !prev;
-      saveShowLeaderboard(next);
-      return next;
-    });
-  };
-
-  useEffect(() => {
-    if (!isTournament) {
-      setShowLeaderboard(false);
-      return;
-    }
-    // Contests show ranks by default; hide only if the player turned them off.
-    try {
-      setShowLeaderboard(localStorage.getItem('felt-show-leaderboard') !== '0');
-    } catch {
-      setShowLeaderboard(true);
-    }
-  }, [isTournament, tableId]);
 
   const onAction = (action: string, amount?: number) => {
     if (!table) return;
@@ -452,14 +430,6 @@ export function TableView({
       onClick: () => setChatOpen(true),
       tone: 'accent',
     });
-    if (isTournament) {
-      mobileOverflowItems.push({
-        id: 'leaderboard',
-        label: showLeaderboard ? 'Hide ranks' : 'Show ranks',
-        onClick: toggleLeaderboard,
-        tone: 'accent',
-      });
-    }
     if (contestOver) {
       mobileOverflowItems.push({
         id: 'contest-results',
@@ -641,12 +611,6 @@ export function TableView({
           ) : (
             <div className="play-chrome-rail">
               {inviteCode ? <CopyRoomLink tableId={tableId} inviteCode={inviteCode} /> : null}
-              {isTournament ? (
-                <>
-                  <span className="play-chrome-divider" aria-hidden />
-                  <LeaderboardToggle open={showLeaderboard} onToggle={toggleLeaderboard} />
-                </>
-              ) : null}
               <span className="play-chrome-divider" aria-hidden />
               <VoiceCallBar
                 inVoice={voice.inVoice}
@@ -767,19 +731,6 @@ export function TableView({
           >
           {!narrow ? (
             <div className="pointer-events-none absolute inset-6 z-[1] rounded-[40%] border border-white/10" />
-          ) : null}
-
-          {isTournament && table ? (
-            <TableLeaderboard
-              players={table.players}
-              userId={userId}
-              open={showLeaderboard}
-              onClose={() => {
-                setShowLeaderboard(false);
-                saveShowLeaderboard(false);
-              }}
-              compact={narrow}
-            />
           ) : null}
 
           <div

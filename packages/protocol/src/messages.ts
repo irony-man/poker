@@ -145,6 +145,7 @@ export const ServerMessageSchema = z.discriminatedUnion('type', [
     userId: z.string(),
     name: z.string(),
     avatarId: z.number().int().optional(),
+    avatarUrl: z.string().url().nullable().optional(),
     chipBalance: z.number().int().nonnegative().optional(),
     whuffieBalance: z.number().int().nonnegative().optional(),
   }),
@@ -335,24 +336,39 @@ export const AuthSessionSchema = z.object({
   ticket: z.string(),
   sessionToken: z.string(),
   avatarId: z.number().int().min(0).max(7),
+  avatarUrl: z.string().url().max(512).nullable().optional(),
   chipBalance: z.number().int().nonnegative().optional(),
   whuffieBalance: z.number().int().nonnegative().optional(),
+});
+
+export const AvatarUploadUrlBodySchema = z.object({
+  contentType: z.enum(['image/jpeg', 'image/png', 'image/webp']),
+  contentLength: z.number().int().positive().max(2 * 1024 * 1024),
 });
 
 export const UpdateMeBodySchema = z
   .object({
     /** Preset profile picture index (0–7). */
     avatarId: z.number().int().min(0).max(7).optional(),
+    /** Custom profile image URL (from S3 upload). Pass null to clear. */
+    avatarUrl: z.string().url().max(512).nullable().optional(),
     /** Preset table felt theme index (0–8). */
     tableColorId: z.number().int().min(0).max(8).optional(),
   })
-  .refine((body) => body.avatarId !== undefined || body.tableColorId !== undefined, {
-    message: 'At least one of avatarId or tableColorId is required',
-  });
+  .refine(
+    (body) =>
+      body.avatarId !== undefined ||
+      body.avatarUrl !== undefined ||
+      body.tableColorId !== undefined,
+    {
+      message: 'At least one of avatarId, avatarUrl, or tableColorId is required',
+    },
+  );
 
 export type SignupBody = z.infer<typeof SignupBodySchema>;
 export type LoginBody = z.infer<typeof LoginBodySchema>;
 export type AuthSession = z.infer<typeof AuthSessionSchema>;
+export type AvatarUploadUrlBody = z.infer<typeof AvatarUploadUrlBodySchema>;
 export type UpdateMeBody = z.infer<typeof UpdateMeBodySchema>;
 
 /** @deprecated Use SignupBodySchema / LoginBodySchema */

@@ -1,4 +1,5 @@
 import type { AuthSession, CreateTableBody, ContestMode, ContestView } from '@poker/protocol';
+import { assetUrl } from '@/lib/assets';
 import { coerceMoney } from '@/lib/currency';
 import { clampTableColorId } from '@/lib/tableColors';
 
@@ -12,6 +13,7 @@ export interface MeProfile {
   username: string;
   name: string;
   avatarId: number;
+  avatarUrl: string | null;
   tableColorId: number;
   createdAt: number;
   chipBalance: number;
@@ -142,6 +144,7 @@ export async function fetchMe(sessionToken: string): Promise<MeProfile> {
       typeof data.avatarId === 'number' && Number.isFinite(data.avatarId)
         ? Math.max(0, Math.floor(data.avatarId))
         : 0,
+    avatarUrl: typeof data.avatarUrl === 'string' ? data.avatarUrl : null,
     tableColorId: clampTableColorId(
       typeof data.tableColorId === 'number' && Number.isFinite(data.tableColorId)
         ? Math.floor(data.tableColorId)
@@ -152,7 +155,7 @@ export async function fetchMe(sessionToken: string): Promise<MeProfile> {
 
 export async function updateMe(
   sessionToken: string,
-  body: { avatarId?: number; tableColorId?: number },
+  body: { avatarId?: number; avatarUrl?: string | null; tableColorId?: number },
 ): Promise<MeProfile> {
   const res = await fetch(`${API_URL}/api/me`, {
     method: 'PATCH',
@@ -169,12 +172,26 @@ export async function updateMe(
       typeof data.avatarId === 'number' && Number.isFinite(data.avatarId)
         ? Math.max(0, Math.floor(data.avatarId))
         : 0,
+    avatarUrl: typeof data.avatarUrl === 'string' ? data.avatarUrl : null,
     tableColorId: clampTableColorId(
       typeof data.tableColorId === 'number' && Number.isFinite(data.tableColorId)
         ? Math.floor(data.tableColorId)
         : 0,
     ),
   };
+}
+
+export async function requestAvatarUploadUrl(
+  sessionToken: string,
+  body: { contentType: 'image/jpeg' | 'image/png' | 'image/webp'; contentLength: number },
+): Promise<{ uploadUrl: string; publicUrl: string; expiresIn: number }> {
+  const res = await fetch(`${API_URL}/api/me/avatar/upload-url`, {
+    method: 'POST',
+    headers: sessionHeaders(sessionToken),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await parseError(res, 'Could not start avatar upload'));
+  return res.json() as Promise<{ uploadUrl: string; publicUrl: string; expiresIn: number }>;
 }
 
 export async function createTable(input: CreateTableBody, sessionToken: string) {
@@ -258,6 +275,7 @@ export interface FriendProfile {
   /** Present on friend search results. */
   username?: string;
   avatarId: number;
+  avatarUrl?: string | null;
   /** True when they recently used the app (for invite UX). */
   online?: boolean;
 }
@@ -476,7 +494,7 @@ export async function inviteContestFriends(
     ...options,
     method: 'POST',
     body: { friendUserIds },
-  }) as Promise<{ inviteCount: number; challengeIds: string[] }>;
+  }) as Promise<{ inviteCount: number; challengeIds: string[]; contest?: ContestView }>;
 }
 
 export async function listPublicContests() {
@@ -875,17 +893,17 @@ export const TABLE_SOUND_KINDS: readonly TableSoundKind[] = [
 ] as const;
 
 export const DEFAULT_TABLE_SOUND_URLS: Record<TableSoundKind, string> = {
-  fold: '/sounds/fold.mp3',
-  check: '/sounds/check.mp3',
-  call: '/sounds/call.mp3',
-  bet: '/sounds/bet.mp3',
-  raise: '/sounds/raise.mp3',
-  allin: '/sounds/allin.mp3',
-  deal: '/sounds/deal.mp3',
-  flop: '/sounds/flop.mp3',
-  turn: '/sounds/turn.mp3',
-  river: '/sounds/river.mp3',
-  win: '/sounds/win.mp3',
+  fold: assetUrl('/sounds/fold.mp3'),
+  check: assetUrl('/sounds/check.mp3'),
+  call: assetUrl('/sounds/call.mp3'),
+  bet: assetUrl('/sounds/bet.mp3'),
+  raise: assetUrl('/sounds/raise.mp3'),
+  allin: assetUrl('/sounds/allin.mp3'),
+  deal: assetUrl('/sounds/deal.mp3'),
+  flop: assetUrl('/sounds/flop.mp3'),
+  turn: assetUrl('/sounds/turn.mp3'),
+  river: assetUrl('/sounds/river.mp3'),
+  win: assetUrl('/sounds/win.mp3'),
 };
 
 export const TABLE_SOUND_LABELS: Record<TableSoundKind, string> = {

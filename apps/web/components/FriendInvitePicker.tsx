@@ -202,6 +202,7 @@ export function FriendInvitePicker({
                     <PlayerAvatar
                       userId={f.userId}
                       avatarId={f.avatarId}
+                      avatarUrl={f.avatarUrl}
                       size={28}
                       title={f.name}
                     />

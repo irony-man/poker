@@ -18,6 +18,7 @@
     "test": "npm run test -w @poker/engine -w @poker/server",
     "test:engine": "npm run test -w @poker/engine",
     "smoke": "npm run smoke -w @poker/server",
+    "sync:assets": "npm run sync:assets -w @poker/server",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "engines": {

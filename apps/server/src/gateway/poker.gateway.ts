@@ -130,6 +130,7 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
         userId: user.id,
         name: user.name,
         avatarId: user.avatarId,
+        avatarUrl: user.avatarUrl,
         chipBalance: this.wallet.getBalance(user.id),
         whuffieBalance: this.wallet.getWhuffieBalance(user.id),
       });
@@ -190,8 +191,10 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
         this.rooms.get(st.tableId)?.detach(userId);
       }
       st.tableId = msg.tableId;
-      const avatarId = this.auth.getUser(userId)?.avatarId ?? 0;
-      room.attach({ userId, name, avatarId, send });
+      const authUser = this.auth.getUser(userId);
+      const avatarId = authUser?.avatarId ?? 0;
+      const avatarUrl = authUser?.avatarUrl ?? null;
+      room.attach({ userId, name, avatarId, avatarUrl, send });
       if (!msg.spectate) {
         const seated = await room.autoSit(userId, name);
         if (!seated.ok && seated.error && seated.error !== 'Table full') {

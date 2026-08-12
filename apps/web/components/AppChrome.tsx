@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
+import { imageAssetUrl } from '@/lib/assets';
 import { LobbySidebar } from '@/components/LobbySidebar';
 import {
   OnlineFriendsProvider,
@@ -197,7 +198,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
                 <MobileMenuButton signedIn={signedIn} onOpen={() => setMenuOpen(true)} />
                 <Link href="/" className="flex flex-1 justify-center">
                   <Image
-                    src="/pokr-logo.png"
+                    src={imageAssetUrl('pokr-logo.png')}
                     alt="POKR"
                     width={120}
                     height={36}

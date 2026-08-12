@@ -26,6 +26,7 @@ export type ActionBurst = {
 export type PublicPlayer = PublicPlayerView & {
   /** Preset profile picture index (0–7). */
   avatarId?: number | null;
+  avatarUrl?: string | null;
   /** Between hands on cash tables: opted in for next deal (bots always true). */
   ready?: boolean;
   /** Requested sit-out after the current hand ends. */

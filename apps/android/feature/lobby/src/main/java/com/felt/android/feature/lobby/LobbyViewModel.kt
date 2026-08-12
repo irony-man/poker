@@ -234,7 +234,7 @@ class LobbyViewModel @Inject constructor(
                         fieldSize = field,
                         botCount = 0,
                         isPrivate = true,
-                        autoStart = true,
+                        autoStart = false,
                         handLimit = if (mode == "rounds") state.contestHandLimit else null,
                     ),
                 ).contest.id

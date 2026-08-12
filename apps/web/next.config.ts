@@ -20,6 +20,15 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   transpilePackages: ['@poker/protocol', '@poker/engine', '@letele/playing-cards'],
   poweredByHeader: false,
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**.amazonaws.com',
+        pathname: '/**',
+      },
+    ],
+  },
   async headers() {
     return [
       {

@@ -173,6 +173,25 @@ fun ContestScreen(
                         }
                     }
                 }
+                contest.pendingInvites.forEach { inv ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = inv.name,
+                            color = FeltColors.Cream.copy(0.65f),
+                            fontSize = 14.sp,
+                        )
+                        Text(
+                            text = "Invited",
+                            color = FeltColors.Cream.copy(0.55f),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
             }
         }
 

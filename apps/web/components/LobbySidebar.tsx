@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { imageAssetUrl } from '@/lib/assets';
 import { authHref } from '@/lib/authRedirect';
 import { loadSavedAvatarId } from '@/lib/avatars';
 import { MoneyAmount } from '@/components/CurrencyIcon';
@@ -262,7 +263,7 @@ export function LobbySidebar({
       className="group block shrink-0 px-4 pt-5 pb-2 transition hover:opacity-90"
     >
       <Image
-        src="/pokr-logo.png"
+        src={imageAssetUrl('pokr-logo.png')}
         alt="POKR"
         width={160}
         height={48}

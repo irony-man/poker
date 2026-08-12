@@ -184,6 +184,7 @@ export function OnlineFriendsSidebar({
                   <PlayerAvatar
                     userId={f.userId}
                     avatarId={f.avatarId}
+                    avatarUrl={f.avatarUrl}
                     size={28}
                     title={f.name}
                   />
@@ -237,6 +238,7 @@ export function OnlineFriendsStrip({
               <PlayerAvatar
                 userId={f.userId}
                 avatarId={f.avatarId}
+                avatarUrl={f.avatarUrl}
                 size={28}
                 title={f.name}
               />
@@ -302,6 +304,7 @@ export function OnlineFriendsOverlay({ signedIn }: { signedIn: boolean }) {
                   <PlayerAvatar
                     userId={f.userId}
                     avatarId={f.avatarId}
+                    avatarUrl={f.avatarUrl}
                     size={24}
                     title={f.name}
                   />

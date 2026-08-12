@@ -20,6 +20,7 @@ export type ReadyRosterPlayer = {
   name: string;
   userId?: string | null;
   avatarId?: number | null;
+  avatarUrl?: string | null;
   ready: boolean;
   isSelf?: boolean;
   /** Seated but sitting out — shown with muted badge. */
@@ -114,6 +115,7 @@ export function ReadyPlayersRoster({
                 <PlayerAvatar
                   userId={p.userId}
                   avatarId={p.avatarId}
+                  avatarUrl={p.avatarUrl}
                   size={rosterAvatarSize}
                   title={label}
                   className={`ring-2 ring-white ${

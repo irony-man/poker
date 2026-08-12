@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
+import { imageAssetUrl } from '@/lib/assets';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 import {
   challengeFriend,
@@ -43,6 +44,7 @@ function MemberAvatarStack({
             <PlayerAvatar
               userId={m.userId}
               avatarId={m.avatarId}
+              avatarUrl={m.avatarUrl}
               size={28}
               title={m.userId === selfUserId ? 'You' : m.name}
             />
@@ -85,7 +87,7 @@ function FriendToggleRow({
       >
         ✓
       </span>
-      <PlayerAvatar userId={friend.userId} avatarId={friend.avatarId} size={28} title={friend.name} />
+      <PlayerAvatar userId={friend.userId} avatarId={friend.avatarId} avatarUrl={friend.avatarUrl} size={28} title={friend.name} />
       <span className="min-w-0 flex-1 truncate text-sm font-medium">{friend.name}</span>
     </button>
   );
@@ -405,7 +407,7 @@ export function FriendsPanel({
             const handle = u.username ?? u.name;
             return (
               <li key={u.userId} className="flex items-center gap-3 bg-mushroom/40 px-3 py-2.5">
-                <PlayerAvatar userId={u.userId} avatarId={u.avatarId} size={32} title={handle} />
+                <PlayerAvatar userId={u.userId} avatarId={u.avatarId} avatarUrl={u.avatarUrl} size={32} title={handle} />
                 <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink-strong">
                   {handle}
                 </span>
@@ -471,6 +473,7 @@ export function FriendsPanel({
                 <PlayerAvatar
                   userId={req.from.userId}
                   avatarId={req.from.avatarId}
+                  avatarUrl={req.from.avatarUrl}
                   size={28}
                   title={req.from.name}
                 />
@@ -516,6 +519,7 @@ export function FriendsPanel({
                   <PlayerAvatar
                     userId={c.challenger.userId}
                     avatarId={c.challenger.avatarId}
+                    avatarUrl={c.challenger.avatarUrl}
                     size={28}
                     title={c.challenger.name}
                   />
@@ -731,6 +735,7 @@ export function FriendsPanel({
                               <PlayerAvatar
                                 userId={m.userId}
                                 avatarId={m.avatarId}
+                                avatarUrl={m.avatarUrl}
                                 size={28}
                                 title="You"
                               />
@@ -817,6 +822,7 @@ export function FriendsPanel({
                             <PlayerAvatar
                               userId={m.userId}
                               avatarId={m.avatarId}
+                              avatarUrl={m.avatarUrl}
                               size={16}
                               title={isYou ? 'You' : m.name}
                             />
@@ -938,7 +944,7 @@ export function FriendsPanel({
                   className="flex items-center gap-3 rounded-2xl border border-sidebar/12 bg-mushroom/50 px-3 py-2.5"
                 >
                   <span className="relative shrink-0">
-                    <PlayerAvatar userId={f.userId} avatarId={f.avatarId} size={36} title={f.name} />
+                    <PlayerAvatar userId={f.userId} avatarId={f.avatarId} avatarUrl={f.avatarUrl} size={36} title={f.name} />
                     <span
                       className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white ${
                         f.online ? 'bg-positive' : 'bg-sidebar/25'
@@ -1028,7 +1034,7 @@ export function FriendsPanel({
 
   return (
     <LobbySplitCard
-      imageSrc="/home-host.png"
+      imageSrc={imageAssetUrl('home-host.png')}
       imageAlt="Invite friends to your table"
       mediaHeader={playerSearch}
     >

@@ -34,7 +34,7 @@ export class ContestsController {
     }
     try {
       const d = parsed.data;
-      const contest = await this.contests.create({
+      let contest = await this.contests.create({
         name: d.name,
         mode: d.mode,
         hostUserId: user.id,
@@ -59,6 +59,17 @@ export class ContestsController {
           inviteCode: contest.inviteCode,
         });
         inviteCount = invites.length;
+        if (invites.length > 0) {
+          const pending = invites.map((ch) => {
+            const friend = this.auth.getUser(ch.challengedId);
+            return {
+              userId: ch.challengedId,
+              name: friend?.name ?? 'Friend',
+            };
+          });
+          const updated = this.contests.recordPendingInvites(contest.id, pending);
+          if (updated) contest = updated;
+        }
       }
 
       return { contest, inviteCount };
@@ -91,16 +102,28 @@ export class ContestsController {
       throw new BadRequestException({ error: 'Registration is closed' });
     }
     if (parsed.data.friendUserIds.length === 0) {
-      return { inviteCount: 0, challengeIds: [] as string[] };
+      return { inviteCount: 0, challengeIds: [] as string[], contest };
     }
     const challenges = await this.friends.createFriendInvites(user.id, parsed.data.friendUserIds, {
       kind: 'contest',
       contestId: contest.id,
       inviteCode: contest.inviteCode,
     });
+    let updatedContest = contest;
+    if (challenges.length > 0) {
+      const pending = challenges.map((ch) => {
+        const friend = this.auth.getUser(ch.challengedId);
+        return {
+          userId: ch.challengedId,
+          name: friend?.name ?? 'Friend',
+        };
+      });
+      updatedContest = this.contests.recordPendingInvites(contest.id, pending) ?? contest;
+    }
     return {
       inviteCount: challenges.length,
       challengeIds: challenges.map((c) => c.id),
+      contest: updatedContest,
     };
   }
 

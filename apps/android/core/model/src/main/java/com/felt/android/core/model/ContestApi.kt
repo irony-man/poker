@@ -11,6 +11,13 @@ data class ContestEntrant(
 )
 
 @Serializable
+data class ContestPendingInvite(
+    val userId: String,
+    val name: String,
+    val invitedAt: Long = 0,
+)
+
+@Serializable
 data class ContestPlacement(
     val userId: String,
     val name: String,
@@ -51,6 +58,7 @@ data class ContestView(
     val turnTimeMs: Int,
     val isPrivate: Boolean = true,
     val entrants: List<ContestEntrant> = emptyList(),
+    val pendingInvites: List<ContestPendingInvite> = emptyList(),
     val placements: List<ContestPlacement> = emptyList(),
     val tableId: String? = null,
     val blinds: ContestBlindInfo? = null,
@@ -75,7 +83,7 @@ data class CreateContestRequest(
     val botCount: Int = 0,
     val isPrivate: Boolean = true,
     val inviteCode: String? = null,
-    val autoStart: Boolean = true,
+    val autoStart: Boolean = false,
     val handLimit: Int? = null,
     val inviteFriendIds: List<String> = emptyList(),
 )

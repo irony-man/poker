@@ -4,17 +4,41 @@ import {
   Controller,
   Get,
   Patch,
+  Post,
+  ServiceUnavailableException,
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { UpdateMeBodySchema } from '@poker/protocol';
+import { AvatarUploadUrlBodySchema, UpdateMeBodySchema } from '@poker/protocol';
 import { isAdminUsername, parseAdminUsernames } from '../admin/admin-allowlist.js';
 import { CurrentUser } from '../common/session-auth.guard.js';
 import { SessionAuthGuard } from '../common/session-auth.guard.js';
 import type { User } from '../auth/auth.types.js';
 import { AuthService } from '../auth/auth.service.js';
+import { ALLOWED_AVATAR_CONTENT_TYPES } from '../storage/storage.constants.js';
+import { StorageService } from '../storage/storage.service.js';
 import { WalletService } from '../wallet/wallet.service.js';
+
+function toMeProfile(
+  user: User,
+  chipBalance: number,
+  whuffieBalance: number,
+  isAdmin: boolean,
+) {
+  return {
+    id: user.id,
+    username: user.username,
+    name: user.name,
+    avatarId: user.avatarId,
+    avatarUrl: user.avatarUrl,
+    tableColorId: user.tableColorId,
+    createdAt: user.createdAt,
+    chipBalance,
+    whuffieBalance,
+    isAdmin,
+  };
+}
 
 @Controller('api')
 @UseGuards(SessionAuthGuard)
@@ -23,6 +47,7 @@ export class UsersController {
     private readonly auth: AuthService,
     private readonly wallet: WalletService,
     private readonly config: ConfigService,
+    private readonly storage: StorageService,
   ) {}
 
   private isAdmin(user: User): boolean {
@@ -40,17 +65,31 @@ export class UsersController {
     if (!fresh) {
       throw new UnauthorizedException({ error: 'Unknown user' });
     }
-    return {
-      id: fresh.id,
-      username: fresh.username,
-      name: fresh.name,
-      avatarId: fresh.avatarId,
-      tableColorId: fresh.tableColorId,
-      createdAt: fresh.createdAt,
-      chipBalance: this.wallet.getBalance(user.id),
-      whuffieBalance: this.wallet.getWhuffieBalance(user.id),
-      isAdmin: this.isAdmin(fresh),
-    };
+    return toMeProfile(
+      fresh,
+      this.wallet.getBalance(user.id),
+      this.wallet.getWhuffieBalance(user.id),
+      this.isAdmin(fresh),
+    );
+  }
+
+  @Post('me/avatar/upload-url')
+  async avatarUploadUrl(@CurrentUser() user: User, @Body() body: unknown) {
+    if (!this.storage.isConfigured()) {
+      throw new ServiceUnavailableException({ error: 'File storage is not configured' });
+    }
+    const parsed = AvatarUploadUrlBodySchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({ error: parsed.error.message });
+    }
+    const ext = ALLOWED_AVATAR_CONTENT_TYPES[parsed.data.contentType];
+    const key = this.storage.avatarUploadKey(user.id, ext);
+    const result = await this.storage.createPresignedUpload({
+      key,
+      contentType: parsed.data.contentType,
+      contentLength: parsed.data.contentLength,
+    });
+    return result;
   }
 
   @Patch('me')
@@ -63,6 +102,39 @@ export class UsersController {
     if (!updated) {
       throw new UnauthorizedException({ error: 'Unknown user' });
     }
+
+    if (parsed.data.avatarUrl !== undefined) {
+      if (parsed.data.avatarUrl === null) {
+        const previous = updated.avatarUrl;
+        updated = await this.auth.setAvatarUrl(user.id, null);
+        if (previous) {
+          const key = this.storage.keyFromPublicUrl(previous);
+          if (key) void this.storage.deleteObject(key);
+        }
+      } else {
+        if (!this.storage.isConfigured()) {
+          throw new ServiceUnavailableException({ error: 'File storage is not configured' });
+        }
+        if (!this.storage.isAllowedAvatarUrl(parsed.data.avatarUrl)) {
+          throw new BadRequestException({ error: 'Invalid avatar URL' });
+        }
+        const key = this.storage.keyFromPublicUrl(parsed.data.avatarUrl);
+        if (!key || !key.startsWith(`uploads/avatars/${user.id}/`)) {
+          throw new BadRequestException({ error: 'Avatar URL must belong to your account' });
+        }
+        const exists = await this.storage.headObject(key);
+        if (!exists) {
+          throw new BadRequestException({ error: 'Uploaded avatar not found' });
+        }
+        const previous = updated.avatarUrl;
+        updated = await this.auth.setAvatarUrl(user.id, parsed.data.avatarUrl);
+        if (previous && previous !== parsed.data.avatarUrl) {
+          const oldKey = this.storage.keyFromPublicUrl(previous);
+          if (oldKey) void this.storage.deleteObject(oldKey);
+        }
+      }
+    }
+
     if (parsed.data.avatarId !== undefined) {
       updated = await this.auth.setAvatarId(user.id, parsed.data.avatarId);
     }
@@ -72,16 +144,11 @@ export class UsersController {
     if (!updated) {
       throw new UnauthorizedException({ error: 'Unknown user' });
     }
-    return {
-      id: updated.id,
-      username: updated.username,
-      name: updated.name,
-      avatarId: updated.avatarId,
-      tableColorId: updated.tableColorId,
-      createdAt: updated.createdAt,
-      chipBalance: this.wallet.getBalance(user.id),
-      whuffieBalance: this.wallet.getWhuffieBalance(user.id),
-      isAdmin: this.isAdmin(updated),
-    };
+    return toMeProfile(
+      updated,
+      this.wallet.getBalance(user.id),
+      this.wallet.getWhuffieBalance(user.id),
+      this.isAdmin(updated),
+    );
   }
 }

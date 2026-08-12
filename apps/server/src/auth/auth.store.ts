@@ -33,6 +33,7 @@ function toPublic(u: User): PublicUser {
     username: u.username,
     name: u.name,
     avatarId: u.avatarId,
+    avatarUrl: u.avatarUrl ?? null,
     tableColorId: u.tableColorId,
     createdAt: u.createdAt,
     chipBalance: u.chipBalance,
@@ -48,6 +49,7 @@ function normalizeUser(
   return {
     ...u,
     avatarId: clampAvatarId(u.avatarId),
+    avatarUrl: u.avatarUrl ?? null,
     tableColorId: clampTableColorId(u.tableColorId),
     chipBalance: normalizeNonNegInt(u.chipBalance, fallbackChips),
     whuffieBalance: normalizeNonNegInt(u.whuffieBalance, fallbackWhuffies),
@@ -149,7 +151,7 @@ export class AuthStore {
   private async loadFromPostgres(): Promise<void> {
     if (!this.pool) return;
     const result = await this.pool.query(
-      `SELECT id, name, username, password_hash, avatar_id, table_color_id, chip_balance, whuffie_balance, created_at
+      `SELECT id, name, username, password_hash, avatar_id, avatar_url, table_color_id, chip_balance, whuffie_balance, created_at
        FROM users
        WHERE password_hash IS NOT NULL AND username IS NOT NULL`,
     );
@@ -164,6 +166,7 @@ export class AuthStore {
       username: string;
       password_hash: string;
       avatar_id: number;
+      avatar_url?: string | null;
       table_color_id?: number | null;
       chip_balance?: number | null;
       whuffie_balance?: number | null;
@@ -179,6 +182,7 @@ export class AuthStore {
         name: row.username || row.name,
         passwordHash: row.password_hash,
         avatarId: clampAvatarId(row.avatar_id ?? 0),
+        avatarUrl: row.avatar_url ?? null,
         tableColorId: clampTableColorId(row.table_color_id ?? 0),
         chipBalance: normalizeNonNegInt(row.chip_balance, STARTING_CHIP_GRANT),
         whuffieBalance: normalizeNonNegInt(row.whuffie_balance, STARTING_WHUFFIE_GRANT),
@@ -301,14 +305,15 @@ export class AuthStore {
   private async persistUserToPostgres(user: User): Promise<void> {
     if (!this.pool) return;
     await this.pool.query(
-      `INSERT INTO users (id, name, username, username_lower, password_hash, avatar_id, table_color_id, chip_balance, whuffie_balance, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, to_timestamp($10 / 1000.0))
+      `INSERT INTO users (id, name, username, username_lower, password_hash, avatar_id, avatar_url, table_color_id, chip_balance, whuffie_balance, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, to_timestamp($11 / 1000.0))
        ON CONFLICT (id) DO UPDATE SET
          name = EXCLUDED.name,
          username = EXCLUDED.username,
          username_lower = EXCLUDED.username_lower,
          password_hash = EXCLUDED.password_hash,
          avatar_id = EXCLUDED.avatar_id,
+         avatar_url = EXCLUDED.avatar_url,
          table_color_id = EXCLUDED.table_color_id,
          chip_balance = EXCLUDED.chip_balance,
          whuffie_balance = EXCLUDED.whuffie_balance`,
@@ -319,6 +324,7 @@ export class AuthStore {
         user.username.toLowerCase(),
         user.passwordHash,
         user.avatarId,
+        user.avatarUrl,
         user.tableColorId,
         user.chipBalance,
         user.whuffieBalance,
@@ -346,6 +352,7 @@ export class AuthStore {
       name: trimmed,
       passwordHash: await argon2.hash(password),
       avatarId: avatarId !== undefined ? clampAvatarId(avatarId) : avatarIdFromUserId(id),
+      avatarUrl: null,
       tableColorId: 0,
       chipBalance: this.startingGrant(),
       whuffieBalance: this.startingWhuffies(),
@@ -398,6 +405,7 @@ export class AuthStore {
       ticket,
       sessionToken,
       avatarId: user.avatarId,
+      avatarUrl: user.avatarUrl,
       chipBalance: user.chipBalance,
       whuffieBalance: user.whuffieBalance,
     };
@@ -477,9 +485,25 @@ export class AuthStore {
     const user = this.users.get(userId);
     if (!user) return null;
     user.avatarId = clampAvatarId(avatarId);
+    user.avatarUrl = null;
     if (this.pool) {
-      await this.pool.query(`UPDATE users SET avatar_id = $1 WHERE id = $2`, [
-        user.avatarId,
+      await this.pool.query(
+        `UPDATE users SET avatar_id = $1, avatar_url = NULL WHERE id = $2`,
+        [user.avatarId, userId],
+      );
+    } else {
+      await this.persistFile();
+    }
+    return user;
+  }
+
+  async setAvatarUrl(userId: string, avatarUrl: string | null): Promise<User | null> {
+    const user = this.users.get(userId);
+    if (!user) return null;
+    user.avatarUrl = avatarUrl;
+    if (this.pool) {
+      await this.pool.query(`UPDATE users SET avatar_url = $1 WHERE id = $2`, [
+        avatarUrl,
         userId,
       ]);
     } else {
@@ -562,6 +586,7 @@ export class AuthStore {
       name: username,
       passwordHash: await argon2.hash(password),
       avatarId: clampAvatarId(avatarId),
+      avatarUrl: null,
       tableColorId: 0,
       chipBalance: this.startingGrant(),
       whuffieBalance: this.startingWhuffies(),

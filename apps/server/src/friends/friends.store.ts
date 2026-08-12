@@ -55,6 +55,7 @@ export interface FriendProfile {
   userId: string;
   name: string;
   avatarId: number;
+  avatarUrl: string | null;
 }
 
 export interface PendingRequestView {
@@ -183,7 +184,7 @@ export class FriendsStore {
   private profile(auth: AuthStore, userId: string): FriendProfile | null {
     const user = auth.getUser(userId);
     if (!user) return null;
-    return { userId: user.id, name: user.name, avatarId: user.avatarId };
+    return { userId: user.id, name: user.name, avatarId: user.avatarId, avatarUrl: user.avatarUrl };
   }
 
   private areFriends(a: string, b: string): boolean {

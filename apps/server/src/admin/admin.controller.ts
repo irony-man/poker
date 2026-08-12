@@ -285,6 +285,7 @@ export class AdminController {
         username: u.username,
         name: u.name,
         avatarId: u.avatarId,
+        avatarUrl: u.avatarUrl,
         chipBalance: this.wallet.getBalance(u.id),
         whuffieBalance: this.wallet.getWhuffieBalance(u.id),
         createdAt: u.createdAt,

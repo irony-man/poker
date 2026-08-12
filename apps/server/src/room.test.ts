@@ -79,7 +79,7 @@ describe('RoomManager', () => {
     });
     const room = rooms.get(meta.id)!;
     const noop = () => {};
-    room.attach({ userId: 'u1', name: 'A', avatarId: 0, send: noop });
+    room.attach({ userId: 'u1', name: 'A', avatarId: 0, avatarUrl: null, send: noop });
     expect((await room.sit('u1', 'A', 0, 1000)).ok).toBe(true);
 
     room.detach('u1');
@@ -105,12 +105,12 @@ describe('RoomManager', () => {
     });
     const room = rooms.get(meta.id)!;
     const noop = () => {};
-    room.attach({ userId: 'u1', name: 'A', avatarId: 0, send: noop });
+    room.attach({ userId: 'u1', name: 'A', avatarId: 0, avatarUrl: null, send: noop });
     expect((await room.sit('u1', 'A', 0, 1000)).ok).toBe(true);
 
     room.detach('u1');
     room.scheduleDisconnect('u1');
-    room.attach({ userId: 'u1', name: 'A', avatarId: 0, send: noop });
+    room.attach({ userId: 'u1', name: 'A', avatarId: 0, avatarUrl: null, send: noop });
 
     vi.advanceTimersByTime(120_000);
     expect(room.state.players[0]?.userId).toBe('u1');
@@ -255,8 +255,8 @@ describe('RoomManager', () => {
     const room = rooms.get(meta.id)!;
     const oldSend = () => {};
     const newSend = () => {};
-    room.attach({ userId: 'u1', name: 'A', avatarId: 0, send: oldSend });
-    room.attach({ userId: 'u1', name: 'A', avatarId: 0, send: newSend });
+    room.attach({ userId: 'u1', name: 'A', avatarId: 0, avatarUrl: null, send: oldSend });
+    room.attach({ userId: 'u1', name: 'A', avatarId: 0, avatarUrl: null, send: newSend });
 
     expect(room.detachIfActive('u1', oldSend)).toBe(false);
     expect(room.isActiveConnection('u1', newSend)).toBe(true);
@@ -458,6 +458,7 @@ describe('RoomManager', () => {
       userId: 'u1',
       name: 'A',
       avatarId: 0,
+      avatarUrl: null,
       send: (m) => {
         msgs.push(m);
       },

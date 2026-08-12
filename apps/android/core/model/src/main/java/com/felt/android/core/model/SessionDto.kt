@@ -10,6 +10,7 @@ data class SessionDto(
     val ticket: String,
     val sessionToken: String = "",
     val avatarId: Int = 0,
+    val avatarUrl: String? = null,
 )
 
 @Serializable

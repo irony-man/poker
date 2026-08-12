@@ -41,6 +41,10 @@ export class ContestsService implements OnModuleInit {
     return this.tournaments.get(id);
   }
 
+  recordPendingInvites(id: string, invites: Array<{ userId: string; name: string }>) {
+    return this.tournaments.recordPendingInvites(id, invites);
+  }
+
   getByInvite(code: string) {
     return this.tournaments.getByInvite(code);
   }

@@ -56,6 +56,7 @@ data class TablePlayerUi(
     val hasCards: Boolean = false,
     val holeCards: List<String>? = null,
     val avatarId: Int? = null,
+    val avatarUrl: String? = null,
 )
 
 data class TableUiState(
@@ -345,6 +346,7 @@ private fun SeatChip(
                             }
                             PlayerAvatar(
                                 avatarId = player.avatarId,
+                                avatarUrl = player.avatarUrl,
                                 userId = player.userId,
                                 size = if (isSelf) 26.dp else 22.dp,
                                 selected = isSelf || isWinner,

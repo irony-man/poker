@@ -6,6 +6,7 @@ import {
   STARTING_CHIP_GRANT,
   STARTING_WHUFFIE_GRANT,
 } from '../wallet/wallet.constants.js';
+import { assetUrl } from '../assets.js';
 
 export interface SiteAnnouncement {
   enabled: boolean;
@@ -179,17 +180,17 @@ export const TABLE_SOUND_KINDS: readonly TableSoundKind[] = [
 ] as const;
 
 export const DEFAULT_TABLE_SOUND_URLS: Record<TableSoundKind, string> = {
-  fold: '/sounds/fold.mp3',
-  check: '/sounds/check.mp3',
-  call: '/sounds/call.mp3',
-  bet: '/sounds/bet.mp3',
-  raise: '/sounds/raise.mp3',
-  allin: '/sounds/allin.mp3',
-  deal: '/sounds/deal.mp3',
-  flop: '/sounds/flop.mp3',
-  turn: '/sounds/turn.mp3',
-  river: '/sounds/river.mp3',
-  win: '/sounds/win.mp3',
+  fold: assetUrl('/sounds/fold.mp3'),
+  check: assetUrl('/sounds/check.mp3'),
+  call: assetUrl('/sounds/call.mp3'),
+  bet: assetUrl('/sounds/bet.mp3'),
+  raise: assetUrl('/sounds/raise.mp3'),
+  allin: assetUrl('/sounds/allin.mp3'),
+  deal: assetUrl('/sounds/deal.mp3'),
+  flop: assetUrl('/sounds/flop.mp3'),
+  turn: assetUrl('/sounds/turn.mp3'),
+  river: assetUrl('/sounds/river.mp3'),
+  win: assetUrl('/sounds/win.mp3'),
 };
 
 export const MAX_TABLE_SOUND_URL_LEN = 512;

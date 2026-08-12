@@ -160,7 +160,7 @@ export function ContestsPanel({
           smallBlind: 5,
           bigBlind: 10,
           isPrivate: true,
-          autoStart: true,
+          autoStart: false,
           handLimit: mode === 'rounds' ? handLimit : undefined,
           inviteFriendIds,
         },

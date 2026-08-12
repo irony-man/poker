@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -21,8 +22,10 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -59,11 +62,33 @@ fun resolveAvatarId(userId: String?, preferred: Int?): Int {
 @Composable
 fun PlayerAvatar(
     avatarId: Int? = null,
+    avatarUrl: String? = null,
     userId: String? = null,
     size: Dp = 44.dp,
     modifier: Modifier = Modifier,
     selected: Boolean = false,
 ) {
+    val url = avatarUrl?.takeIf { it.isNotBlank() }
+    if (url != null) {
+        Box(
+            modifier = modifier
+                .size(size)
+                .clip(CircleShape)
+                .then(
+                    if (selected) Modifier.border(2.dp, FeltColors.Gold, CircleShape)
+                    else Modifier,
+                ),
+        ) {
+            AsyncImage(
+                model = url,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        }
+        return
+    }
+
     val id = resolveAvatarId(userId, avatarId)
     val palette = AVATAR_PALETTES[id]
     Box(

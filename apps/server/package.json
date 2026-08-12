@@ -9,9 +9,12 @@
     "start": "node dist/main.js",
     "test": "vitest run",
     "smoke": "tsx src/smoke.ts",
+    "sync:assets": "tsx ../../scripts/sync-static-to-s3.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1108.0",
+    "@aws-sdk/s3-request-presigner": "^3.1108.0",
     "@nestjs/common": "^11.0.12",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.12",

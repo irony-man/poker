@@ -59,6 +59,7 @@ export class FriendsController {
       name: u.username || u.name,
       username: u.username,
       avatarId: u.avatarId,
+      avatarUrl: u.avatarUrl,
     }));
     return { users };
   }

@@ -12,6 +12,7 @@ import { contestModeLabel } from '@/lib/contestLabels';
 import {
   fetchMe,
   listMyContests,
+  requestAvatarUploadUrl,
   updateMe,
   type ContestView,
   type MeProfile,
@@ -151,7 +152,7 @@ function ProfilePageInner() {
     setSavingAvatar(true);
     setError(null);
     try {
-      const me = await updateMe(token, { avatarId: draftAvatarId });
+      const me = await updateMe(token, { avatarId: draftAvatarId, avatarUrl: null });
       setProfile(me);
       setChipBalance(me.chipBalance);
       setWhuffieBalance(me.whuffieBalance);
@@ -164,6 +165,43 @@ function ProfilePageInner() {
       setEditingAvatar(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not update avatar');
+    } finally {
+      setSavingAvatar(false);
+    }
+  };
+
+  const uploadAvatar = async (file: File) => {
+    if (!token || !profile || savingAvatar) return;
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Image must be 2 MB or smaller');
+      return;
+    }
+    const contentType = file.type as 'image/jpeg' | 'image/png' | 'image/webp';
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(contentType)) {
+      setError('Use JPEG, PNG, or WebP');
+      return;
+    }
+    setSavingAvatar(true);
+    setError(null);
+    try {
+      const { uploadUrl, publicUrl } = await requestAvatarUploadUrl(token, {
+        contentType,
+        contentLength: file.size,
+      });
+      const putRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': contentType },
+      });
+      if (!putRes.ok) throw new Error('Upload failed');
+      const me = await updateMe(token, { avatarUrl: publicUrl });
+      setProfile(me);
+      setChipBalance(me.chipBalance);
+      setWhuffieBalance(me.whuffieBalance);
+      saveTableColorId(me.tableColorId);
+      setEditingAvatar(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not upload avatar');
     } finally {
       setSavingAvatar(false);
     }
@@ -236,6 +274,7 @@ function ProfilePageInner() {
                 >
                   <PlayerAvatar
                     avatarId={profile.avatarId}
+                    avatarUrl={profile.avatarUrl}
                     userId={profile.id}
                     size={128}
                     title={profile.username}
@@ -305,7 +344,12 @@ function ProfilePageInner() {
 
                 {editingAvatar ? (
                   <div className="mt-5 rounded-xl border border-sidebar/12 bg-mushroom/40 p-4">
-                    <AvatarPicker value={draftAvatarId} onChange={setDraftAvatarId} />
+                    <AvatarPicker
+                      value={draftAvatarId}
+                      onChange={setDraftAvatarId}
+                      onUpload={(file) => void uploadAvatar(file)}
+                      uploading={savingAvatar}
+                    />
                     <div className="mt-4 flex flex-wrap gap-2">
                       <button
                         type="button"

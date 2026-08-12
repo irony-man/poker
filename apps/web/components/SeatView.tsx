@@ -479,6 +479,7 @@ export function SeatView({
                   >
                     <PlayerAvatar
                       avatarId={player.avatarId}
+                      avatarUrl={player.avatarUrl}
                       userId={player.userId}
                       size={avatarSize}
                       className="relative z-[1]"
@@ -542,6 +543,7 @@ export function SeatView({
                   >
                     <PlayerAvatar
                       avatarId={player.avatarId}
+                      avatarUrl={player.avatarUrl}
                       userId={player.userId}
                       size={avatarSize}
                       className="relative z-[1]"

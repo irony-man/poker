@@ -68,6 +68,7 @@ export interface ConnectionContext {
   userId: string;
   name: string;
   avatarId: number;
+  avatarUrl: string | null;
   send: (msg: unknown) => void;
 }
 
@@ -96,6 +97,7 @@ export class Room {
   private voiceParticipants = new Map<string, string>();
   /** Preset avatar index per seated/connected user (incl. bots). */
   private avatarByUser = new Map<string, number>();
+  private avatarUrlByUser = new Map<string, string>();
   /** Cash: humans who have opted in for the next hand. */
   private readyUserIds = new Set<string>();
   /** Cash: sit out after the current hand finishes (still finish this hand). */
@@ -449,6 +451,8 @@ export class Room {
     this.connections.set(conn.userId, conn);
     this.spectators.add(conn.userId);
     this.avatarByUser.set(conn.userId, clampAvatarId(conn.avatarId));
+    if (conn.avatarUrl) this.avatarUrlByUser.set(conn.userId, conn.avatarUrl);
+    else this.avatarUrlByUser.delete(conn.userId);
     this.refreshIdleClock();
     this.pushTo(conn.userId);
   }
@@ -791,6 +795,7 @@ export class Room {
           avatarId: p.userId
             ? (this.avatarByUser.get(p.userId) ?? avatarIdFromUserId(p.userId))
             : null,
+          avatarUrl: p.userId ? (this.avatarUrlByUser.get(p.userId) ?? null) : null,
         };
       }),
     };

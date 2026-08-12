@@ -13,6 +13,7 @@ import { HealthModule } from './health/health.module.js';
 import { PresenceModule } from './presence/presence.module.js';
 import { RealtimeModule } from './realtime/realtime.module.js';
 import { SiteConfigModule } from './site-config/site-config.module.js';
+import { StorageModule } from './storage/storage.module.js';
 import { TablesModule } from './tables/tables.module.js';
 import { UsersModule } from './users/users.module.js';
 import { WalletModule } from './wallet/wallet.module.js';
@@ -32,6 +33,7 @@ import { WalletModule } from './wallet/wallet.module.js';
       },
     ]),
     DatabaseModule,
+    StorageModule,
     SiteConfigModule,
     PresenceModule,
     RealtimeModule,

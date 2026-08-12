@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { HomeAuthFooter } from '@/components/HomeAuthFooter';
+import { imageAssetUrl, resolvePublicImage } from '@/lib/assets';
 import { fetchPublicSite, type HomeLandingFeature } from '@/lib/api';
 
 /** Defaults match original static HomeLanding blocks (used until /api/site loads). */
@@ -13,7 +14,7 @@ export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
     body: "Knockout tables with no buy-in, where you play until your stack is gone, and fixed-hand games where you choose how many deals run before anyone looks at a card and buy in again whenever you need more chips.",
     cta: 'Browse Contests',
     href: '/contests',
-    image: '/home-knockout.png',
+    image: imageAssetUrl('home-knockout.png'),
     imageAlt: 'Stylish player holding pocket cards at a green felt table',
     imageFirst: true,
   },
@@ -22,7 +23,7 @@ export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
     body: "Hold'em that runs the way a home game does, no set number of hands and no cap on buy-ins, so you can add chips whenever your stack runs low and leave when the night feels done.",
     cta: 'Join a Table',
     href: '/join',
-    image: '/poker-chip-shuffle.svg',
+    image: imageAssetUrl('poker-chip-shuffle.svg'),
     imageAlt: 'POKR chips stacking for a fixed-round session',
     imageFirst: false,
   },
@@ -31,7 +32,7 @@ export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
     body: 'Add friends by username, gather them into groups for the different circles you play with, and pull a group straight to a table when it is time to deal.',
     cta: 'Play with Friends',
     href: '/friends',
-    image: '/home-host.png',
+    image: imageAssetUrl('home-host.png'),
     imageAlt: 'Gloved hand holding a branded chip token',
     imageFirst: true,
   },
@@ -40,7 +41,7 @@ export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
     body: 'When you only want one opponent, open your friends list, choose the person, and send a challenge that leaves the table to the two of you and the board between you.',
     cta: 'Challenge a Friend',
     href: '/friends',
-    image: '/home-challenge.png',
+    image: imageAssetUrl('home-challenge.png'),
     imageAlt: 'Two players in a heads-up challenge',
     imageFirst: false,
   },
@@ -49,7 +50,7 @@ export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
     body: "Play Hold'em against bots with no connection. Practice lines and timing offline, then jump into live modes when you're ready.",
     cta: 'Offline',
     href: '/solo',
-    image: '/home-offline.png',
+    image: imageAssetUrl('home-offline.png'),
     imageAlt: 'Stack of red and white chips',
     imageFirst: true,
   },
@@ -108,7 +109,7 @@ function FeatureRow({ feature, index }: { feature: HomeLandingFeature; index: nu
       <div className={`relative mx-auto w-full max-w-[20rem] sm:max-w-sm lg:max-w-none ${imageOrder}`}>
         <div className="relative aspect-square w-full sm:aspect-[5/4]">
           <Image
-            src={feature.image}
+            src={resolvePublicImage(feature.image)}
             alt={feature.imageAlt}
             fill
             unoptimized={feature.image.endsWith('.svg')}

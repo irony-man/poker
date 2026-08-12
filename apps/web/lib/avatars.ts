@@ -1,3 +1,5 @@
+import { assetUrl } from '@/lib/assets';
+
 /** Number of built-in profile picture presets (see `/public/avatars/avatar-N.png`). */
 export const AVATAR_PRESET_COUNT = 8;
 
@@ -6,7 +8,7 @@ const AVATAR_KEY = 'felt-avatar-id';
 /** Public path for a preset index. */
 export function avatarSrc(id: number): string {
   const n = ((id % AVATAR_PRESET_COUNT) + AVATAR_PRESET_COUNT) % AVATAR_PRESET_COUNT;
-  return `/avatars/avatar-${n}.png`;
+  return assetUrl(`/avatars/avatar-${n}.png`);
 }
 
 /** Stable preset index from a user id (bots + humans). */
@@ -28,6 +30,15 @@ export function resolveAvatarId(
     return preferred % AVATAR_PRESET_COUNT;
   }
   return avatarIdFromUserId(userId);
+}
+
+export function resolveAvatarSrc(input: {
+  avatarUrl?: string | null;
+  avatarId?: number | null;
+  userId?: string | null;
+}): string {
+  if (input.avatarUrl) return input.avatarUrl;
+  return avatarSrc(resolveAvatarId(input.userId, input.avatarId));
 }
 
 export function loadSavedAvatarId(): number {

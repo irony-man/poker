@@ -54,6 +54,7 @@ object PublicTableMapper {
                     hasCards = it.hasCards,
                     holeCards = it.holeCards,
                     avatarId = it.avatarId,
+                    avatarUrl = it.avatarUrl,
                 )
             },
         )

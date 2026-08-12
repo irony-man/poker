@@ -5,6 +5,7 @@ export interface User {
   /** Display name — always equals username. */
   name: string;
   avatarId: number;
+  avatarUrl: string | null;
   /** Viewer table felt theme preset (0–8). */
   tableColorId: number;
   passwordHash: string;
@@ -20,6 +21,7 @@ export interface PublicUser {
   username: string;
   name: string;
   avatarId: number;
+  avatarUrl: string | null;
   tableColorId: number;
   createdAt: number;
   chipBalance: number;
@@ -45,6 +47,7 @@ export interface AuthSessionPayload {
   ticket: string;
   sessionToken: string;
   avatarId: number;
+  avatarUrl: string | null;
   chipBalance: number;
   whuffieBalance: number;
 }

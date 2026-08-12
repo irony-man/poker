@@ -45,6 +45,14 @@ export const ContestEntrantSchema = z.object({
 });
 export type ContestEntrant = z.infer<typeof ContestEntrantSchema>;
 
+/** Friend who was invited but has not registered yet. */
+export const ContestPendingInviteSchema = z.object({
+  userId: z.string(),
+  name: z.string(),
+  invitedAt: z.number(),
+});
+export type ContestPendingInvite = z.infer<typeof ContestPendingInviteSchema>;
+
 export const ContestPlacementSchema = z.object({
   userId: z.string(),
   name: z.string(),
@@ -109,6 +117,8 @@ export const ContestViewSchema = z.object({
   turnTimeMs: z.number().int().positive(),
   isPrivate: z.boolean(),
   entrants: z.array(ContestEntrantSchema),
+  /** Invited friends who have not registered yet (cleared when they join). */
+  pendingInvites: z.array(ContestPendingInviteSchema).default([]),
   placements: z.array(ContestPlacementSchema),
   /** Active contest table, or null before start. */
   tableId: z.string().nullable(),
@@ -142,8 +152,8 @@ export const CreateContestBodySchema = z.object({
     .string()
     .regex(/^\d{4,8}$/, 'Room code must be 4–8 digits')
     .optional(),
-  /** Auto-start when field is full. Default true. */
-  autoStart: z.boolean().default(true),
+  /** Auto-start when field is full. Default false — host starts manually. */
+  autoStart: z.boolean().default(false),
   /**
    * Hands to play in rounds mode (ignored for chips).
    * Defaults to 20 when mode is rounds.

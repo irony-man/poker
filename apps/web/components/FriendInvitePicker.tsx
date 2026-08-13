@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { PlayerAvatar } from '@/components/PlayerAvatar';
 import { LoadingScreen } from '@/components/LoadingScreen';
+import { choiceOptionClass } from '@/components/ui/choiceStyles';
+import { FriendToggleRow } from '@/features/friends/rows';
 import type { FriendGroup } from '@/lib/api';
 import { useSession } from '@/lib/store';
 
@@ -14,7 +15,7 @@ export function FriendInvitePicker({
   disabled,
   maxSelect = 8,
   excludeUserIds = [],
-  title = 'Invite friends',
+  title,
   help,
 }: {
   sessionToken: string | null;
@@ -103,12 +104,9 @@ export function FriendInvitePicker({
 
   return (
     <div className="min-w-0">
-      <div className="flex items-baseline justify-between gap-2">
+      {title ? <div className="flex items-baseline justify-between gap-2">
         <span className="hud-label">{title}</span>
-        <span className="text-[11px] tabular-nums text-ink-strong-muted">
-          {selectedIds.length}/{maxSelect}
-        </span>
-      </div>
+      </div> : null}
       <p className="field-help mt-1">
         {help ??
           'Selected friends get a notification to join. Optional — you can also share the code.'}
@@ -121,11 +119,7 @@ export function FriendInvitePicker({
           aria-checked={onlineOnly}
           disabled={disabled}
           onClick={() => setOnlineOnly((v) => !v)}
-          className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition disabled:opacity-50 ${
-            onlineOnly
-              ? 'border-sidebar/40 bg-sidebar text-mushroom'
-              : 'border-sidebar/15 bg-mushroom/50 text-sidebar hover:border-sidebar/30'
-          }`}
+          className={choiceOptionClass('pill', onlineOnly)}
         >
           Online only
           {onlineFriends.length > 0 ? (
@@ -137,7 +131,7 @@ export function FriendInvitePicker({
             type="button"
             disabled={disabled || selectedIds.length >= maxSelect}
             onClick={selectOnline}
-            className="rounded-full border border-sidebar/15 bg-mushroom/50 px-2.5 py-1 text-[11px] font-semibold text-sidebar transition hover:border-sidebar/30 hover:bg-sidebar/8 disabled:opacity-50"
+            className={choiceOptionClass('pill', false)}
           >
             Select online
           </button>
@@ -152,7 +146,7 @@ export function FriendInvitePicker({
               type="button"
               disabled={disabled}
               onClick={() => selectGroup(g)}
-              className="rounded-full border border-sidebar/15 bg-mushroom/50 px-2.5 py-1 text-[11px] font-semibold text-sidebar transition hover:border-sidebar/30 hover:bg-sidebar/8 disabled:opacity-50"
+              className={choiceOptionClass('pill', false)}
               title={`Select friends in ${g.name}`}
             >
               {g.name}
@@ -178,49 +172,13 @@ export function FriendInvitePicker({
             const atCap = !isOn && selectedIds.length >= maxSelect;
             return (
               <li key={f.userId}>
-                <button
-                  type="button"
+                <FriendToggleRow
+                  friend={f}
+                  selected={isOn}
                   disabled={disabled || atCap}
-                  onClick={() => toggle(f.userId)}
-                  className={`flex w-full items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left transition disabled:opacity-45 ${
-                    isOn
-                      ? 'border-sidebar/40 bg-sidebar/[0.08] text-ink-strong'
-                      : 'border-transparent bg-mushroom/40 text-ink-strong-muted hover:border-sidebar/15 hover:bg-mushroom/70'
-                  }`}
-                >
-                  <span
-                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-[10px] font-bold ${
-                      isOn
-                        ? 'border-sidebar bg-sidebar text-mushroom'
-                        : 'border-sidebar/25 bg-transparent text-transparent'
-                    }`}
-                    aria-hidden
-                  >
-                    ✓
-                  </span>
-                  <span className="relative shrink-0">
-                    <PlayerAvatar
-                      userId={f.userId}
-                      avatarId={f.avatarId}
-                      avatarUrl={f.avatarUrl}
-                      size={28}
-                      title={f.name}
-                    />
-                    <span
-                      className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white ${
-                        f.online ? 'bg-emerald-500' : 'bg-sidebar/25'
-                      }`}
-                      title={f.online ? 'Online' : 'Offline'}
-                      aria-hidden
-                    />
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{f.name}</span>
-                  {f.online ? (
-                    <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-emerald-700/80">
-                      Online
-                    </span>
-                  ) : null}
-                </button>
+                  showOnline
+                  onToggle={() => toggle(f.userId)}
+                />
               </li>
             );
           })}

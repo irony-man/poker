@@ -243,6 +243,37 @@ export class FriendsStore {
     return { ok: true, fromUserId, toUserId };
   }
 
+  /**
+   * Drop every social edge involving this user. Returns former friend ids
+   * so callers can push a fresh social_sync.
+   */
+  async purgeUser(userId: string): Promise<string[]> {
+    await this.ensureLoaded();
+    const friendIds: string[] = [];
+    for (const key of [...this.friendships]) {
+      const [a, b] = key.split(':');
+      if (a === userId && b) {
+        friendIds.push(b);
+        this.friendships.delete(key);
+      } else if (b === userId && a) {
+        friendIds.push(a);
+        this.friendships.delete(key);
+      }
+    }
+    this.requests = this.requests.filter(
+      (r) => r.fromUserId !== userId && r.toUserId !== userId,
+    );
+    this.challenges = this.challenges.filter(
+      (c) => c.challengerId !== userId && c.challengedId !== userId,
+    );
+    this.groups = this.groups.filter((g) => g.ownerUserId !== userId);
+    for (const g of this.groups) {
+      g.memberUserIds = g.memberUserIds.filter((id) => id !== userId);
+    }
+    await this.persist();
+    return friendIds;
+  }
+
   async removeFriend(
     userId: string,
     friendUserId: string,
@@ -275,6 +306,16 @@ export class FriendsStore {
     }
     await this.persist();
     return { ok: true };
+  }
+
+  async countFriends(userId: string): Promise<number> {
+    await this.ensureLoaded();
+    let n = 0;
+    for (const key of this.friendships) {
+      const [a, b] = key.split(':');
+      if (a === userId || b === userId) n += 1;
+    }
+    return n;
   }
 
   async listFriends(auth: AuthStore, userId: string): Promise<FriendProfile[]> {

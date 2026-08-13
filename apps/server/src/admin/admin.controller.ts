@@ -2,6 +2,8 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
+  ForbiddenException,
   Get,
   NotFoundException,
   Param,
@@ -14,9 +16,13 @@ import {
 import { SoundUploadUrlBodySchema } from '@poker/protocol';
 import { z } from 'zod';
 import { AuthService } from '../auth/auth.service.js';
+import type { User } from '../auth/auth.types.js';
 import { AdminGuard } from '../common/admin.guard.js';
-import { SessionAuthGuard } from '../common/session-auth.guard.js';
+import { CurrentUser, SessionAuthGuard } from '../common/session-auth.guard.js';
 import { ContestsService } from '../contests/contests.service.js';
+import { FriendsService } from '../friends/friends.service.js';
+import { PresenceService } from '../presence/presence.service.js';
+import { RealtimeService } from '../realtime/realtime.service.js';
 import { RoomsService } from '../rooms/rooms.service.js';
 import { SiteConfigService } from '../site-config/site-config.service.js';
 import {
@@ -132,6 +138,9 @@ export class AdminController {
     private readonly wallet: WalletService,
     private readonly rooms: RoomsService,
     private readonly contests: ContestsService,
+    private readonly friends: FriendsService,
+    private readonly presence: PresenceService,
+    private readonly realtime: RealtimeService,
     private readonly storage: StorageService,
   ) {}
 
@@ -408,6 +417,31 @@ export class AdminController {
       }
       throw err;
     }
+  }
+
+  @Delete('users/:userId')
+  async deleteUser(@CurrentUser() actor: User, @Param('userId') userId: string) {
+    if (actor.id === userId) {
+      throw new ForbiddenException({ error: 'You cannot delete your own account' });
+    }
+    const user = this.auth.getUser(userId);
+    if (!user) {
+      throw new NotFoundException({ error: 'User not found' });
+    }
+    this.realtime.sendToUser(userId, {
+      type: 'error',
+      message: 'This account was deleted',
+      code: 'account_deleted',
+    });
+    this.rooms.leaveUser(userId);
+    await this.contests.removeUser(userId);
+    await this.friends.purgeUser(userId);
+    this.presence.clear(userId);
+    const deleted = await this.auth.deleteUser(userId);
+    if (!deleted) {
+      throw new NotFoundException({ error: 'User not found' });
+    }
+    return { ok: true as const, userId: deleted.id, username: deleted.username };
   }
 
   /** Reset Whuffies rating to the configured starting grant. */

@@ -18,6 +18,12 @@ function memoryHistory(): HandHistoryStore {
     async listHands() {
       return [];
     },
+    async countHandsForUser() {
+      return 0;
+    },
+    async countHandsByUser() {
+      return new Map();
+    },
   };
 }
 
@@ -446,5 +452,57 @@ describe('TournamentManager', () => {
       reason: 'cash_out',
     });
     expect(tournaments.get(created.id)!.entrants.map((e) => e.userId)).toEqual(['host']);
+  });
+
+  it('cancels a registering contest and refunds buy-ins when the host account is removed', async () => {
+    const created = await tournaments.create({
+      name: 'Host gone',
+      mode: 'chips',
+      hostUserId: 'host',
+      hostName: 'Host',
+      fieldSize: 4,
+      startingStack: 500,
+      smallBlind: 5,
+      bigBlind: 10,
+      turnTimeMs: 20_000,
+      botCount: 0,
+      isPrivate: true,
+      autoStart: false,
+    });
+    await tournaments.register(created.id, 'p2', 'Bob');
+    await tournaments.removeUser('host');
+    expect(tournaments.get(created.id)!.status).toBe('cancelled');
+    expect(wallet.credits).toEqual(
+      expect.arrayContaining([
+        { userId: 'host', amount: 500, reason: 'cash_out' },
+        { userId: 'p2', amount: 500, reason: 'cash_out' },
+      ]),
+    );
+  });
+
+  it('unregisters a non-host from a registering contest when their account is removed', async () => {
+    const created = await tournaments.create({
+      name: 'Player gone',
+      mode: 'chips',
+      hostUserId: 'host',
+      hostName: 'Host',
+      fieldSize: 4,
+      startingStack: 500,
+      smallBlind: 5,
+      bigBlind: 10,
+      turnTimeMs: 20_000,
+      botCount: 0,
+      isPrivate: true,
+      autoStart: false,
+    });
+    await tournaments.register(created.id, 'p2', 'Bob');
+    await tournaments.removeUser('p2');
+    expect(tournaments.get(created.id)!.status).toBe('registering');
+    expect(tournaments.get(created.id)!.entrants.map((e) => e.userId)).toEqual(['host']);
+    expect(wallet.credits).toContainEqual({
+      userId: 'p2',
+      amount: 500,
+      reason: 'cash_out',
+    });
   });
 });

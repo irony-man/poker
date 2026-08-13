@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { Button } from '@/components/ui/Button';
 
 export type ConfirmOptions = {
   title: string;
@@ -84,11 +85,6 @@ export function ConfirmPopover({
 
   if (!mounted || !open) return null;
 
-  const confirmClass =
-    tone === 'danger'
-      ? 'btn-danger min-h-10 flex-1 px-4 py-2.5 text-xs'
-      : 'btn-primary min-h-10 flex-1 px-4 py-2.5 text-xs';
-
   return createPortal(
     <div
       className="lobby-shell fixed inset-0 z-[80] flex items-end justify-center p-3 backdrop-blur-[3px] sm:items-center sm:p-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]"
@@ -122,22 +118,24 @@ export function ConfirmPopover({
           ) : null}
         </div>
         <div className="flex flex-col-reverse gap-2 p-4 sm:flex-row sm:justify-end sm:p-5">
-          <button
+          <Button
             ref={cancelRef}
             type="button"
-            className="btn-ghost min-h-10 flex-1 px-4 py-2.5 text-xs sm:flex-none sm:min-w-[6.5rem]"
+            variant="ghost"
+            className="min-h-10 flex-1 px-4 py-2.5 text-xs sm:flex-none sm:min-w-[6.5rem]"
             onClick={onCancel}
           >
             {cancelLabel}
-          </button>
-          <button
+          </Button>
+          <Button
             ref={confirmRef}
             type="button"
-            className={`${confirmClass} sm:flex-none sm:min-w-[7.5rem]`}
+            variant={tone === 'danger' ? 'danger' : 'primary'}
+            className="min-h-10 flex-1 px-4 py-2.5 text-xs sm:flex-none sm:min-w-[7.5rem]"
             onClick={onConfirm}
           >
             {confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </div>,

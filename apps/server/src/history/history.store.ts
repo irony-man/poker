@@ -14,6 +14,29 @@ export interface HandHistoryStore {
     result: unknown;
   }): Promise<void>;
   listHands(tableId: string, limit?: number): Promise<HandHistoryRow[]>;
+  countHandsForUser(userId: string): Promise<number>;
+  countHandsByUser(): Promise<Map<string, number>>;
+}
+
+export function playerUserIdsFromResult(result: unknown): string[] {
+  if (!result || typeof result !== 'object') return [];
+  const players = (result as { players?: unknown }).players;
+  if (!Array.isArray(players)) return [];
+  const seen = new Set<string>();
+  for (const p of players) {
+    if (!p || typeof p !== 'object') continue;
+    const id = (p as { userId?: unknown }).userId;
+    if (typeof id === 'string' && id) seen.add(id);
+  }
+  return [...seen];
+}
+
+function playerUserIdsFromResultJson(resultJson: string): string[] {
+  try {
+    return playerUserIdsFromResult(JSON.parse(resultJson) as unknown);
+  } catch {
+    return [];
+  }
 }
 
 /** File-backed history when DATABASE_URL is unset. */
@@ -80,6 +103,22 @@ export class FileHistoryStore implements HandHistoryStore {
   async listHands(tableId: string, limit = 50): Promise<HandHistoryRow[]> {
     await this.ensure();
     return this.hands.filter((h) => h.tableId === tableId).slice(-limit).reverse();
+  }
+
+  async countHandsForUser(userId: string): Promise<number> {
+    const byUser = await this.countHandsByUser();
+    return byUser.get(userId) ?? 0;
+  }
+
+  async countHandsByUser(): Promise<Map<string, number>> {
+    await this.ensure();
+    const counts = new Map<string, number>();
+    for (const hand of this.hands) {
+      for (const userId of playerUserIdsFromResultJson(hand.resultJson)) {
+        counts.set(userId, (counts.get(userId) ?? 0) + 1);
+      }
+    }
+    return counts;
   }
 }
 
@@ -148,6 +187,46 @@ export class PostgresHistoryStore implements HandHistoryStore {
       [tableId, limit],
     );
     return res.rows;
+  }
+
+  async countHandsForUser(userId: string): Promise<number> {
+    const res = await this.pool.query(
+      `SELECT COUNT(DISTINCT h.id)::int AS n
+       FROM hand_history h
+       CROSS JOIN LATERAL jsonb_array_elements(
+         CASE
+           WHEN h.result_json IS NULL THEN '[]'::jsonb
+           WHEN jsonb_typeof(h.result_json::jsonb -> 'players') = 'array'
+             THEN h.result_json::jsonb -> 'players'
+           ELSE '[]'::jsonb
+         END
+       ) p
+       WHERE p->>'userId' = $1`,
+      [userId],
+    );
+    return Number(res.rows[0]?.n ?? 0);
+  }
+
+  async countHandsByUser(): Promise<Map<string, number>> {
+    const res = await this.pool.query(
+      `SELECT p->>'userId' AS user_id, COUNT(DISTINCT h.id)::int AS n
+       FROM hand_history h
+       CROSS JOIN LATERAL jsonb_array_elements(
+         CASE
+           WHEN h.result_json IS NULL THEN '[]'::jsonb
+           WHEN jsonb_typeof(h.result_json::jsonb -> 'players') = 'array'
+             THEN h.result_json::jsonb -> 'players'
+           ELSE '[]'::jsonb
+         END
+       ) p
+       WHERE COALESCE(p->>'userId', '') <> ''
+       GROUP BY 1`,
+    );
+    const counts = new Map<string, number>();
+    for (const row of res.rows as { user_id: string; n: number }[]) {
+      counts.set(row.user_id, Number(row.n));
+    }
+    return counts;
   }
 }
 

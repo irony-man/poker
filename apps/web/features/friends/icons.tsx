@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Button } from '@/components/ui/Button';
 
 export function IconAction({
   label,
@@ -15,35 +16,32 @@ export function IconAction({
   children: ReactNode;
   className?: string;
 }) {
-  const base =
-    'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border text-sm transition disabled:opacity-50 disabled:pointer-events-none';
-  const tones =
-    tone === 'primary'
-      ? 'btn-primary !min-h-0 !w-9 !px-0 !py-0 shadow-sm'
-      : 'btn-ghost !min-h-0 !w-9 !px-0 !py-0';
   return (
-    <button
-      type="button"
+    <Button
+      variant={tone}
+      size="icon"
       disabled={disabled}
       onClick={onClick}
       aria-label={label}
       title={label}
-      className={`${base} ${tones} ${className}`.trim()}
+      className={className}
     >
       {children}
-    </button>
+    </Button>
   );
 }
 
 function iconProps(className?: string) {
   return {
     viewBox: '0 0 24 24',
+    width: 16,
+    height: 16,
     fill: 'none' as const,
     stroke: 'currentColor',
     strokeWidth: 2,
     strokeLinecap: 'round' as const,
     strokeLinejoin: 'round' as const,
-    className,
+    className: ['h-4 w-4 shrink-0', className].filter(Boolean).join(' '),
     'aria-hidden': true as const,
   };
 }

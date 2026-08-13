@@ -13,6 +13,8 @@ export interface MeProfile {
   createdAt: number;
   chipBalance: number;
   whuffieBalance: number;
+  handsPlayed: number;
+  friendCount: number;
   isAdmin?: boolean;
 }
 
@@ -21,6 +23,14 @@ function normalizeMe(data: MeProfile): MeProfile {
     ...data,
     chipBalance: coerceMoney(data.chipBalance),
     whuffieBalance: coerceMoney(data.whuffieBalance),
+    handsPlayed:
+      typeof data.handsPlayed === 'number' && Number.isFinite(data.handsPlayed)
+        ? Math.max(0, Math.floor(data.handsPlayed))
+        : 0,
+    friendCount:
+      typeof data.friendCount === 'number' && Number.isFinite(data.friendCount)
+        ? Math.max(0, Math.floor(data.friendCount))
+        : 0,
     avatarId:
       typeof data.avatarId === 'number' && Number.isFinite(data.avatarId)
         ? Math.max(0, Math.floor(data.avatarId))

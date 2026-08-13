@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { LoadingScreen } from '@/components/LoadingScreen';
+import { Button } from '@/components/ui/Button';
+import { StatusChip } from '@/components/ui/StatusChip';
 import { STAKE_PRESETS } from '@poker/protocol';
 import { useSession } from '@/lib/store';
 
@@ -51,9 +53,9 @@ export function PublicTablesPanel({
       </p>
 
       {fetchError && (
-        <p role="alert" className="status-chip border-danger/30 bg-danger/10 text-danger text-xs">
+        <StatusChip tone="danger" role="alert" className="text-xs">
           {fetchError}
-        </p>
+        </StatusChip>
       )}
 
       {loading && tables.length === 0 ? (
@@ -88,11 +90,11 @@ export function PublicTablesPanel({
                 Buy-in{' '}
                 <span className="font-medium text-ink-strong">{formatMoneyLabel(stake.buyIn)}</span>
               </p>
-              <button
+              <Button
                 type="button"
                 disabled={disabled || !canJoin || busy === stake.id}
                 onClick={() => void handleJoin(stake.id)}
-                className="btn-primary min-h-11 w-full text-xs"
+                className="min-h-11 w-full text-xs"
               >
                 {busy === stake.id
                   ? 'Joining…'
@@ -103,7 +105,7 @@ export function PublicTablesPanel({
                       : !table
                         ? 'Unavailable'
                         : 'Sit down'}
-              </button>
+              </Button>
             </div>
           );
         })}
@@ -111,9 +113,9 @@ export function PublicTablesPanel({
       )}
 
       {error && (
-        <p role="alert" className="status-chip border-danger/30 bg-danger/10 text-danger text-xs">
+        <StatusChip tone="danger" role="alert" className="text-xs">
           {error}
-        </p>
+        </StatusChip>
       )}
     </LobbySplitCard>
   );

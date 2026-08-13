@@ -68,7 +68,7 @@ export function FriendGroups({
       aria-labelledby="social-tab-groups"
       className="mt-3 min-w-0"
     >
-      <div className="flex items-center justify-end gap-2">
+      {groups.length !== 0 ? <div className="flex items-center justify-end gap-2">
         <Button
           variant="ghost"
           disabled={disabled || friends.length === 0}
@@ -78,7 +78,7 @@ export function FriendGroups({
         >
           {showCreateGroup ? 'Cancel' : 'New group'}
         </Button>
-      </div>
+      </div> : null}
 
       {showCreateGroup && (
         <form

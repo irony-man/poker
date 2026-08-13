@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { Button } from '@/components/ui/Button';
 import { MoneyAmount } from './CurrencyIcon';
 import { PlayerAvatar } from './PlayerAvatar';
 import { PlayingCard } from './PlayingCard';
@@ -235,45 +236,49 @@ export function WinHandModal({
   let primary: ReactNode;
   if (canStartNext) {
     primary = (
-      <button
+      <Button
         type="button"
         onClick={onNextHand}
-        className={`btn-primary min-h-9 min-w-0 flex-1 px-3 py-2 text-xs font-display font-bold uppercase tracking-wide ${
+        size="sm"
+        className={`min-h-9 min-w-0 flex-1 px-3 py-2 text-xs font-display font-bold uppercase tracking-wide ${
           isReady ? 'ring-2 ring-sidebar/25 ring-offset-2 ring-offset-white' : ''
         }`}
       >
         {isReady ? 'Not ready' : 'Play Next Hand'}
-      </button>
+      </Button>
     );
   } else if (canSitIn && onSitIn) {
     primary = (
-      <button
+      <Button
         type="button"
         onClick={onSitIn}
-        className="btn-primary min-h-9 min-w-0 flex-1 px-3 py-2 text-xs font-display font-bold uppercase tracking-wide"
+        size="sm"
+        className="min-h-9 min-w-0 flex-1 px-3 py-2 text-xs font-display font-bold uppercase tracking-wide"
       >
         Sit in
-      </button>
+      </Button>
     );
   } else if (canTopUp && onTopUp) {
     primary = (
-      <button
+      <Button
         type="button"
         onClick={onTopUp}
-        className="btn-primary min-h-9 min-w-0 flex-1 px-3 py-2 text-xs font-display font-bold uppercase tracking-wide"
+        size="sm"
+        className="min-h-9 min-w-0 flex-1 px-3 py-2 text-xs font-display font-bold uppercase tracking-wide"
       >
         Top up
-      </button>
+      </Button>
     );
   } else if (needChips && onNeedChips) {
     primary = (
-      <button
+      <Button
         type="button"
         onClick={onNeedChips}
-        className="btn-primary min-h-9 min-w-0 flex-1 px-3 py-2 text-xs font-display font-bold uppercase tracking-wide"
+        size="sm"
+        className="min-h-9 min-w-0 flex-1 px-3 py-2 text-xs font-display font-bold uppercase tracking-wide"
       >
         Need chips
-      </button>
+      </Button>
     );
   } else {
     primary = (

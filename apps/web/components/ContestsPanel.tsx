@@ -12,6 +12,10 @@ import { useSession } from '@/lib/store';
 import { LobbySplitCard } from './LobbySplitCard';
 import { ChoiceRow } from './ChoiceRow';
 import { FriendInvitePicker } from './FriendInvitePicker';
+import { Button } from '@/components/ui/Button';
+import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
+import { StatusChip } from '@/components/ui/StatusChip';
+import type { StatusChipTone } from '@/components/ui/StatusChip';
 
 const TABLE_SIZES = [2, 3, 4, 5, 6, 7, 8, 9] as const;
 const HAND_LIMITS = [10, 15, 20, 30, 50] as const;
@@ -71,16 +75,16 @@ function statusLabel(status: ContestView['status']): string {
   }
 }
 
-function statusChipClass(status: ContestView['status']): string {
+function statusChipTone(status: ContestView['status']): StatusChipTone {
   switch (status) {
     case 'completed':
-      return 'border-sidebar/20 bg-sidebar/8 text-sidebar';
+      return 'neutral';
     case 'running':
-      return 'border-positive/30 bg-positive/10 text-positive';
+      return 'running';
     case 'cancelled':
-      return 'border-danger/30 bg-danger/10 text-danger';
+      return 'danger';
     default:
-      return 'border-sidebar/15 bg-mushroom/70 text-ink-strong-muted';
+      return 'muted';
   }
 }
 
@@ -106,11 +110,12 @@ function ContestListItem({
         <span className="min-w-0">
           <span className="block truncate font-medium text-ink-strong">{contest.name}</span>
           <span className="mt-1 flex flex-wrap items-center gap-1.5">
-            <span
-              className={`status-chip px-1.5 py-0.5 text-[9px] font-display font-semibold uppercase tracking-[0.12em] ${statusChipClass(contest.status)}`}
+            <StatusChip
+              tone={statusChipTone(contest.status)}
+              className="px-1.5 py-0.5 text-[9px] tracking-[0.12em]"
             >
               {statusLabel(contest.status)}
-            </span>
+            </StatusChip>
             {meta ? (
               <span className="text-[11px] text-ink-strong-muted">{meta}</span>
             ) : null}
@@ -226,44 +231,22 @@ export function ContestsPanel({
     >
       <form onSubmit={onCreate} className="flex flex-col gap-5">
         <div className="min-w-0">
-          <div
-            role="tablist"
-            aria-label="Contest format"
-            className="flex rounded-xl border border-sidebar/15 bg-mushroom/50 p-1"
-          >
-            {FORMAT_TABS.map((tab) => {
-              const selected = mode === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  role="tab"
-                  id={`contest-format-tab-${tab.id}`}
-                  aria-selected={selected}
-                  aria-controls={`contest-format-panel-${tab.id}`}
-                  disabled={disabled || busy}
-                  onClick={() => setMode(tab.id)}
-                  className={[
-                    'relative min-h-10 flex-1 rounded-lg px-3 py-2 text-center font-display text-xs font-bold uppercase tracking-[0.14em] transition',
-                    selected
-                      ? 'bg-sidebar text-mushroom shadow-[0_4px_14px_rgb(29_4_50/0.18)]'
-                      : 'text-ink-strong-muted hover:bg-sidebar/[0.06] hover:text-sidebar',
-                  ].join(' ')}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
+          <ChoiceRow
+            label="Contest format"
+            name="contest-format"
+            variant="segmented"
+            selected={mode}
+            options={FORMAT_TABS.map((tab) => tab.id)}
+            onSelect={setMode}
+            disabled={disabled || busy}
+            format={(id) => FORMAT_TABS.find((tab) => tab.id === id)?.label ?? id}
+          />
 
           {FORMAT_TABS.map((tab) => {
             if (tab.id !== mode) return null;
             return (
               <div
                 key={tab.id}
-                role="tabpanel"
-                id={`contest-format-panel-${tab.id}`}
-                aria-labelledby={`contest-format-tab-${tab.id}`}
                 className="mt-3 rounded-xl border border-sidebar/10 bg-gradient-to-b from-mushroom/70 to-mushroom/35 px-3.5 py-3.5 sm:px-4"
               >
                 <p className="font-display text-sm font-semibold tracking-tight text-ink-strong">
@@ -315,46 +298,25 @@ export function ContestsPanel({
           </div>
         )}
 
-        <details className="group rounded-xl border border-sidebar/12 bg-mushroom/40 open:bg-mushroom/55">
-          <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm outline-none marker:content-none [&::-webkit-details-marker]:hidden focus-visible:ring-2 focus-visible:ring-sidebar/30">
-            <span className="min-w-0 flex-1">
-              <span className="hud-label block">Invite friends</span>
-              <span className="mt-0.5 block text-xs text-ink-strong-muted">{moreSummary}</span>
-            </span>
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-4 w-4 shrink-0 text-ink-strong-muted transition-transform duration-200 group-open:rotate-180"
-              aria-hidden
-            >
-              <path d="m6 9 6 6 6-6" />
-            </svg>
-          </summary>
-          <div className="space-y-4 border-t border-sidebar/10 px-3 py-3.5">
+        <CollapsibleSection title="Invite friends" summary={moreSummary}>
             <FriendInvitePicker
               sessionToken={sessionToken}
               selectedIds={inviteFriendIds}
               onChange={setInviteFriendIds}
               disabled={disabled || busy}
               maxSelect={Math.max(0, maxFriendInvites)}
-              title="Invite friends"
               help="They get a contest invite in Friends. Start once at least two players have joined."
             />
-          </div>
-        </details>
+        </CollapsibleSection>
 
         <div>
-          <button
+          <Button
             disabled={disabled || busy}
             type="submit"
-            className="btn-primary min-h-11 w-full sm:w-auto sm:min-w-[14rem]"
+            className="min-h-11 w-full sm:w-auto sm:min-w-[14rem]"
           >
             {busy ? 'Starting…' : submitLabel}
-          </button>
+          </Button>
           <p className="field-help mt-2.5">
             Share the contest code after you create it. Need at least two human players to start.
           </p>

@@ -24,6 +24,8 @@ import { useTableSounds } from '@/hooks/useTableSounds';
 import { seatAnglesForHero, useIsLandscapePhone, useIsNarrow } from '@/lib/tableLayout';
 import { loadSavedTableColorId } from '@/lib/tableColors';
 import { useConfirm } from './ConfirmPopover';
+import { Button, buttonClass } from '@/components/ui/Button';
+import { StatusChip } from '@/components/ui/StatusChip';
 import { fetchPublicBotGroups, type PublicBotGroup } from '@/lib/api';
 
 export function TableView({
@@ -95,7 +97,13 @@ export function TableView({
   useTableSounds(table);
 
   useEffect(() => {
-    if (lastErrorCode !== 'not_found' && lastErrorCode !== 'kicked') return;
+    if (
+      lastErrorCode !== 'not_found' &&
+      lastErrorCode !== 'kicked' &&
+      lastErrorCode !== 'account_deleted'
+    ) {
+      return;
+    }
     // Only leave if the error is for *this* table (guards against stale socket races).
     if (boundTableId && boundTableId !== tableId) return;
     voice.leaveVoice();
@@ -374,9 +382,9 @@ export function TableView({
           The connection closed before table data arrived. Check that the server is running, then
           try again.
         </p>
-        <button type="button" className="btn-primary" onClick={() => router.push('/')}>
+        <Button type="button" onClick={() => router.push('/')}>
           Back to lobby
-        </button>
+        </Button>
       </div>
     );
   }
@@ -600,7 +608,7 @@ export function TableView({
               priority
             />
             {isSpectating && (
-              <span className="play-chrome-control cursor-default border-brass/35 bg-brass/15 text-[10px] uppercase tracking-wider text-sidebar hover:border-brass/35 hover:bg-brass/15">
+              <span className={buttonClass('chrome', 'md', 'cursor-default border-brass/35 bg-brass/15 text-[10px] uppercase tracking-wider text-sidebar hover:border-brass/35 hover:bg-brass/15')}>
                 Spec
               </span>
             )}
@@ -629,23 +637,23 @@ export function TableView({
                 onToggleMute={voice.toggleMute}
               />
               <HowToPlayHelp />
-              <button type="button" onClick={() => void leaveRoom()} className="play-chrome-leave">
+              <Button type="button" variant="chromeLeave" onClick={() => void leaveRoom()}>
                 Leave
-              </button>
+              </Button>
             </div>
           )}
         </header>
 
         {table?.tournament && (
           <div className="mb-2 flex flex-wrap items-center gap-2 px-0.5">
-            <span className="status-chip border-sidebar/25 bg-sidebar/8 text-sidebar">
+            <StatusChip tone="neutral">
               {table.tournament.mode === 'rounds' ? 'Rounds' : 'Knockout'}
               {table.tournament.frozen ? ' · Completed' : ''}
-            </span>
+            </StatusChip>
             {table.tournament.mode === 'rounds' &&
             typeof table.tournament.handLimit === 'number' &&
             table.tournament.handLimit > 0 ? (
-              <span className="status-chip border-brass/30 bg-brass/10 text-brass-dim tabular-nums">
+              <StatusChip tone="brass" className="tabular-nums">
                 {(() => {
                   const limit = table.tournament.handLimit!;
                   const done = Math.max(0, table.tournament.handsPlayed ?? 0);
@@ -657,20 +665,21 @@ export function TableView({
                       : Math.min(done + 1, limit);
                   return `Hand ${current}/${limit}`;
                 })()}
-              </span>
+              </StatusChip>
             ) : null}
             <span className="text-xs text-ink-strong-muted">
               Blinds {table.config.smallBlind}/{table.config.bigBlind}
               {table.tournament.noTopUp ? ' · no rebuy' : ' · top-ups on'}
             </span>
             {contestOver ? (
-              <button
+              <Button
                 type="button"
+                variant="chromeActive"
                 onClick={goToContest}
-                className="rounded-full border border-sidebar/25 bg-sidebar px-3 py-1 text-[10px] font-display font-bold uppercase tracking-wider text-mushroom shadow-sm transition hover:bg-sidebar/90"
+                className="rounded-full px-3 py-1 text-[10px] font-display font-bold uppercase tracking-wider"
               >
                 Contest results
-              </button>
+              </Button>
             ) : null}
           </div>
         )}
@@ -686,29 +695,30 @@ export function TableView({
                   See placements and prizes on the contest page.
                 </p>
               </div>
-              <button
+              <Button
                 type="button"
                 onClick={goToContest}
-                className="btn-primary min-h-10 shrink-0 px-5 text-xs font-display font-bold uppercase tracking-wide"
+                className="min-h-10 shrink-0 px-5 text-xs font-display font-bold uppercase tracking-wide"
               >
                 View results
-              </button>
+              </Button>
             </div>
           </div>
         ) : null}
 
         <div className="relative flex min-h-0 flex-1 flex-col">
           {!narrow && (
-            <div
-              className={
+            <StatusChip
+              tone={
                 contestOver
-                  ? 'pointer-events-none absolute bottom-2 left-2 z-30 status-chip border-sidebar/25 bg-sidebar/8 text-sidebar'
+                  ? 'neutral'
                   : connection === 'open'
-                    ? 'pointer-events-none absolute bottom-2 left-2 z-30 status-chip border-positive/35 bg-positive/10 text-positive'
+                    ? 'positive'
                     : connection === 'connecting'
-                      ? 'pointer-events-none absolute bottom-2 left-2 z-30 status-chip border-amber-500/35 bg-amber-500/10 text-amber-800'
-                      : 'pointer-events-none absolute bottom-2 left-2 z-30 status-chip border-danger/35 bg-danger/10 text-danger'
+                      ? 'amber'
+                      : 'danger'
               }
+              className="pointer-events-none absolute bottom-2 left-2 z-30"
               title={contestOver ? 'Contest completed' : connection}
             >
               <span
@@ -731,7 +741,7 @@ export function TableView({
                       ? 'Reconnecting'
                       : 'Offline'}
               </span>
-            </div>
+            </StatusChip>
           )}
           <div className="relative min-h-0 min-w-0 flex-1">
           <div

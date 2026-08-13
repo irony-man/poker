@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/Button';
 import { buildTableJoinLink, buildTableJoinShareText } from '@/lib/tableLink';
 
 /** Shows the room code; click copies the join link (+ code text). */
@@ -52,11 +53,12 @@ export function CopyRoomLink({
   }, [tableId, inviteCode]);
 
   return (
-    <button
+    <Button
       type="button"
+      variant="chrome"
       onClick={() => void copy()}
       title={copied ? 'Copied' : `Copy link · room code ${inviteCode}`}
-      className={`play-chrome-control font-mono ${
+      className={`font-mono ${
         compact ? 'min-w-0 px-2 text-[11px]' : 'px-2.5 text-xs tracking-wide'
       }`}
     >
@@ -64,6 +66,6 @@ export function CopyRoomLink({
         {copied ? 'Copied' : 'Code'}
       </span>
       <span className="tabular-nums tracking-wider text-sidebar">{inviteCode}</span>
-    </button>
+    </Button>
   );
 }

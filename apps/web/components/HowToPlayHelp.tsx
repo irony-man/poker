@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
+import { Button } from '@/components/ui/Button';
 import { PlayingCard } from './PlayingCard';
 
 const TIPS: { title: string; body: string }[] = [
@@ -184,19 +185,20 @@ export function HowToPlayHelp({ className = '' }: { className?: string }) {
 
   return (
     <div ref={rootRef} className={`relative ${className}`}>
-      <button
+      <Button
         type="button"
+        variant="chrome"
+        size="icon"
         aria-expanded={open}
         aria-controls={panelId}
         aria-haspopup="dialog"
         onClick={() => setOpen((v) => !v)}
-        className="play-chrome-control-icon"
         title="How to play"
       >
         <span aria-hidden className="text-[13px] leading-none">
           ?
         </span>
-      </button>
+      </Button>
 
       {open && (
         <div

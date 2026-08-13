@@ -7,12 +7,15 @@ import { FriendInvitePicker } from '@/components/FriendInvitePicker';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
+import { Button } from '@/components/ui/Button';
+import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
+import { TextField } from '@/components/ui/TextField';
 import { createTable, fetchPublicBotGroups, type PublicBotGroup } from '@/lib/api';
-import { formatMoneyLabel } from '@/lib/currency';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { useLobbySession } from '@/lib/useLobbySession';
 import { usePageCopy } from '@/lib/usePageCopy';
 import { DEFAULT_STAKE_ID, STAKE_PRESETS, stakeById } from '@poker/protocol';
+import { MoneyAmount } from '@/components/CurrencyIcon';
 
 const SEAT_OPTIONS = [2, 3, 4, 5, 6, 7, 8, 9] as const;
 
@@ -122,12 +125,19 @@ export default function HostPage() {
             format={(id) => {
               const s = stakeById(id)!;
               return (
-                <span className="inline-flex flex-col items-start leading-tight">
-                  <span>{s.label}</span>
-                  <span className="text-[10px] font-medium opacity-70">
-                    {formatMoneyLabel(s.buyIn)} · {s.smallBlind}/{s.bigBlind}
-                  </span>
-                </span>
+                <div className="inline-flex flex-col items-start leading-tight">
+                  <div>{s.label}</div>
+                  <div className="text-[10px] flex items-center gap-1 font-medium opacity-70">
+                    <MoneyAmount
+                        amount={s.buyIn}
+                        showChips
+                        chipsClassName="!h-3.5 sm:!h-3.5"
+                      />
+                      <div>
+                        {s.smallBlind}/{s.bigBlind}
+                      </div>
+                  </div>
+                </div>
               );
             }}
           />
@@ -139,26 +149,7 @@ export default function HostPage() {
             onSelect={setMaxSeats}
           />
 
-          <details className="group rounded-xl border border-sidebar/12 bg-mushroom/40 open:bg-mushroom/55">
-            <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm outline-none marker:content-none [&::-webkit-details-marker]:hidden focus-visible:ring-2 focus-visible:ring-sidebar/30">
-              <span className="min-w-0 flex-1">
-                <span className="hud-label block">Bots & room code</span>
-                <span className="mt-0.5 block text-xs text-ink-strong-muted">{moreSummary}</span>
-              </span>
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="h-4 w-4 shrink-0 text-ink-strong-muted transition-transform duration-200 group-open:rotate-180"
-                aria-hidden
-              >
-                <path d="m6 9 6 6 6-6" />
-              </svg>
-            </summary>
-            <div className="space-y-4 border-t border-sidebar/10 px-3 py-3.5">
+          <CollapsibleSection title="Bots & room code" summary={moreSummary}>
               <ChoiceRow
                 label="Starting bots"
                 name="host-bots"
@@ -169,7 +160,6 @@ export default function HostPage() {
               />
               {botCount > 0 && botGroups.length > 0 ? (
                 <ChoiceRow
-                  label="Bot name pack"
                   name="host-bot-group"
                   selected={botGroupId ?? botGroups[0]!.id}
                   options={botGroups.map((g) => g.id)}
@@ -179,35 +169,25 @@ export default function HostPage() {
                     if (!g) return id;
                     return (
                       <span className="inline-flex flex-col items-start leading-tight">
-                        <span>
-                          {g.name}
-                          {g.isDefault ? ' · default' : ''}
-                        </span>
-                        <span className="text-[10px] font-medium opacity-70">
-                          {g.nameCount} name{g.nameCount === 1 ? '' : 's'}
-                        </span>
+                        {g.name}
                       </span>
                     );
                   }}
                 />
               ) : null}
-              <label className="block">
-                <span className="hud-label">Room code (optional)</span>
-                <input
-                  value={customRoomCode}
-                  onChange={(e) => setCustomRoomCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                  className="hud-input font-mono tracking-[0.2em]"
-                  inputMode="numeric"
-                  pattern="\d{4,8}"
-                  maxLength={8}
-                  autoComplete="off"
-                />
-                <span className="field-help">
-                  Leave blank to auto-generate, or enter 4–8 digits
-                </span>
-              </label>
-            </div>
-          </details>
+              <TextField
+                variant="hud"
+                label="Room code (optional)"
+                value={customRoomCode}
+                onChange={(e) => setCustomRoomCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                className="font-mono tracking-[0.2em]"
+                inputMode="numeric"
+                pattern="\d{4,8}"
+                maxLength={8}
+                autoComplete="off"
+                help="Leave blank to auto-generate, or enter 4–8 digits"
+              />
+          </CollapsibleSection>
 
           <FriendInvitePicker
             sessionToken={sessionToken}
@@ -223,13 +203,13 @@ export default function HostPage() {
             }
           />
 
-          <button disabled={busy} type="submit" className="btn-primary mt-1 min-h-11 w-full">
+          <Button disabled={busy} type="submit" className="mt-1 min-h-11 w-full">
             {busy
               ? 'Creating…'
               : inviteFriendIds.length > 0
                 ? `Create table · invite ${inviteFriendIds.length}`
                 : 'Create private table'}
-          </button>
+          </Button>
         </LobbySplitCard>
       </form>
     </LobbyPageShell>

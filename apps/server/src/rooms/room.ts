@@ -1605,6 +1605,13 @@ export class RoomManager {
     throw new Error('Could not allocate room code');
   }
 
+  /** Fold/stand and detach this user from every live room. */
+  leaveUser(userId: string): void {
+    for (const room of this.rooms.values()) {
+      room.leave(userId);
+    }
+  }
+
   get(tableId: string): Room | undefined {
     return this.rooms.get(tableId);
   }

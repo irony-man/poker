@@ -102,6 +102,11 @@ export class RoomsService implements OnModuleInit, OnModuleDestroy {
     return this.manager.listAllAdmin(this.siteConfig.getRoomInactivityMs());
   }
 
+  /** Vacate every live room this user is in (cash, public, contest). */
+  leaveUser(userId: string) {
+    this.manager.leaveUser(userId);
+  }
+
   terminateIdleRooms(now?: number) {
     return this.manager.terminateIdleRooms(
       now ?? Date.now(),

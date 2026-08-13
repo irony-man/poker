@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { authHref } from '@/lib/authRedirect';
+import { StatusChip } from '@/components/ui/StatusChip';
 
 export function LobbyPageShell({
   title,
@@ -57,12 +58,9 @@ export function LobbyPageShell({
         )}
       </header>
       {error && (
-        <p
-          role="alert"
-          className="mb-4 shrink-0 status-chip border-danger/30 bg-danger/10 text-danger text-xs"
-        >
+        <StatusChip tone="danger" role="alert" className="mb-4 shrink-0 text-xs">
           {error}
-        </p>
+        </StatusChip>
       )}
       <div className="min-h-0 w-full">{children}</div>
     </div>

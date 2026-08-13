@@ -5,6 +5,7 @@ import { MoveTimerStrip } from './TurnTimer';
 import { ReadyPlayersRoster, type ReadyRosterPlayer } from './WinHandModal';
 import { useSession, type PrivateView, type PublicTable } from '@/lib/store';
 import { formatMoneyAmount } from '@/lib/currency';
+import { Button } from '@/components/ui/Button';
 import { useIsLandscapePhone, useIsNarrow } from '@/lib/tableLayout';
 
 function waitingCopy(opts: {
@@ -167,12 +168,11 @@ function TableToolsPanel({
       ) : null}
       <div className="flex flex-wrap items-center justify-center gap-1.5">
         {primaryLabel && primaryOnClick ? (
-          <button
+          <Button
             type="button"
             onClick={primaryOnClick}
-            className={`min-h-9 px-4 text-[11px] font-display font-bold uppercase tracking-wide ${
-              primaryIsReady ? 'btn-ghost' : 'btn-primary'
-            }`}
+            variant={primaryIsReady ? 'ghost' : 'primary'}
+            className="min-h-9 px-4 text-[11px] font-display font-bold uppercase tracking-wide"
           >
             {primaryLabel}
             {showReadyCount ? (
@@ -180,31 +180,33 @@ function TableToolsPanel({
                 {tools.readyCount}/{tools.readyTotal}
               </span>
             ) : null}
-          </button>
+          </Button>
         ) : null}
         {(tools.canSitOut || tools.canCancelSitOut) && tools.onSitOut ? (
-          <button
+          <Button
             type="button"
+            variant="soft"
             onClick={tools.onSitOut}
             title={tools.sitOutTitle}
             className={
               tools.canCancelSitOut
-                ? 'min-h-10 rounded-md border border-sidebar/30 bg-sidebar/8 px-3 text-[11px] font-display font-semibold text-sidebar hover:bg-sidebar/12'
-                : 'min-h-10 rounded-md border border-amber-600/30 px-3 text-[11px] font-display font-semibold text-amber-900 hover:bg-amber-500/10'
+                ? 'min-h-10 px-3 text-[11px]'
+                : 'min-h-10 border-amber-600/30 px-3 text-[11px] text-amber-900 hover:bg-amber-500/10'
             }
           >
             {tools.sitOutLabel ?? 'Sit out'}
-          </button>
+          </Button>
         ) : null}
         {/* Sit in as secondary when primary is ready/start */}
         {tools.canSitIn && tools.onSitIn && (tools.canReady || tools.onStart) ? (
-          <button
+          <Button
             type="button"
+            variant="soft"
             onClick={tools.onSitIn}
-            className="min-h-10 rounded-md border border-sidebar/30 bg-sidebar/8 px-3 text-[11px] font-display font-semibold text-sidebar hover:bg-sidebar/12"
+            className="min-h-10 px-3 text-[11px]"
           >
             {tools.sitInLabel ?? 'Sit in'}
-          </button>
+          </Button>
         ) : null}
       </div>
       {hostRow ? (
@@ -228,49 +230,49 @@ function TableToolsPanel({
           ) : null}
           <div className="flex flex-wrap items-center justify-center gap-1">
           {tools.canAddBot && tools.onAddBot ? (
-            <button
-              type="button"
-              onClick={tools.onAddBot}
-              className="rounded border border-sidebar/20 bg-white px-2.5 py-1 text-[10px] font-display font-semibold uppercase tracking-wide text-ink-strong hover:bg-sidebar/8"
-            >
+            <Button type="button" variant="soft" onClick={tools.onAddBot} className="px-2.5 py-1 text-[10px]">
               + Bot
-            </button>
+            </Button>
           ) : null}
           {tools.canAddBot && tools.onFillBots ? (
-            <button
+            <Button
               type="button"
+              variant="soft"
               onClick={tools.onFillBots}
-              className="rounded border border-sidebar/12 bg-white px-2 py-1 text-[10px] font-display font-semibold uppercase tracking-wide text-ink-strong-muted hover:bg-sidebar/8"
+              className="px-2 py-1 text-[10px] text-ink-strong-muted"
             >
               Fill
-            </button>
+            </Button>
           ) : null}
           {tools.canRemoveBots && tools.onRemoveBots ? (
-            <button
+            <Button
               type="button"
+              variant="ghost"
               onClick={tools.onRemoveBots}
               className="rounded px-2 py-1 text-[10px] font-display font-semibold uppercase tracking-wide text-ink-strong-muted hover:text-danger"
             >
               − Bots
-            </button>
+            </Button>
           ) : null}
           {showSecondaryTopUp ? (
-            <button
+            <Button
               type="button"
+              variant="soft"
               onClick={tools.onTopUp}
-              className="rounded border border-sidebar/25 bg-sidebar/8 px-2.5 py-1 text-[10px] font-display font-semibold uppercase tracking-wide text-sidebar hover:bg-sidebar/12"
+              className="px-2.5 py-1 text-[10px]"
             >
               {tools.topUpLabel ?? 'Top up'}
-            </button>
+            </Button>
           ) : null}
           {showSecondaryNeedChips ? (
-            <button
+            <Button
               type="button"
+              variant="dangerQuiet"
               onClick={tools.onNeedChips}
-              className="rounded border border-danger/30 bg-danger/10 px-2.5 py-1 text-[10px] font-display font-semibold uppercase tracking-wide text-danger"
+              className="px-2.5 py-1 text-[10px] font-display font-semibold uppercase tracking-wide"
             >
               Need chips
-            </button>
+            </Button>
           ) : null}
           </div>
         </div>
@@ -362,13 +364,13 @@ export function ActionControls({
           Results and placements are on the contest page.
         </p>
         {onViewContest ? (
-          <button
+          <Button
             type="button"
             onClick={onViewContest}
-            className="btn-primary min-h-10 w-full max-w-[16rem] px-4 text-xs font-display font-bold uppercase tracking-wide"
+            className="min-h-10 w-full max-w-[16rem] px-4 text-xs font-display font-bold uppercase tracking-wide"
           >
             View contest results
-          </button>
+          </Button>
         ) : null}
       </div>
     );
@@ -468,35 +470,26 @@ export function ActionControls({
             Confirm <span className="font-bold text-sidebar">{confirm.label}</span>?
           </p>
           <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              className="btn-ghost min-h-11"
-              onClick={() => setConfirm(null)}
-            >
+            <Button type="button" variant="ghost" className="min-h-11" onClick={() => setConfirm(null)}>
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className="btn-primary min-h-11"
+              className="min-h-11"
               onClick={() => {
                 onAction(confirm.action, confirm.amount);
                 setConfirm(null);
               }}
             >
               Confirm
-            </button>
+            </Button>
           </div>
         </div>
       </div>
     );
   }
 
-  const chipBtn =
-    'inline-flex min-h-8 items-center justify-center rounded-md border border-sidebar/18 bg-white px-1.5 text-[10px] font-display font-semibold uppercase tracking-wide text-ink-strong hover:border-sidebar/40 hover:bg-sidebar/8 hover:text-sidebar';
-  const actionBtn =
-    'inline-flex min-h-10 items-center justify-center px-2 text-[11px] font-display font-bold uppercase tracking-wide';
-  const softAction =
-    'inline-flex min-h-10 items-center justify-center rounded border border-sidebar/20 bg-white px-2 text-[11px] font-display font-bold uppercase tracking-wide text-sidebar shadow-[0_2px_8px_rgb(29_4_50/0.06)] hover:border-sidebar/35 hover:bg-sidebar/5';
+  const landLayout = 'min-h-[2.75rem] flex-1 px-2 text-[13px]';
 
   const timer = (
     <MoveTimerStrip endsAt={turnEndsAt} totalMs={turnTotalMs} compact={!!(narrow && landscape)} />
@@ -512,17 +505,21 @@ export function ActionControls({
           ['Max', max],
         ] as const
       ).map(([label, val]) => (
-        <button key={label} type="button" onClick={() => setBet(val)} className={chipBtn}>
+        <Button
+          key={label}
+          type="button"
+          variant="soft"
+          onClick={() => setBet(val)}
+          className="min-h-8 px-1.5 text-[10px]"
+        >
           {label}
-        </button>
+        </Button>
       ))}
     </>
   );
 
   /* —— Landscape: sized strip + three wide actions —— */
   if (narrow && landscape) {
-    const landBtn =
-      'inline-flex min-h-[2.75rem] flex-1 items-center justify-center rounded-lg border border-sidebar/20 bg-white px-2 text-[13px] font-bold tracking-wide text-sidebar shadow-[0_2px_8px_rgb(29_4_50/0.08)] active:bg-sidebar/8';
     const midLabel = legal.types.includes('check')
       ? 'Check'
       : legal.types.includes('call')
@@ -559,67 +556,58 @@ export function ActionControls({
                   ['Max', max],
                 ] as const
               ).map(([label, val]) => (
-                <button
+                <Button
                   key={label}
                   type="button"
+                  variant="soft"
                   onClick={() => setBet(val)}
-                  className="rounded border border-sidebar/18 bg-white px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-ink-strong hover:bg-sidebar/8"
+                  className="px-1.5 py-0.5 text-[9px]"
                 >
                   {label}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
         )}
         <div className="flex min-h-0 flex-1 items-stretch gap-1.5 px-1.5 py-1">
           {legal.types.includes('fold') ? (
-            <button
+            <Button
               type="button"
+              variant="danger"
               onClick={() => commit('fold', undefined, 'Fold')}
-              className={`${landBtn} border-danger/35 bg-danger text-cream hover:brightness-110`}
+              className={landLayout}
             >
               Fold
-            </button>
+            </Button>
           ) : (
             <div className="flex-1" />
           )}
           {midLabel ? (
-            <button
+            <Button
               type="button"
+              variant="soft"
               onClick={() =>
                 legal.types.includes('check') ? commit('check') : commit('call')
               }
-              className={landBtn}
+              className={landLayout}
             >
               {midLabel}
-            </button>
+            </Button>
           ) : (
             <div className="flex-1" />
           )}
           {thirdIsBet ? (
-            <button
-              type="button"
-              onClick={() => submitBet(amount)}
-              className={`${landBtn} border-sidebar/30 bg-gradient-to-b from-[#341252] to-sidebar text-mushroom`}
-            >
+            <Button type="button" onClick={() => submitBet(amount)} className={landLayout}>
               {betLabel}
-            </button>
-          ) : thirdIsAllin ? (
-            <button
+            </Button>
+          ) : thirdIsAllin || legal.types.includes('allin') ? (
+            <Button
               type="button"
               onClick={() => commit('allin', undefined, 'All-in')}
-              className={`${landBtn} border-sidebar/30 bg-gradient-to-b from-[#341252] to-sidebar text-mushroom`}
+              className={landLayout}
             >
               All-in
-            </button>
-          ) : legal.types.includes('allin') ? (
-            <button
-              type="button"
-              onClick={() => commit('allin', undefined, 'All-in')}
-              className={`${landBtn} border-sidebar/30 bg-gradient-to-b from-[#341252] to-sidebar text-mushroom`}
-            >
-              All-in
-            </button>
+            </Button>
           ) : (
             <div className="flex-1" />
           )}
@@ -664,49 +652,38 @@ export function ActionControls({
 
           <div className={`grid gap-1 ${canBet ? 'grid-cols-4' : 'grid-cols-3'}`}>
             {legal.types.includes('fold') && (
-              <button
+              <Button
                 type="button"
+                variant="danger"
                 onClick={() => commit('fold', undefined, 'Fold')}
-                className={`btn-danger ${actionBtn} min-h-11`}
+                className="min-h-11 px-2 text-[11px]"
               >
                 Fold
-              </button>
+              </Button>
             )}
             {legal.types.includes('check') && (
-              <button
-                type="button"
-                onClick={() => commit('check')}
-                className={`${softAction} min-h-11`}
-              >
+              <Button type="button" variant="soft" onClick={() => commit('check')} className="min-h-11">
                 Check
-              </button>
+              </Button>
             )}
             {legal.types.includes('call') && (
-              <button
-                type="button"
-                onClick={() => commit('call')}
-                className={`${softAction} min-h-11`}
-              >
+              <Button type="button" variant="soft" onClick={() => commit('call')} className="min-h-11">
                 Call {formatMoneyAmount(callAmount)}
-              </button>
+              </Button>
             )}
             {canBet && (
-              <button
-                type="button"
-                onClick={() => submitBet(amount)}
-                className={`btn-primary ${actionBtn} min-h-11`}
-              >
+              <Button type="button" onClick={() => submitBet(amount)} className="min-h-11 px-2 text-[11px]">
                 {betLabel} {formatMoneyAmount(amount)}
-              </button>
+              </Button>
             )}
             {legal.types.includes('allin') && (
-              <button
+              <Button
                 type="button"
                 onClick={() => commit('allin', undefined, 'All-in')}
-                className={`btn-primary ${actionBtn} min-h-11`}
+                className="min-h-11 px-2 text-[11px]"
               >
                 All-in
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -772,14 +749,15 @@ export function ActionControls({
                   ['Max', max],
                 ] as const
               ).map(([label, val]) => (
-                <button
+                <Button
                   key={label}
                   type="button"
+                  variant="soft"
                   onClick={() => setBet(val)}
-                  className="rounded border border-sidebar/18 bg-white px-1 py-1.5 text-[10px] font-display font-semibold uppercase tracking-wide text-ink-strong hover:border-sidebar/40 hover:bg-sidebar/8 hover:text-sidebar"
+                  className="px-1 py-1.5 text-[10px]"
                 >
                   {label}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -787,49 +765,50 @@ export function ActionControls({
 
         <div className={`grid gap-1.5 ${canBet ? 'grid-cols-4' : 'grid-cols-3'}`}>
           {legal.types.includes('fold') && (
-            <button
+            <Button
               type="button"
+              variant="danger"
+              size="compact"
               onClick={() => commit('fold', undefined, 'Fold')}
-              className="btn-danger !rounded py-2 text-xs"
             >
               Fold
-            </button>
+            </Button>
           )}
           {legal.types.includes('check') && (
-            <button
+            <Button
               type="button"
+              variant="soft"
+              size="compact"
               onClick={() => commit('check')}
-              className={`${softAction} min-h-9 py-2 text-xs`}
+              className="min-h-9"
             >
               Check
-            </button>
+            </Button>
           )}
           {legal.types.includes('call') && (
-            <button
+            <Button
               type="button"
+              variant="soft"
+              size="compact"
               onClick={() => commit('call')}
-              className={`${softAction} min-h-9 py-2 text-xs`}
+              className="min-h-9"
             >
               Call {formatMoneyAmount(callAmount)}
-            </button>
+            </Button>
           )}
           {canBet && (
-            <button
-              type="button"
-              onClick={() => submitBet(amount)}
-              className="btn-primary !rounded py-2 text-xs"
-            >
+            <Button type="button" size="compact" onClick={() => submitBet(amount)}>
               {betLabel} {formatMoneyAmount(amount)}
-            </button>
+            </Button>
           )}
           {legal.types.includes('allin') && (
-            <button
+            <Button
               type="button"
+              size="compact"
               onClick={() => commit('allin', undefined, 'All-in')}
-              className="btn-primary !rounded py-2 text-xs"
             >
               All-in
-            </button>
+            </Button>
           )}
         </div>
       </div>

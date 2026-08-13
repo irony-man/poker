@@ -47,6 +47,10 @@ export class UserEntity {
   @Column({ name: 'whuffie_balance', type: 'int', default: 0 })
   whuffieBalance!: number;
 
+  /** Completed online hands this user was dealt into. */
+  @Column({ name: 'hands_played', type: 'int', default: 0 })
+  handsPlayed!: number;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 }

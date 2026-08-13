@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 import { Button } from '@/components/ui/Button';
+import { Tabs } from '@/components/ui/Tabs';
 import { TextField } from '@/components/ui/TextField';
 import { imageAssetUrl } from '@/lib/assets';
 import {
@@ -398,40 +399,18 @@ export function FriendsPanel({
 
       <div className="min-w-0">
         {variant !== 'embedded' ? (
-          <div
-            role="tablist"
-            aria-label="Friends and groups"
-            className="flex rounded-xl border border-sidebar/15 bg-mushroom/50 p-1"
-          >
-            {(
-              [
-                { id: 'friends' as const, label: 'Friends' },
-                { id: 'groups' as const, label: 'Groups' },
-              ] as const
-            ).map((tab) => {
-              const selected = socialTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  role="tab"
-                  id={`social-tab-${tab.id}`}
-                  aria-selected={selected}
-                  aria-controls={`social-panel-${tab.id}`}
-                  disabled={disabled}
-                  onClick={() => setSocialTab(tab.id)}
-                  className={[
-                    'relative min-h-10 flex-1 rounded-lg px-3 py-2 text-center font-display text-xs font-bold uppercase tracking-[0.14em] transition',
-                    selected
-                      ? 'bg-sidebar text-mushroom shadow-[0_4px_14px_rgb(29_4_50/0.18)]'
-                      : 'text-ink-strong-muted hover:bg-sidebar/[0.06] hover:text-sidebar',
-                  ].join(' ')}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
+          <Tabs
+            label="Friends and groups"
+            variant="segmented"
+            idPrefix="social-tab"
+            selected={socialTab}
+            onSelect={setSocialTab}
+            disabled={disabled}
+            options={[
+              { id: 'friends', label: 'Friends', panelId: 'social-panel-friends' },
+              { id: 'groups', label: 'Groups', panelId: 'social-panel-groups' },
+            ]}
+          />
         ) : null}
 
         {variant !== 'embedded' && socialTab === 'groups' && (

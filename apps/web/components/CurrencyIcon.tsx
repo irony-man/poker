@@ -63,6 +63,7 @@ export function MoneyAmount({
   compact = false,
   showChips = false,
   chipsClassName = '',
+  showWhuffies = false,
 }: {
   /** Accepts null/undefined from incomplete API payloads. */
   amount: number | null | undefined;
@@ -75,6 +76,7 @@ export function MoneyAmount({
   compact?: boolean;
   /** Poker-chip sticker before the amount (profile / bankroll). */
   showChips?: boolean;
+  showWhuffies?: boolean;
   chipsClassName?: string;
 }) {
   const n = coerceMoney(amount);
@@ -82,7 +84,7 @@ export function MoneyAmount({
 
   return (
     <span
-      className={`inline-flex items-center gap-2 tabular-nums ${className}`.trim()}
+      className={`inline-flex items-center gap-1 tabular-nums ${className}`.trim()}
       title={formatMoneyLabel(n)}
     >
       {showChips ? <ChipsImage className={chipsClassName} /> : null}
@@ -90,9 +92,9 @@ export function MoneyAmount({
         <span>
           {prefix}
           {text}
-        </span>
-        <CurrencyIcon size="em" className={`translate-y-px opacity-90 ${iconClassName}`.trim()} />
-      </span>
+          </span>
+        {showWhuffies ? <CurrencyIcon size="em" className={`translate-y-px opacity-90 ${iconClassName}`.trim()} /> : null}
+      </span> 
     </span>
   );
 }

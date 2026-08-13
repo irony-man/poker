@@ -1,10 +1,11 @@
 'use client';
 
-import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { TableView } from '@/components/TableView';
 import { LoadingScreen } from '@/components/LoadingScreen';
+import { Button } from '@/components/ui/Button';
+import { StatusChip } from '@/components/ui/StatusChip';
 import { authHref } from '@/lib/authRedirect';
 import { clearStoredSession, readStoredSession } from '@/lib/session';
 import { useSession } from '@/lib/store';
@@ -90,17 +91,17 @@ function TablePageInner() {
         <h2 className="font-display text-xl uppercase tracking-wider text-mushroom">Sign in to join</h2>
         <p className="text-sm text-cream/70">You need an account to enter this table.</p>
         {error && (
-          <p role="alert" className="status-chip border-red-500/40 bg-red-950/50 text-red-300">
+          <StatusChip tone="danger" role="alert" className="text-xs">
             {error}
-          </p>
+          </StatusChip>
         )}
         <div className="flex flex-col gap-2">
-          <Link href={authHref('sign-in', returnTo)} className="btn-primary min-h-11 text-center">
+          <Button href={authHref('sign-in', returnTo)} className="min-h-11 text-center">
             Sign in
-          </Link>
-          <Link href={authHref('sign-up', returnTo)} className="btn-ghost min-h-11 text-center">
+          </Button>
+          <Button href={authHref('sign-up', returnTo)} variant="ghost" className="min-h-11 text-center">
             Create account
-          </Link>
+          </Button>
         </div>
       </div>
     );

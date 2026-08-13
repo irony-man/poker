@@ -12,6 +12,7 @@ import type {
 import { WS_URL } from '@/lib/api';
 import { emitSocketMessage } from './socketMessages';
 import { isSeatActionLabel } from '@/lib/seatAction';
+import { clearStoredSession } from './session';
 import { useSession, type PrivateView, type PublicTable } from './store';
 
 const RECONNECT_DELAY_MS = 2_000;
@@ -152,6 +153,10 @@ function dispatchMessage(msg: { type?: string; [key: string]: unknown }): void {
         typeof msg.message === 'string' ? msg.message : 'Error',
         code,
       );
+      if (code === 'account_deleted') {
+        clearStoredSession();
+        s.clearSession();
+      }
       break;
     }
     default:
@@ -361,7 +366,8 @@ export function usePokerSocket(tableId: string | null, opts?: { spectate?: boole
     if (
       lastErrorCode === 'not_found' ||
       lastErrorCode === 'kicked' ||
-      lastErrorCode === 'bad_auth'
+      lastErrorCode === 'bad_auth' ||
+      lastErrorCode === 'account_deleted'
     ) {
       joinedRef.current = tableId; // mark as joined so interval stops thrashing
     }

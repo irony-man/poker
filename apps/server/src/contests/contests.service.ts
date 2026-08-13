@@ -88,4 +88,9 @@ export class ContestsService implements OnModuleInit {
   detachWatcherAll(userId: string) {
     return this.tournaments.detachWatcherAll(userId);
   }
+
+  /** Drop a deleted account from open contests (refunds registering buy-ins). */
+  removeUser(userId: string) {
+    return this.tournaments.removeUser(userId);
+  }
 }

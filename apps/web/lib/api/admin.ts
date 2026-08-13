@@ -258,6 +258,16 @@ export async function resetAdminUserWhuffies(
   }>;
 }
 
+export async function deleteAdminUser(
+  sessionToken: string,
+  userId: string,
+): Promise<{ ok: true; userId: string; username: string }> {
+  return authedFetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
+    sessionToken,
+    method: 'DELETE',
+  }) as Promise<{ ok: true; userId: string; username: string }>;
+}
+
 export async function fetchAdminGames(sessionToken: string) {
   return authedFetch('/api/admin/games', { sessionToken }) as Promise<{
     tables: AdminTableRow[];

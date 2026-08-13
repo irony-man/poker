@@ -5,6 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, Suspense, useState } from 'react';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { LoadingScreen } from '@/components/LoadingScreen';
+import { Button } from '@/components/ui/Button';
+import { StatusChip } from '@/components/ui/StatusChip';
+import { TextField } from '@/components/ui/TextField';
 import { AvatarPicker } from '@/components/PlayerAvatar';
 import { signup } from '@/lib/api';
 import { authHref, safeReturnPath } from '@/lib/authRedirect';
@@ -55,36 +58,30 @@ function SignUpForm() {
       </div>
       <form onSubmit={onSubmit}>
         <LobbySplitCard imageSrc="/home-knockout.png" imageAlt="Join the table — create your account">
-          <label className="block">
-            <span className="hud-label">Username</span>
-            <input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="hud-input"
-              required
-              minLength={3}
-              maxLength={24}
-              autoComplete="username"
-              pattern="[a-zA-Z0-9_]+"
-            />
-            <span className="field-help">
-              Letters, numbers, and underscores · 3–24 characters
-            </span>
-          </label>
-          <label className="block">
-            <span className="hud-label">Password</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="hud-input"
-              required
-              minLength={6}
-              maxLength={128}
-              autoComplete="new-password"
-            />
-            <span className="field-help">At least 6 characters</span>
-          </label>
+          <TextField
+            variant="hud"
+            label="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+            minLength={3}
+            maxLength={24}
+            autoComplete="username"
+            pattern="[a-zA-Z0-9_]+"
+            help="Letters, numbers, and underscores · 3–24 characters"
+          />
+          <TextField
+            variant="hud"
+            label="Password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={6}
+            maxLength={128}
+            autoComplete="new-password"
+            help="At least 6 characters"
+          />
           <AvatarPicker
             value={avatarId}
             onChange={(id) => {
@@ -93,13 +90,13 @@ function SignUpForm() {
             }}
           />
           {error && (
-            <p role="alert" className="status-chip border-danger/30 bg-danger/10 text-danger text-xs">
+            <StatusChip tone="danger" role="alert" className="text-xs">
               {error}
-            </p>
+            </StatusChip>
           )}
-          <button disabled={busy} type="submit" className="btn-primary min-h-11 w-full">
+          <Button disabled={busy} type="submit" className="min-h-11 w-full">
             {busy ? 'Creating…' : 'Create account'}
-          </button>
+          </Button>
           <p className="text-sm text-ink-strong-muted">
             Already have an account?{' '}
             <Link

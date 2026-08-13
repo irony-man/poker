@@ -90,6 +90,14 @@ export class AuthService implements OnModuleInit {
     return this.store.setTableColorId(userId, tableColorId);
   }
 
+  incrementHandsPlayed(userId: string): Promise<void> {
+    return this.store.incrementHandsPlayed(userId);
+  }
+
+  applyHandsPlayedCounts(counts: Map<string, number>): Promise<void> {
+    return this.store.applyHandsPlayedCounts(counts);
+  }
+
   getUserByUsername(username: string): User | undefined {
     return this.store.getUserByUsername(username);
   }
@@ -100,6 +108,10 @@ export class AuthService implements OnModuleInit {
 
   listUsers(): User[] {
     return this.store.listUsers();
+  }
+
+  deleteUser(userId: string): Promise<User | null> {
+    return this.store.deleteUser(userId);
   }
 
   issueTicket(userId: string, ttlMs?: number, persist?: boolean): string {

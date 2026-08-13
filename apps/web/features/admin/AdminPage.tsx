@@ -29,6 +29,7 @@ import {
   requestAdminSoundUploadUrl,
   resetAdminUserChips,
   resetAdminUserWhuffies,
+  deleteAdminUser,
   type AdminContestRow,
   type AdminRoomSettings,
   type AdminTableRow,
@@ -63,6 +64,8 @@ import {
 } from './botRoster';
 import { parseAdminTab, TABS, MAX_HOME_BLOCKS, type AdminTab } from './tabs';
 import { StatCard } from './ui';
+import { StatusChip } from '@/components/ui/StatusChip';
+import { Tabs } from '@/components/ui/Tabs';
 import { UsersSection } from './sections/Users';
 import { ContentSection } from './sections/Content';
 import { BLANK_HOME_BLOCK, HomeSection } from './sections/Home';
@@ -78,6 +81,7 @@ function AdminPageInner() {
   const { authReady, signedIn } = useLobbySession();
   const confirm = useConfirm();
   const sessionToken = useSession((s) => s.sessionToken);
+  const selfUserId = useSession((s) => s.userId);
   const token = sessionToken ?? readStoredSession()?.sessionToken ?? null;
   const navId = useId();
 
@@ -688,6 +692,41 @@ function AdminPageInner() {
     });
   }
 
+  async function deleteUser(user: AdminUserRow) {
+    if (!token) return;
+    if (selfUserId && user.id === selfUserId) {
+      setError('You cannot delete your own account');
+      return;
+    }
+    const ok = await confirm({
+      title: `Delete ${user.username}?`,
+      description:
+        'This permanently deletes the account, signs them out everywhere, and removes friend connections. The username can be reused. This cannot be undone.',
+      confirmLabel: 'Delete account',
+      cancelLabel: 'Cancel',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    await withBusy(`delete-${user.id}`, async () => {
+      const res = await deleteAdminUser(token, user.id);
+      flash(`Deleted ${res.username}`);
+      const [list, overview] = await Promise.all([
+        fetchAdminUsers(token, userQuery),
+        fetchAdminOverview(token),
+      ]);
+      setUsers(list.users);
+      setStats((prev) =>
+        prev
+          ? { ...prev, userCount: overview.userCount }
+          : {
+              userCount: overview.userCount,
+              liveTables: overview.liveTables,
+              liveContests: overview.liveContests,
+            },
+      );
+    });
+  }
+
   async function refreshGames() {
     if (!token) return;
     await withBusy('games', async () => {
@@ -730,12 +769,9 @@ function AdminPageInner() {
   return (
     <LobbyPageShell title="Admin" subtitle="Site, players, and live tables" signedIn error={error}>
       {okMsg ? (
-        <p
-          className="mb-4 status-chip border-positive/30 bg-positive/10 text-positive text-xs"
-          role="status"
-        >
+        <StatusChip tone="positive" className="mb-4 text-xs" role="status">
           {okMsg}
-        </p>
+        </StatusChip>
       ) : null}
 
       {stats ? (
@@ -748,30 +784,15 @@ function AdminPageInner() {
         </div>
       ) : null}
 
-      <nav
-        aria-label="Admin sections"
-        className="mb-5 -mx-1 flex gap-1 overflow-x-auto px-1 pb-1"
-      >
-        {TABS.map((t) => {
-          const active = tab === t.id;
-          return (
-            <button
-              key={t.id}
-              type="button"
-              id={`${navId}-${t.id}`}
-              onClick={() => selectTab(t.id)}
-              aria-current={active ? 'page' : undefined}
-              className={`shrink-0 rounded-full px-4 py-2 text-xs font-display font-bold uppercase tracking-[0.14em] transition ${
-                active
-                  ? 'bg-sidebar text-mushroom shadow-[0_6px_16px_rgb(29_4_50/0.18)]'
-                  : 'border border-sidebar/15 bg-cream/80 text-ink-strong-muted hover:border-sidebar/30 hover:text-ink-strong'
-              }`}
-            >
-              {t.label}
-            </button>
-          );
-        })}
-      </nav>
+      <Tabs
+        label="Admin sections"
+        variant="pill"
+        idPrefix={navId}
+        selected={tab}
+        onSelect={selectTab}
+        className="mb-5 -mx-1 overflow-x-auto px-1 pb-1"
+        options={TABS.map((t) => ({ id: t.id, label: t.label }))}
+      />
 
       <div className="flex flex-col gap-5">
         {tab === 'users' ? (
@@ -795,6 +816,8 @@ function AdminPageInner() {
             onTopUpWhuffies={(userId) => void topUpWhuffies(userId)}
             onResetChips={(user) => void resetChips(user)}
             onResetWhuffies={(user) => void resetWhuffies(user)}
+            onDeleteUser={(user) => void deleteUser(user)}
+            selfUserId={selfUserId}
           />
         ) : null}
 

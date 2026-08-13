@@ -83,6 +83,7 @@ export {
   resetAdminUserChips,
   creditAdminUserWhuffies,
   resetAdminUserWhuffies,
+  deleteAdminUser,
   fetchAdminGames,
   fetchAdminBotGroups,
   patchAdminBotGroups,

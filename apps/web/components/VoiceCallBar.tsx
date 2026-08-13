@@ -1,5 +1,7 @@
 'use client';
 
+import { Button, buttonClass } from '@/components/ui/Button';
+
 export function VoiceCallBar({
   inVoice,
   state,
@@ -31,20 +33,25 @@ export function VoiceCallBar({
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-1">
       {!inVoice ? (
-        <button
+        <Button
           type="button"
+          variant="chrome"
           onClick={() => void onJoinVoice()}
           disabled={state === 'joining'}
-          className="play-chrome-control disabled:opacity-50"
+          className="disabled:opacity-50"
           title="Join table voice chat"
         >
           {state === 'joining' ? 'Connecting…' : compact ? 'Mic' : 'Voice'}
-        </button>
+        </Button>
       ) : (
         <>
           {!compact && (
             <span
-              className="play-chrome-control max-w-[11rem] cursor-default gap-1.5 border-positive/25 bg-positive/10 text-sidebar hover:border-positive/25 hover:bg-positive/10"
+              className={buttonClass(
+                'chrome',
+                'md',
+                'max-w-[11rem] cursor-default gap-1.5 border-positive/25 bg-positive/10 text-sidebar hover:border-positive/25 hover:bg-positive/10',
+              )}
               title={`Voice · ${peerLabel}`}
             >
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-positive animate-live-blink" />
@@ -53,22 +60,22 @@ export function VoiceCallBar({
               </span>
             </span>
           )}
-          <button
+          <Button
             type="button"
+            variant={muted ? 'chrome' : 'chromeActive'}
             onClick={onToggleMute}
-            className={muted ? 'play-chrome-control' : 'play-chrome-control play-chrome-control-active'}
             title={muted ? 'Unmute microphone' : 'Mute microphone'}
           >
             {muted ? 'Unmute' : compact ? 'Mic' : 'Mic on'}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="chromeDanger"
             onClick={onLeave}
-            className="play-chrome-control border-danger/25 text-danger hover:border-danger/40 hover:bg-danger/10"
             title="Leave voice call"
           >
             {compact ? '×' : 'Leave call'}
-          </button>
+          </Button>
         </>
       )}
       {error && (

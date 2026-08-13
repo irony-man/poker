@@ -6,6 +6,7 @@ import { ChoiceRow } from '@/components/ChoiceRow';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
+import { Button } from '@/components/ui/Button';
 import { fetchPublicBotGroups, type PublicBotGroup } from '@/lib/api';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { useLobbySession } from '@/lib/useLobbySession';
@@ -85,7 +86,7 @@ export default function SoloPage() {
             </div>
             {botGroups.length > 0 ? (
               <ChoiceRow
-                label="Bot name pack"
+                label="Level"
                 name="offline-bot-group"
                 selected={botGroupId ?? botGroups[0]!.id}
                 options={botGroups.map((g) => g.id)}
@@ -95,13 +96,7 @@ export default function SoloPage() {
                   if (!g) return id;
                   return (
                     <span className="inline-flex flex-col items-start leading-tight">
-                      <span>
-                        {g.name}
-                        {g.isDefault ? ' · default' : ''}
-                      </span>
-                      <span className="text-[10px] font-medium opacity-70">
-                        {g.nameCount} name{g.nameCount === 1 ? '' : 's'}
-                      </span>
+                      {g.name}
                     </span>
                   );
                 }}
@@ -110,9 +105,9 @@ export default function SoloPage() {
           </div>
 
           <div className="pt-0.5">
-            <button type="submit" className="btn-primary min-h-11 w-full sm:w-auto sm:min-w-[14rem]">
+            <Button type="submit" className="min-h-11 w-full sm:w-auto sm:min-w-[14rem]">
               {offlineSeats === 2 ? 'Start heads-up' : `Start ${offlineSeats}-handed`}
-            </button>
+            </Button>
             <p className="field-help mt-2.5">
               Opens instantly · progress stays on this device
             </p>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AppleEmoji, AppleEmojiText } from '@/components/AppleEmoji';
+import { Button } from '@/components/ui/Button';
 import { ALL_EMOJIS, FREQUENT } from '@/lib/emojiCatalog';
 import { useSession } from '@/lib/store';
 
@@ -228,13 +229,13 @@ export function ChatPanel({
             aria-label="Message the table"
             className="min-w-0 flex-1 bg-transparent py-2 text-sm font-body text-ink-strong outline-none"
           />
-          <button
+          <Button
             type="submit"
             disabled={!draft.trim()}
-            className="btn-primary shrink-0 min-h-0 rounded-xl px-4 py-2.5 text-[11px] disabled:cursor-not-allowed"
+            className="shrink-0 min-h-0 rounded-xl px-4 py-2.5 text-[11px] disabled:cursor-not-allowed"
           >
             Send
-          </button>
+          </Button>
         </form>
       </div>
     </div>

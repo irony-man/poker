@@ -25,12 +25,16 @@ import {
   tableColorPreset,
 } from '@/lib/tableColors';
 import { MoneyAmount } from '@/components/CurrencyIcon';
+import { HandsMap } from '@/features/progress/HandsMap';
+import { Button } from '@/components/ui/Button';
+import { StatusChip } from '@/components/ui/StatusChip';
+import { Tabs } from '@/components/ui/Tabs';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { readStoredSession, writeStoredSession } from '@/lib/session';
 import { useSession } from '@/lib/store';
 import { useLobbySession } from '@/lib/useLobbySession';
 
-type ProfileTab = 'overview' | 'theme' | 'contests' | 'friends';
+type ProfileTab = 'overview' | 'hands' | 'theme' | 'contests' | 'friends';
 
 type ContestMatchRow = {
   contest: ContestView;
@@ -40,7 +44,7 @@ type ContestMatchRow = {
 };
 
 function parseProfileTab(raw: string | null): ProfileTab {
-  if (raw === 'friends' || raw === 'contests' || raw === 'theme') return raw;
+  if (raw === 'friends' || raw === 'contests' || raw === 'theme' || raw === 'hands') return raw;
   return 'overview';
 }
 
@@ -108,6 +112,7 @@ function ProfilePageInner() {
       saveTableColorId(me.tableColorId);
       setChipBalance(me.chipBalance);
       setWhuffieBalance(me.whuffieBalance);
+      setFriendCount(me.friendCount ?? 0);
       setContests(mine?.contests ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load profile');
@@ -156,6 +161,7 @@ function ProfilePageInner() {
       setProfile(me);
       setChipBalance(me.chipBalance);
       setWhuffieBalance(me.whuffieBalance);
+      setFriendCount(me.friendCount ?? 0);
       saveAvatarId(me.avatarId);
       saveTableColorId(me.tableColorId);
       const stored = readStoredSession();
@@ -198,6 +204,7 @@ function ProfilePageInner() {
       setProfile(me);
       setChipBalance(me.chipBalance);
       setWhuffieBalance(me.whuffieBalance);
+      setFriendCount(me.friendCount ?? 0);
       saveTableColorId(me.tableColorId);
       setEditingAvatar(false);
     } catch (err) {
@@ -223,6 +230,7 @@ function ProfilePageInner() {
       setProfile(me);
       setChipBalance(me.chipBalance);
       setWhuffieBalance(me.whuffieBalance);
+      setFriendCount(me.friendCount ?? 0);
       saveTableColorId(me.tableColorId);
       setDraftTableColorId(clampTableColorId(me.tableColorId));
     } catch (err) {
@@ -256,9 +264,9 @@ function ProfilePageInner() {
       ) : null}
 
       {error ? (
-        <p role="alert" className="status-chip mb-4 border-danger/30 bg-danger/10 text-danger text-xs">
+        <StatusChip tone="danger" role="alert" className="mb-4 text-xs">
           {error}
-        </p>
+        </StatusChip>
       ) : null}
 
       {profile ? (
@@ -351,75 +359,55 @@ function ProfilePageInner() {
                       uploading={savingAvatar}
                     />
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <button
+                      <Button
                         type="button"
                         onClick={() => void saveAvatar()}
                         disabled={savingAvatar}
-                        className="btn-primary text-xs"
+                        className="text-xs"
                       >
                         {savingAvatar ? 'Saving…' : 'Save avatar'}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
+                        variant="ghost"
                         onClick={() => {
                           setEditingAvatar(false);
                           setDraftAvatarId(profile.avatarId);
                         }}
-                        className="btn-ghost text-xs"
+                        className="text-xs"
                         disabled={savingAvatar}
                       >
                         Cancel
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ) : null}
               </div>
             </div>
 
-            <div
-              className="flex gap-6 border-t border-sidebar/10 px-5 sm:px-7"
-              role="tablist"
-              aria-label="Profile sections"
-            >
-              {(
-                [
-                  { id: 'overview' as const, label: 'Overview' },
-                  { id: 'theme' as const, label: 'Theme' },
-                  { id: 'contests' as const, label: 'Contests' },
-                  { id: 'friends' as const, label: 'Friends' },
-                ] as const
-              ).map((item) => {
-                const active = tab === item.id;
-                const showBadge = item.id === 'friends' && pendingCount > 0;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={active}
-                    id={`profile-tab-${item.id}`}
-                    aria-controls={`profile-panel-${item.id}`}
-                    onClick={() => selectTab(item.id)}
-                    className={`relative inline-flex items-center gap-2 py-3.5 text-sm font-display font-bold tracking-wide transition ${
-                      active
-                        ? 'text-sidebar'
-                        : 'text-ink-strong-muted hover:text-sidebar/80'
-                    }`}
-                  >
-                    {item.label}
-                    {showBadge ? (
+            <Tabs
+              label="Profile sections"
+              variant="underline"
+              idPrefix="profile-tab"
+              selected={tab}
+              onSelect={selectTab}
+              className="px-5 sm:px-7"
+              options={[
+                { id: 'overview', label: 'Overview', panelId: 'profile-panel-overview' },
+                { id: 'hands', label: 'Hands', panelId: 'profile-panel-hands' },
+                { id: 'theme', label: 'Theme', panelId: 'profile-panel-theme' },
+                { id: 'contests', label: 'Contests', panelId: 'profile-panel-contests' },
+                {
+                  id: 'friends',
+                  label: 'Friends',
+                  panelId: 'profile-panel-friends',
+                  badge:
+                    pendingCount > 0 ? (
                       <PendingCountBadge count={pendingCount} tone="light" />
-                    ) : null}
-                    {active ? (
-                      <span
-                        className="absolute inset-x-0 bottom-0 h-[3px] rounded-t-sm bg-sidebar"
-                        aria-hidden
-                      />
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
+                    ) : null,
+                },
+              ]}
+            />
           </section>
 
           {tab === 'overview' ? (
@@ -444,6 +432,13 @@ function ProfilePageInner() {
                 </Link>
                 <button
                   type="button"
+                  onClick={() => selectTab('hands')}
+                  className="inline-flex items-center justify-center rounded-full border border-sidebar/30 bg-transparent px-4 py-2 text-xs font-display font-bold uppercase tracking-wider text-sidebar transition hover:border-sidebar hover:bg-sidebar/5"
+                >
+                  Hands map
+                </button>
+                <button
+                  type="button"
                   onClick={() => selectTab('contests')}
                   className="inline-flex items-center justify-center rounded-full border border-sidebar/30 bg-transparent px-4 py-2 text-xs font-display font-bold uppercase tracking-wider text-sidebar transition hover:border-sidebar hover:bg-sidebar/5"
                 >
@@ -457,6 +452,18 @@ function ProfilePageInner() {
                   Find friends
                 </button>
               </div>
+            </section>
+          ) : tab === 'hands' ? (
+            <section
+              role="tabpanel"
+              id="profile-panel-hands"
+              aria-labelledby="profile-tab-hands"
+              className="overflow-hidden rounded-2xl border border-sidebar/12 shadow-[0_10px_28px_rgb(29_4_50_/_0.06)]"
+            >
+              <HandsMap
+                handsPlayed={profile.handsPlayed ?? 0}
+                onSettings={() => selectTab('theme')}
+              />
             </section>
           ) : tab === 'theme' ? (
             <section

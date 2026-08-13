@@ -13,6 +13,8 @@ export interface User {
   chipBalance: number;
   /** Contest ranking rating (Whuffies); not spendable. */
   whuffieBalance: number;
+  /** Completed online hands this user was dealt into. */
+  handsPlayed: number;
   createdAt: number;
 }
 

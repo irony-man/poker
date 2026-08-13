@@ -14,6 +14,8 @@ import {
 import { FriendInvitePicker } from '@/components/FriendInvitePicker';
 import { MoneyAmount } from '@/components/CurrencyIcon';
 import { LoadingScreen } from '@/components/LoadingScreen';
+import { Button } from '@/components/ui/Button';
+import { StatusChip } from '@/components/ui/StatusChip';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { contestModeLabel } from '@/lib/contestLabels';
 import { useSession } from '@/lib/store';
@@ -210,12 +212,9 @@ export default function ContestPage() {
     return (
       <div className="lobby-fade-up mx-auto max-w-lg py-12 text-center">
         <p className="text-danger">{error}</p>
-        <Link
-          href="/contests"
-          className="btn-ghost mt-4 inline-flex min-h-10 items-center justify-center px-5 text-xs"
-        >
+        <Button href="/contests" variant="ghost" className="mt-4 inline-flex min-h-10 items-center justify-center px-5 text-xs">
           Back to contests
-        </Link>
+        </Button>
       </div>
     );
   }
@@ -243,17 +242,18 @@ export default function ContestPage() {
       </Link>
 
       <header className="mt-4 w-full sm:mt-5">
-        <p
-          className={`status-chip w-fit ${
+        <StatusChip
+          tone={
             contest.status === 'completed'
-              ? 'border-sidebar/20 bg-sidebar/8 text-sidebar'
+              ? 'neutral'
               : contest.status === 'cancelled'
-                ? 'border-danger/30 bg-danger/10 text-danger'
-                : 'border-sidebar/18 bg-sidebar/6 text-sidebar'
-          }`}
+                ? 'danger'
+                : 'neutral'
+          }
+          className="w-fit"
         >
           {contestModeLabel(contest.mode)} · {statusLabel(contest.status)}
-        </p>
+        </StatusChip>
         <h1 className="mt-3 font-display text-3xl font-bold tracking-tight text-ink-strong sm:text-4xl">
           {contest.name}
         </h1>
@@ -272,58 +272,56 @@ export default function ContestPage() {
       </header>
 
       {error && (
-        <p
-          role="alert"
-          className="mt-4 status-chip border-danger/30 bg-danger/10 text-danger text-xs"
-        >
+        <StatusChip tone="danger" role="alert" className="mt-4 text-xs">
           {error}
-        </p>
+        </StatusChip>
       )}
 
       {(contest.status === 'registering' ||
         (myAssignment?.tableId && contest.status === 'running')) && (
         <div className="mt-5 flex flex-wrap gap-2.5">
           {contest.status === 'registering' && !isRegistered && (
-            <button
+            <Button
               disabled={busy}
               type="button"
-              className="btn-primary min-h-11 px-6"
+              className="min-h-11 px-6"
               onClick={onRegister}
             >
               Register
-            </button>
+            </Button>
           )}
           {contest.status === 'registering' && isRegistered && !isHost && (
-            <button
+            <Button
               disabled={busy}
               type="button"
-              className="btn-ghost min-h-11 px-6"
+              variant="ghost"
+              className="min-h-11 px-6"
               onClick={onUnregister}
             >
               Unregister
-            </button>
+            </Button>
           )}
           {contest.status === 'registering' && isHost && (
-            <button
+            <Button
               disabled={busy}
               type="button"
-              className="btn-primary min-h-11 px-6"
+              className="min-h-11 px-6"
               onClick={onStart}
             >
               Start now
-            </button>
+            </Button>
           )}
           {myAssignment?.tableId && contest.status === 'running' && (
-            <button
+            <Button
               type="button"
-              className="btn-primary min-h-11 px-6"
+              className="min-h-11 px-6"
               onClick={() => {
                 enterMobileFullscreen();
                 router.push(`/table/${myAssignment.tableId}?contest=${contestId}`);
               }}
             >
               Go to table
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -410,18 +408,18 @@ export default function ContestPage() {
               {inviteToast}
             </p>
           )}
-          <button
+          <Button
             type="button"
             disabled={busy || inviteFriendIds.length === 0}
             onClick={() => void onInviteFriends()}
-            className="btn-primary min-h-10 w-full sm:w-auto sm:min-w-[12rem]"
+            className="min-h-10 w-full sm:w-auto sm:min-w-[12rem]"
           >
             {busy
               ? 'Sending…'
               : inviteFriendIds.length > 0
                 ? `Send ${inviteFriendIds.length} invite${inviteFriendIds.length === 1 ? '' : 's'}`
                 : 'Select friends to invite'}
-          </button>
+          </Button>
         </section>
       )}
 

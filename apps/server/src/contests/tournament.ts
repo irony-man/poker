@@ -259,6 +259,46 @@ export class TournamentManager {
     return { ok: true, contest: this.toView(c) };
   }
 
+  /**
+   * Account deletion: refund + drop from registering contests; cancel if they hosted.
+   * Running tables are vacated separately via RoomManager.leaveUser.
+   */
+  async removeUser(userId: string): Promise<void> {
+    this.detachWatcherAll(userId);
+    for (const c of [...this.contests.values()]) {
+      c.pendingInvites = c.pendingInvites.filter((inv) => inv.userId !== userId);
+      if (c.status !== 'registering') continue;
+      if (c.hostUserId === userId) {
+        await this.cancelRegistering(c);
+      } else if (c.entrants.some((e) => e.userId === userId)) {
+        await this.unregister(c.id, userId);
+      }
+    }
+  }
+
+  private async cancelRegistering(c: ContestState): Promise<void> {
+    if (c.status !== 'registering') return;
+    for (const paidUserId of [...c.entryPaid]) {
+      if (isBotUserId(paidUserId)) continue;
+      try {
+        await this.wallet.credit(paidUserId, c.startingStack, 'cash_out', c.id);
+      } catch (err) {
+        console.error('[wallet] contest cancel refund failed', err);
+      }
+    }
+    c.entryPaid.clear();
+    c.status = 'cancelled';
+    c.completedAt = Date.now();
+    this.broadcastEvent(c.id, {
+      type: 'contest_event',
+      contestId: c.id,
+      event: 'contest_cancelled',
+      message: 'Contest cancelled',
+    });
+    this.broadcast(c.id);
+    this.notifyListChange(c);
+  }
+
   async start(
     contestId: string,
     userId: string,

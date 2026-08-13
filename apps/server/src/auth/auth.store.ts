@@ -53,6 +53,7 @@ function normalizeUser(
     tableColorId: clampTableColorId(u.tableColorId),
     chipBalance: normalizeNonNegInt(u.chipBalance, fallbackChips),
     whuffieBalance: normalizeNonNegInt(u.whuffieBalance, fallbackWhuffies),
+    handsPlayed: normalizeNonNegInt(u.handsPlayed, 0),
   };
 }
 
@@ -131,6 +132,7 @@ export class AuthStore {
               (u as User).whuffieBalance,
               STARTING_WHUFFIE_GRANT,
             ),
+            handsPlayed: normalizeNonNegInt((u as User).handsPlayed, 0),
           }),
         );
       }
@@ -150,8 +152,11 @@ export class AuthStore {
 
   private async loadFromPostgres(): Promise<void> {
     if (!this.pool) return;
+    await this.pool.query(
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS hands_played integer NOT NULL DEFAULT 0`,
+    );
     const result = await this.pool.query(
-      `SELECT id, name, username, password_hash, avatar_id, avatar_url, table_color_id, chip_balance, whuffie_balance, created_at
+      `SELECT id, name, username, password_hash, avatar_id, avatar_url, table_color_id, chip_balance, whuffie_balance, hands_played, created_at
        FROM users
        WHERE password_hash IS NOT NULL AND username IS NOT NULL`,
     );
@@ -170,6 +175,7 @@ export class AuthStore {
       table_color_id?: number | null;
       chip_balance?: number | null;
       whuffie_balance?: number | null;
+      hands_played?: number | null;
       created_at: Date | string;
     }[]) {
       const createdAt =
@@ -186,6 +192,7 @@ export class AuthStore {
         tableColorId: clampTableColorId(row.table_color_id ?? 0),
         chipBalance: normalizeNonNegInt(row.chip_balance, STARTING_CHIP_GRANT),
         whuffieBalance: normalizeNonNegInt(row.whuffie_balance, STARTING_WHUFFIE_GRANT),
+        handsPlayed: normalizeNonNegInt(row.hands_played, 0),
         createdAt,
       };
       this.indexUser(user);
@@ -305,8 +312,8 @@ export class AuthStore {
   private async persistUserToPostgres(user: User): Promise<void> {
     if (!this.pool) return;
     await this.pool.query(
-      `INSERT INTO users (id, name, username, username_lower, password_hash, avatar_id, avatar_url, table_color_id, chip_balance, whuffie_balance, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, to_timestamp($11 / 1000.0))
+      `INSERT INTO users (id, name, username, username_lower, password_hash, avatar_id, avatar_url, table_color_id, chip_balance, whuffie_balance, hands_played, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, to_timestamp($12 / 1000.0))
        ON CONFLICT (id) DO UPDATE SET
          name = EXCLUDED.name,
          username = EXCLUDED.username,
@@ -316,7 +323,8 @@ export class AuthStore {
          avatar_url = EXCLUDED.avatar_url,
          table_color_id = EXCLUDED.table_color_id,
          chip_balance = EXCLUDED.chip_balance,
-         whuffie_balance = EXCLUDED.whuffie_balance`,
+         whuffie_balance = EXCLUDED.whuffie_balance,
+         hands_played = EXCLUDED.hands_played`,
       [
         user.id,
         user.name,
@@ -328,6 +336,7 @@ export class AuthStore {
         user.tableColorId,
         user.chipBalance,
         user.whuffieBalance,
+        user.handsPlayed,
         user.createdAt,
       ],
     );
@@ -356,6 +365,7 @@ export class AuthStore {
       tableColorId: 0,
       chipBalance: this.startingGrant(),
       whuffieBalance: this.startingWhuffies(),
+      handsPlayed: 0,
       createdAt: Date.now(),
     };
     this.indexUser(user);
@@ -527,6 +537,40 @@ export class AuthStore {
     return user;
   }
 
+  async incrementHandsPlayed(userId: string): Promise<void> {
+    const user = this.users.get(userId);
+    if (!user) return;
+    user.handsPlayed = (user.handsPlayed ?? 0) + 1;
+    if (this.pool) {
+      await this.pool.query(
+        `UPDATE users SET hands_played = hands_played + 1 WHERE id = $1`,
+        [userId],
+      );
+    } else {
+      await this.persistFile();
+    }
+  }
+
+  async applyHandsPlayedCounts(counts: Map<string, number>): Promise<void> {
+    if (counts.size === 0) return;
+    for (const [userId, n] of counts) {
+      const user = this.users.get(userId);
+      if (!user) continue;
+      user.handsPlayed = Math.max(0, Math.floor(n));
+    }
+    if (this.pool) {
+      for (const [userId, n] of counts) {
+        if (!this.users.has(userId)) continue;
+        await this.pool.query(`UPDATE users SET hands_played = $1 WHERE id = $2`, [
+          Math.max(0, Math.floor(n)),
+          userId,
+        ]);
+      }
+    } else {
+      await this.persistFile();
+    }
+  }
+
   getUserByUsername(username: string): User | undefined {
     const id = this.usernameIndex.get(username.trim().toLowerCase());
     return id ? this.users.get(id) : undefined;
@@ -539,6 +583,33 @@ export class AuthStore {
 
   listUsers(): User[] {
     return [...this.users.values()];
+  }
+
+  /**
+   * Permanently remove an account, its sessions, and WS tickets.
+   * Username becomes available again. Returns the deleted user, or null if missing.
+   */
+  async deleteUser(userId: string): Promise<User | null> {
+    await this.ensureLoaded();
+    const user = this.users.get(userId);
+    if (!user) return null;
+    this.users.delete(userId);
+    this.usernameIndex.delete(user.username.toLowerCase());
+    for (const [token, session] of this.sessions) {
+      if (session.userId === userId) this.sessions.delete(token);
+    }
+    for (const [ticket, wsTicket] of this.tickets) {
+      if (wsTicket.userId === userId) this.tickets.delete(ticket);
+    }
+    if (this.pool) {
+      await this.pool.query(`DELETE FROM auth_sessions WHERE user_id = $1`, [userId]);
+      await this.pool.query(`DELETE FROM auth_tickets WHERE user_id = $1`, [userId]);
+      await this.pool.query(`DELETE FROM table_chip_balances WHERE user_id = $1`, [userId]);
+      await this.pool.query(`DELETE FROM users WHERE id = $1`, [userId]);
+    } else {
+      await this.persistFile();
+    }
+    return user;
   }
 
   issueTicket(userId: string, ttlMs = 7 * 24 * 60 * 60 * 1000, _persist = true): string {
@@ -590,6 +661,7 @@ export class AuthStore {
       tableColorId: 0,
       chipBalance: this.startingGrant(),
       whuffieBalance: this.startingWhuffies(),
+      handsPlayed: 0,
       createdAt: Date.now(),
     };
     this.indexUser(user);

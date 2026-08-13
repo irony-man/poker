@@ -25,6 +25,12 @@ function memoryHistory(): HandHistoryStore {
     async listHands() {
       return [];
     },
+    async countHandsForUser() {
+      return 0;
+    },
+    async countHandsByUser() {
+      return new Map();
+    },
   };
 }
 

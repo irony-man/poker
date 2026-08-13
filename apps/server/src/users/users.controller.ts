@@ -16,6 +16,7 @@ import { CurrentUser } from '../common/session-auth.guard.js';
 import { SessionAuthGuard } from '../common/session-auth.guard.js';
 import type { User } from '../auth/auth.types.js';
 import { AuthService } from '../auth/auth.service.js';
+import { FriendsService } from '../friends/friends.service.js';
 import { ALLOWED_AVATAR_CONTENT_TYPES } from '../storage/storage.constants.js';
 import { StorageService } from '../storage/storage.service.js';
 import { WalletService } from '../wallet/wallet.service.js';
@@ -24,6 +25,7 @@ function toMeProfile(
   user: User,
   chipBalance: number,
   whuffieBalance: number,
+  friendCount: number,
   isAdmin: boolean,
 ) {
   return {
@@ -36,6 +38,8 @@ function toMeProfile(
     createdAt: user.createdAt,
     chipBalance,
     whuffieBalance,
+    handsPlayed: user.handsPlayed ?? 0,
+    friendCount,
     isAdmin,
   };
 }
@@ -46,6 +50,7 @@ export class UsersController {
   constructor(
     private readonly auth: AuthService,
     private readonly wallet: WalletService,
+    private readonly friends: FriendsService,
     private readonly config: ConfigService,
     private readonly storage: StorageService,
   ) {}
@@ -65,10 +70,12 @@ export class UsersController {
     if (!fresh) {
       throw new UnauthorizedException({ error: 'Unknown user' });
     }
+    const friendCount = await this.friends.countFriends(fresh.id);
     return toMeProfile(
       fresh,
       this.wallet.getBalance(user.id),
       this.wallet.getWhuffieBalance(user.id),
+      friendCount,
       this.isAdmin(fresh),
     );
   }
@@ -144,10 +151,12 @@ export class UsersController {
     if (!updated) {
       throw new UnauthorizedException({ error: 'Unknown user' });
     }
+    const friendCount = await this.friends.countFriends(updated.id);
     return toMeProfile(
       updated,
       this.wallet.getBalance(user.id),
       this.wallet.getWhuffieBalance(user.id),
+      friendCount,
       this.isAdmin(updated),
     );
   }

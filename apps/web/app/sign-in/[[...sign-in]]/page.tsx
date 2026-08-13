@@ -5,6 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, Suspense, useState } from 'react';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { LoadingScreen } from '@/components/LoadingScreen';
+import { Button } from '@/components/ui/Button';
+import { StatusChip } from '@/components/ui/StatusChip';
+import { TextField } from '@/components/ui/TextField';
 import { login } from '@/lib/api';
 import { authHref, safeReturnPath } from '@/lib/authRedirect';
 import { loadSavedAvatarId, saveAvatarId } from '@/lib/avatars';
@@ -52,39 +55,35 @@ function SignInForm() {
       </div>
       <form onSubmit={onSubmit}>
         <LobbySplitCard imageSrc="/home-challenge.png" imageAlt="Sit down and sign in to play">
-          <label className="block">
-            <span className="hud-label">Username</span>
-            <input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="hud-input"
-              required
-              minLength={3}
-              maxLength={24}
-              autoComplete="username"
-              pattern="[a-zA-Z0-9_]+"
-            />
-          </label>
-          <label className="block">
-            <span className="hud-label">Password</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="hud-input"
-              required
-              minLength={6}
-              autoComplete="current-password"
-            />
-          </label>
+          <TextField
+            variant="hud"
+            label="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+            minLength={3}
+            maxLength={24}
+            autoComplete="username"
+            pattern="[a-zA-Z0-9_]+"
+          />
+          <TextField
+            variant="hud"
+            label="Password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={6}
+            autoComplete="current-password"
+          />
           {error && (
-            <p role="alert" className="status-chip border-danger/30 bg-danger/10 text-danger text-xs">
+            <StatusChip tone="danger" role="alert" className="text-xs">
               {error}
-            </p>
+            </StatusChip>
           )}
-          <button disabled={busy} type="submit" className="btn-primary min-h-11 w-full">
+          <Button disabled={busy} type="submit" className="min-h-11 w-full">
             {busy ? 'Signing in…' : 'Sign in'}
-          </button>
+          </Button>
           <p className="text-sm text-ink-strong-muted">
             No account?{' '}
             <Link

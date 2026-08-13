@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
+import { Button } from '@/components/ui/Button';
+import { TextField } from '@/components/ui/TextField';
 import { resolveContestInvite, resolveInvite } from '@/lib/api';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { useLobbySession } from '@/lib/useLobbySession';
@@ -64,30 +66,30 @@ export default function JoinPage() {
         }}
       >
         <LobbySplitCard imageSrc="/join-table.png" imageAlt="Enter a table with an invite code">
-          <label className="block">
-            <span className="hud-label">Invite code</span>
-            <input
-              value={invite}
-              onChange={(e) => setInvite(e.target.value.trim())}
-              className="hud-input font-mono tracking-[0.2em]"
-              inputMode="numeric"
-              maxLength={8}
-              required
-              autoComplete="off"
-            />
-          </label>
+          <TextField
+            variant="hud"
+            label="Invite code"
+            value={invite}
+            onChange={(e) => setInvite(e.target.value.trim())}
+            className="font-mono tracking-[0.2em]"
+            inputMode="numeric"
+            maxLength={8}
+            required
+            autoComplete="off"
+          />
           <div className="mt-1 grid grid-cols-2 gap-2.5">
-            <button disabled={busy} type="submit" className="btn-primary min-h-11 w-full">
+            <Button disabled={busy} type="submit" className="min-h-11 w-full">
               Enter table
-            </button>
-            <button
+            </Button>
+            <Button
               disabled={busy || !invite.trim()}
               type="button"
+              variant="ghost"
               onClick={() => void enterInvite('spectate')}
-              className="btn-ghost min-h-11 w-full"
+              className="min-h-11 w-full"
             >
               Spectate
-            </button>
+            </Button>
           </div>
         </LobbySplitCard>
       </form>

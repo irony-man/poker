@@ -61,6 +61,10 @@ export class FriendsService implements OnModuleInit {
     await Promise.all([...unique].map((id) => this.realtime.pushSocial(id)));
   }
 
+  countFriends(userId: string): Promise<number> {
+    return this.store.countFriends(userId);
+  }
+
   async listFriends(userId: string) {
     const list = await this.store.listFriends(this.authStore(), userId);
     return list.map((p) => ({
@@ -105,6 +109,12 @@ export class FriendsService implements OnModuleInit {
       await this.notifyUsers(userId, friendUserId);
     }
     return result;
+  }
+
+  async purgeUser(userId: string) {
+    const friendIds = await this.store.purgeUser(userId);
+    await this.notifyUsers(...friendIds);
+    return friendIds;
   }
 
   async createChallenge(

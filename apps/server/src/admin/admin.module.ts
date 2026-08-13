@@ -2,13 +2,21 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module.js';
 import { AdminGuard } from '../common/admin.guard.js';
 import { ContestsModule } from '../contests/contests.module.js';
+import { FriendsModule } from '../friends/friends.module.js';
 import { RoomsModule } from '../rooms/rooms.module.js';
 import { SiteConfigModule } from '../site-config/site-config.module.js';
 import { WalletModule } from '../wallet/wallet.module.js';
 import { AdminController } from './admin.controller.js';
 
 @Module({
-  imports: [AuthModule, WalletModule, RoomsModule, ContestsModule, SiteConfigModule],
+  imports: [
+    AuthModule,
+    WalletModule,
+    RoomsModule,
+    ContestsModule,
+    FriendsModule,
+    SiteConfigModule,
+  ],
   controllers: [AdminController],
   providers: [AdminGuard],
 })

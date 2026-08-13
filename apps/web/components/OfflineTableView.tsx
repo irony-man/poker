@@ -33,6 +33,7 @@ import { HowToPlayHelp } from './HowToPlayHelp';
 import { isSeatActionLabel } from '@/lib/seatAction';
 import { TableOverflowMenu, type OverflowItem } from './TableOverflowMenu';
 import { TableShell } from './TableShell';
+import { Button, buttonClass } from '@/components/ui/Button';
 import { WinHandModal } from './WinHandModal';
 import { avatarIdFromUserId, loadSavedAvatarId } from '@/lib/avatars';
 import { loadSavedTableColorId } from '@/lib/tableColors';
@@ -525,7 +526,7 @@ export function OfflineTableView({
               className="h-7 w-auto object-contain object-left sm:h-8"
               priority
             />
-            <span className="play-chrome-control cursor-default text-[10px] uppercase tracking-wider text-sidebar/70 hover:border-sidebar/15 hover:bg-white">
+            <span className={buttonClass('chrome', 'md', 'cursor-default text-[10px] uppercase tracking-wider text-sidebar/70 hover:border-sidebar/15 hover:bg-white')}>
               Offline
             </span>
           </div>
@@ -537,9 +538,9 @@ export function OfflineTableView({
           ) : (
             <div className="play-chrome-rail">
               <HowToPlayHelp />
-              <a href="/" className="play-chrome-control no-underline">
+              <Button href="/" variant="chrome" className="no-underline">
                 Lobby
-              </a>
+              </Button>
             </div>
           )}
         </header>

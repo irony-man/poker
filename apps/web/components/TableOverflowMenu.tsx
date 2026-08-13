@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { Button } from '@/components/ui/Button';
 
 export type OverflowItem = {
   id: string;
@@ -58,17 +59,19 @@ export function TableOverflowMenu({
 
   return (
     <div ref={rootRef} className="relative">
-      <button
+      <Button
         type="button"
+        variant="chrome"
+        size="icon"
         aria-expanded={open}
         aria-haspopup="menu"
         aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}
-        className="play-chrome-control-icon text-base leading-none"
+        className="text-base leading-none"
         title="More"
       >
         ⋯
-      </button>
+      </Button>
       {open && (
         <div
           id={panelId}

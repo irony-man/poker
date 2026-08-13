@@ -9,6 +9,7 @@ export interface UserRow {
   avatarId: number;
   chipBalance: number;
   whuffieBalance: number;
+  handsPlayed: number;
   createdAt: Date;
 }
 

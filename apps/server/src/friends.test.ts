@@ -36,6 +36,8 @@ describe('FriendsStore', () => {
 
     const aliceFriends = await friends.listFriends(auth, 'user-alice');
     expect(aliceFriends.map((f) => f.userId)).toContain('user-bob');
+    expect(await friends.countFriends('user-alice')).toBe(1);
+    expect(await friends.countFriends('user-bob')).toBe(1);
   });
 
   it('removes a friendship', async () => {
@@ -50,6 +52,24 @@ describe('FriendsStore', () => {
 
     const missing = await friends.removeFriend('user-alice', 'user-bob');
     expect(missing.ok).toBe(false);
+  });
+
+  it('purges friendships, requests, groups, and challenges for a deleted user', async () => {
+    const req = await friends.sendRequest('user-alice', 'user-bob');
+    await friends.respondRequest('user-bob', req.id, true);
+    const reqCarol = await friends.sendRequest('user-alice', 'user-carol');
+    await friends.respondRequest('user-carol', reqCarol.id, true);
+    await friends.createGroup(auth, 'user-alice', 'Crew', ['user-bob']);
+    await friends.createChallenge('user-alice', 'user-bob', 'table-1', '1111');
+    await friends.sendRequest('user-bob', 'user-carol');
+
+    const friendIds = await friends.purgeUser('user-alice');
+    expect(friendIds.sort()).toEqual(['user-bob', 'user-carol']);
+    expect(await friends.listFriends(auth, 'user-bob')).toEqual([]);
+    expect(await friends.listFriends(auth, 'user-carol')).toEqual([]);
+    expect(await friends.listIncomingRequests(auth, 'user-carol')).toHaveLength(1);
+    expect(await friends.listGroups(auth, 'user-bob')).toEqual([]);
+    expect(await friends.listPendingChallenges(auth, 'user-bob')).toHaveLength(0);
   });
 
   it('creates challenges only between friends', async () => {

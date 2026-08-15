@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/Button';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { contestModeLabel } from '@/lib/contestLabels';
+import { readStoredSession } from '@/lib/session';
 import { useSession } from '@/lib/store';
 import { useContestSocket } from '@/lib/ws';
 
@@ -63,28 +64,15 @@ export default function ContestPage() {
 
   useEffect(() => {
     if (sessionToken && ticket) return;
-    const raw = localStorage.getItem('felt-session');
-    if (!raw) return;
-    try {
-      const s = JSON.parse(raw) as {
-        userId: string;
-        name: string;
-        ticket: string;
-        sessionToken?: string;
-        username?: string;
-      };
-      if (s.userId && s.ticket) {
-        setSession({
-          userId: s.userId,
-          name: s.name,
-          ticket: s.ticket,
-          sessionToken: s.sessionToken,
-          username: s.username,
-        });
-      }
-    } catch {
-      /* ignore */
-    }
+    const s = readStoredSession();
+    if (!s) return;
+    setSession({
+      userId: s.userId,
+      name: s.name,
+      ticket: s.ticket,
+      sessionToken: s.sessionToken,
+      username: s.username,
+    });
   }, [sessionToken, ticket, setSession]);
 
   // One-shot REST bootstrap before/while WS connects (cold load + unauth).

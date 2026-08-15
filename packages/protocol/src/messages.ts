@@ -366,6 +366,10 @@ export const SoundUploadUrlBodySchema = z.object({
   contentLength: z.number().int().positive().max(5 * 1024 * 1024),
 });
 
+/** App chrome look: Classic (v1) or Arcade (v2). Independent of table felt color. */
+export const UiThemeSchema = z.enum(['v1', 'v2']);
+export type UiTheme = z.infer<typeof UiThemeSchema>;
+
 export const UpdateMeBodySchema = z
   .object({
     /** Preset profile picture index (0–7). */
@@ -374,14 +378,17 @@ export const UpdateMeBodySchema = z
     avatarUrl: z.string().url().max(512).nullable().optional(),
     /** Preset table felt theme index (0–8). */
     tableColorId: z.number().int().min(0).max(8).optional(),
+    /** App chrome look: Classic (v1) or Arcade (v2). */
+    uiTheme: UiThemeSchema.optional(),
   })
   .refine(
     (body) =>
       body.avatarId !== undefined ||
       body.avatarUrl !== undefined ||
-      body.tableColorId !== undefined,
+      body.tableColorId !== undefined ||
+      body.uiTheme !== undefined,
     {
-      message: 'At least one of avatarId, avatarUrl, or tableColorId is required',
+      message: 'At least one of avatarId, avatarUrl, tableColorId, or uiTheme is required',
     },
   );
 

@@ -89,7 +89,14 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`h-full ${body.variable}`}>
+    <html lang="en" className={`h-full ${body.variable}`} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('pokr-ui-theme');if(t==='v2')document.documentElement.setAttribute('data-ui-theme','v2');}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className="flex h-dvh flex-col overflow-hidden">
         <AppChrome>{children}</AppChrome>
       </body>

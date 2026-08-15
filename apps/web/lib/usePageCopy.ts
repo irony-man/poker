@@ -1,31 +1,31 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { fetchPublicSite } from '@/lib/api';
+import { fetchPublicSite, type PagesByTheme, type PagesCopy } from '@/lib/api';
 import {
   DEFAULT_PAGES_COPY,
   type PageCopy,
   type PageCopyKey,
-  type PagesCopy,
 } from '@/lib/pageCopy';
+import { pickPagesForTheme } from '@/lib/themeCopy';
+import { useUiTheme } from '@/lib/useUiTheme';
 
 /**
  * Loads title/subtitle for a lobby page from /api/site (admin “Pages”).
- * Renders defaults immediately; updates when config arrives.
+ * Renders defaults immediately; updates when config arrives or the look changes.
  */
 export function usePageCopy(key: PageCopyKey): PageCopy {
-  const [copy, setCopy] = useState<PageCopy>(() => DEFAULT_PAGES_COPY[key]);
+  const uiTheme = useUiTheme();
+  const [pagesByTheme, setPagesByTheme] = useState<Partial<PagesByTheme> | undefined>();
+  const [pages, setPages] = useState<PagesCopy | undefined>();
 
   useEffect(() => {
     let cancelled = false;
     void fetchPublicSite()
       .then((data) => {
         if (cancelled) return;
-        const pages = data.pages as PagesCopy | undefined;
-        const next = pages?.[key];
-        if (next?.title && next?.subtitle) {
-          setCopy({ title: next.title, subtitle: next.subtitle });
-        }
+        setPagesByTheme(data.pagesByTheme);
+        setPages(data.pages);
       })
       .catch(() => {
         /* keep defaults */
@@ -33,7 +33,12 @@ export function usePageCopy(key: PageCopyKey): PageCopy {
     return () => {
       cancelled = true;
     };
-  }, [key]);
+  }, []);
 
-  return copy;
+  const bag = pickPagesForTheme(pagesByTheme, pages, uiTheme);
+  const next = bag?.[key];
+  if (next?.title && next?.subtitle) {
+    return { title: next.title, subtitle: next.subtitle };
+  }
+  return DEFAULT_PAGES_COPY[key];
 }

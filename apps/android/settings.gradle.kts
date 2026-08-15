@@ -20,7 +20,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "felt-android"
+rootProject.name = "pokr-android"
 
 include(":app")
 include(":core:common")

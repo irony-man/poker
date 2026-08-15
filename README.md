@@ -1,4 +1,4 @@
-# Felt — Texas Hold'em
+# Pokr — Texas Hold'em
 
 Private No-Limit Texas Hold'em for casual home games.
 

@@ -8,7 +8,10 @@ import { SiteConfigStore } from './site-config.store.js';
 import type {
   BotGroup,
   BotSeatingConfig,
+  CopyTheme,
+  HomeFeaturesByTheme,
   HomeLandingFeature,
+  PagesByTheme,
   PagesCopy,
   RoomSettings,
   SiteAnnouncement,
@@ -50,12 +53,20 @@ export class SiteConfigService implements OnModuleInit {
     return this.store.getEconomy();
   }
 
-  getHomeFeatures(): HomeLandingFeature[] {
-    return this.store.getHomeFeatures();
+  getHomeFeatures(theme?: CopyTheme): HomeLandingFeature[] {
+    return this.store.getHomeFeatures(theme);
   }
 
-  getPages(): PagesCopy {
-    return this.store.getPages();
+  getHomeFeaturesByTheme(): HomeFeaturesByTheme {
+    return this.store.getHomeFeaturesByTheme();
+  }
+
+  getPages(theme?: CopyTheme): PagesCopy {
+    return this.store.getPages(theme);
+  }
+
+  getPagesByTheme(): PagesByTheme {
+    return this.store.getPagesByTheme();
   }
 
   getRoomSettings(): RoomSettings {
@@ -91,12 +102,15 @@ export class SiteConfigService implements OnModuleInit {
     return this.store.setEconomy(partial);
   }
 
-  setHomeFeatures(features: HomeLandingFeature[]): Promise<HomeLandingFeature[]> {
-    return this.store.setHomeFeatures(features);
+  setHomeFeatures(
+    features: HomeLandingFeature[],
+    theme?: CopyTheme,
+  ): Promise<HomeLandingFeature[]> {
+    return this.store.setHomeFeatures(features, theme);
   }
 
-  setPages(pages: PagesCopy): Promise<PagesCopy> {
-    return this.store.setPages(pages);
+  setPages(pages: PagesCopy, theme?: CopyTheme): Promise<PagesCopy> {
+    return this.store.setPages(pages, theme);
   }
 
   setRoomSettings(partial: Partial<RoomSettings>): Promise<RoomSettings> {

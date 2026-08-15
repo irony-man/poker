@@ -8,6 +8,8 @@ export interface User {
   avatarUrl: string | null;
   /** Viewer table felt theme preset (0–8). */
   tableColorId: number;
+  /** App chrome look: Classic (`v1`) or Arcade (`v2`). */
+  uiTheme: 'v1' | 'v2';
   passwordHash: string;
   /** Global play-money balance (chips). */
   chipBalance: number;

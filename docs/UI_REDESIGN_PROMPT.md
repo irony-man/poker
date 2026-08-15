@@ -1,4 +1,4 @@
-# UI Redesign Prompt for Felt
+# UI Redesign Prompt for Pokr
 
 A ready-to-paste prompt for driving a full cross-platform visual redesign (Next.js web +
 Compose Android) with an agent.
@@ -19,7 +19,7 @@ reviewable checkpoint so the direction can be corrected before it compounds.
 ## The prompt
 
 ```markdown
-You are redesigning the UI of Felt, a real-time Texas Hold'em poker app. This is a
+You are redesigning the UI of Pokr, a real-time Texas Hold'em poker app. This is a
 visual redesign, not a polish pass: new palette, type, table treatment, and motion
 language. Both client surfaces must land on one coherent design language.
 
@@ -46,17 +46,17 @@ Web — `apps/web`, Next.js 15 App Router, React 19, Tailwind 3.4, zustand, fram
 - State: `lib/store.ts` (zustand), socket in `lib/ws.ts`
 
 Android — `apps/android`, Jetpack Compose + Material3, Hilt, Gradle modules.
-- Design system: `core/designsystem/.../Components.kt` (`FeltColors`, `HudPanel`,
+- Design system: `core/designsystem/.../Components.kt` (`PokrColors`, `HudPanel`,
   `FeltPrimaryButton`, `FeltGhostButton`, `FeltChoiceChip`, `CasinoChip`, `FeltLabel`,
   `StatusChip`, `FeltTableSurface`, `PotDisplay`, `DealerPotZone`),
-  `FeltTheme.kt`, `TableUi.kt` (`SeatChip`), `PlayingCard.kt`, `TurnTimer.kt`,
+  `PokrTheme.kt`, `TableUi.kt` (`SeatChip`), `PlayingCard.kt`, `TurnTimer.kt`,
   `FloatingActionPanel.kt`, `WinHandDialog.kt`, `Orientation.kt`
 - Features: `feature/lobby`, `feature/table`, `feature/offline`
 
 ## Known problems to fix (verified, not speculative)
 
 1. Three competing token sources that have drifted. Web `:root` in `globals.css`, web
-   `tailwind.config.ts`, and the Android `FeltColors` object. Panel is `#0d1218` on web
+   `tailwind.config.ts`, and the Android `PokrColors` object. Panel is `#0d1218` on web
    but `#12161E` on Android; cream is `#e8eef5` vs `#F5F0E6`.
 2. No shared typography. Web loads Oxanium/Rajdhani through a Google Fonts `@import`
    in `globals.css`; Android uses `FontFamily.SansSerif`, with a stray `FontFamily.Serif`
@@ -100,7 +100,7 @@ to pick one.
 Implement the chosen direction as a single canonical token set, then mirror it:
 - Web: canonical values in `app/globals.css` `:root`, referenced by
   `tailwind.config.ts` so the two cannot drift.
-- Android: rewrite `FeltColors` and `FeltTheme.kt` with byte-identical hex values.
+- Android: rewrite `PokrColors` and `PokrTheme.kt` with byte-identical hex values.
 - Move web fonts from the CSS `@import` to `next/font`; add the matching families to
   Android via `res/font` so both platforms share the type ramp. Remove the stray
   `FontFamily.Serif` in `PotDisplay`.

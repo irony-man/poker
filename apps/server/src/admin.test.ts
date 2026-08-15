@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -115,6 +115,72 @@ describe('site config + runtime economy', () => {
     const reloaded = new SiteConfigStore(dir);
     await reloaded.init();
     expect(reloaded.getPages().host.title).toBe('Host now');
+  });
+
+  it('seeds arcade copy from classic when by-theme keys are missing', async () => {
+    await writeFile(
+      path.join(dir, 'site-config.json'),
+      JSON.stringify({
+        pages: {
+          host: { title: 'Custom Classic Host', subtitle: 'Classic host blurb' },
+        },
+        homeFeatures: [
+          {
+            title: 'Classic Contests',
+            body: 'Classic body',
+            cta: 'Go',
+            href: '/contests',
+            image: '/home-knockout.png',
+            imageAlt: 'alt',
+            imageFirst: true,
+          },
+        ],
+      }),
+    );
+    const seeded = new SiteConfigStore(dir);
+    await seeded.init();
+    expect(seeded.getPages('v1').host.title).toBe('Custom Classic Host');
+    expect(seeded.getPages('v2').host.title).toBe('Custom Classic Host');
+    expect(seeded.getHomeFeatures('v1')[0]!.title).toBe('Classic Contests');
+    expect(seeded.getHomeFeatures('v2')[0]!.title).toBe('Classic Contests');
+  });
+
+  it('theme-scoped pages PATCH does not overwrite the other look', async () => {
+    const classic = site.getPages('v1');
+    classic.host = { title: 'Classic host', subtitle: 'Classic blurb' };
+    await site.setPages(classic, 'v1');
+
+    const arcade = site.getPages('v2');
+    arcade.host = { title: 'Arcade host', subtitle: 'Arcade blurb' };
+    await site.setPages(arcade, 'v2');
+
+    expect(site.getPages('v1').host.title).toBe('Classic host');
+    expect(site.getPages('v2').host.title).toBe('Arcade host');
+    expect(site.getPages().host.title).toBe('Classic host');
+
+    const reloaded = new SiteConfigStore(dir);
+    await reloaded.init();
+    expect(reloaded.getPages('v1').host.title).toBe('Classic host');
+    expect(reloaded.getPages('v2').host.title).toBe('Arcade host');
+  });
+
+  it('theme-scoped home-features PATCH does not overwrite the other look', async () => {
+    const classic = site.getHomeFeatures('v1');
+    classic[0] = { ...classic[0]!, title: 'Classic Contests' };
+    await site.setHomeFeatures(classic, 'v1');
+
+    const arcade = site.getHomeFeatures('v2');
+    arcade[0] = { ...arcade[0]!, title: 'Arcade Contests' };
+    await site.setHomeFeatures(arcade, 'v2');
+
+    expect(site.getHomeFeatures('v1')[0]!.title).toBe('Classic Contests');
+    expect(site.getHomeFeatures('v2')[0]!.title).toBe('Arcade Contests');
+    expect(site.getHomeFeatures()[0]!.title).toBe('Classic Contests');
+
+    const reloaded = new SiteConfigStore(dir);
+    await reloaded.init();
+    expect(reloaded.getHomeFeatures('v1')[0]!.title).toBe('Classic Contests');
+    expect(reloaded.getHomeFeatures('v2')[0]!.title).toBe('Arcade Contests');
   });
 
   it('persists room inactivity minutes', async () => {

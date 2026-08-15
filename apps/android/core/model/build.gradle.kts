@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.felt.android.core.model"
+    namespace = "com.pokr.android.core.model"
     compileSdk = 36
 
     defaultConfig {

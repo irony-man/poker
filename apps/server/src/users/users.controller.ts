@@ -37,6 +37,7 @@ function toMeProfile(
     avatarId: user.avatarId,
     avatarUrl: user.avatarUrl,
     tableColorId: user.tableColorId,
+    uiTheme: user.uiTheme ?? 'v1',
     createdAt: user.createdAt,
     chipBalance,
     whuffieBalance,
@@ -160,6 +161,9 @@ export class UsersController {
     }
     if (parsed.data.tableColorId !== undefined) {
       updated = await this.auth.setTableColorId(user.id, parsed.data.tableColorId);
+    }
+    if (parsed.data.uiTheme !== undefined) {
+      updated = await this.auth.setUiTheme(user.id, parsed.data.uiTheme);
     }
     if (!updated) {
       throw new UnauthorizedException({ error: 'Unknown user' });

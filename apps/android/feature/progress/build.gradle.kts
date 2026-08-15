@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "com.felt.android.feature.progress"
+    namespace = "com.pokr.android.feature.progress"
     compileSdk = 36
 
     defaultConfig {

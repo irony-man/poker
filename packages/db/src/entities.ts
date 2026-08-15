@@ -40,6 +40,10 @@ export class UserEntity {
   @Column({ name: 'table_color_id', type: 'int', default: 0 })
   tableColorId!: number;
 
+  /** App chrome look: Classic (`v1`) or Arcade (`v2`). */
+  @Column({ name: 'ui_theme', type: 'text', default: 'v1' })
+  uiTheme!: string;
+
   @Column({ name: 'chip_balance', type: 'int', default: 10_000 })
   chipBalance!: number;
 

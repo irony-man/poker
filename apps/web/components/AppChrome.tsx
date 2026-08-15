@@ -21,6 +21,7 @@ import { useSession } from '@/lib/store';
 import { fetchMe, logout as apiLogout } from '@/lib/api';
 import { loadSavedAvatarId, saveAvatarId } from '@/lib/avatars';
 import { saveTableColorId } from '@/lib/tableColors';
+import { loadSavedUiTheme, saveUiTheme } from '@/lib/uiTheme';
 import { attachPlayFullscreen } from '@/lib/mobileFullscreen';
 import { ConfirmProvider } from '@/components/ConfirmPopover';
 import { SiteAnnouncementBanner } from '@/components/SiteAnnouncement';
@@ -142,6 +143,10 @@ export function AppChrome({ children }: { children: ReactNode }) {
   }, [sessionName, sessionToken]);
 
   useEffect(() => {
+    saveUiTheme(loadSavedUiTheme());
+  }, []);
+
+  useEffect(() => {
     if (!sessionToken) {
       setChipBalance(null);
       setWhuffieBalance(null);
@@ -157,6 +162,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
         setIsAdmin(Boolean(me.isAdmin));
         saveAvatarId(me.avatarId);
         saveTableColorId(me.tableColorId);
+        saveUiTheme(me.uiTheme);
       })
       .catch(() => {
         /* ignore — balance shown when available */

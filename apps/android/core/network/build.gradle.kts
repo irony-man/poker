@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.felt.android.core.network"
+    namespace = "com.pokr.android.core.network"
     compileSdk = 36
 
     defaultConfig {
@@ -30,6 +30,7 @@ kotlin {
 dependencies {
     implementation(project(":core:common"))
     implementation(project(":core:model"))
+    implementation(project(":core:datastore"))
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
     implementation(libs.retrofit)

@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "com.felt.android.feature.offline"
+    namespace = "com.pokr.android.feature.offline"
     compileSdk = 36
 
     defaultConfig {

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#1B5E20</color>
-    <color name="felt_ink">#07090D</color>
+    <color name="ic_launcher_background">#1D0432</color>
+    <color name="pokr_ink">#0E0618</color>
+    <color name="pokr_mushroom">#E6D9D7</color>
 </resources>

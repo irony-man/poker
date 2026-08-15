@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "com.felt.android.feature.table"
+    namespace = "com.pokr.android.feature.table"
     compileSdk = 36
 
     defaultConfig {

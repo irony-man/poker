@@ -25,12 +25,26 @@ export interface HomeLandingFeature {
   imageFirst: boolean;
 }
 
+export type CopyTheme = 'v1' | 'v2';
+
+export interface PagesByTheme {
+  v1: PagesCopy;
+  v2: PagesCopy;
+}
+
+export interface HomeFeaturesByTheme {
+  v1: HomeLandingFeature[];
+  v2: HomeLandingFeature[];
+}
+
 export type { PageCopy, PageCopyKey, PagesCopy } from '@/lib/pageCopy';
 
 export async function fetchPublicSite(): Promise<{
   announcement: SiteAnnouncement;
   homeFeatures?: HomeLandingFeature[];
   pages?: PagesCopy;
+  homeFeaturesByTheme?: HomeFeaturesByTheme;
+  pagesByTheme?: PagesByTheme;
   botGroups?: PublicBotGroup[];
   sounds?: TableSoundsConfig;
 }> {
@@ -40,6 +54,8 @@ export async function fetchPublicSite(): Promise<{
     announcement: SiteAnnouncement;
     homeFeatures?: HomeLandingFeature[];
     pages?: PagesCopy;
+    homeFeaturesByTheme?: HomeFeaturesByTheme;
+    pagesByTheme?: PagesByTheme;
     botGroups?: PublicBotGroup[];
     sounds?: TableSoundsConfig;
   }>;

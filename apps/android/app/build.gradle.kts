@@ -10,11 +10,11 @@ plugins {
 }
 
 android {
-    namespace = "com.felt.android"
+    namespace = "com.pokr.android"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.felt.android"
+        applicationId = "com.pokr.android"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
@@ -25,21 +25,21 @@ android {
             if (f.exists()) f.inputStream().use(::load)
         }
         // Override in local.properties for a local anonymous server, e.g.:
-        // felt.api.url=http://10.0.2.2:4000
-        // felt.ws.url=ws://10.0.2.2:4000/ws
-        val feltApiUrl = localProps.getProperty(
-            "felt.api.url",
+        // pokr.api.url=http://10.0.2.2:4000
+        // pokr.ws.url=ws://10.0.2.2:4000/ws
+        val pokrApiUrl = localProps.getProperty(
+            "pokr.api.url",
             "https://felt-server-hgi4.onrender.com",
         )
-        val feltWsUrl = localProps.getProperty(
-            "felt.ws.url",
+        val pokrWsUrl = localProps.getProperty(
+            "pokr.ws.url",
             "wss://felt-server-hgi4.onrender.com/ws",
         )
-        buildConfigField("String", "FELT_API_URL", "\"$feltApiUrl\"")
-        buildConfigField("String", "FELT_WS_URL", "\"$feltWsUrl\"")
+        buildConfigField("String", "POKR_API_URL", "\"$pokrApiUrl\"")
+        buildConfigField("String", "POKR_WS_URL", "\"$pokrWsUrl\"")
 
-        val feltWebUrl = localProps.getProperty("felt.web.url", "http://localhost:3000")
-        buildConfigField("String", "FELT_WEB_URL", "\"$feltWebUrl\"")
+        val pokrWebUrl = localProps.getProperty("pokr.web.url", "http://localhost:3000")
+        buildConfigField("String", "POKR_WEB_URL", "\"$pokrWebUrl\"")
     }
 
     buildFeatures {

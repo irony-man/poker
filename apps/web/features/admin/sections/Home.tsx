@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/Button';
 import { TextAreaField, TextField } from '@/components/ui/TextField';
-import type { HomeLandingFeature } from '@/lib/api';
+import type { CopyTheme, HomeLandingFeature } from '@/lib/api';
+import { CopyThemeSwitcher } from '../CopyThemeSwitcher';
 import { MAX_HOME_BLOCKS } from '../tabs';
 import { ADMIN_SAVE_BTN, SaveBar, Section } from '../ui';
 
@@ -16,9 +17,12 @@ export const BLANK_HOME_BLOCK: HomeLandingFeature = {
 
 export function HomeSection({
   homeFeatures,
+  copyTheme,
   openBlocks,
   busy,
   busyKey,
+  onCopyTheme,
+  onCopyFromOther,
   onToggleBlock,
   onUpdate,
   onMove,
@@ -27,9 +31,12 @@ export function HomeSection({
   onSave,
 }: {
   homeFeatures: HomeLandingFeature[];
+  copyTheme: CopyTheme;
   openBlocks: Record<number, boolean>;
   busy: boolean;
   busyKey: string | null;
+  onCopyTheme: (theme: CopyTheme) => void;
+  onCopyFromOther: () => void;
   onToggleBlock: (index: number) => void;
   onUpdate: (index: number, patch: Partial<HomeLandingFeature>) => void;
   onMove: (index: number, dir: -1 | 1) => void;
@@ -37,10 +44,11 @@ export function HomeSection({
   onAdd: () => void;
   onSave: (e: React.FormEvent) => void;
 }) {
+  const lookLabel = copyTheme === 'v2' ? 'Arcade' : 'Classic';
   return (
     <Section
       title="Home landing"
-      description="Feature blocks on the home page — title, body, CTA, link, and image. Add or remove blocks as needed."
+      description="Feature blocks on the home page — title, body, CTA, link, and image. Classic and Arcade can differ. Copy from the other look, then save."
       action={
         <Button
           variant="ghost"
@@ -52,6 +60,12 @@ export function HomeSection({
         </Button>
       }
     >
+      <CopyThemeSwitcher
+        value={copyTheme}
+        disabled={busy}
+        onChange={onCopyTheme}
+        onCopyFromOther={onCopyFromOther}
+      />
       <form onSubmit={onSave} className="space-y-3">
         {homeFeatures.map((feature, index) => {
           const open = openBlocks[index] ?? false;
@@ -171,7 +185,7 @@ export function HomeSection({
             </div>
           );
         })}
-        <SaveBar hint={`${homeFeatures.length}/${MAX_HOME_BLOCKS} blocks`}>
+        <SaveBar hint={`${homeFeatures.length}/${MAX_HOME_BLOCKS} blocks · ${lookLabel}`}>
           <Button
             variant="ghost"
             disabled={busy || homeFeatures.length >= MAX_HOME_BLOCKS}
@@ -181,7 +195,7 @@ export function HomeSection({
             Add block
           </Button>
           <Button type="submit" disabled={busy} className={ADMIN_SAVE_BTN}>
-            {busyKey === 'home' ? 'Saving…' : 'Save home landing'}
+            {busyKey === 'home' ? 'Saving…' : `Save ${lookLabel} landing`}
           </Button>
         </SaveBar>
       </form>

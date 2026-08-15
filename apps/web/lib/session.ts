@@ -1,5 +1,7 @@
 /** Client session helpers for username/password auth. */
 
+export const POKR_SESSION_KEY = 'pokr-session';
+/** @deprecated Prefer POKR_SESSION_KEY; kept for reading legacy storage. */
 export const FELT_SESSION_KEY = 'felt-session';
 
 /** Locally persisted auth fields (balances are refreshed from the server). */
@@ -16,7 +18,8 @@ export type StoredSession = {
 
 export function readStoredSession(): StoredSession | null {
   if (typeof localStorage === 'undefined') return null;
-  const raw = localStorage.getItem(FELT_SESSION_KEY);
+  const raw =
+    localStorage.getItem(POKR_SESSION_KEY) ?? localStorage.getItem(FELT_SESSION_KEY);
   if (!raw) return null;
   try {
     const s = JSON.parse(raw) as Partial<StoredSession>;
@@ -38,10 +41,12 @@ export function readStoredSession(): StoredSession | null {
 
 export function writeStoredSession(session: StoredSession): void {
   if (typeof localStorage === 'undefined') return;
-  localStorage.setItem(FELT_SESSION_KEY, JSON.stringify(session));
+  localStorage.setItem(POKR_SESSION_KEY, JSON.stringify(session));
+  localStorage.removeItem(FELT_SESSION_KEY);
 }
 
 export function clearStoredSession(): void {
   if (typeof localStorage === 'undefined') return;
+  localStorage.removeItem(POKR_SESSION_KEY);
   localStorage.removeItem(FELT_SESSION_KEY);
 }

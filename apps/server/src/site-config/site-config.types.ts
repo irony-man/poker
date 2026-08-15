@@ -201,11 +201,21 @@ export interface TableSoundsConfig {
   urls: Partial<Record<TableSoundKind, string>>;
 }
 
+/** Classic vs Arcade content bags. Independent of table felt color. */
+export type CopyTheme = 'v1' | 'v2';
+
+export type PagesByTheme = { v1: PagesCopy; v2: PagesCopy };
+export type HomeFeaturesByTheme = { v1: HomeLandingFeature[]; v2: HomeLandingFeature[] };
+
 export interface SiteConfigPayload {
   announcement: SiteAnnouncement;
   economy: EconomySnapshot;
+  /** Alias of `homeFeaturesByTheme.v1` for older `/api/site` clients. */
   homeFeatures: HomeLandingFeature[];
+  /** Alias of `pagesByTheme.v1` for older `/api/site` clients. */
   pages: PagesCopy;
+  pagesByTheme: PagesByTheme;
+  homeFeaturesByTheme: HomeFeaturesByTheme;
   rooms: RoomSettings;
   botGroups: BotGroup[];
   sounds: TableSoundsConfig;
@@ -347,12 +357,34 @@ export function defaultTableSounds(): TableSoundsConfig {
   };
 }
 
+export function clampCopyTheme(value: unknown): CopyTheme {
+  return value === 'v2' ? 'v2' : 'v1';
+}
+
+export function cloneHomeFeatures(features: HomeLandingFeature[]): HomeLandingFeature[] {
+  return features.map((f) => ({ ...f }));
+}
+
+export function clonePagesCopy(pages: PagesCopy): PagesCopy {
+  return clonePages(pages);
+}
+
 export function defaultSiteConfig(): SiteConfigPayload {
+  const homeFeatures = cloneHomeFeatures(DEFAULT_HOME_FEATURES);
+  const pages = clonePages(DEFAULT_PAGES_COPY);
   return {
     announcement: { enabled: false, text: '' },
     economy: defaultEconomy(),
-    homeFeatures: DEFAULT_HOME_FEATURES.map((f) => ({ ...f })),
-    pages: clonePages(DEFAULT_PAGES_COPY),
+    homeFeatures,
+    pages,
+    homeFeaturesByTheme: {
+      v1: cloneHomeFeatures(homeFeatures),
+      v2: cloneHomeFeatures(homeFeatures),
+    },
+    pagesByTheme: {
+      v1: clonePages(pages),
+      v2: clonePages(pages),
+    },
     rooms: { inactivityMinutes: DEFAULT_ROOM_INACTIVITY_MINUTES },
     botGroups: DEFAULT_BOT_GROUPS.map((g) => cloneBotGroup(g)),
     sounds: defaultTableSounds(),
@@ -596,6 +628,43 @@ export function normalizePagesCopy(raw: unknown): PagesCopy {
   return out;
 }
 
+/** Missing by-theme keys seed both looks from Classic (`v1Fallback`). */
+export function normalizeHomeFeaturesByTheme(
+  raw: unknown,
+  v1Fallback: HomeLandingFeature[],
+): HomeFeaturesByTheme {
+  const seed = cloneHomeFeatures(v1Fallback);
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { v1: seed, v2: cloneHomeFeatures(seed) };
+  }
+  const o = raw as Record<string, unknown>;
+  const hasV1 = o.v1 !== undefined;
+  const hasV2 = o.v2 !== undefined;
+  if (!hasV1 && !hasV2) {
+    return { v1: seed, v2: cloneHomeFeatures(seed) };
+  }
+  const v1 = hasV1 ? normalizeHomeFeatures(o.v1) : seed;
+  const v2 = hasV2 ? normalizeHomeFeatures(o.v2) : cloneHomeFeatures(v1);
+  return { v1, v2 };
+}
+
+/** Missing by-theme keys seed both looks from Classic (`v1Fallback`). */
+export function normalizePagesByTheme(raw: unknown, v1Fallback: PagesCopy): PagesByTheme {
+  const seed = clonePages(v1Fallback);
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { v1: seed, v2: clonePages(seed) };
+  }
+  const o = raw as Record<string, unknown>;
+  const hasV1 = o.v1 !== undefined;
+  const hasV2 = o.v2 !== undefined;
+  if (!hasV1 && !hasV2) {
+    return { v1: seed, v2: clonePages(seed) };
+  }
+  const v1 = hasV1 ? normalizePagesCopy(o.v1) : seed;
+  const v2 = hasV2 ? normalizePagesCopy(o.v2) : clonePages(v1);
+  return { v1, v2 };
+}
+
 export function normalizeRoomSettings(raw: unknown): RoomSettings {
   const defaults: RoomSettings = { inactivityMinutes: DEFAULT_ROOM_INACTIVITY_MINUTES };
   if (!raw || typeof raw !== 'object') return defaults;
@@ -676,6 +745,9 @@ export function normalizeSiteConfig(raw: unknown): SiteConfigPayload {
 
   const pages = o.pages !== undefined ? normalizePagesCopy(o.pages) : defaults.pages;
 
+  const homeFeaturesByTheme = normalizeHomeFeaturesByTheme(o.homeFeaturesByTheme, homeFeatures);
+  const pagesByTheme = normalizePagesByTheme(o.pagesByTheme, pages);
+
   const rooms = o.rooms !== undefined ? normalizeRoomSettings(o.rooms) : defaults.rooms;
 
   const botGroups =
@@ -683,5 +755,15 @@ export function normalizeSiteConfig(raw: unknown): SiteConfigPayload {
 
   const sounds = o.sounds !== undefined ? normalizeTableSounds(o.sounds) : defaults.sounds;
 
-  return { announcement, economy, homeFeatures, pages, rooms, botGroups, sounds };
+  return {
+    announcement,
+    economy,
+    homeFeatures: cloneHomeFeatures(homeFeaturesByTheme.v1),
+    pages: clonePages(pagesByTheme.v1),
+    homeFeaturesByTheme,
+    pagesByTheme,
+    rooms,
+    botGroups,
+    sounds,
+  };
 }

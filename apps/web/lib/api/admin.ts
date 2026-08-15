@@ -1,7 +1,14 @@
 import type { ContestView } from '@poker/protocol';
 import type { PagesCopy } from '@/lib/pageCopy';
 import { API_URL, authedFetch, parseError, sessionHeaders } from './client';
-import type { HomeLandingFeature, SiteAnnouncement, SiteEconomy } from './site';
+import type {
+  CopyTheme,
+  HomeFeaturesByTheme,
+  HomeLandingFeature,
+  PagesByTheme,
+  SiteAnnouncement,
+  SiteEconomy,
+} from './site';
 import type { TableSoundKind, TableSoundsConfig } from './sounds';
 
 export interface AdminUserRow {
@@ -79,35 +86,47 @@ export interface PublicBotGroup {
 export async function fetchAdminHomeFeatures(sessionToken: string) {
   return authedFetch('/api/admin/home-features', { sessionToken }) as Promise<{
     features: HomeLandingFeature[];
+    featuresByTheme?: HomeFeaturesByTheme;
   }>;
 }
 
 export async function patchAdminHomeFeatures(
   sessionToken: string,
   features: HomeLandingFeature[],
-): Promise<{ features: HomeLandingFeature[] }> {
+  theme: CopyTheme = 'v1',
+): Promise<{
+  features: HomeLandingFeature[];
+  theme?: CopyTheme;
+  featuresByTheme?: HomeFeaturesByTheme;
+}> {
   return authedFetch('/api/admin/home-features', {
     sessionToken,
     method: 'PATCH',
-    body: { features },
-  }) as Promise<{ features: HomeLandingFeature[] }>;
+    body: { features, theme },
+  }) as Promise<{
+    features: HomeLandingFeature[];
+    theme?: CopyTheme;
+    featuresByTheme?: HomeFeaturesByTheme;
+  }>;
 }
 
 export async function fetchAdminPages(sessionToken: string) {
   return authedFetch('/api/admin/pages', { sessionToken }) as Promise<{
     pages: PagesCopy;
+    pagesByTheme?: PagesByTheme;
   }>;
 }
 
 export async function patchAdminPages(
   sessionToken: string,
   pages: PagesCopy,
-): Promise<{ pages: PagesCopy }> {
+  theme: CopyTheme = 'v1',
+): Promise<{ pages: PagesCopy; theme?: CopyTheme; pagesByTheme?: PagesByTheme }> {
   return authedFetch('/api/admin/pages', {
     sessionToken,
     method: 'PATCH',
-    body: { pages },
-  }) as Promise<{ pages: PagesCopy }>;
+    body: { pages, theme },
+  }) as Promise<{ pages: PagesCopy; theme?: CopyTheme; pagesByTheme?: PagesByTheme }>;
 }
 
 export async function fetchAdminOverview(sessionToken: string) {
@@ -117,6 +136,8 @@ export async function fetchAdminOverview(sessionToken: string) {
     announcement: SiteAnnouncement;
     liveTables: number;
     liveContests: number;
+    pagesByTheme?: PagesByTheme;
+    homeFeaturesByTheme?: HomeFeaturesByTheme;
   }>;
 }
 

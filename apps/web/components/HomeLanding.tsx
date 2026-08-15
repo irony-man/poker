@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { HomeAuthFooter } from '@/components/HomeAuthFooter';
 import { imageAssetUrl, resolvePublicImage } from '@/lib/assets';
-import { fetchPublicSite, type HomeLandingFeature } from '@/lib/api';
+import { fetchPublicSite, type HomeFeaturesByTheme, type HomeLandingFeature } from '@/lib/api';
+import { pickHomeFeaturesForTheme } from '@/lib/themeCopy';
+import { useUiTheme } from '@/lib/useUiTheme';
 
 /** Defaults match original static HomeLanding blocks (used until /api/site loads). */
 export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
@@ -57,16 +59,19 @@ export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
 ];
 
 export function HomeLanding() {
-  const [features, setFeatures] = useState<HomeLandingFeature[]>(DEFAULT_HOME_FEATURES);
+  const uiTheme = useUiTheme();
+  const [homeFeatures, setHomeFeatures] = useState<HomeLandingFeature[] | undefined>();
+  const [homeFeaturesByTheme, setHomeFeaturesByTheme] = useState<
+    Partial<HomeFeaturesByTheme> | undefined
+  >();
 
   useEffect(() => {
     let cancelled = false;
     void fetchPublicSite()
       .then((data) => {
         if (cancelled) return;
-        if (Array.isArray(data.homeFeatures) && data.homeFeatures.length > 0) {
-          setFeatures(data.homeFeatures);
-        }
+        setHomeFeatures(data.homeFeatures);
+        setHomeFeaturesByTheme(data.homeFeaturesByTheme);
       })
       .catch(() => {
         /* keep defaults */
@@ -75,6 +80,9 @@ export function HomeLanding() {
       cancelled = true;
     };
   }, []);
+
+  const features =
+    pickHomeFeaturesForTheme(homeFeaturesByTheme, homeFeatures, uiTheme) ?? DEFAULT_HOME_FEATURES;
 
   return (
     <div className="mx-auto w-full mt-32 max-w-5xl pb-12 pt-2 sm:pb-20 sm:pt-4 lg:pt-6">

@@ -3,6 +3,9 @@ import path from 'node:path';
 import type { Queryable } from '../database/queryable.js';
 import type { EconomySnapshot } from '../wallet/wallet.constants.js';
 import {
+  clampCopyTheme,
+  cloneHomeFeatures,
+  clonePagesCopy,
   defaultSiteConfig,
   normalizeBotGroups,
   normalizeHomeFeatures,
@@ -14,7 +17,10 @@ import {
   resolveBotSeatingConfig,
   type BotGroup,
   type BotSeatingConfig,
+  type CopyTheme,
+  type HomeFeaturesByTheme,
   type HomeLandingFeature,
+  type PagesByTheme,
   type PagesCopy,
   type RoomSettings,
   type SiteAnnouncement,
@@ -102,13 +108,15 @@ export class SiteConfigStore {
   }
 
   getSnapshot(): SiteConfigPayload {
+    const homeFeaturesByTheme = this.cloneHomeFeaturesByTheme();
+    const pagesByTheme = this.clonePagesByTheme();
     return {
       announcement: { ...this.cache.announcement },
       economy: { ...this.cache.economy },
-      homeFeatures: this.cache.homeFeatures.map((f) => ({ ...f })),
-      pages: Object.fromEntries(
-        Object.entries(this.cache.pages).map(([k, v]) => [k, { ...v }]),
-      ) as PagesCopy,
+      homeFeatures: cloneHomeFeatures(homeFeaturesByTheme.v1),
+      pages: clonePagesCopy(pagesByTheme.v1),
+      homeFeaturesByTheme,
+      pagesByTheme,
       rooms: { ...this.cache.rooms },
       botGroups: this.cache.botGroups.map((g) => ({
         id: g.id,
@@ -125,6 +133,20 @@ export class SiteConfigStore {
     };
   }
 
+  private cloneHomeFeaturesByTheme(): HomeFeaturesByTheme {
+    return {
+      v1: cloneHomeFeatures(this.cache.homeFeaturesByTheme.v1),
+      v2: cloneHomeFeatures(this.cache.homeFeaturesByTheme.v2),
+    };
+  }
+
+  private clonePagesByTheme(): PagesByTheme {
+    return {
+      v1: clonePagesCopy(this.cache.pagesByTheme.v1),
+      v2: clonePagesCopy(this.cache.pagesByTheme.v2),
+    };
+  }
+
   getAnnouncement(): SiteAnnouncement {
     return { ...this.cache.announcement };
   }
@@ -133,14 +155,22 @@ export class SiteConfigStore {
     return { ...this.cache.economy };
   }
 
-  getHomeFeatures(): HomeLandingFeature[] {
-    return this.cache.homeFeatures.map((f) => ({ ...f }));
+  getHomeFeatures(theme?: CopyTheme): HomeLandingFeature[] {
+    const t = clampCopyTheme(theme);
+    return cloneHomeFeatures(this.cache.homeFeaturesByTheme[t]);
   }
 
-  getPages(): PagesCopy {
-    return Object.fromEntries(
-      Object.entries(this.cache.pages).map(([k, v]) => [k, { ...v }]),
-    ) as PagesCopy;
+  getHomeFeaturesByTheme(): HomeFeaturesByTheme {
+    return this.cloneHomeFeaturesByTheme();
+  }
+
+  getPages(theme?: CopyTheme): PagesCopy {
+    const t = clampCopyTheme(theme);
+    return clonePagesCopy(this.cache.pagesByTheme[t]);
+  }
+
+  getPagesByTheme(): PagesByTheme {
+    return this.clonePagesByTheme();
   }
 
   getRoomSettings(): RoomSettings {
@@ -199,24 +229,35 @@ export class SiteConfigStore {
     return this.getEconomy();
   }
 
-  async setHomeFeatures(features: HomeLandingFeature[]): Promise<HomeLandingFeature[]> {
+  async setHomeFeatures(
+    features: HomeLandingFeature[],
+    theme: CopyTheme = 'v1',
+  ): Promise<HomeLandingFeature[]> {
     await this.ensureLoaded();
+    const t = clampCopyTheme(theme);
+    const homeFeaturesByTheme = this.cloneHomeFeaturesByTheme();
+    homeFeaturesByTheme[t] = normalizeHomeFeatures(features);
     this.cache = {
       ...this.cache,
-      homeFeatures: normalizeHomeFeatures(features),
+      homeFeaturesByTheme,
+      homeFeatures: cloneHomeFeatures(homeFeaturesByTheme.v1),
     };
     await this.serialized(() => this.persist());
-    return this.getHomeFeatures();
+    return this.getHomeFeatures(t);
   }
 
-  async setPages(pages: PagesCopy): Promise<PagesCopy> {
+  async setPages(pages: PagesCopy, theme: CopyTheme = 'v1'): Promise<PagesCopy> {
     await this.ensureLoaded();
+    const t = clampCopyTheme(theme);
+    const pagesByTheme = this.clonePagesByTheme();
+    pagesByTheme[t] = normalizePagesCopy(pages);
     this.cache = {
       ...this.cache,
-      pages: normalizePagesCopy(pages),
+      pagesByTheme,
+      pages: clonePagesCopy(pagesByTheme.v1),
     };
     await this.serialized(() => this.persist());
-    return this.getPages();
+    return this.getPages(t);
   }
 
   async setRoomSettings(partial: Partial<RoomSettings>): Promise<RoomSettings> {

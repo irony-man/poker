@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "com.felt.android.feature.lobby"
+    namespace = "com.pokr.android.feature.lobby"
     compileSdk = 36
 
     defaultConfig {
@@ -38,6 +38,7 @@ dependencies {
     implementation(project(":core:network"))
     implementation(project(":core:datastore"))
     implementation(project(":core:designsystem"))
+    implementation(project(":feature:progress"))
 
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

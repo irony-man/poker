@@ -6,6 +6,7 @@ import { nanoid } from 'nanoid';
 import type { Queryable } from '../database/queryable.js';
 import { avatarIdFromUserId, clampAvatarId } from '../avatars.js';
 import { clampTableColorId } from '../table-colors.js';
+import { clampUiTheme } from '../ui-theme.js';
 import {
   defaultEconomy,
   type EconomyProvider,
@@ -51,6 +52,7 @@ function normalizeUser(
     avatarId: clampAvatarId(u.avatarId),
     avatarUrl: u.avatarUrl ?? null,
     tableColorId: clampTableColorId(u.tableColorId),
+    uiTheme: clampUiTheme(u.uiTheme),
     chipBalance: normalizeNonNegInt(u.chipBalance, fallbackChips),
     whuffieBalance: normalizeNonNegInt(u.whuffieBalance, fallbackWhuffies),
     handsPlayed: normalizeNonNegInt(u.handsPlayed, 0),
@@ -127,6 +129,7 @@ export class AuthStore {
           normalizeUser({
             ...u,
             tableColorId: (u as User).tableColorId ?? 0,
+            uiTheme: clampUiTheme((u as User).uiTheme),
             chipBalance: normalizeNonNegInt((u as User).chipBalance, STARTING_CHIP_GRANT),
             whuffieBalance: normalizeNonNegInt(
               (u as User).whuffieBalance,
@@ -155,8 +158,11 @@ export class AuthStore {
     await this.pool.query(
       `ALTER TABLE users ADD COLUMN IF NOT EXISTS hands_played integer NOT NULL DEFAULT 0`,
     );
+    await this.pool.query(
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS ui_theme text NOT NULL DEFAULT 'v1'`,
+    );
     const result = await this.pool.query(
-      `SELECT id, name, username, password_hash, avatar_id, avatar_url, table_color_id, chip_balance, whuffie_balance, hands_played, created_at
+      `SELECT id, name, username, password_hash, avatar_id, avatar_url, table_color_id, ui_theme, chip_balance, whuffie_balance, hands_played, created_at
        FROM users
        WHERE password_hash IS NOT NULL AND username IS NOT NULL`,
     );
@@ -173,6 +179,7 @@ export class AuthStore {
       avatar_id: number;
       avatar_url?: string | null;
       table_color_id?: number | null;
+      ui_theme?: string | null;
       chip_balance?: number | null;
       whuffie_balance?: number | null;
       hands_played?: number | null;
@@ -190,6 +197,7 @@ export class AuthStore {
         avatarId: clampAvatarId(row.avatar_id ?? 0),
         avatarUrl: row.avatar_url ?? null,
         tableColorId: clampTableColorId(row.table_color_id ?? 0),
+        uiTheme: clampUiTheme(row.ui_theme),
         chipBalance: normalizeNonNegInt(row.chip_balance, STARTING_CHIP_GRANT),
         whuffieBalance: normalizeNonNegInt(row.whuffie_balance, STARTING_WHUFFIE_GRANT),
         handsPlayed: normalizeNonNegInt(row.hands_played, 0),
@@ -312,8 +320,8 @@ export class AuthStore {
   private async persistUserToPostgres(user: User): Promise<void> {
     if (!this.pool) return;
     await this.pool.query(
-      `INSERT INTO users (id, name, username, username_lower, password_hash, avatar_id, avatar_url, table_color_id, chip_balance, whuffie_balance, hands_played, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, to_timestamp($12 / 1000.0))
+      `INSERT INTO users (id, name, username, username_lower, password_hash, avatar_id, avatar_url, table_color_id, ui_theme, chip_balance, whuffie_balance, hands_played, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, to_timestamp($13 / 1000.0))
        ON CONFLICT (id) DO UPDATE SET
          name = EXCLUDED.name,
          username = EXCLUDED.username,
@@ -322,6 +330,7 @@ export class AuthStore {
          avatar_id = EXCLUDED.avatar_id,
          avatar_url = EXCLUDED.avatar_url,
          table_color_id = EXCLUDED.table_color_id,
+         ui_theme = EXCLUDED.ui_theme,
          chip_balance = EXCLUDED.chip_balance,
          whuffie_balance = EXCLUDED.whuffie_balance,
          hands_played = EXCLUDED.hands_played`,
@@ -334,6 +343,7 @@ export class AuthStore {
         user.avatarId,
         user.avatarUrl,
         user.tableColorId,
+        user.uiTheme,
         user.chipBalance,
         user.whuffieBalance,
         user.handsPlayed,
@@ -363,6 +373,7 @@ export class AuthStore {
       avatarId: avatarId !== undefined ? clampAvatarId(avatarId) : avatarIdFromUserId(id),
       avatarUrl: null,
       tableColorId: 0,
+      uiTheme: 'v1',
       chipBalance: this.startingGrant(),
       whuffieBalance: this.startingWhuffies(),
       handsPlayed: 0,
@@ -537,6 +548,21 @@ export class AuthStore {
     return user;
   }
 
+  async setUiTheme(userId: string, uiTheme: string): Promise<User | null> {
+    const user = this.users.get(userId);
+    if (!user) return null;
+    user.uiTheme = clampUiTheme(uiTheme);
+    if (this.pool) {
+      await this.pool.query(`UPDATE users SET ui_theme = $1 WHERE id = $2`, [
+        user.uiTheme,
+        userId,
+      ]);
+    } else {
+      await this.persistFile();
+    }
+    return user;
+  }
+
   async incrementHandsPlayed(userId: string): Promise<void> {
     const user = this.users.get(userId);
     if (!user) return;
@@ -659,6 +685,7 @@ export class AuthStore {
       avatarId: clampAvatarId(avatarId),
       avatarUrl: null,
       tableColorId: 0,
+      uiTheme: 'v1',
       chipBalance: this.startingGrant(),
       whuffieBalance: this.startingWhuffies(),
       handsPlayed: 0,

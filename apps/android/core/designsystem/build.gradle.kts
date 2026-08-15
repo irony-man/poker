@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.felt.android.core.designsystem"
+    namespace = "com.pokr.android.core.designsystem"
     compileSdk = 36
 
     defaultConfig {

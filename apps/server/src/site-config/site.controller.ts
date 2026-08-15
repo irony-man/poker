@@ -16,6 +16,8 @@ export class SiteController {
       },
       homeFeatures: this.site.getHomeFeatures(),
       pages: this.site.getPages(),
+      homeFeaturesByTheme: this.site.getHomeFeaturesByTheme(),
+      pagesByTheme: this.site.getPagesByTheme(),
       botGroups: this.site.getBotGroups().map((g) => ({
         id: g.id,
         name: g.name,

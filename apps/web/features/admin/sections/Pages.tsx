@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/Button';
 import { TextAreaField, TextField } from '@/components/ui/TextField';
+import type { CopyTheme } from '@/lib/api';
 import {
   DEFAULT_PAGES_COPY,
   PAGE_COPY_GROUPS,
@@ -9,6 +10,7 @@ import {
   type PageCopyKey,
   type PagesCopy,
 } from '@/lib/pageCopy';
+import { CopyThemeSwitcher } from '../CopyThemeSwitcher';
 import {
   ADMIN_SAVE_BTN,
   DetailHeader,
@@ -21,17 +23,23 @@ import {
 
 export function PagesSection({
   pagesCopy,
+  copyTheme,
   openPage,
   busy,
   busyKey,
+  onCopyTheme,
+  onCopyFromOther,
   onOpenPage,
   onPagesCopy,
   onSave,
 }: {
   pagesCopy: PagesCopy;
+  copyTheme: CopyTheme;
   openPage: string | null;
   busy: boolean;
   busyKey: string | null;
+  onCopyTheme: (theme: CopyTheme) => void;
+  onCopyFromOther: () => void;
   onOpenPage: (key: string | null) => void;
   onPagesCopy: (key: keyof PagesCopy, patch: { title?: string; subtitle?: string }) => void;
   onSave: (e: React.FormEvent) => void;
@@ -42,12 +50,19 @@ export function PagesSection({
       : PAGE_COPY_KEYS[0]!;
   const row = pagesCopy[selectedKey] ?? DEFAULT_PAGES_COPY[selectedKey];
   const isFooter = selectedKey === 'homeAuthFooter';
+  const lookLabel = copyTheme === 'v2' ? 'Arcade' : 'Classic';
 
   return (
     <Section
       title="Page text"
-      description="Titles and subtitles for lobby and auth pages. Changes appear after save (clients refresh within ~30s or on next visit)."
+      description="Titles and subtitles for lobby and auth pages. Classic and Arcade can differ. Copy from the other look, then save. Players see the bag that matches their selected look."
     >
+      <CopyThemeSwitcher
+        value={copyTheme}
+        disabled={busy}
+        onChange={onCopyTheme}
+        onCopyFromOther={onCopyFromOther}
+      />
       <form onSubmit={onSave} className="space-y-4">
         <SplitPane
           sidebarLabel="Pages"
@@ -99,9 +114,9 @@ export function PagesSection({
             />
           </div>
         </SplitPane>
-        <SaveBar hint="Players see this copy on the matching lobby or auth screen.">
+        <SaveBar hint={`Players on ${lookLabel} see this copy on the matching lobby or auth screen.`}>
           <Button type="submit" disabled={busy} className={ADMIN_SAVE_BTN}>
-            {busyKey === 'pages' ? 'Saving…' : 'Save page text'}
+            {busyKey === 'pages' ? 'Saving…' : `Save ${lookLabel} page text`}
           </Button>
         </SaveBar>
       </form>

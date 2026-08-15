@@ -25,6 +25,7 @@ import {
   saveTableColorId,
   tableColorPreset,
 } from '@/lib/tableColors';
+import { clampUiTheme, saveUiTheme, type UiTheme } from '@/lib/uiTheme';
 import { MoneyAmount } from '@/components/CurrencyIcon';
 import { HandsMap } from '@/features/progress/HandsMap';
 import { Button } from '@/components/ui/Button';
@@ -75,6 +76,8 @@ function ProfilePageInner() {
   const [savingAvatar, setSavingAvatar] = useState(false);
   const [draftTableColorId, setDraftTableColorId] = useState(0);
   const [savingTableColor, setSavingTableColor] = useState(false);
+  const [draftUiTheme, setDraftUiTheme] = useState<UiTheme>('v1');
+  const [savingUiTheme, setSavingUiTheme] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
   const token = sessionToken ?? readStoredSession()?.sessionToken ?? null;
@@ -114,6 +117,8 @@ function ProfilePageInner() {
       setDraftAvatarId(me.avatarId);
       setDraftTableColorId(clampTableColorId(me.tableColorId));
       saveTableColorId(me.tableColorId);
+      setDraftUiTheme(clampUiTheme(me.uiTheme));
+      saveUiTheme(me.uiTheme);
       setChipBalance(me.chipBalance);
       setWhuffieBalance(me.whuffieBalance);
       setFriendCount(me.friendCount ?? 0);
@@ -168,6 +173,7 @@ function ProfilePageInner() {
       setFriendCount(me.friendCount ?? 0);
       saveAvatarId(me.avatarId);
       saveTableColorId(me.tableColorId);
+      saveUiTheme(me.uiTheme);
       const stored = readStoredSession();
       if (stored) {
         writeStoredSession({ ...stored, avatarId: me.avatarId });
@@ -210,6 +216,7 @@ function ProfilePageInner() {
       setWhuffieBalance(me.whuffieBalance);
       setFriendCount(me.friendCount ?? 0);
       saveTableColorId(me.tableColorId);
+      saveUiTheme(me.uiTheme);
       setEditingAvatar(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not upload avatar');
@@ -242,6 +249,36 @@ function ProfilePageInner() {
       setError(err instanceof Error ? err.message : 'Could not update table color');
     } finally {
       setSavingTableColor(false);
+    }
+  };
+
+  const saveLook = async (next: UiTheme) => {
+    if (!token || !profile || savingUiTheme) return;
+    const clamped = clampUiTheme(next);
+    if (clamped === clampUiTheme(profile.uiTheme)) {
+      setDraftUiTheme(clamped);
+      saveUiTheme(clamped);
+      return;
+    }
+    const previous = draftUiTheme;
+    setDraftUiTheme(clamped);
+    saveUiTheme(clamped);
+    setSavingUiTheme(true);
+    setError(null);
+    try {
+      const me = await updateMe(token, { uiTheme: clamped });
+      setProfile(me);
+      setChipBalance(me.chipBalance);
+      setWhuffieBalance(me.whuffieBalance);
+      setFriendCount(me.friendCount ?? 0);
+      saveUiTheme(me.uiTheme);
+      setDraftUiTheme(clampUiTheme(me.uiTheme));
+    } catch (err) {
+      setDraftUiTheme(previous);
+      saveUiTheme(previous);
+      setError(err instanceof Error ? err.message : 'Could not update look');
+    } finally {
+      setSavingUiTheme(false);
     }
   };
 
@@ -493,6 +530,107 @@ function ProfilePageInner() {
               className="surface-card-lg"
             >
               <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+                <div className="min-w-0">
+                  <h3 className="font-heading-section">App look</h3>
+                  <p className="mt-1.5 max-w-lg font-prose-muted">
+                    Classic or Arcade. Only you see this. Gameplay stays the same.
+                  </p>
+                </div>
+                {savingUiTheme ? (
+                  <p className="text-xs font-medium text-ink-strong-muted" role="status">
+                    Saving…
+                  </p>
+                ) : null}
+              </div>
+
+              <div
+                className="mt-5 grid grid-cols-2 gap-3"
+                role="radiogroup"
+                aria-label="App look"
+              >
+                {(
+                  [
+                    {
+                      id: 'v1' as const,
+                      label: 'Classic',
+                      hint: 'Purple / mushroom',
+                      swatchClass: 'bg-[#E6D9D7]',
+                      accentClass: 'bg-[#1D0432]',
+                    },
+                    {
+                      id: 'v2' as const,
+                      label: 'Arcade',
+                      hint: 'Go Old School',
+                      swatchClass: 'bg-[#FDE93D]',
+                      accentClass: 'bg-[#5B21B6]',
+                    },
+                  ] as const
+                ).map((look) => {
+                  const selected = draftUiTheme === look.id;
+                  return (
+                    <button
+                      key={look.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      aria-label={look.label}
+                      disabled={savingUiTheme}
+                      onClick={() => void saveLook(look.id)}
+                      className={`flex flex-col overflow-hidden rounded-2xl border-2 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar disabled:opacity-60 ${
+                        selected
+                          ? 'border-sidebar bg-sidebar/[0.06] shadow-[0_0_0_1px_rgb(29_4_50_/_0.1)]'
+                          : 'border-sidebar/10 bg-mushroom/30 hover:border-sidebar/22'
+                      }`}
+                    >
+                      <span
+                        className={`relative block h-16 w-full ${look.swatchClass} ${look.id === 'v2' ? 'border-b-2 border-black' : ''}`}
+                        aria-hidden
+                      >
+                        {look.id === 'v2' ? (
+                          <span
+                            className="absolute inset-0 opacity-40"
+                            style={{
+                              backgroundImage:
+                                'linear-gradient(to right, rgb(0 0 0 / 0.12) 1px, transparent 1px), linear-gradient(to bottom, rgb(0 0 0 / 0.12) 1px, transparent 1px)',
+                              backgroundSize: '10px 10px',
+                            }}
+                          />
+                        ) : null}
+                        <span
+                          className={`absolute bottom-2 left-2 h-7 w-12 rounded-md ${look.accentClass} ${
+                            look.id === 'v2' ? 'border-2 border-black shadow-[2px_2px_0_0_#000]' : ''
+                          }`}
+                        />
+                      </span>
+                      <span className="flex items-center justify-between gap-2 px-3 py-2.5">
+                        <span>
+                          <span className="block text-sm font-semibold text-sidebar">
+                            {look.label}
+                          </span>
+                          <span className="block text-[11px] text-ink-strong-muted">
+                            {look.hint}
+                          </span>
+                        </span>
+                        {selected ? (
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-sidebar text-mushroom">
+                            <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none" aria-hidden>
+                              <path
+                                d="M3.5 8.5 6.5 11.5 12.5 4.5"
+                                stroke="currentColor"
+                                strokeWidth="2.25"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </span>
+                        ) : null}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-8 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
                 <div className="min-w-0">
                   <h3 className="font-heading-section">
                     Table theme

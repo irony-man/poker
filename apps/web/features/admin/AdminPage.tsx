@@ -36,7 +36,10 @@ import {
   type AdminTableRow,
   type AdminUserRow,
   type BotGroup,
+  type CopyTheme,
+  type HomeFeaturesByTheme,
   type HomeLandingFeature,
+  type PagesByTheme,
   type SiteAnnouncement,
   type SiteEconomy,
   type TableSoundKind,
@@ -76,6 +79,55 @@ import { SoundsSection } from './sections/Sounds';
 import { GamesSection } from './sections/Games';
 import { HandsSection } from './sections/Hands';
 
+function cloneHomeBag(list: HomeLandingFeature[]): HomeLandingFeature[] {
+  return list.map((f) => ({ ...f }));
+}
+
+function defaultHomeBags(): HomeFeaturesByTheme {
+  const seed = DEFAULT_HOME_FEATURES.map((f) => ({ ...f }));
+  return { v1: seed, v2: seed.map((f) => ({ ...f })) };
+}
+
+function defaultPagesBags(): PagesByTheme {
+  return { v1: clonePagesCopy(), v2: clonePagesCopy() };
+}
+
+function otherCopyTheme(theme: CopyTheme): CopyTheme {
+  return theme === 'v2' ? 'v1' : 'v2';
+}
+
+function bagsFromHomeResponse(home: {
+  features?: HomeLandingFeature[];
+  featuresByTheme?: HomeFeaturesByTheme;
+}): HomeFeaturesByTheme {
+  const v1 = cloneHomeBag(
+    home.featuresByTheme?.v1?.length
+      ? home.featuresByTheme.v1
+      : home.features?.length
+        ? home.features
+        : DEFAULT_HOME_FEATURES.map((f) => ({ ...f })),
+  );
+  const v2 = cloneHomeBag(
+    home.featuresByTheme?.v2?.length ? home.featuresByTheme.v2 : v1,
+  );
+  return { v1, v2 };
+}
+
+function bagsFromPagesResponse(pages: {
+  pages?: PagesCopy;
+  pagesByTheme?: PagesByTheme;
+}): PagesByTheme {
+  const v1 = pages.pagesByTheme?.v1
+    ? clonePagesCopy(pages.pagesByTheme.v1)
+    : pages.pages
+      ? clonePagesCopy(pages.pages)
+      : clonePagesCopy();
+  const v2 = pages.pagesByTheme?.v2
+    ? clonePagesCopy(pages.pagesByTheme.v2)
+    : clonePagesCopy(v1);
+  return { v1, v2 };
+}
+
 function AdminPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -110,10 +162,11 @@ function AdminPageInner() {
   const [soundUploadDisabled, setSoundUploadDisabled] = useState(false);
   const soundUploadKindRef = useRef<TableSoundKind | null>(null);
   const soundFileInputRef = useRef<HTMLInputElement>(null);
-  const [homeFeatures, setHomeFeatures] = useState<HomeLandingFeature[]>(
-    () => DEFAULT_HOME_FEATURES.map((f) => ({ ...f })),
-  );
-  const [pagesCopy, setPagesCopy] = useState<PagesCopy>(() => clonePagesCopy());
+  const [homeCopyTheme, setHomeCopyTheme] = useState<CopyTheme>('v1');
+  const [pagesCopyTheme, setPagesCopyTheme] = useState<CopyTheme>('v1');
+  const [homeFeaturesByTheme, setHomeFeaturesByTheme] =
+    useState<HomeFeaturesByTheme>(defaultHomeBags);
+  const [pagesByTheme, setPagesByTheme] = useState<PagesByTheme>(defaultPagesBags);
   const [botGroups, setBotGroups] = useState<BotGroup[]>(() => {
     const g = emptyBotGroup();
     g.id = 'classic';
@@ -199,12 +252,8 @@ function AdminPageInner() {
         enabled: soundCfg.enabled !== false,
         urls: { ...DEFAULT_TABLE_SOUND_URLS, ...soundCfg.urls },
       });
-      setHomeFeatures(
-        home.features?.length
-          ? home.features
-          : DEFAULT_HOME_FEATURES.map((f) => ({ ...f })),
-      );
-      setPagesCopy(pages.pages ? clonePagesCopy(pages.pages) : clonePagesCopy());
+      setHomeFeaturesByTheme(bagsFromHomeResponse(home));
+      setPagesByTheme(bagsFromPagesResponse(pages));
       const groups = (bots.groups?.length
         ? bots.groups
         : [
@@ -292,8 +341,16 @@ function AdminPageInner() {
     e.preventDefault();
     if (!token) return;
     await withBusy('home', async () => {
-      const res = await patchAdminHomeFeatures(token, homeFeatures);
-      setHomeFeatures(res.features);
+      const res = await patchAdminHomeFeatures(
+        token,
+        homeFeaturesByTheme[homeCopyTheme],
+        homeCopyTheme,
+      );
+      setHomeFeaturesByTheme((bags) =>
+        res.featuresByTheme
+          ? bagsFromHomeResponse(res)
+          : { ...bags, [homeCopyTheme]: cloneHomeBag(res.features) },
+      );
       flash('Home landing saved');
     });
   }
@@ -302,8 +359,12 @@ function AdminPageInner() {
     e.preventDefault();
     if (!token) return;
     await withBusy('pages', async () => {
-      const res = await patchAdminPages(token, pagesCopy);
-      setPagesCopy(clonePagesCopy(res.pages));
+      const res = await patchAdminPages(token, pagesByTheme[pagesCopyTheme], pagesCopyTheme);
+      setPagesByTheme((bags) =>
+        res.pagesByTheme
+          ? bagsFromPagesResponse(res)
+          : { ...bags, [pagesCopyTheme]: clonePagesCopy(res.pages) },
+      );
       flash('Page text saved');
     });
   }
@@ -577,38 +638,62 @@ function AdminPageInner() {
   }
 
   function updateHomeFeature(index: number, patch: Partial<HomeLandingFeature>) {
-    setHomeFeatures((list) =>
-      list.map((f, i) => (i === index ? { ...f, ...patch } : f)),
-    );
+    setHomeFeaturesByTheme((bags) => ({
+      ...bags,
+      [homeCopyTheme]: bags[homeCopyTheme].map((f, i) =>
+        i === index ? { ...f, ...patch } : f,
+      ),
+    }));
   }
 
   function addHomeFeature() {
-    setHomeFeatures((list) => {
-      if (list.length >= MAX_HOME_BLOCKS) return list;
+    setHomeFeaturesByTheme((bags) => {
+      const list = bags[homeCopyTheme];
+      if (list.length >= MAX_HOME_BLOCKS) return bags;
       const next = [...list, { ...BLANK_HOME_BLOCK }];
       setOpenBlocks((m) => ({ ...m, [next.length - 1]: true }));
-      return next;
+      return { ...bags, [homeCopyTheme]: next };
     });
   }
 
   function removeHomeFeature(index: number) {
-    setHomeFeatures((list) => {
-      if (list.length <= 1) return list;
-      return list.filter((_, i) => i !== index);
+    setHomeFeaturesByTheme((bags) => {
+      const list = bags[homeCopyTheme];
+      if (list.length <= 1) return bags;
+      return { ...bags, [homeCopyTheme]: list.filter((_, i) => i !== index) };
     });
     setOpenBlocks({});
   }
 
   function moveHomeFeature(index: number, dir: -1 | 1) {
-    setHomeFeatures((list) => {
+    setHomeFeaturesByTheme((bags) => {
+      const list = bags[homeCopyTheme];
       const j = index + dir;
-      if (j < 0 || j >= list.length) return list;
+      if (j < 0 || j >= list.length) return bags;
       const next = list.slice();
       const tmp = next[index]!;
       next[index] = next[j]!;
       next[j] = tmp;
-      return next;
+      return { ...bags, [homeCopyTheme]: next };
     });
+  }
+
+  function copyHomeFromOther() {
+    const from = otherCopyTheme(homeCopyTheme);
+    setHomeFeaturesByTheme((bags) => ({
+      ...bags,
+      [homeCopyTheme]: cloneHomeBag(bags[from]),
+    }));
+    flash(`Copied from ${from === 'v2' ? 'Arcade' : 'Classic'} — save to publish`);
+  }
+
+  function copyPagesFromOther() {
+    const from = otherCopyTheme(pagesCopyTheme);
+    setPagesByTheme((bags) => ({
+      ...bags,
+      [pagesCopyTheme]: clonePagesCopy(bags[from]),
+    }));
+    flash(`Copied from ${from === 'v2' ? 'Arcade' : 'Classic'} — save to publish`);
   }
 
   async function searchUsers(e?: React.FormEvent) {
@@ -822,10 +907,13 @@ function AdminPageInner() {
 
         {tab === 'home' ? (
           <HomeSection
-            homeFeatures={homeFeatures}
+            homeFeatures={homeFeaturesByTheme[homeCopyTheme]}
+            copyTheme={homeCopyTheme}
             openBlocks={openBlocks}
             busy={busy}
             busyKey={busyKey}
+            onCopyTheme={setHomeCopyTheme}
+            onCopyFromOther={copyHomeFromOther}
             onToggleBlock={(index) =>
               setOpenBlocks((m) => ({ ...m, [index]: !(m[index] ?? false) }))
             }
@@ -839,15 +927,21 @@ function AdminPageInner() {
 
         {tab === 'pages' ? (
           <PagesSection
-            pagesCopy={pagesCopy}
+            pagesCopy={pagesByTheme[pagesCopyTheme]}
+            copyTheme={pagesCopyTheme}
             openPage={openPage}
             busy={busy}
             busyKey={busyKey}
+            onCopyTheme={setPagesCopyTheme}
+            onCopyFromOther={copyPagesFromOther}
             onOpenPage={setOpenPage}
             onPagesCopy={(key, patch) =>
-              setPagesCopy((p) => ({
-                ...p,
-                [key]: { ...p[key], ...patch },
+              setPagesByTheme((bags) => ({
+                ...bags,
+                [pagesCopyTheme]: {
+                  ...bags[pagesCopyTheme],
+                  [key]: { ...bags[pagesCopyTheme][key], ...patch },
+                },
               }))
             }
             onSave={(e) => void savePages(e)}

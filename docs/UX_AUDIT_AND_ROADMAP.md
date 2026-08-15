@@ -1,4 +1,4 @@
-# Felt — UX Audit and Feature Roadmap
+# Pokr — UX Audit and Feature Roadmap
 
 Audit of both clients (`apps/web`, `apps/android`) against the server and engine
 (`apps/server`, `packages/engine`). Written to be argued with: every finding names a file,
@@ -29,7 +29,7 @@ both routes and the dependency.*
 
 **P1 — Two identity systems that do not know about each other.** Real play uses an
 anonymous callsign: `ensureSession` in [app/page.tsx](../apps/web/app/page.tsx) calls
-`register()` and writes a `felt-session` blob to `localStorage`. `createTable` and
+`register()` and writes a `pokr-session` blob to `localStorage`. `createTable` and
 `register` in [lib/api.ts](../apps/web/lib/api.ts) accept a `clerkToken`, but the lobby
 never passes one. A signed-in user and an anonymous user are indistinguishable to the
 table.
@@ -43,11 +43,11 @@ avatar.
 
 **P2 — Avatar can desync from the session.** `setSession` in
 [lib/store.ts](../apps/web/lib/store.ts) stores `userId`, `name`, and `ticket` but not
-`avatarId`, which lives separately in `felt-session` and `felt-avatar-id`
+`avatarId`, which lives separately in `pokr-session` and `pokr-avatar-id`
 ([lib/avatars.ts](../apps/web/lib/avatars.ts)).
-*Fix: put `avatarId` in the store and treat `felt-session` as the only persisted copy.*
+*Fix: put `avatarId` in the store and treat `pokr-session` as the only persisted copy.*
 
-**P2 — Corrupt session fails silently.** Both entry points parse `felt-session` inside
+**P2 — Corrupt session fails silently.** Both entry points parse `pokr-session` inside
 `try { } catch { /* ignore */ }`. A bad blob yields an empty callsign with no explanation.
 *Fix: clear the key and tell the user their session was reset.*
 
@@ -239,7 +239,7 @@ no voice, and hosting uses fixed 5/10/1000 defaults with no stake presets.
 
 Worth copying back to web rather than treating parity as one-directional:
 
-- **One table UI for online and offline.** `FeltTableLayout`, `TableActionControls`, and
+- **One table UI for online and offline.** `PokrTableLayout`, `TableActionControls`, and
   `WinHandDialog` are shared, which is exactly the duplication web has not solved.
 - **Ticket refresh on connect.** `TableRepository` re-issues via `POST /api/ticket` with a
   re-register fallback; web opens the socket with whatever is in `localStorage`.

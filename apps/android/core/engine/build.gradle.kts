@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.felt.android.engine"
+    namespace = "com.pokr.android.engine"
     compileSdk = 36
 
     defaultConfig {

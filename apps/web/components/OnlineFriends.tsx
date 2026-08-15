@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { listFriends, type FriendProfile } from '@/lib/api';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
+import { SocialNotificationHost } from '@/components/SocialNotificationHost';
 import { useSession } from '@/lib/store';
 import { useIsNarrow } from '@/lib/tableLayout';
 
@@ -121,7 +122,10 @@ export function OnlineFriendsProvider({
   }, [signedIn, sessionToken, social, socialLoaded, refresh]);
 
   return (
-    <OnlineFriendsContext.Provider value={value}>{children}</OnlineFriendsContext.Provider>
+    <OnlineFriendsContext.Provider value={value}>
+      {children}
+      {signedIn ? <SocialNotificationHost /> : null}
+    </OnlineFriendsContext.Provider>
   );
 }
 

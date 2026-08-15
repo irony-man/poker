@@ -3,7 +3,8 @@ import { assetUrl } from '@/lib/assets';
 /** Number of built-in profile picture presets (see `/public/avatars/avatar-N.png`). */
 export const AVATAR_PRESET_COUNT = 8;
 
-const AVATAR_KEY = 'felt-avatar-id';
+const AVATAR_KEY = 'pokr-avatar-id';
+const LEGACY_AVATAR_KEY = 'felt-avatar-id';
 
 /** Public path for a preset index. */
 export function avatarSrc(id: number): string {
@@ -43,7 +44,7 @@ export function resolveAvatarSrc(input: {
 
 export function loadSavedAvatarId(): number {
   try {
-    const raw = localStorage.getItem(AVATAR_KEY);
+    const raw = localStorage.getItem(AVATAR_KEY) ?? localStorage.getItem(LEGACY_AVATAR_KEY);
     if (raw == null) return 0;
     const n = Number(raw);
     if (Number.isInteger(n) && n >= 0) return n % AVATAR_PRESET_COUNT;
@@ -56,6 +57,7 @@ export function loadSavedAvatarId(): number {
 export function saveAvatarId(id: number): void {
   try {
     localStorage.setItem(AVATAR_KEY, String(((id % AVATAR_PRESET_COUNT) + AVATAR_PRESET_COUNT) % AVATAR_PRESET_COUNT));
+    localStorage.removeItem(LEGACY_AVATAR_KEY);
   } catch {
     /* ignore */
   }

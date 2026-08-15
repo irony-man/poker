@@ -15,3 +15,12 @@ captures/
 *.aab
 build-apk.log
 gradle/gradle-daemon-jvm.properties.bak
+
+# Gradle user-home junk if Studio points GRADLE_USER_HOME at apps/android/gradle
+gradle/android/
+gradle/caches/
+gradle/daemon/
+gradle/kotlin-profile/
+gradle/native/
+gradle/wrapper/dists/
+gradle/.tmp/

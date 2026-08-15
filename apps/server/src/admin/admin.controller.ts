@@ -63,8 +63,11 @@ const HomeFeatureBody = z.object({
   imageFirst: z.boolean(),
 });
 
+const CopyThemeBody = z.enum(['v1', 'v2']);
+
 const HomeFeaturesBody = z.object({
   features: z.array(HomeFeatureBody).min(1).max(12),
+  theme: CopyThemeBody.optional(),
 });
 
 const PageCopyBody = z.object({
@@ -84,6 +87,7 @@ const PagesBody = z.object({
     signUp: PageCopyBody,
     homeAuthFooter: PageCopyBody,
   }),
+  theme: CopyThemeBody.optional(),
 });
 
 const BotPersonalityIdSchema = z.enum([
@@ -157,6 +161,8 @@ export class AdminController {
       announcement: snap.announcement,
       liveTables: tables.length,
       liveContests: contests.length,
+      pagesByTheme: snap.pagesByTheme,
+      homeFeaturesByTheme: snap.homeFeaturesByTheme,
     };
   }
 
@@ -212,7 +218,10 @@ export class AdminController {
 
   @Get('home-features')
   getHomeFeatures() {
-    return { features: this.site.getHomeFeatures() };
+    return {
+      features: this.site.getHomeFeatures(),
+      featuresByTheme: this.site.getHomeFeaturesByTheme(),
+    };
   }
 
   @Patch('home-features')
@@ -221,13 +230,17 @@ export class AdminController {
     if (!parsed.success) {
       throw new BadRequestException({ error: parsed.error.message });
     }
-    const features = await this.site.setHomeFeatures(parsed.data.features);
-    return { features };
+    const theme = parsed.data.theme ?? 'v1';
+    const features = await this.site.setHomeFeatures(parsed.data.features, theme);
+    return { features, theme, featuresByTheme: this.site.getHomeFeaturesByTheme() };
   }
 
   @Get('pages')
   getPages() {
-    return { pages: this.site.getPages() };
+    return {
+      pages: this.site.getPages(),
+      pagesByTheme: this.site.getPagesByTheme(),
+    };
   }
 
   @Patch('pages')
@@ -236,8 +249,9 @@ export class AdminController {
     if (!parsed.success) {
       throw new BadRequestException({ error: parsed.error.message });
     }
-    const pages = await this.site.setPages(parsed.data.pages);
-    return { pages };
+    const theme = parsed.data.theme ?? 'v1';
+    const pages = await this.site.setPages(parsed.data.pages, theme);
+    return { pages, theme, pagesByTheme: this.site.getPagesByTheme() };
   }
 
   @Get('bot-groups')

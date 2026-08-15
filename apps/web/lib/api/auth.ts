@@ -1,6 +1,7 @@
 import type { AuthSession } from '@poker/protocol';
 import { coerceMoney } from '@/lib/currency';
 import { clampTableColorId } from '@/lib/tableColors';
+import { clampUiTheme, type UiTheme } from '@/lib/uiTheme';
 import { API_URL, parseError, sessionHeaders } from './client';
 
 export interface MeProfile {
@@ -10,6 +11,7 @@ export interface MeProfile {
   avatarId: number;
   avatarUrl: string | null;
   tableColorId: number;
+  uiTheme: UiTheme;
   createdAt: number;
   chipBalance: number;
   whuffieBalance: number;
@@ -41,6 +43,7 @@ function normalizeMe(data: MeProfile): MeProfile {
         ? Math.floor(data.tableColorId)
         : 0,
     ),
+    uiTheme: clampUiTheme(data.uiTheme),
   };
 }
 
@@ -104,7 +107,7 @@ export async function fetchMe(sessionToken: string): Promise<MeProfile> {
 
 export async function updateMe(
   sessionToken: string,
-  body: { avatarId?: number; avatarUrl?: string | null; tableColorId?: number },
+  body: { avatarId?: number; avatarUrl?: string | null; tableColorId?: number; uiTheme?: UiTheme },
 ): Promise<MeProfile> {
   const res = await fetch(`${API_URL}/api/me`, {
     method: 'PATCH',

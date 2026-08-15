@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.felt.android.core.common"
+    namespace = "com.pokr.android.core.common"
     compileSdk = 36
 
     defaultConfig {

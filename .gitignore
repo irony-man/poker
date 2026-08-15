@@ -25,9 +25,18 @@ apps/android/.kotlin/
 apps/android/**/build/
 apps/android/local.properties
 apps/android/build-apk.log
+# If GRADLE_USER_HOME is mis-set to apps/android/gradle
+apps/android/gradle/android/
+apps/android/gradle/caches/
+apps/android/gradle/daemon/
+apps/android/gradle/kotlin-profile/
+apps/android/gradle/native/
+apps/android/gradle/wrapper/dists/
+apps/android/gradle/.tmp/
 
 /.idea/
 /.local-pg/
+.local-psql
 .local-pg-data/
 .tools/
 .zig-cache/

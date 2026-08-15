@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.felt.android.core.datastore"
+    namespace = "com.pokr.android.core.datastore"
     compileSdk = 36
 
     defaultConfig {

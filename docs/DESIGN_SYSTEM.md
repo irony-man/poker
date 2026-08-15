@@ -1,70 +1,85 @@
-# Felt Design System — "Card Room"
+# Pokr Design System — POKR purple / mushroom
 
-Warm, premium, analog. No neon. The only things that glow are your turn and the pot.
+Warm purple brand on a mushroom page ground. Brass is a rare accent for money and
+live state — not the primary CTA color.
 
-There is one canonical source for every token: the `:root` block in
-[apps/web/app/globals.css](../apps/web/app/globals.css). Tailwind reads those vars through
-`rgb(var(--x) / <alpha-value>)` in [apps/web/tailwind.config.ts](../apps/web/tailwind.config.ts),
-so the web palette cannot drift from itself. Android mirrors the same hex values in
-[FeltTokens.kt](../apps/android/core/designsystem/src/main/java/com/felt/android/core/designsystem/FeltTokens.kt).
-Change a value in both places or not at all.
+There are two independent layers:
+
+1. **App look** (`uiTheme`: `v1` Classic or `v2` Arcade) — lobby, profile, buttons, HUD chrome. Chosen on Profile → Theme. Default is Classic.
+2. **Table felt** (`tableColorId` 0–8) — the oval only. Unchanged by app look.
+
+Classic tokens live in the `:root` block in
+[apps/web/app/globals.css](../apps/web/app/globals.css). Arcade remaps the same vars
+under `html[data-ui-theme='v2']`. Tailwind reads those vars through
+`rgb(var(--x) / <alpha-value>)` in [apps/web/tailwind.config.ts](../apps/web/tailwind.config.ts).
+Android mirrors Classic in `PokrPalette.Classic` and Arcade in `PokrPalette.Arcade`
+([PokrTokens.kt](../apps/android/core/designsystem/src/main/java/com/pokr/android/core/designsystem/PokrTokens.kt)).
+Change a Classic value in both places or not at all.
 
 ## Color
 
 | Token | Hex | Web (CSS var / Tailwind) | Android | Used for |
 | --- | --- | --- | --- | --- |
-| Ink | `#12100E` | `--ink` / `bg-ink` | `FeltColors.Ink` | App background |
-| Ink panel | `#1C1916` | `--ink-panel` / `bg-ink-panel` | `FeltColors.InkPanel` | Panels, headers, drawers |
-| Ink raised | `#262119` | `--ink-raised` / `bg-ink-raised` | `FeltColors.InkRaised` | Inputs, chips, raised fills |
-| Ink overlay | `#0A0908` | `--ink-overlay` / `bg-ink-overlay` | `FeltColors.InkOverlay` | Modal scrims |
-| Felt | `#1E5B43` | `--felt` / `bg-felt` | `FeltColors.FeltGreen` | Table surface |
-| Felt deep | `#123A2B` | `--felt-deep` / `bg-felt-deep` | `FeltColors.FeltGreenDark` | Table falloff |
-| Felt rim | `#3A2A1C` | `--felt-rim` / `border-felt-rim` | `FeltColors.FeltRim` | Wood rim |
-| Felt rim edge | `#8A6B3A` | `--felt-rim-edge` / `border-felt-edge` | `FeltColors.FeltRimEdge` | Brass edge on the rim |
-| Brass | `#C9A227` | `--brass` / `text-brass` | `FeltColors.Brass` | Primary accent |
-| Brass light | `#E8CE83` | `--brass-light` / `text-brass-light` | `FeltColors.BrassLight` | Accent hover, hero text |
-| Brass dim | `#7A6218` | `--brass-dim` / `text-brass-dim` | `FeltColors.BrassDim` | Accent shadow, chip base |
-| Cream | `#F2EDE4` | `--cream` / `text-cream` | `FeltColors.Cream` | Primary text |
-| Cream muted | `#A8A197` | `--cream-muted` / `text-cream-muted` | `FeltColors.CreamMuted` | Secondary text (7.5:1 on ink) |
-| Danger | `#C0392B` | `--danger` / `text-danger` | `FeltColors.Danger` | Fold, destructive, errors |
-| Positive | `#3E9E6A` | `--positive` / `text-positive` | `FeltColors.Positive` | Live, all-in, connected |
-| Patina | `#6E9C86` | `--patina` / `text-patina` | `FeltColors.Patina` | Informational state |
-| Patina dim | `#3F5B50` | `--patina-dim` | `FeltColors.PatinaDim` | Informational borders |
-| Card face | `#FAF7F0` | `--card-face` / `bg-card-face` | `FeltColors.CardFace` | Playing card faces |
-| Card red | `#C8102E` | `--card-red` / `text-card-red` | `FeltColors.CardRed` | Hearts, diamonds |
-| Card ink | `#1A1A1A` | `--card-ink` / `text-card-ink` | `FeltColors.CardInk` | Spades, clubs |
-| Stack red | `#8C2F27` | — | `FeltColors.StackRed` | Seat stack bar |
+| Ink | `#0E0618` | `--ink` / `bg-ink` | `PokrColors.Ink` | Deep play chrome |
+| Ink panel / Sidebar | `#1D0432` | `--ink-panel` / `--sidebar` | `PokrColors.InkPanel` / `.Sidebar` | Panels, rail, primary CTA end |
+| Ink raised | `#2E1048` | `--ink-raised` | `PokrColors.InkRaised` | Raised play fills |
+| Ink overlay | `#08030E` | `--ink-overlay` | `PokrColors.InkOverlay` | Modal scrims |
+| Ink strong | `#1D0432` | `--ink-strong` | `PokrColors.InkStrong` | Text on light pages |
+| Ink strong muted | `#5A465F` | `--ink-strong-muted` | `PokrColors.InkStrongMuted` | Secondary text on light |
+| Mushroom | `#E6D9D7` | `--mushroom` | `PokrColors.Mushroom` | Page / lobby ground |
+| Lobby panel | `#FFFCFA` | lobby `hud-panel` fill | `PokrColors.LobbyPanel` | Light cards |
+| Felt / Felt deep | `#1D0432` / `#120220` | `--felt` / `--felt-deep` | `PokrColors.FeltGreen*` | Table surface |
+| Felt mid / edge | `#341252` / `#0A0414` | table felt mid/edge | `PokrColors.FeltMid` / `.FeltEdge` | Table radial + primary start |
+| Felt rim / rim edge | `#120220` / `#A88CA2` | `--felt-rim*` | `PokrColors.FeltRim*` | Wood/brass rim |
+| Brass | `#D6BA80` | `--brass` | `PokrColors.Brass` | Money / rare accent |
+| Brass light / dim | `#ECDAB0` / `#765C30` | `--brass-light` / `--brass-dim` | `PokrColors.BrassLight` / `.BrassDim` | Accent hover / shadow |
+| Cream | `#F2EAE8` | `--cream` | `PokrColors.Cream` | Light text on dark chrome |
+| Cream muted | `#A896A6` | `--cream-muted` | `PokrColors.CreamMuted` | Muted text on dark |
+| Danger | `#C0392B` | `--danger` | `PokrColors.Danger` | Fold / errors |
+| Positive | `#48A87A` | `--positive` | `PokrColors.Positive` | Live / win |
+| Patina | `#BAA2C6` | `--patina` | `PokrColors.Patina` | Informational |
+| Card face / red / ink | `#FAF7F0` / `#E53935` / `#1A1A1A` | `--card-*` | `PokrColors.Card*` | Playing cards |
+
+### Arcade (v2) remap
+
+Selected on Profile → Theme. Does **not** change felt presets, playing cards, brass-as-money, `--danger`, or `--positive`.
+
+| Token | Classic | Arcade |
+| --- | --- | --- |
+| Mushroom (page ground) | `#E6D9D7` | `#FDE93D` (24px grid overlay) |
+| Sidebar / ink panel | `#1D0432` | `#5B21B6` / `#4C1D95` |
+| Ink strong (text on light) | `#1D0432` | `#1A1028` |
+| Cream (text on dark) | `#F2EAE8` | `#FFFFFF` |
+| Chrome | 1px muted borders, soft shadow | 3px black borders, hard `4px 4px 0 #000` shadow |
+| Display font | RF Tone | Clash Display (web); system extra-bold (Android) |
+
+Web applies `data-ui-theme="v2"` on `<html>` (localStorage `pokr-ui-theme`, hydrated from `GET /api/me`). Android provides `PokrTheme(uiTheme)` from DataStore `ui_theme`.
+
+### Chrome contexts
+
+- **Lobby** (`.lobby-shell` / `FeltChrome.Lobby`): mushroom ground, near-white panels, ink-strong text, purple primary buttons.
+- **Play** (table / offline HUD / `FeltChrome.Play`): purple ink panels, mushroom borders/text, purple primary CTAs.
 
 ### Legacy aliases
 
-The previous palette's names still resolve so components can migrate incrementally:
-`gold*` maps to `brass*`, `cyan*` maps to `patina*`, and `felt-neon` maps to `positive`.
-On Android, `FeltColors.Gold`, `.GoldDim`, `.Cyan`, `.Neon`, and `.YouYellow` are aliases.
-Prefer the real names in new code; the aliases go away once every call site has moved.
+`gold*` → `brass*`, `cyan*` → `patina*`, `felt-neon` / `Neon` → `positive`. Prefer the real names in new code.
 
 ## Type
 
 | Role | Web | Android | Used for |
 | --- | --- | --- | --- |
-| Serif | Instrument Serif, `font-serif` | `FeltFonts.Serif` | Wordmark and pot only |
-| Display | Inter Tight, `font-display` | `FeltFonts.Display` | Headings, buttons, labels |
-| Body | Inter, `font-body` | `FeltFonts.Body` | Body copy, all numerics |
+| Display / heading | RF Tone (`--font-display`) | `FeltFonts.Display` | Headings, buttons, labels |
+| Body | Inter (`font-body`) | `FeltFonts.Body` | Body copy, numerics |
+| Serif | RF Tone stand-in | `FeltFonts.Serif` | Rare marquee only |
 
-Web fonts load through `next/font` in [app/layout.tsx](../apps/web/app/layout.tsx), which
-exposes them as `--font-serif`, `--font-display`, and `--font-body`.
+Android currently substitutes system sans/serif until families are bundled under `res/font`.
 
-Android currently substitutes the system serif and sans for Instrument Serif and Inter.
-Bundling the real families under `res/font` and pointing `FeltFonts` at them is a one-line
-change per role.
-
-Numbers are money: anything numeric uses tabular figures. On web that is the `.tabular`
-utility or `tabular-nums`.
+Numbers are money: use tabular figures (web `.tabular` / `tabular-nums`).
 
 ## Radius
 
 `--radius-xs` 4px, `--radius-sm` 6px, `--radius-md` 10px, `--radius-lg` 14px,
-`--radius-xl` 20px. Tailwind's `rounded-xs`/`sm`/`md`/`lg`/`xl` are remapped to these.
-Android mirrors them in `FeltRadius`.
+`--radius-xl` 20px. Android mirrors them in `FeltRadius`.
 
 ## Elevation
 
@@ -72,22 +87,18 @@ Android mirrors them in `FeltRadius`.
 | --- | --- | --- |
 | Panel | `shadow-panel` | Floating panels and drawers |
 | Raised | `shadow-raised` | Chips, small controls |
-| Glow | `shadow-glow` | Brass focus and active turn only |
+| Glow | `shadow-glow` | Soft mushroom focus only |
 | Card | `shadow-card` | Playing cards |
-| Felt | `shadow-felt` | The table itself |
 
 ## Motion
 
 `--dur-fast` 120ms, `--dur-base` 180ms, `--dur-slow` 240ms, all on `--ease-out`
-(`cubic-bezier(0.16, 1, 0.3, 1)`). UI transitions stay at or under `--dur-slow`; only card
-and chip choreography runs longer. `prefers-reduced-motion: reduce` collapses every
-animation and transition globally, handled once in `globals.css`.
+(`cubic-bezier(0.16, 1, 0.3, 1)`). `prefers-reduced-motion: reduce` collapses animation globally on web.
 
 ## Rules
 
-- One accent. Brass means "act now" or "this is the money". If everything is brass,
-  nothing is.
-- Color carries one meaning each: danger is folding and destruction, positive is live and
-  all-in, patina is neutral information.
-- Body text floors at 10px. Anything a player reads mid-hand clears WCAG AA.
-- Glow belongs on live state, never on static chrome.
+- One brand purple in Classic. Primary CTAs use the `#341252` → `#1D0432` gradient with mushroom label text. Arcade CTAs are solid purple, white label, thick black border.
+- Brass means money or rare emphasis — not every heading. Arcade does not remap brass.
+- Color carries one meaning: danger = fold/errors, positive = live/win, patina = info. These stay global across looks.
+- Body text floors at 10px. Glow belongs on live state, never on static chrome.
+- Playing card backs use mushroom stock + sidebar hatch (not wood/brass). Cards do not follow Arcade.

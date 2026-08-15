@@ -249,8 +249,7 @@ export function TableView({
     table?.players.filter(
       (p) => p.userId && coerceMoney(p.stack) > 0 && p.status !== 'sittingOut' && p.status !== 'empty',
     ) ?? [];
-  const humanEligiblePlayers = eligiblePlayers.filter((p) => !p.userId?.startsWith('bot:'));
-  const readyCount = humanEligiblePlayers.filter((p) => p.ready).length;
+  const readyCount = eligiblePlayers.filter((p) => p.ready).length;
   const myReady = !!myPlayer?.ready;
   /**
    * Seated with chips between hands → can mark ready (“Play Next Hand”).
@@ -265,25 +264,18 @@ export function TableView({
     myPlayer.status !== 'empty' &&
     myStack > 0;
   const readyLabel = myReady ? 'Not ready' : 'Play Next Hand';
-  /** Real (non-bot) seats for the Actions dock ready strip. */
+  /** Seated humans + eligible bots for the Actions dock ready strip. */
   const readyRosterPlayers =
-    table?.players
-      .filter(
-        (p) =>
-          p.userId &&
-          p.status !== 'empty' &&
-          !p.userId.startsWith('bot:'),
-      )
-      .map((p) => ({
-        seat: p.seat,
-        name: p.name ?? `Seat ${p.seat}`,
-        userId: p.userId,
-        avatarId: p.avatarId,
-        avatarUrl: p.avatarUrl,
-        ready: !!p.ready,
-        isSelf: p.userId === userId,
-        sittingOut: p.status === 'sittingOut',
-      })) ?? [];
+    eligiblePlayers.map((p) => ({
+      seat: p.seat,
+      name: p.name ?? `Seat ${p.seat}`,
+      userId: p.userId,
+      avatarId: p.avatarId,
+      avatarUrl: p.avatarUrl,
+      ready: !!p.ready,
+      isSelf: p.userId === userId,
+      sittingOut: p.status === 'sittingOut',
+    }));
   const showDockReadyRoster = !contestOver && betweenHands && readyRosterPlayers.length > 0;
   const dockReadyHeading =
     table?.street === 'waiting' && readyCount === 0
@@ -546,7 +538,7 @@ export function TableView({
             readyLabel,
             isReady: myReady,
             readyCount,
-            readyTotal: humanEligiblePlayers.length,
+            readyTotal: eligiblePlayers.length,
             readyPlayers: showDockReadyRoster ? readyRosterPlayers : undefined,
             readyHeading: dockReadyHeading,
             onReady: () => send({ type: 'set_ready', tableId, ready: !myReady }),
@@ -598,13 +590,13 @@ export function TableView({
       <div className="flex min-h-0 flex-1 flex-col">
         {/* Cohesive play chrome: brand + room tools */}
         <header className="play-chrome-bar">
-          <div className="flex min-w-0 items-center gap-2.5 pl-0.5">
+          <div className="play-table-logo-row">
             <Image
               src="/purple-logo.png"
               alt="POKR"
               width={140}
               height={40}
-              className="h-7 w-auto object-contain object-left sm:h-8"
+              className="play-table-logo"
               priority
             />
             {isSpectating && (
@@ -706,7 +698,7 @@ export function TableView({
           </div>
         ) : null}
 
-        <div className="relative flex min-h-0 flex-1 flex-col">
+        <div className="play-table-stage">
           {!narrow && (
             <StatusChip
               tone={
@@ -752,7 +744,7 @@ export function TableView({
             }
           >
           {!narrow ? (
-            <div className="pointer-events-none absolute inset-6 z-[1] rounded-[40%] border border-white/10" />
+            <div className="play-table-oval-ring" />
           ) : null}
 
           <div
@@ -861,7 +853,7 @@ export function TableView({
               youWon={youWon}
               canStartNext={canReady}
               readyCount={readyCount}
-              readyTotal={humanEligiblePlayers.length}
+              readyTotal={eligiblePlayers.length}
               isReady={myReady}
               readyPlayers={readyRosterPlayers}
               canTopUp={canTopUp}

@@ -31,16 +31,39 @@ export const PAGE_COPY_KEYS: PageCopyKey[] = [
 ];
 
 export const PAGE_COPY_LABELS: Record<PageCopyKey, string> = {
-  host: 'Host (/host)',
-  join: 'Join (/join)',
-  public: 'Public tables (/public)',
-  contests: 'Contests (/contests)',
-  friends: 'Friends (/friends)',
-  solo: 'Offline setup (/solo)',
+  host: 'Host',
+  join: 'Join',
+  public: 'Public tables',
+  contests: 'Contests',
+  friends: 'Friends',
+  solo: 'Offline',
   signIn: 'Sign in',
   signUp: 'Sign up',
   homeAuthFooter: 'Home auth footer',
 };
+
+export const PAGE_COPY_PATHS: Record<PageCopyKey, string> = {
+  host: '/host',
+  join: '/join',
+  public: '/public',
+  contests: '/contests',
+  friends: '/friends',
+  solo: '/solo',
+  signIn: '/sign-in',
+  signUp: '/sign-up',
+  homeAuthFooter: '/',
+};
+
+export const PAGE_COPY_GROUPS: { label: string; keys: PageCopyKey[] }[] = [
+  {
+    label: 'Lobby',
+    keys: ['host', 'join', 'public', 'contests', 'friends', 'solo'],
+  },
+  {
+    label: 'Account',
+    keys: ['signIn', 'signUp', 'homeAuthFooter'],
+  },
+];
 
 export const DEFAULT_PAGES_COPY: PagesCopy = {
   host: {

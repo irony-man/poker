@@ -325,7 +325,7 @@ export function FloatingActionDock({
                 <button
                   type="button"
                   onClick={onDockToChat}
-                  className="rounded border border-sidebar/20 bg-white px-2 py-0.5 text-[10px] font-display font-semibold uppercase tracking-wider text-sidebar/80 hover:border-sidebar/40 hover:bg-sidebar/8 hover:text-sidebar"
+                  className="hud-tag-chip"
                   title="Dock actions in chat panel"
                 >
                   In chat
@@ -334,7 +334,7 @@ export function FloatingActionDock({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded border border-sidebar/20 bg-white px-2 py-0.5 text-[10px] font-display font-semibold uppercase tracking-wider text-sidebar/80 hover:border-sidebar/40 hover:bg-sidebar/8 hover:text-sidebar"
+                className="hud-tag-chip"
               >
                 Min
               </button>

@@ -2,8 +2,11 @@
 
 import { coerceMoney, formatMoneyAmount, formatMoneyLabel } from '@/lib/currency';
 
+const CURRENCY_ASPECT = 1674 / 1392;
+
 /**
- * In-app money unit mark (public/currency.svg). Sits after amounts like the old "chips" label.
+ * Whuffies mark (public/currency.svg). Follows `currentColor` so it matches
+ * surrounding text on light profile surfaces and the dark sidebar.
  */
 export function CurrencyIcon({
   size = 14,
@@ -16,21 +19,31 @@ export function CurrencyIcon({
   title?: string;
 }) {
   const useEm = size === 'em';
-  const px = useEm ? undefined : size;
-  const height = useEm ? undefined : Math.round((size as number) * (1392 / 1674));
+  const width = useEm ? undefined : size;
+  const height = useEm ? undefined : Math.round((size as number) / CURRENCY_ASPECT);
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- static public asset
-    <img
-      src="/currency.svg"
-      alt={title ?? ''}
-      width={useEm ? undefined : px}
-      height={useEm ? undefined : height || px}
-      className={`inline-block shrink-0 object-contain ${
-        useEm ? 'h-[0.65em] w-auto' : ''
-      } ${className}`.trim()}
+    <span
+      role={title ? 'img' : undefined}
+      aria-label={title}
+      title={title}
       aria-hidden={title ? undefined : true}
-      draggable={false}
+      className={`inline-block shrink-0 bg-current ${
+        useEm ? 'h-[0.85em] w-[1.02em] translate-y-px' : ''
+      } ${className}`.trim()}
+      style={{
+        width: useEm ? undefined : width,
+        height: useEm ? undefined : height || width,
+        WebkitMaskImage: 'url(/currency.svg)',
+        maskImage: 'url(/currency.svg)',
+        WebkitMaskSize: 'contain',
+        maskSize: 'contain',
+        WebkitMaskRepeat: 'no-repeat',
+        maskRepeat: 'no-repeat',
+        WebkitMaskPosition: 'center',
+        maskPosition: 'center',
+        maskMode: 'alpha',
+      }}
     />
   );
 }
@@ -52,8 +65,7 @@ export function ChipsImage({ className = '' }: { className?: string }) {
 }
 
 /**
- * Amount layout: [chips image?] [prefix][number] [currency.svg]
- * Currency mark is sized like a small unit label (e.g. old “chips” word).
+ * Amount layout: [chips image?] [prefix][number] [currency.svg when Whuffies]
  */
 export function MoneyAmount({
   amount,
@@ -81,20 +93,21 @@ export function MoneyAmount({
 }) {
   const n = coerceMoney(amount);
   const text = compact ? formatMoneyAmount(n) : formatMoneyLabel(n);
+  const label = showWhuffies ? `${formatMoneyLabel(n)} Whuffies` : formatMoneyLabel(n);
 
   return (
     <span
       className={`inline-flex items-center gap-1 tabular-nums ${className}`.trim()}
-      title={formatMoneyLabel(n)}
+      title={label}
     >
       {showChips ? <ChipsImage className={chipsClassName} /> : null}
       <span className="inline-flex items-baseline gap-1.5 leading-none">
         <span>
           {prefix}
           {text}
-          </span>
-        {showWhuffies ? <CurrencyIcon size="em" className={`translate-y-px opacity-90 ${iconClassName}`.trim()} /> : null}
-      </span> 
+        </span>
+        {showWhuffies ? <CurrencyIcon size="em" className={iconClassName} /> : null}
+      </span>
     </span>
   );
 }

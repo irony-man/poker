@@ -42,9 +42,31 @@ import { useHandPresentation } from '@/hooks/useHandPresentation';
 import { useTableSounds } from '@/hooks/useTableSounds';
 import { useSession, type ChatMessage, type PrivateView, type PublicTable } from '@/lib/store';
 import { seatAnglesForHero, useIsLandscapePhone, useIsNarrow } from '@/lib/tableLayout';
+import {
+  buildOfflineHandResult,
+  flushOfflineHandQueue,
+  newOfflineTableId,
+  submitOfflineHand,
+} from '@/lib/offlineHandHistory';
+import { readStoredSession } from '@/lib/session';
 import type { ActionType } from '@poker/engine';
 
 const HUMAN_ID = 'offline-human';
+const BOT_READY_DELAY_MIN_MS = 400;
+const BOT_READY_DELAY_RANGE_MS = 1200;
+
+function eligibleForNextHand(p: {
+  userId?: string | null;
+  stack: number;
+  status: string;
+}): boolean {
+  return (
+    !!p.userId &&
+    coerceMoney(p.stack) > 0 &&
+    p.status !== 'sittingOut' &&
+    p.status !== 'empty'
+  );
+}
 
 function randomBytes(n: number): Uint8Array {
   const buf = new Uint8Array(n);
@@ -178,6 +200,14 @@ export function OfflineTableView({
     setTableColorId(loadSavedTableColorId());
   }, []);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const botReadyTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const botReadyIdsRef = useRef<Set<string>>(new Set());
+  const [botReadyVersion, setBotReadyVersion] = useState(0);
+  const tableIdRef = useRef(newOfflineTableId(readStoredSession()?.userId));
+  const handStartedAtRef = useRef(0);
+  const handActionsRef = useRef<Array<EngineEvent & { at: number }>>([]);
+  const handChatRef = useRef<ChatMessage[]>([]);
+  const recordedHandsRef = useRef(new Set<string>());
 
   const clearTimer = () => {
     if (timerRef.current) {
@@ -187,14 +217,72 @@ export function OfflineTableView({
     setTurnEndsAt(null);
   };
 
+  const clearBotReadyTimers = useCallback(() => {
+    for (const timer of botReadyTimersRef.current.values()) clearTimeout(timer);
+    botReadyTimersRef.current.clear();
+  }, []);
+
+  const resetBotReady = useCallback(() => {
+    clearBotReadyTimers();
+    botReadyIdsRef.current.clear();
+    setBotReadyVersion((v) => v + 1);
+  }, [clearBotReadyTimers]);
+
+  const scheduleBotAutoReady = useCallback((s: HandState) => {
+    if (s.street !== 'waiting' && s.street !== 'payout') return;
+
+    for (const p of s.players) {
+      if (!p.userId || !isBotUserId(p.userId) || !eligibleForNextHand(p)) continue;
+      const uid = p.userId;
+      if (botReadyIdsRef.current.has(uid) || botReadyTimersRef.current.has(uid)) continue;
+
+      const delay = BOT_READY_DELAY_MIN_MS + Math.floor(Math.random() * BOT_READY_DELAY_RANGE_MS);
+      const timer = setTimeout(() => {
+        botReadyTimersRef.current.delete(uid);
+        botReadyIdsRef.current.add(uid);
+        setBotReadyVersion((v) => v + 1);
+      }, delay);
+      botReadyTimersRef.current.set(uid, timer);
+    }
+  }, []);
+
+  const recordChat = useCallback(
+    (m: ChatMessage) => {
+      handChatRef.current.push(m);
+      pushChat(m);
+    },
+    [pushChat],
+  );
+
+  const persistCompletedHand = useCallback((next: HandState) => {
+    if (!next.handId || recordedHandsRef.current.has(next.handId)) return;
+    if (!readStoredSession()?.sessionToken) return;
+    recordedHandsRef.current.add(next.handId);
+    const payload = {
+      tableId: tableIdRef.current,
+      handId: next.handId,
+      startedAt: handStartedAtRef.current || Date.now(),
+      endedAt: Date.now(),
+      source: 'offline' as const,
+      result: buildOfflineHandResult(next, handActionsRef.current, handChatRef.current),
+      chat: handChatRef.current,
+    };
+    void submitOfflineHand(payload);
+  }, []);
+
   const syncChat = useCallback(
     (next: HandState, events: EngineEvent[]) => {
-      announceEvents(next, events, pushChat, (seat, label, action) => {
+      const at = Date.now();
+      for (const e of events) handActionsRef.current.push({ ...e, at });
+      announceEvents(next, events, recordChat, (seat, label, action) => {
         if (!isSeatActionLabel(label)) return;
         setActionBurst({ seat, label, at: Date.now(), action });
       });
+      if (events.some((e) => e.type === 'hand_ended') || next.street === 'payout') {
+        persistCompletedHand(next);
+      }
     },
-    [pushChat, setActionBurst],
+    [recordChat, setActionBurst, persistCompletedHand],
   );
 
   // Seed human + bots once.
@@ -243,6 +331,8 @@ export function OfflineTableView({
     });
     setBootstrapped(true);
     return () => {
+      clearBotReadyTimers();
+      botReadyIdsRef.current.clear();
       useSession.setState({
         userId: restore.userId,
         username: restore.username,
@@ -255,27 +345,52 @@ export function OfflineTableView({
         lastErrorCode: null,
       });
     };
-  }, [config, playerName, botNames, pushChat]);
+  }, [config, playerName, botNames, pushChat, clearBotReadyTimers]);
 
+  useEffect(() => {
+    void flushOfflineHandQueue();
+  }, []);
+
+
+  const betweenHands = state.street === 'waiting' || state.street === 'payout';
+
+  useEffect(() => {
+    if (!bootstrapped) return;
+    if (!betweenHands) {
+      resetBotReady();
+      return;
+    }
+    scheduleBotAutoReady(state);
+  }, [bootstrapped, betweenHands, state.version, state.street, scheduleBotAutoReady, resetBotReady, state]);
 
   const publicTable: PublicTable | null = useMemo(() => {
     if (!bootstrapped) return null;
     const view = toPublicView('offline', state, config);
     const humanAvatar = loadSavedAvatarId();
+    const between = state.street === 'waiting' || state.street === 'payout';
     return {
       ...view,
       turnEndsAt,
-      players: view.players.map((p) => ({
-        ...p,
-        avatarId:
-          p.userId === HUMAN_ID
-            ? humanAvatar
-            : p.userId
-              ? avatarIdFromUserId(p.userId)
-              : null,
-      })),
+      players: view.players.map((p) => {
+        const eligible = between && eligibleForNextHand(p);
+        const ready =
+          eligible &&
+          !!p.userId &&
+          isBotUserId(p.userId) &&
+          botReadyIdsRef.current.has(p.userId);
+        return {
+          ...p,
+          avatarId:
+            p.userId === HUMAN_ID
+              ? humanAvatar
+              : p.userId
+                ? avatarIdFromUserId(p.userId)
+                : null,
+          ready: Boolean(ready),
+        };
+      }),
     };
-  }, [bootstrapped, state, config, turnEndsAt]);
+  }, [bootstrapped, state, config, turnEndsAt, botReadyVersion]);
 
   const priv: PrivateView | null = useMemo(() => {
     if (!bootstrapped) return null;
@@ -286,7 +401,6 @@ export function OfflineTableView({
 
   const mySeat = state.players.find((p) => p.userId === HUMAN_ID)?.seat;
   const myPlayer = mySeat !== undefined ? state.players[mySeat] : undefined;
-  const betweenHands = state.street === 'waiting' || state.street === 'payout';
   const canTopUp =
     mySeat !== undefined && !!myPlayer && myPlayer.stack === 0 && betweenHands;
   const canSitOut =
@@ -335,7 +449,7 @@ export function OfflineTableView({
           const result = applyTimeout(curr, config);
           if (!result.ok) return curr;
           syncChat(result.state, result.events);
-          pushChat({
+          recordChat({
             userId: 'system',
             name: 'Dealer',
             text: 'Time — folded',
@@ -345,7 +459,7 @@ export function OfflineTableView({
         });
       }, config.turnTimeMs);
     },
-    [config, pushChat, syncChat],
+    [config, recordChat, syncChat],
   );
 
   useEffect(() => {
@@ -378,7 +492,11 @@ export function OfflineTableView({
 
   const start = () => {
     if (state.street !== 'waiting' && state.street !== 'payout') return;
+    resetBotReady();
     let s = state.street === 'payout' ? returnToWaiting(state) : state;
+    handActionsRef.current = [];
+    handChatRef.current = [];
+    handStartedAtRef.current = Date.now();
     const result = startHand(s, config, `off-${Date.now()}`, randomBytes);
     if (!result.ok) return;
     syncChat(result.state, result.events);
@@ -434,6 +552,24 @@ export function OfflineTableView({
     myPlayer?.status !== 'sittingOut' &&
     myPlayer?.status !== 'empty' &&
     coerceMoney(myPlayer?.stack) > 0;
+  const eligiblePlayers = publicTable.players.filter((p) => eligibleForNextHand(p));
+  const readyCount = eligiblePlayers.filter((p) => p.ready).length;
+  const readyRosterPlayers = eligiblePlayers.map((p) => ({
+    seat: p.seat,
+    name: p.name ?? `Seat ${p.seat}`,
+    userId: p.userId,
+    avatarId: p.avatarId,
+    ready: !!p.ready,
+    isSelf: p.userId === HUMAN_ID,
+    sittingOut: p.status === 'sittingOut',
+  }));
+  const showDockReadyRoster = betweenHands && readyRosterPlayers.length > 0;
+  const dockReadyHeading =
+    publicTable.street === 'waiting' && readyCount === 0
+      ? 'Players'
+      : publicTable.street === 'waiting'
+        ? 'Ready to start'
+        : 'Ready for next hand';
 
   const offlineOverflow: OverflowItem[] = [];
   if (narrow) {
@@ -480,12 +616,12 @@ export function OfflineTableView({
     <TableShell
       tableColorId={tableColorId}
       onSend={(text) =>
-        pushChat({ userId: HUMAN_ID, name: playerName, text, at: Date.now() })
+        recordChat({ userId: HUMAN_ID, name: playerName, text, at: Date.now() })
       }
       onEmoji={(emoji) => {
         const at = Date.now();
         setEmoji({ emoji, name: playerName, at });
-        pushChat({ userId: HUMAN_ID, name: playerName, text: emoji, at });
+        recordChat({ userId: HUMAN_ID, name: playerName, text: emoji, at });
         window.setTimeout(() => setEmoji(null), 1800);
       }}
       chatOpen={chatOpen}
@@ -502,6 +638,10 @@ export function OfflineTableView({
           tableTools={{
             onStart: canStartHand ? start : undefined,
             startLabel: publicTable.street === 'waiting' ? 'Start hand' : 'Next hand',
+            readyCount,
+            readyTotal: eligiblePlayers.length,
+            readyPlayers: showDockReadyRoster ? readyRosterPlayers : undefined,
+            readyHeading: dockReadyHeading,
             canSitOut,
             sitOutLabel: 'Sit out',
             onSitOut: doSitOut,
@@ -517,13 +657,13 @@ export function OfflineTableView({
     >
       <div className="flex min-h-0 flex-1 flex-col">
         <header className="play-chrome-bar">
-          <div className="flex min-w-0 items-center gap-2.5 pl-0.5">
+          <div className="play-table-logo-row">
             <Image
               src="/purple-logo.png"
               alt="POKR"
               width={140}
               height={40}
-              className="h-7 w-auto object-contain object-left sm:h-8"
+              className="play-table-logo"
               priority
             />
             <span className={buttonClass('chrome', 'md', 'cursor-default text-[10px] uppercase tracking-wider text-sidebar/70 hover:border-sidebar/15 hover:bg-white')}>
@@ -545,7 +685,7 @@ export function OfflineTableView({
           )}
         </header>
 
-        <div className="relative flex min-h-0 flex-1 flex-col">
+        <div className="play-table-stage">
           <div className="relative min-h-0 flex-1">
           <div
             className={
@@ -555,7 +695,7 @@ export function OfflineTableView({
             }
           >
           {!narrow ? (
-            <div className="pointer-events-none absolute inset-6 z-[1] rounded-[40%] border border-white/10" />
+            <div className="play-table-oval-ring" />
           ) : null}
 
           <div
@@ -614,6 +754,7 @@ export function OfflineTableView({
                 compact={narrow}
                 landscape={landscape}
                 isDealer={publicTable.dealerButton === p.seat}
+                showReady={betweenHands && !!p.ready}
               />
             );
           })}
@@ -634,22 +775,9 @@ export function OfflineTableView({
           canTopUp={canTopUp}
           canSitOut={canSitOut}
           canSitIn={canSitIn}
-          readyPlayers={publicTable.players
-            .filter(
-              (p) =>
-                p.userId &&
-                coerceMoney(p.stack) > 0 &&
-                p.status !== 'sittingOut' &&
-                p.status !== 'empty',
-            )
-            .map((p) => ({
-              seat: p.seat,
-              name: p.name ?? `Seat ${p.seat}`,
-              userId: p.userId,
-              avatarId: p.avatarId,
-              ready: false,
-              isSelf: p.userId === HUMAN_ID,
-            }))}
+          readyCount={readyCount}
+          readyTotal={eligiblePlayers.length}
+          readyPlayers={readyRosterPlayers}
           winners={(() => {
             const bySeat = new Map<
               number,

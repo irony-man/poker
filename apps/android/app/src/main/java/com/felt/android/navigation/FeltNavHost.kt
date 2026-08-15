@@ -6,14 +6,16 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.felt.android.BuildConfig
 import com.felt.android.feature.lobby.ContestRoute
 import com.felt.android.feature.lobby.ContestScreen
 import com.felt.android.feature.lobby.LobbyRoute
 import com.felt.android.feature.lobby.LobbyScreen
 import com.felt.android.feature.offline.OfflineTableRoute
 import com.felt.android.feature.offline.OfflineTableScreen
+import com.felt.android.feature.progress.HandsRoute
+import com.felt.android.feature.progress.HandsScreen
 import com.felt.android.feature.table.OnlineTableRoute
-import com.felt.android.BuildConfig
 import com.felt.android.feature.table.TableScreen
 
 @Composable
@@ -41,6 +43,9 @@ fun FeltNavHost(modifier: Modifier = Modifier) {
                 onContest = { contestId ->
                     navController.navigate(ContestRoute(contestId = contestId))
                 },
+                onHands = {
+                    navController.navigate(HandsRoute)
+                },
             )
         }
         composable<ContestRoute> {
@@ -50,6 +55,16 @@ fun FeltNavHost(modifier: Modifier = Modifier) {
                 },
                 onOpenTable = { tableId ->
                     navController.navigate(OnlineTableRoute(tableId = tableId))
+                },
+            )
+        }
+        composable<HandsRoute> {
+            HandsScreen(
+                onBack = {
+                    navController.popBackStack(LobbyRoute, inclusive = false)
+                },
+                onPlay = {
+                    navController.popBackStack(LobbyRoute, inclusive = false)
                 },
             )
         }

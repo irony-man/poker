@@ -14,9 +14,14 @@ export type TabOption<T extends string> = {
   badge?: ReactNode;
 };
 
+/**
+ * Page section tabs. Prefer `underline` for profile/admin-style nav
+ * (bold active label + 3px bottom bar). Use `pill` / `segmented` only
+ * for compact in-panel filters.
+ */
 export function Tabs<T extends string>({
   label,
-  variant = 'segmented',
+  variant = 'underline',
   selected,
   options,
   onSelect,
@@ -37,7 +42,7 @@ export function Tabs<T extends string>({
     variant === 'pill'
       ? '-mx-1 overflow-x-auto px-1 pb-1'
       : variant === 'underline'
-        ? undefined
+        ? 'overflow-x-auto'
         : undefined;
 
   return (
@@ -62,7 +67,9 @@ export function Tabs<T extends string>({
             className={choiceOptionClass(
               variant,
               isSelected,
-              variant === 'pill' ? 'shrink-0' : undefined,
+              variant === 'pill' || variant === 'underline'
+                ? 'shrink-0 whitespace-nowrap'
+                : undefined,
             )}
           >
             {tab.label}

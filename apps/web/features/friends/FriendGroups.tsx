@@ -127,7 +127,7 @@ export function FriendGroups({
       )}
 
       {groups.length === 0 && !showCreateGroup ? (
-        <div className="mt-3 rounded-2xl border border-dashed border-sidebar/20 bg-mushroom/35 px-4 py-6 text-center">
+        <div className="surface-empty-lg mt-3">
           <p className="text-sm font-medium text-ink-strong">No groups yet</p>
           <p className="mt-1 text-xs leading-relaxed text-ink-strong-muted">
             Make a crew of friends, then start a private table for everyone in one tap.
@@ -163,7 +163,7 @@ export function FriendGroups({
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="font-display text-sm font-semibold uppercase tracking-wider text-sidebar">
+                      <p className="font-heading-sub">
                         {g.name}
                       </p>
                       <p className="mt-0.5 text-xs text-ink-strong-muted">
@@ -246,7 +246,7 @@ export function FriendGroups({
                 <div className="flex items-center gap-3">
                   <MemberAvatarStack members={g.members} selfUserId={userId} />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-display text-sm font-semibold uppercase tracking-wider text-sidebar">
+                    <p className="font-heading-sub truncate">
                       {g.name}
                     </p>
                     <p className="mt-0.5 text-xs text-ink-strong-muted">

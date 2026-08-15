@@ -8,13 +8,14 @@ import {
   NotFoundException,
   Param,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { CreateTableBodySchema, InviteFriendsBodySchema } from '@poker/protocol';
 import type { User } from '../auth/auth.types.js';
 import { CurrentUser, SessionAuthGuard } from '../common/session-auth.guard.js';
 import { FriendsService } from '../friends/friends.service.js';
-import { HistoryService } from '../history/history.service.js';
+import { HistoryService, toPublicHandRows } from '../history/history.service.js';
 import { RoomsService } from '../rooms/rooms.service.js';
 import { SiteConfigService } from '../site-config/site-config.service.js';
 
@@ -110,8 +111,24 @@ export class TablesController {
 
   @Get(':id/history')
   async historyList(@Param('id') id: string) {
-    const hands = await this.history.listHands(id, 50);
+    const hands = toPublicHandRows(await this.history.listHands(id, 50));
     return { hands };
+  }
+
+  @Get(':id/chat')
+  async chatList(
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+    @Query('before') before?: string,
+  ) {
+    const n = limit ? Number(limit) : 80;
+    const b = before ? Number(before) : undefined;
+    const messages = await this.history.listChat({
+      tableId: id,
+      limit: Number.isFinite(n) ? n : 80,
+      before: b && Number.isFinite(b) ? b : undefined,
+    });
+    return { messages };
   }
 
   @Post(':id/invite-friends')

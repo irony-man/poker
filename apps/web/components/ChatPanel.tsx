@@ -73,7 +73,7 @@ export function ChatPanel({
             <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-sidebar/10 bg-white shadow-[0_6px_18px_rgb(29_4_50/0.08)]">
               <AppleEmoji emoji="💬" size={28} decorative />
             </div>
-            <p className="font-display text-sm font-semibold uppercase tracking-wider text-sidebar">
+            <p className="font-heading-sub">
               Quiet so far
             </p>
             <p className="mt-1 max-w-[14rem] text-xs leading-relaxed text-ink-strong-muted">
@@ -147,9 +147,9 @@ export function ChatPanel({
 
       {/* Emoji picker overlay */}
       {pickerOpen && (
-        <div className="absolute inset-x-0 bottom-[8.75rem] z-20 mx-3 max-h-[50%] overflow-hidden rounded-2xl border border-sidebar/12 bg-white shadow-[0_18px_40px_rgb(29_4_50/0.14)]">
-          <div className="flex items-center justify-between border-b border-sidebar/10 px-3 py-2">
-            <span className="text-[10px] font-display font-semibold uppercase tracking-[0.16em] text-sidebar">
+        <div className="surface-modal absolute inset-x-0 bottom-[8.75rem] z-20 mx-3 max-h-[50%] shadow-[0_18px_40px_rgb(29_4_50/0.14)]">
+          <div className="hud-popup-header">
+            <span className="font-kicker-sidebar">
               Reactions
             </span>
             <button

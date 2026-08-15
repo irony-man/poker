@@ -10,7 +10,7 @@ export function CollapsibleSection({
   children: ReactNode;
 }) {
   return (
-    <details className="group rounded-xl border border-sidebar/12 bg-mushroom/40 open:bg-mushroom/55">
+    <details className="surface-row group bg-mushroom/40 px-0 py-0 open:bg-mushroom/55">
       <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm outline-none marker:content-none [&::-webkit-details-marker]:hidden focus-visible:ring-2 focus-visible:ring-sidebar/30">
         <span className="min-w-0 flex-1">
           <span className="hud-label block">{title}</span>

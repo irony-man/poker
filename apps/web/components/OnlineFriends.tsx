@@ -189,7 +189,7 @@ export function OnlineFriendsSidebar({
                     title={f.name}
                   />
                   <span
-                    className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-sidebar bg-positive"
+                    className="presence-dot"
                     aria-hidden
                   />
                 </span>
@@ -243,7 +243,7 @@ export function OnlineFriendsStrip({
                 title={f.name}
               />
               <span
-                className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-sidebar bg-positive"
+                className="presence-dot"
                 aria-hidden
               />
             </Link>

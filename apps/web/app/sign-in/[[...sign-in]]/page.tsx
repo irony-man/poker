@@ -46,9 +46,9 @@ function SignInForm() {
   }
 
   return (
-    <div className="lobby-fade-up flex w-full flex-col justify-start">
+    <div className="lobby-page-intro">
       <div className="mb-4 sm:mb-5">
-        <h1 className="font-display text-3xl font-bold tracking-tight text-ink-strong sm:text-4xl">
+        <h1 className="font-title-page">
           {pageCopy.title}
         </h1>
         <p className="mt-2 text-sm text-ink-strong-muted">{pageCopy.subtitle}</p>

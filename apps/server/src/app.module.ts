@@ -10,6 +10,7 @@ import { DatabaseModule } from './database/database.module.js';
 import { FriendsModule } from './friends/friends.module.js';
 import { GatewayModule } from './gateway/gateway.module.js';
 import { HealthModule } from './health/health.module.js';
+import { HistoryModule } from './history/history.module.js';
 import { PresenceModule } from './presence/presence.module.js';
 import { RealtimeModule } from './realtime/realtime.module.js';
 import { SiteConfigModule } from './site-config/site-config.module.js';
@@ -38,6 +39,7 @@ import { WalletModule } from './wallet/wallet.module.js';
     PresenceModule,
     RealtimeModule,
     HealthModule,
+    HistoryModule,
     AuthModule,
     UsersModule,
     WalletModule,

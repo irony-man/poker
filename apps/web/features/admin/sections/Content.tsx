@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/Button';
 import { TextAreaField } from '@/components/ui/TextField';
 import type { SiteAnnouncement } from '@/lib/api';
-import { Section } from '../ui';
+import { ADMIN_SAVE_BTN, CheckboxRow, SaveBar, Section } from '../ui';
 
 export function ContentSection({
   announcement,
@@ -22,20 +22,12 @@ export function ContentSection({
       description="Optional notice shown at the top of lobby pages (not on live tables)."
     >
       <form onSubmit={onSave} className="space-y-4">
-        <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-sidebar/10 bg-mushroom/[0.04] px-3 py-3 text-sm text-ink-strong">
-          <input
-            type="checkbox"
-            className="h-4 w-4 accent-sidebar"
-            checked={announcement.enabled}
-            onChange={(e) => onAnnouncement({ enabled: e.target.checked })}
-          />
-          <span>
-            <span className="font-medium">Show banner on lobby pages</span>
-            <span className="mt-0.5 block text-xs text-ink-strong-muted">
-              Disabled until checked and text is non-empty
-            </span>
-          </span>
-        </label>
+        <CheckboxRow
+          checked={announcement.enabled}
+          onChange={(enabled) => onAnnouncement({ enabled })}
+          title="Show banner on lobby pages"
+          hint="Disabled until checked and text is non-empty"
+        />
         <TextAreaField
           label="Banner text"
           value={announcement.text}
@@ -44,13 +36,11 @@ export function ContentSection({
           maxLength={2000}
           placeholder="Announcement shown above lobby content…"
         />
-        <Button
-          type="submit"
-          disabled={busy}
-          className="min-h-11 w-full sm:w-auto sm:min-w-[12rem]"
-        >
-          {busyKey === 'announce' ? 'Saving…' : 'Save banner'}
-        </Button>
+        <SaveBar>
+          <Button type="submit" disabled={busy} className={ADMIN_SAVE_BTN}>
+            {busyKey === 'announce' ? 'Saving…' : 'Save banner'}
+          </Button>
+        </SaveBar>
       </form>
     </Section>
   );

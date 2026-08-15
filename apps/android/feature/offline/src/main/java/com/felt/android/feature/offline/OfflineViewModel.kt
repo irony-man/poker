@@ -8,7 +8,11 @@ import com.felt.android.core.datastore.SessionPreferences
 import com.felt.android.core.model.ChatMessage
 import com.felt.android.core.model.LegalActions
 import com.felt.android.core.model.PublicTable
+import com.felt.android.core.model.UploadHandRequest
 import com.felt.android.core.designsystem.avatarIdFromUserId
+import com.felt.android.core.network.FeltApi
+import com.felt.android.core.network.FeltJson
+import com.felt.android.core.network.SessionTokenHolder
 import com.felt.android.engine.ActionIntent
 import com.felt.android.engine.ActionType
 import com.felt.android.engine.EngineEvent
@@ -39,6 +43,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.JsonObject
 import kotlin.random.Random
 
 private const val HUMAN_ID = "offline-human"
@@ -65,6 +71,8 @@ data class OfflineUiState(
 class OfflineViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val sessionPreferences: SessionPreferences,
+    private val api: FeltApi,
+    private val tokenHolder: SessionTokenHolder,
 ) : ViewModel() {
 
     private val route = savedStateHandle.toRoute<OfflineTableRoute>()
@@ -81,6 +89,12 @@ class OfflineViewModel @Inject constructor(
     )
 
     private val random = SecureRandom()
+    private var tableId: String = newOfflineTableId(null)
+    private var handStartedAt: Long = 0L
+    private val handActions = mutableListOf<JsonObject>()
+    private val handChat = mutableListOf<ChatMessage>()
+    private val recordedHands = mutableSetOf<String>()
+    private var capturingHand = false
 
     private val _uiState = MutableStateFlow(OfflineUiState(playerName = name, config = config))
     val uiState: StateFlow<OfflineUiState> = _uiState.asStateFlow()
@@ -92,6 +106,12 @@ class OfflineViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             humanAvatarId = sessionPreferences.getAvatarId()
+            val session = sessionPreferences.getSession()
+            tableId = newOfflineTableId(session?.userId)
+            if (session != null && session.sessionToken.isNotBlank()) {
+                tokenHolder.set(session.sessionToken)
+                flushQueue()
+            }
             bootstrap()
         }
     }
@@ -126,6 +146,7 @@ class OfflineViewModel @Inject constructor(
         val state = _uiState.value.handState ?: return
         if (state.street != Street.Waiting && state.street != Street.Payout) return
         val base = if (state.street == Street.Payout) returnToWaiting(state) else state
+        beginHandBuffers()
         val result = startHand(base, config, "off-${System.currentTimeMillis()}") { n ->
             ByteArray(n).also { random.nextBytes(it) }
         }
@@ -159,6 +180,7 @@ class OfflineViewModel @Inject constructor(
         viewModelScope.launch {
             delay(800)
             if (_uiState.value.handState?.street == Street.Waiting) {
+                beginHandBuffers()
                 val result = startHand(state, config, "off-${System.currentTimeMillis()}") { n ->
                     ByteArray(n).also { random.nextBytes(it) }
                 }
@@ -168,6 +190,8 @@ class OfflineViewModel @Inject constructor(
     }
 
     private fun applyEngineResult(next: HandState, events: List<EngineEvent>) {
+        val at = System.currentTimeMillis()
+        events.forEach { handActions += engineEventJson(it, at) }
         announceEvents(next, events)
         syncState(next)
         scheduleBotLoop(next)
@@ -175,6 +199,7 @@ class OfflineViewModel @Inject constructor(
         if (next.street == Street.Payout) {
             payoutJob?.cancel()
             payoutJob = null
+            persistCompletedHand(next)
         }
     }
 
@@ -300,8 +325,77 @@ class OfflineViewModel @Inject constructor(
     private fun pushSystem(name: String, text: String) = pushChat("system", name, text)
 
     private fun pushChat(userId: String, sender: String, text: String) {
+        val line = ChatMessage(userId, sender, text, System.currentTimeMillis())
+        if (capturingHand) {
+            handChat += line
+        }
         _uiState.update {
-            it.copy(chat = it.chat + ChatMessage(userId, sender, text, System.currentTimeMillis()))
+            it.copy(chat = it.chat + line)
+        }
+    }
+
+    private fun beginHandBuffers() {
+        handActions.clear()
+        handChat.clear()
+        handStartedAt = System.currentTimeMillis()
+        capturingHand = true
+    }
+
+    private fun persistCompletedHand(state: HandState) {
+        if (state.handId.isBlank() || !recordedHands.add(state.handId)) return
+        val request = buildOfflineHandRequest(
+            tableId = tableId,
+            state = state,
+            startedAt = if (handStartedAt > 0L) handStartedAt else System.currentTimeMillis(),
+            actions = handActions.toList(),
+            chat = handChat.toList(),
+        )
+        capturingHand = false
+        viewModelScope.launch { submitHand(request) }
+    }
+
+    private suspend fun submitHand(request: UploadHandRequest) {
+        val session = sessionPreferences.getSession() ?: return
+        if (session.sessionToken.isBlank()) return
+        tokenHolder.set(session.sessionToken)
+        try {
+            api.uploadHand(request)
+        } catch (_: Exception) {
+            enqueueHand(request)
+        }
+    }
+
+    private suspend fun enqueueHand(request: UploadHandRequest) {
+        val current = decodeQueue()
+        sessionPreferences.saveOfflineHandQueueJson(
+            FeltJson.encodeToString(ListSerializer(UploadHandRequest.serializer()), current + request),
+        )
+    }
+
+    private suspend fun flushQueue() {
+        val items = decodeQueue()
+        if (items.isEmpty()) return
+        val remaining = mutableListOf<UploadHandRequest>()
+        for (item in items) {
+            try {
+                api.uploadHand(item)
+            } catch (_: Exception) {
+                remaining += item
+            }
+        }
+        sessionPreferences.saveOfflineHandQueueJson(
+            FeltJson.encodeToString(ListSerializer(UploadHandRequest.serializer()), remaining),
+        )
+    }
+
+    private suspend fun decodeQueue(): List<UploadHandRequest> {
+        return try {
+            FeltJson.decodeFromString(
+                ListSerializer(UploadHandRequest.serializer()),
+                sessionPreferences.loadOfflineHandQueueJson(),
+            )
+        } catch (_: Exception) {
+            emptyList()
         }
     }
 

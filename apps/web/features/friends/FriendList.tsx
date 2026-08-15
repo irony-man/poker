@@ -17,7 +17,7 @@ export function FriendList({
 }) {
   if (friends.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-sidebar/20 bg-mushroom/35 px-4 py-6 text-center">
+      <div className="surface-empty-lg">
         <p className="text-sm font-medium text-ink-strong">No friends yet</p>
         <p className="mt-1 text-xs leading-relaxed text-ink-strong-muted">
           Enter someone&apos;s exact username under Find player to send a request, then challenge

@@ -28,7 +28,7 @@ export function FriendInvites({
             {incoming.map((req) => (
               <li
                 key={req.id}
-                className="flex flex-wrap items-center gap-2 rounded-xl border border-sidebar/12 bg-mushroom/50 px-3 py-2.5"
+                className="surface-row flex flex-wrap items-center gap-2 bg-mushroom/50"
               >
                 <PlayerAvatar
                   userId={req.from.userId}
@@ -37,7 +37,7 @@ export function FriendInvites({
                   size={28}
                   title={req.from.name}
                 />
-                <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink-strong">
+                <span className="font-row-label">
                   {req.from.name}
                 </span>
                 <div className="flex shrink-0 items-center gap-1.5">

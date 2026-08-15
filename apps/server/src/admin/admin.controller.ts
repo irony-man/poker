@@ -21,6 +21,7 @@ import { AdminGuard } from '../common/admin.guard.js';
 import { CurrentUser, SessionAuthGuard } from '../common/session-auth.guard.js';
 import { ContestsService } from '../contests/contests.service.js';
 import { FriendsService } from '../friends/friends.service.js';
+import { HistoryService } from '../history/history.service.js';
 import { PresenceService } from '../presence/presence.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 import { RoomsService } from '../rooms/rooms.service.js';
@@ -139,6 +140,7 @@ export class AdminController {
     private readonly rooms: RoomsService,
     private readonly contests: ContestsService,
     private readonly friends: FriendsService,
+    private readonly history: HistoryService,
     private readonly presence: PresenceService,
     private readonly realtime: RealtimeService,
     private readonly storage: StorageService,
@@ -502,5 +504,36 @@ export class AdminController {
       };
     });
     return { tables, contests };
+  }
+
+  @Get('hands')
+  async listHands(
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('source') source?: string,
+    @Query('tableId') tableId?: string,
+    @Query('q') q?: string,
+  ) {
+    const src = source === 'offline' || source === 'online' ? source : undefined;
+    return this.history.listHandsPageSummaries({
+      page: page ? Number(page) : 1,
+      pageSize: pageSize ? Number(pageSize) : 25,
+      source: src,
+      tableId: tableId?.trim() || undefined,
+      q: q?.trim() || undefined,
+    });
+  }
+
+  @Get('hands/:id')
+  async getHand(@Param('id') id: string) {
+    const hand = await this.history.getHandById(id);
+    if (!hand) throw new NotFoundException({ error: 'Hand not found' });
+    let result: unknown = null;
+    try {
+      result = JSON.parse(hand.resultJson) as unknown;
+    } catch {
+      result = null;
+    }
+    return { hand: { ...hand, result } };
   }
 }

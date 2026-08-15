@@ -470,6 +470,35 @@ body > * {
     @apply rounded-md border border-mushroom/20 bg-ink-raised py-3 font-display font-bold uppercase tracking-wider text-cream transition hover:border-mushroom/40 hover:bg-mushroom/10;
   }
 
+  .btn-pill {
+    @apply inline-flex items-center justify-center rounded-full border border-sidebar/30 bg-transparent px-4 py-2 text-xs font-display font-bold uppercase tracking-wider text-sidebar transition hover:border-sidebar hover:bg-sidebar/5 disabled:opacity-50;
+  }
+
+  .btn-positive {
+    @apply rounded-lg border bg-positive/10 px-3 py-2 text-sm font-medium text-positive transition disabled:opacity-50;
+    border-color: rgb(var(--positive) / 0.35);
+  }
+
+  .btn-positive:hover {
+    background-color: rgb(var(--positive) / 0.15);
+  }
+
+  .btn-danger-quiet {
+    @apply rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-sm font-medium text-danger transition hover:bg-danger/10 disabled:opacity-50;
+  }
+
+  .btn-soft {
+    @apply inline-flex items-center justify-center rounded border border-sidebar/20 bg-white px-2 font-display font-bold uppercase tracking-wide text-sidebar shadow-[0_2px_8px_rgb(29_4_50/0.06)] transition hover:bg-sidebar/5 disabled:opacity-50;
+  }
+
+  .btn-soft:hover {
+    border-color: rgb(var(--sidebar) / 0.35);
+  }
+
+  .btn-segment {
+    @apply min-h-9 min-w-0 flex-1 px-3 py-2 text-xs font-display font-bold uppercase tracking-wide;
+  }
+
   .status-chip {
     @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-display font-semibold uppercase tracking-[0.14em];
   }
@@ -533,9 +562,165 @@ body > * {
     @apply mx-0.5 hidden h-5 w-px shrink-0 sm:block;
     background-color: rgb(var(--sidebar) / 0.12);
   }
+
+  .surface-card {
+    @apply rounded-2xl border border-sidebar/10 bg-white p-4 shadow-[0_8px_28px_rgb(29_4_50/0.06)] sm:p-6;
+  }
+
+  .surface-card-lg {
+    @apply rounded-2xl border bg-white p-5 sm:p-7;
+    border-color: rgb(var(--sidebar) / 0.12);
+    box-shadow: 0 10px 28px rgb(29 4 50 / 0.06);
+  }
+
+  .surface-row {
+    @apply rounded-xl border px-3 py-2.5;
+    border-color: rgb(var(--sidebar) / 0.12);
+    background-color: rgb(var(--mushroom) / 0.55);
+  }
+
+  .surface-empty {
+    @apply rounded-xl border border-dashed border-sidebar/20 px-3 py-2.5;
+    background-color: rgb(var(--mushroom) / 0.35);
+  }
+
+  .surface-empty-lg {
+    @apply rounded-2xl border border-dashed border-sidebar/20 px-4 py-6 text-center;
+    background-color: rgb(var(--mushroom) / 0.35);
+  }
+
+  .surface-modal {
+    @apply overflow-hidden rounded-2xl border bg-white;
+    border-color: rgb(var(--sidebar) / 0.12);
+    box-shadow: 0 18px 48px rgb(29 4 50 / 0.18);
+  }
+
+  .surface-list {
+    @apply divide-y divide-sidebar/10 overflow-hidden rounded-xl border;
+    border-color: rgb(var(--sidebar) / 0.12);
+  }
+
+  .lobby-page-intro {
+    @apply flex w-full flex-col justify-start;
+    animation: lobby-fade-up 0.55s var(--ease-out) both;
+  }
+
+  .sidebar-rail {
+    @apply hidden h-full min-h-0 md:flex md:w-60 md:shrink-0 md:flex-col;
+  }
+
+  .sidebar-brand {
+    @apply block shrink-0 px-4 pb-2 pt-5 transition hover:opacity-90;
+  }
+
+  .sidebar-footer {
+    @apply mt-auto border-t border-mushroom/10 px-3 py-3;
+  }
+
+  .sidebar-footer-link {
+    @apply block rounded-lg px-3 py-2 text-center text-[11px] font-display font-semibold uppercase tracking-[0.14em] transition hover:text-mushroom;
+    color: rgb(var(--mushroom) / 0.55);
+  }
+
+  .sidebar-footer-link:hover {
+    background-color: rgb(var(--mushroom) / 0.08);
+  }
+
+  .nav-sidebar-item {
+    @apply rounded-md px-3 py-2.5 text-left text-sm font-display font-semibold uppercase tracking-[0.12em] transition;
+  }
+
+  .menu-item-dark {
+    @apply block px-4 py-3 text-center text-xs font-display font-bold uppercase tracking-[0.14em] text-mushroom hover:bg-mushroom/10;
+  }
+
+  .lobby-main-fill {
+    @apply flex h-full min-h-0 min-w-0 flex-1 flex-col;
+  }
+
+  .hud-popup-header {
+    @apply flex items-center justify-between border-b border-sidebar/10 px-3 py-2;
+  }
+
+  .hud-tag-chip {
+    @apply rounded border border-sidebar/20 bg-white px-2 py-0.5 text-[10px] font-display font-semibold uppercase tracking-wider text-sidebar/80 hover:border-sidebar/40 hover:text-sidebar;
+  }
+
+  .hud-tag-chip:hover {
+    background-color: rgb(var(--sidebar) / 0.08);
+  }
+
+  .presence-dot {
+    @apply absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-sidebar bg-positive;
+  }
+
+  .admin-empty {
+    @apply px-3 py-6 text-center text-sm text-ink-strong-muted;
+  }
+
+  .admin-table-head {
+    @apply border-b border-sidebar/10 text-[10px] font-display font-semibold uppercase tracking-[0.14em] text-ink-strong-muted;
+    background-color: rgb(var(--mushroom) / 0.05);
+  }
+
+  .play-table-logo-row {
+    @apply flex min-w-0 items-center gap-2.5 pl-0.5;
+  }
+
+  .play-table-logo {
+    @apply h-7 w-auto object-contain object-left sm:h-8;
+  }
+
+  .play-table-stage {
+    @apply relative flex min-h-0 flex-1 flex-col;
+  }
+
+  .play-table-oval-ring {
+    @apply pointer-events-none absolute inset-6 z-[1] rounded-[40%] border border-white/10;
+  }
 }
 
 @layer utilities {
+  .font-kicker {
+    @apply font-display text-xs font-semibold uppercase tracking-[0.14em] text-ink-strong-muted;
+  }
+
+  .font-kicker-xs {
+    @apply text-[10px] font-display font-semibold uppercase tracking-[0.16em] text-ink-strong-muted;
+  }
+
+  .font-kicker-sidebar {
+    @apply text-[10px] font-display font-semibold uppercase tracking-[0.16em] text-sidebar;
+  }
+
+  .font-prose-muted {
+    @apply text-sm leading-relaxed text-ink-strong-muted;
+  }
+
+  .font-heading-section {
+    @apply font-display text-lg font-bold tracking-tight text-sidebar;
+  }
+
+  .font-title-page {
+    @apply font-display text-3xl font-bold tracking-tight text-ink-strong sm:text-4xl;
+  }
+
+  .font-heading-sub {
+    @apply font-display text-sm font-semibold uppercase tracking-wider text-sidebar;
+  }
+
+  .font-row-label {
+    @apply min-w-0 flex-1 truncate text-sm font-medium text-ink-strong;
+  }
+
+  .link-sidebar {
+    @apply font-medium text-sidebar underline-offset-2 hover:underline;
+  }
+
+  .link-auth-footer {
+    @apply font-display font-semibold uppercase tracking-wider text-sidebar underline-offset-4 hover:underline;
+  }
+
   /*
    * Table theme — scoped under .table-theme (TableShell).
    * Felt + chrome + type + accent + focus + themed chip tokens.

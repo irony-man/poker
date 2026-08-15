@@ -323,3 +323,56 @@ export async function requestAdminSoundUploadUrl(
   if (!res.ok) throw new Error(await parseError(res, 'Could not start sound upload'));
   return res.json() as Promise<{ uploadUrl: string; publicUrl: string; expiresIn: number }>;
 }
+
+export interface AdminHandWinner {
+  seat: number;
+  amount: number;
+  name?: string;
+  handName?: string;
+}
+
+export interface AdminHandSummary {
+  id: string;
+  tableId: string;
+  handId: string;
+  contestId: string | null;
+  source: string;
+  startedAt: string;
+  endedAt: string | null;
+  playerNames: string[];
+  winners: AdminHandWinner[];
+}
+
+export interface AdminHandsPage {
+  items: AdminHandSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface AdminHandDetail {
+  hand: AdminHandSummary & {
+    resultJson?: string;
+    result: unknown;
+  };
+}
+
+export async function fetchAdminHands(
+  sessionToken: string,
+  opts: { page?: number; pageSize?: number; source?: string; tableId?: string; q?: string } = {},
+): Promise<AdminHandsPage> {
+  const params = new URLSearchParams();
+  if (opts.page) params.set('page', String(opts.page));
+  if (opts.pageSize) params.set('pageSize', String(opts.pageSize));
+  if (opts.source) params.set('source', opts.source);
+  if (opts.tableId) params.set('tableId', opts.tableId);
+  if (opts.q) params.set('q', opts.q);
+  const qs = params.toString();
+  return authedFetch(`/api/admin/hands${qs ? `?${qs}` : ''}`, { sessionToken }) as Promise<AdminHandsPage>;
+}
+
+export async function fetchAdminHand(sessionToken: string, id: string): Promise<AdminHandDetail> {
+  return authedFetch(`/api/admin/hands/${encodeURIComponent(id)}`, {
+    sessionToken,
+  }) as Promise<AdminHandDetail>;
+}

@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import type { AdminRoomSettings, SiteEconomy } from '@/lib/api';
-import { Section } from '../ui';
+import { ADMIN_SAVE_BTN, SaveBar, Section } from '../ui';
 
 export function EconomySection({
   economy,
@@ -77,13 +77,11 @@ export function EconomySection({
           />
         </div>
         <div className="sm:col-span-3">
-          <Button
-            type="submit"
-            disabled={busy}
-            className="min-h-11 w-full sm:w-auto sm:min-w-[12rem]"
-          >
-            {busyKey === 'economy' ? 'Saving…' : 'Save settings'}
-          </Button>
+          <SaveBar>
+            <Button type="submit" disabled={busy} className={ADMIN_SAVE_BTN}>
+              {busyKey === 'economy' ? 'Saving…' : 'Save settings'}
+            </Button>
+          </SaveBar>
         </div>
       </form>
     </Section>

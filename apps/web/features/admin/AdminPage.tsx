@@ -1,10 +1,11 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useEffect, useId, useRef, useState } from 'react';
-import { LobbyPageShell } from '@/components/LobbyPageShell';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { useConfirm } from '@/components/ConfirmPopover';
+import Link from 'next/link';
+import { authHref } from '@/lib/authRedirect';
 import { BOT_PERSONALITY_IDS, type BotPersonalityId } from '@poker/engine';
 import {
   creditAdminUser,
@@ -62,10 +63,9 @@ import {
   slugBotGroupId,
   MAX_BOT_GROUPS,
 } from './botRoster';
-import { parseAdminTab, TABS, MAX_HOME_BLOCKS, type AdminTab } from './tabs';
-import { StatCard } from './ui';
-import { StatusChip } from '@/components/ui/StatusChip';
-import { Tabs } from '@/components/ui/Tabs';
+import { parseAdminTab, MAX_HOME_BLOCKS, type AdminTab } from './tabs';
+import { AdminShell } from './AdminShell';
+import { Section } from './ui';
 import { UsersSection } from './sections/Users';
 import { ContentSection } from './sections/Content';
 import { BLANK_HOME_BLOCK, HomeSection } from './sections/Home';
@@ -74,6 +74,7 @@ import { BotsSection } from './sections/Bots';
 import { EconomySection } from './sections/Economy';
 import { SoundsSection } from './sections/Sounds';
 import { GamesSection } from './sections/Games';
+import { HandsSection } from './sections/Hands';
 
 function AdminPageInner() {
   const router = useRouter();
@@ -83,7 +84,6 @@ function AdminPageInner() {
   const sessionToken = useSession((s) => s.sessionToken);
   const selfUserId = useSession((s) => s.userId);
   const token = sessionToken ?? readStoredSession()?.sessionToken ?? null;
-  const navId = useId();
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -749,52 +749,41 @@ function AdminPageInner() {
 
   if (!signedIn || !token) {
     return (
-      <LobbyPageShell title="Admin" signedIn={false} requireAuth>
-        <p className="text-sm text-ink-strong-muted">Sign in as an allowlisted admin.</p>
-      </LobbyPageShell>
+      <AdminShell tab={tab} onSelectTab={selectTab} stats={null} economy={null}>
+        <Section title="Sign in required" description="Admin is limited to allowlisted operators.">
+          <p className="text-sm text-ink-strong-muted">
+            <Link href={authHref('sign-in', '/admin')} className="font-semibold text-sidebar underline-offset-2 hover:underline">
+              Sign in
+            </Link>{' '}
+            with an allowlisted admin account.
+          </p>
+        </Section>
+      </AdminShell>
     );
   }
 
   if (!isAdmin) {
     return (
-      <LobbyPageShell title="Admin" signedIn subtitle="Restricted">
-        <p className="text-sm text-ink-strong-muted">
-          You do not have admin access. Ask an operator to add your username to{' '}
-          <code className="rounded bg-sidebar/5 px-1.5 py-0.5 text-xs">ADMIN_USERNAMES</code>.
-        </p>
-      </LobbyPageShell>
+      <AdminShell tab={tab} onSelectTab={selectTab} stats={null} economy={null}>
+        <Section title="No access" description="This account is not on the admin allowlist.">
+          <p className="text-sm text-ink-strong-muted">
+            Ask an operator to add your username to{' '}
+            <code className="rounded bg-sidebar/5 px-1.5 py-0.5 text-xs">ADMIN_USERNAMES</code>.
+          </p>
+        </Section>
+      </AdminShell>
     );
   }
 
   return (
-    <LobbyPageShell title="Admin" subtitle="Site, players, and live tables" signedIn error={error}>
-      {okMsg ? (
-        <StatusChip tone="positive" className="mb-4 text-xs" role="status">
-          {okMsg}
-        </StatusChip>
-      ) : null}
-
-      {stats ? (
-        <div className="mb-5 flex flex-wrap gap-3">
-          <StatCard label="Users" value={stats.userCount} />
-          <StatCard label="Live tables" value={stats.liveTables} />
-          <StatCard label="Contests" value={stats.liveContests} />
-          <StatCard label="Start chips" value={formatMoneyLabel(economy.startingChipGrant)} />
-          <StatCard label="Start Whuffies" value={formatMoneyLabel(economy.startingWhuffieGrant)} />
-        </div>
-      ) : null}
-
-      <Tabs
-        label="Admin sections"
-        variant="pill"
-        idPrefix={navId}
-        selected={tab}
-        onSelect={selectTab}
-        className="mb-5 -mx-1 overflow-x-auto px-1 pb-1"
-        options={TABS.map((t) => ({ id: t.id, label: t.label }))}
-      />
-
-      <div className="flex flex-col gap-5">
+    <AdminShell
+      tab={tab}
+      onSelectTab={selectTab}
+      stats={stats}
+      economy={economy}
+      error={error}
+      okMsg={okMsg}
+    >
         {tab === 'users' ? (
           <UsersSection
             userQuery={userQuery}
@@ -989,8 +978,9 @@ function AdminPageInner() {
             onRefresh={() => void refreshGames()}
           />
         ) : null}
-      </div>
-    </LobbyPageShell>
+
+        {tab === 'hands' && token ? <HandsSection token={token} /> : null}
+    </AdminShell>
   );
 }
 

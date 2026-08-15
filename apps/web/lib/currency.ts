@@ -5,7 +5,7 @@
  */
 export const MONEY_TOKEN = 'chips';
 
-/** Public path for the money mark (use with CurrencyIcon). */
+/** Public path for the Whuffies mark (use with CurrencyIcon). */
 export const CURRENCY_ICON_SRC = '/currency.svg';
 
 /** Coerce API/UI amounts that may be null/undefined into a non-negative integer. */

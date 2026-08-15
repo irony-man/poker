@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { contestPlacementPrize } from '@poker/protocol';
 import { MemoryKv } from './kv/kv.store.js';
-import type { HandHistoryStore } from './history/history.store.js';
+import { memoryHistoryStore, type HandHistoryStore } from './history/history.store.js';
 import { RoomManager } from './rooms/room.js';
 import { TournamentManager } from './contests/tournament.js';
 import { UnlimitedWalletStore, type WalletStore } from './wallet/wallet.store.js';
@@ -12,19 +12,7 @@ import type {
 } from './wallet/wallet.constants.js';
 
 function memoryHistory(): HandHistoryStore {
-  return {
-    async recordTable() {},
-    async recordHand() {},
-    async listHands() {
-      return [];
-    },
-    async countHandsForUser() {
-      return 0;
-    },
-    async countHandsByUser() {
-      return new Map();
-    },
-  };
+  return memoryHistoryStore();
 }
 
 class TrackingWallet extends UnlimitedWalletStore implements WalletStore {

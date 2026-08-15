@@ -1,6 +1,6 @@
-export const NODE_SPACING = 92;
+export const NODE_SPACING = 108;
 export const TOP_PAD = 150;
-export const BOTTOM_PAD = 220;
+export const BOTTOM_PAD = 240;
 export const NODE_SIZE = 86;
 
 export type NodePos = {

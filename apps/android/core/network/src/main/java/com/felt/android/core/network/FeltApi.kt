@@ -7,13 +7,18 @@ import com.felt.android.core.model.CreateTableRequest
 import com.felt.android.core.model.CreateTableResponse
 import com.felt.android.core.model.InviteResolveResponse
 import com.felt.android.core.model.LoginRequest
+import com.felt.android.core.model.MeProfile
+import com.felt.android.core.model.MyHandsResponse
 import com.felt.android.core.model.SessionDto
 import com.felt.android.core.model.SignupRequest
+import com.felt.android.core.model.UploadHandRequest
+import com.felt.android.core.model.UploadHandResponse
 import kotlinx.serialization.Serializable
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 @Serializable
 class EmptyBody
@@ -66,4 +71,13 @@ interface FeltApi {
         @Path("id") id: String,
         @Body body: EmptyBody = EmptyBody(),
     ): ContestResponse
+
+    @POST("api/history/hands")
+    suspend fun uploadHand(@Body body: UploadHandRequest): UploadHandResponse
+
+    @GET("api/me")
+    suspend fun getMe(): MeProfile
+
+    @GET("api/me/hands")
+    suspend fun getMyHands(@Query("limit") limit: Int = 50): MyHandsResponse
 }

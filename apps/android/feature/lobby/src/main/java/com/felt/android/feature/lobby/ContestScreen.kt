@@ -82,8 +82,11 @@ fun ContestScreen(
         Text(
             text = buildString {
                 append("Code ${contest.inviteCode} · ${contest.entrants.size}/${contest.fieldSize} · stack ${contest.startingStack}")
-                if (contest.mode == "rounds" && contest.handLimit != null) {
-                    append(" · hand ${minOf(contest.handsPlayed, contest.handLimit)}/${contest.handLimit}")
+                if (contest.mode == "rounds") {
+                    val handLimit = contest.handLimit
+                    if (handLimit != null) {
+                        append(" · hand ${minOf(contest.handsPlayed, handLimit)}/$handLimit")
+                    }
                 }
             },
             color = FeltColors.Cream.copy(0.55f),
@@ -136,12 +139,13 @@ fun ContestScreen(
             )
         }
 
-        if (contest.status == "running" && contest.mode == "rounds" && contest.handLimit != null) {
+        val roundsHandLimit = contest.handLimit
+        if (contest.status == "running" && contest.mode == "rounds" && roundsHandLimit != null) {
             HudPanel(modifier = Modifier.fillMaxWidth()) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("PROGRESS", color = FeltColors.Cream.copy(0.7f), fontWeight = FontWeight.Bold)
                     Text(
-                        "Hand ${minOf(contest.handsPlayed, contest.handLimit)} of ${contest.handLimit}",
+                        "Hand ${minOf(contest.handsPlayed, roundsHandLimit)} of $roundsHandLimit",
                         color = FeltColors.Cream,
                         fontSize = 14.sp,
                     )

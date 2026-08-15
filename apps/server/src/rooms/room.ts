@@ -100,6 +100,9 @@ export class Room {
   private avatarUrlByUser = new Map<string, string>();
   /** Cash: humans who have opted in for the next hand. */
   private readyUserIds = new Set<string>();
+  /** Bots that have auto-readied for the next hand (UI; deal gating treats all bots as ready). */
+  private botReadyUserIds = new Set<string>();
+  private botReadyTimers = new Map<string, NodeJS.Timeout>();
   /** Cash: sit out after the current hand finishes (still finish this hand). */
   private pendingSitOutUserIds = new Set<string>();
   private kv: KvStore;
@@ -111,6 +114,10 @@ export class Room {
   private autoStartTimer: NodeJS.Timeout | null = null;
   /** Tournament: one hand → payout transition already notified. */
   private lastNotifiedHandId: string | null = null;
+  /** History: one hand → payout already persisted. */
+  private lastRecordedHandId: string | null = null;
+  private handActions: Array<EngineEvent & { at: number }> = [];
+  private handChat: Array<{ at: number; userId: string; name: string; text: string }> = [];
   /**
    * Epoch ms when the table last became free of humans (connected, seated, or disconnect-grace).
    * Null while any human is present. Set at create when empty.
@@ -325,6 +332,8 @@ export class Room {
       clearTimeout(this.autoStartTimer);
       this.autoStartTimer = null;
     }
+    this.clearBotReadyTimers();
+    this.botReadyUserIds.clear();
     this.clearTurnTimer();
     if (this.state.street === 'payout') {
       this.state = returnToWaiting(this.state);
@@ -397,6 +406,7 @@ export class Room {
     this.closed = true;
 
     this.clearTurnTimer();
+    this.clearBotReadyTimers();
     if (this.autoStartTimer) {
       clearTimeout(this.autoStartTimer);
       this.autoStartTimer = null;
@@ -424,6 +434,7 @@ export class Room {
     }
 
     this.readyUserIds.clear();
+    this.botReadyUserIds.clear();
     this.pendingSitOutUserIds.clear();
     this.voiceParticipants.clear();
 
@@ -713,6 +724,7 @@ export class Room {
       this.state = returnToWaiting(this.state);
     }
     const name = p.name ?? 'Bot';
+    if (p.userId) this.clearBotReady(p.userId);
     const result = standUp(this.state, seat);
     if (!result.ok) return { ok: false, error: result.error };
     this.state = result.state;
@@ -728,6 +740,7 @@ export class Room {
     let removed = 0;
     for (const p of [...this.state.players]) {
       if (!isBotUserId(p.userId)) continue;
+      if (p.userId) this.clearBotReady(p.userId);
       const result = standUp(this.state, p.seat);
       if (result.ok) {
         this.state = result.state;
@@ -787,7 +800,9 @@ export class Room {
         const ready =
           eligible &&
           !!p.userId &&
-          (isBotUserId(p.userId) || this.readyUserIds.has(p.userId));
+          (isBotUserId(p.userId)
+            ? this.botReadyUserIds.has(p.userId)
+            : this.readyUserIds.has(p.userId));
         return {
           ...p,
           ready: Boolean(ready),
@@ -820,26 +835,38 @@ export class Room {
     // After a hand (or when waiting), apply "sit out next" flags.
     if (this.state.street === 'payout' || this.state.street === 'waiting') {
       this.applyPendingSitOuts();
+      this.scheduleBotAutoReady();
     }
     if (this.state.street === 'payout') {
-      await this.history.recordHand({
-        tableId: this.meta.id,
-        handId: this.state.handId,
-        startedAt: this.handStartedAt,
-        endedAt: Date.now(),
-        result: {
-          winners: this.state.winners,
-          community: this.state.community,
-          players: this.state.players.map((p) => ({
-            seat: p.seat,
-            userId: p.userId,
-            name: p.name,
-            stack: p.stack,
-            revealed: p.revealed,
-            holeCards: p.revealed && p.holeCards ? p.holeCards : null,
-          })),
-        },
-      });
+      if (this.state.handId && this.state.handId !== this.lastRecordedHandId) {
+        this.lastRecordedHandId = this.state.handId;
+        try {
+          await this.history.recordHand({
+            tableId: this.meta.id,
+            handId: this.state.handId,
+            contestId: this.meta.tournament?.contestId ?? null,
+            source: 'online',
+            startedAt: this.handStartedAt,
+            endedAt: Date.now(),
+            result: {
+              winners: this.state.winners,
+              community: this.state.community,
+              players: this.state.players.map((p) => ({
+                seat: p.seat,
+                userId: p.userId,
+                name: p.name,
+                stack: p.stack,
+                revealed: p.revealed,
+                holeCards: p.holeCards,
+              })),
+              actions: this.handActions,
+              chat: this.handChat,
+            },
+          });
+        } catch (err) {
+          console.error('[history] recordHand failed', err);
+        }
+      }
       if (
         this.isTournament() &&
         this.tournamentHook &&
@@ -863,6 +890,50 @@ export class Room {
 
   maybeAutoStart(): void {
     // Cash and contest tables require every human to ready up (no auto-deal).
+    this.scheduleBotAutoReady();
+  }
+
+  private clearBotReadyTimers(): void {
+    for (const timer of this.botReadyTimers.values()) clearTimeout(timer);
+    this.botReadyTimers.clear();
+  }
+
+  private clearBotReady(userId: string): void {
+    const timer = this.botReadyTimers.get(userId);
+    if (timer) {
+      clearTimeout(timer);
+      this.botReadyTimers.delete(userId);
+    }
+    this.botReadyUserIds.delete(userId);
+  }
+
+  private resetBotReadyState(): void {
+    this.clearBotReadyTimers();
+    this.botReadyUserIds.clear();
+  }
+
+  /** Stagger bot ready badges between hands (deal gating still treats bots as always ready). */
+  private scheduleBotAutoReady(): void {
+    if (this.meta.tournament?.frozen) return;
+    if (this.state.street !== 'waiting' && this.state.street !== 'payout') return;
+
+    for (const { userId, human } of this.eligibleForNextHand()) {
+      if (human) continue;
+      if (this.botReadyUserIds.has(userId) || this.botReadyTimers.has(userId)) continue;
+
+      const delay = 400 + Math.floor(Math.random() * 1200);
+      const timer = setTimeout(() => {
+        this.botReadyTimers.delete(userId);
+        if (this.state.street !== 'waiting' && this.state.street !== 'payout') return;
+        const stillEligible = this.eligibleForNextHand().some(
+          (e) => e.userId === userId && !e.human,
+        );
+        if (!stillEligible) return;
+        this.botReadyUserIds.add(userId);
+        this.broadcast();
+      }, delay);
+      this.botReadyTimers.set(userId, timer);
+    }
   }
 
   /**
@@ -947,6 +1018,9 @@ export class Room {
       return { ok: false, error: 'Need at least 2 players with chips' };
     }
     this.readyUserIds.clear();
+    this.resetBotReadyState();
+    this.handActions = [];
+    this.handChat = [];
     const handId = nanoid(10);
     this.handStartedAt = Date.now();
     const result = startHand(this.state, this.config, handId, (n) => randomBytes(n));
@@ -1332,13 +1406,14 @@ export class Room {
   }
 
   private announceEngineEvents(events: EngineEvent[]): void {
+    const at = Date.now();
     for (const e of events) {
+      this.handActions.push({ ...e, at });
       if (e.type === 'action') {
         const p = this.state.players[e.seat];
         const name = p?.name ?? `Seat ${e.seat}`;
         const line = formatActionLine(e.action, e.amount);
         this.systemChat(name, line);
-        const at = Date.now();
         const seatAction = {
           type: 'seat_action' as const,
           tableId: this.meta.id,
@@ -1376,40 +1451,48 @@ export class Room {
     }
   }
 
-  private systemChat(name: string, text: string): void {
-    const msg = {
-      type: 'chat',
-      tableId: this.meta.id,
-      userId: 'system',
-      name,
-      text,
-      at: Date.now(),
-    };
+  private broadcastChat(
+    userId: string,
+    name: string,
+    text: string,
+    kind: 'user' | 'system' | 'emoji',
+  ): number {
+    const at = Date.now();
+    const msg = { type: 'chat' as const, tableId: this.meta.id, userId, name, text, at };
     for (const conn of this.connections.values()) conn.send(msg);
+    if (this.state.street !== 'waiting' && this.state.handId) {
+      this.handChat.push({ at, userId, name, text });
+    }
+    void this.history
+      .recordChat({
+        tableId: this.meta.id,
+        contestId: this.meta.tournament?.contestId ?? null,
+        handId: this.state.street === 'waiting' ? null : this.state.handId || null,
+        userId,
+        name,
+        text,
+        at,
+        kind,
+        source: 'online',
+      })
+      .catch((err) => console.error('[history] recordChat failed', err));
+    return at;
+  }
+
+  private systemChat(name: string, text: string): void {
+    this.broadcastChat('system', name, text, 'system');
   }
 
   chat(userId: string, name: string, text: string): void {
     if (!this.rateLimit(`${userId}:chat`, 10, 5000)) return;
-    const msg = { type: 'chat', tableId: this.meta.id, userId, name, text, at: Date.now() };
-    for (const conn of this.connections.values()) conn.send(msg);
+    this.broadcastChat(userId, name, text, 'user');
   }
 
   emoji(userId: string, name: string, emoji: string): void {
     if (!this.rateLimit(`${userId}:emoji`, 20, 5000)) return;
-    const at = Date.now();
-    const react = { type: 'emoji', tableId: this.meta.id, userId, name, emoji, at };
-    const chat = {
-      type: 'chat',
-      tableId: this.meta.id,
-      userId,
-      name,
-      text: emoji,
-      at,
-    };
-    for (const conn of this.connections.values()) {
-      conn.send(react);
-      conn.send(chat);
-    }
+    const at = this.broadcastChat(userId, name, emoji, 'emoji');
+    const react = { type: 'emoji' as const, tableId: this.meta.id, userId, name, emoji, at };
+    for (const conn of this.connections.values()) conn.send(react);
   }
 
   joinVoice(userId: string, name: string): { ok: boolean; error?: string } {

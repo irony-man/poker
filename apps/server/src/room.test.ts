@@ -137,6 +137,49 @@ describe('RoomManager', () => {
     expect(room.state.street).not.toBe('waiting');
   });
 
+  it('auto-readies bots between hands with staggered state updates', async () => {
+    vi.useFakeTimers();
+    const kv = new MemoryKv();
+    const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-bot-ready-${Date.now()}`));
+    const rooms = new RoomManager(kv, history);
+    const meta = rooms.create({
+      name: 'BotReady',
+      hostUserId: 'u1',
+      isPrivate: true,
+      config: { ...cashConfig() },
+    });
+    const room = rooms.get(meta.id)!;
+    expect((await room.sit('u1', 'Host', 0, 1000)).ok).toBe(true);
+    expect(room.addBot('u1').ok).toBe(true);
+
+    let lastTable: { players: { userId?: string | null; ready?: boolean }[] } | null = null;
+    room.attach({
+      userId: 'u1',
+      name: 'Host',
+      avatarId: 0,
+      avatarUrl: null,
+      send: (msg) => {
+        const m = msg as { type?: string; table?: typeof lastTable };
+        if (m.type === 'state_sync' && m.table) lastTable = m.table;
+      },
+    });
+
+    const botUserId = room.state.players.find((p) => p.userId?.startsWith('bot:'))?.userId;
+    expect(botUserId).toBeTruthy();
+
+    expect(lastTable?.players.find((p) => p.userId === botUserId)?.ready).toBe(false);
+
+    vi.advanceTimersByTime(2000);
+    expect(lastTable?.players.find((p) => p.userId === botUserId)?.ready).toBe(true);
+
+    // Deal still waits for the human even though the bot is ready in UI.
+    expect(room.state.street).toBe('waiting');
+    expect(room.setReady('u1', true).ok).toBe(true);
+    expect(room.state.street).not.toBe('waiting');
+
+    vi.useRealTimers();
+  });
+
   it('does not deal until all humans ready; sit-out clears ready', async () => {
     const kv = new MemoryKv();
     const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-ready2-${Date.now()}`));

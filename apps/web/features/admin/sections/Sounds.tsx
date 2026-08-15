@@ -8,7 +8,7 @@ import {
   type TableSoundKind,
   type TableSoundsConfig,
 } from '@/lib/api';
-import { Section } from '../ui';
+import { ADMIN_SAVE_BTN, CheckboxRow, SaveBar, Section } from '../ui';
 
 export function SoundsSection({
   sounds,
@@ -57,15 +57,11 @@ export function SoundsSection({
             File uploads require AWS env vars on the server (S3_BUCKET, AWS_ACCESS_KEY_ID, etc.).
           </p>
         ) : null}
-        <label className="flex items-center gap-3 rounded-xl border border-sidebar/10 bg-cream px-4 py-3">
-          <input
-            type="checkbox"
-            checked={sounds.enabled}
-            onChange={(e) => onSounds({ enabled: e.target.checked })}
-            className="size-4 rounded border-sidebar/30 text-sidebar focus:ring-sidebar/30"
-          />
-          <span className="text-sm font-medium text-ink-strong">Enable table sounds site-wide</span>
-        </label>
+        <CheckboxRow
+          checked={sounds.enabled !== false}
+          onChange={(enabled) => onSounds({ enabled })}
+          title="Enable table sounds site-wide"
+        />
         <div className="grid gap-3">
           {TABLE_SOUND_KINDS.map((kind) => (
             <div
@@ -105,23 +101,14 @@ export function SoundsSection({
             </div>
           ))}
         </div>
-        <div className="flex flex-wrap gap-3">
-          <Button
-            type="submit"
-            disabled={busy}
-            className="min-h-11 w-full sm:w-auto sm:min-w-[12rem]"
-          >
-            {busyKey === 'sounds' ? 'Saving…' : 'Save sounds'}
-          </Button>
-          <Button
-            variant="ghost"
-            disabled={busy}
-            onClick={onResetDefaults}
-            className="min-h-11 px-4 text-xs"
-          >
+        <SaveBar>
+          <Button variant="ghost" disabled={busy} onClick={onResetDefaults} className="min-h-11 px-4 text-xs">
             Reset to defaults
           </Button>
-        </div>
+          <Button type="submit" disabled={busy} className={ADMIN_SAVE_BTN}>
+            {busyKey === 'sounds' ? 'Saving…' : 'Save sounds'}
+          </Button>
+        </SaveBar>
       </form>
     </Section>
   );

@@ -2,11 +2,22 @@ import { Button } from '@/components/ui/Button';
 import { TextAreaField, TextField } from '@/components/ui/TextField';
 import {
   DEFAULT_PAGES_COPY,
+  PAGE_COPY_GROUPS,
   PAGE_COPY_KEYS,
   PAGE_COPY_LABELS,
+  PAGE_COPY_PATHS,
+  type PageCopyKey,
   type PagesCopy,
 } from '@/lib/pageCopy';
-import { Section } from '../ui';
+import {
+  ADMIN_SAVE_BTN,
+  DetailHeader,
+  SaveBar,
+  Section,
+  SplitGroupLabel,
+  SplitItem,
+  SplitPane,
+} from '../ui';
 
 export function PagesSection({
   pagesCopy,
@@ -25,67 +36,74 @@ export function PagesSection({
   onPagesCopy: (key: keyof PagesCopy, patch: { title?: string; subtitle?: string }) => void;
   onSave: (e: React.FormEvent) => void;
 }) {
+  const selectedKey: PageCopyKey =
+    openPage && (PAGE_COPY_KEYS as string[]).includes(openPage)
+      ? (openPage as PageCopyKey)
+      : PAGE_COPY_KEYS[0]!;
+  const row = pagesCopy[selectedKey] ?? DEFAULT_PAGES_COPY[selectedKey];
+  const isFooter = selectedKey === 'homeAuthFooter';
+
   return (
     <Section
       title="Page text"
       description="Titles and subtitles for lobby and auth pages. Changes appear after save (clients refresh within ~30s or on next visit)."
     >
-      <form onSubmit={onSave} className="space-y-3">
-        {PAGE_COPY_KEYS.map((key) => {
-          const open = openPage === key;
-          const row = pagesCopy[key] ?? DEFAULT_PAGES_COPY[key];
-          return (
-            <div
-              key={key}
-              className="overflow-hidden rounded-xl border border-sidebar/12 bg-mushroom/[0.03]"
-            >
-              <button
-                type="button"
-                className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left sm:px-4"
-                onClick={() => onOpenPage(open ? null : key)}
-                aria-expanded={open}
-              >
-                <span>
-                  <span className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong">
-                    {PAGE_COPY_LABELS[key]}
-                  </span>
-                  <span className="mt-0.5 block truncate text-sm text-ink-strong-muted">
-                    {row.title}
-                  </span>
-                </span>
-                <span className="shrink-0 text-xs text-ink-strong-muted">
-                  {open ? 'Collapse' : 'Edit'}
-                </span>
-              </button>
-              {open ? (
-                <div className="space-y-3 border-t border-sidebar/8 p-3 sm:p-4">
-                  <TextField
-                    label={key === 'homeAuthFooter' ? 'Lead-in text' : 'Title'}
-                    value={row.title}
-                    onChange={(e) => onPagesCopy(key, { title: e.target.value })}
-                    maxLength={200}
-                    required
+      <form onSubmit={onSave} className="space-y-4">
+        <SplitPane
+          sidebarLabel="Pages"
+          sidebar={PAGE_COPY_GROUPS.map((group) => (
+            <div key={group.label}>
+              <SplitGroupLabel>{group.label}</SplitGroupLabel>
+              {group.keys.map((key) => {
+                const preview = pagesCopy[key] ?? DEFAULT_PAGES_COPY[key];
+                return (
+                  <SplitItem
+                    key={key}
+                    selected={selectedKey === key}
+                    title={PAGE_COPY_LABELS[key]}
+                    meta={preview.title}
+                    onSelect={() => onOpenPage(key)}
                   />
-                  <TextAreaField
-                    label={key === 'homeAuthFooter' ? 'Link labels (display only)' : 'Subtitle'}
-                    value={row.subtitle}
-                    onChange={(e) => onPagesCopy(key, { subtitle: e.target.value })}
-                    rows={3}
-                    maxLength={2000}
-                    required
-                  />
-                </div>
-              ) : null}
+                );
+              })}
             </div>
-          );
-        })}
-        <Button
-          type="submit"
-          disabled={busy}
-          className="min-h-11 w-full sm:w-auto sm:min-w-[12rem]"
+          ))}
         >
-          {busyKey === 'pages' ? 'Saving…' : 'Save page text'}
-        </Button>
+          <div className="space-y-5">
+            <DetailHeader
+              title={
+                <h3 className="font-display text-lg font-bold tracking-tight text-ink-strong">
+                  {PAGE_COPY_LABELS[selectedKey]}
+                </h3>
+              }
+              meta={
+                <p className="mt-1 font-mono text-xs text-ink-strong-muted">
+                  {PAGE_COPY_PATHS[selectedKey]}
+                </p>
+              }
+            />
+            <TextField
+              label={isFooter ? 'Lead-in text' : 'Title'}
+              value={row.title}
+              onChange={(e) => onPagesCopy(selectedKey, { title: e.target.value })}
+              maxLength={200}
+              required
+            />
+            <TextAreaField
+              label={isFooter ? 'Link labels (display only)' : 'Subtitle'}
+              value={row.subtitle}
+              onChange={(e) => onPagesCopy(selectedKey, { subtitle: e.target.value })}
+              rows={5}
+              maxLength={2000}
+              required
+            />
+          </div>
+        </SplitPane>
+        <SaveBar hint="Players see this copy on the matching lobby or auth screen.">
+          <Button type="submit" disabled={busy} className={ADMIN_SAVE_BTN}>
+            {busyKey === 'pages' ? 'Saving…' : 'Save page text'}
+          </Button>
+        </SaveBar>
       </form>
     </Section>
   );

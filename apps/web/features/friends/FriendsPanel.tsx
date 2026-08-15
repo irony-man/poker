@@ -323,7 +323,7 @@ export function FriendsPanel({
       />
 
       {searchResults.length > 0 && (
-        <ul className="divide-y divide-sidebar/10 overflow-hidden rounded-xl border border-sidebar/12 bg-white/80">
+        <ul className="surface-list bg-white/80">
           {searchResults.map((u) => {
             const handle = u.username ?? u.name;
             return (
@@ -335,7 +335,7 @@ export function FriendsPanel({
                   size={32}
                   title={handle}
                 />
-                <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink-strong">
+                <span className="font-row-label">
                   {handle}
                 </span>
                 <Button
@@ -353,7 +353,7 @@ export function FriendsPanel({
       )}
 
       {searchLookedUp && searchQuery.trim() && searchResults.length === 0 && (
-        <p className="rounded-xl border border-dashed border-sidebar/20 bg-mushroom/35 px-3 py-2.5 text-sm text-ink-strong-muted">
+        <p className="surface-empty text-sm text-ink-strong-muted">
           No user named <span className="font-medium text-ink-strong">{searchQuery.trim()}</span>
         </p>
       )}

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { FORM_LABEL_CLASS, TextField } from '@/components/ui/TextField';
 import type { AdminUserRow, SiteEconomy } from '@/lib/api';
 import { formatMoneyLabel } from '@/lib/currency';
-import { Section } from '../ui';
+import { EmptyState, Section } from '../ui';
 
 const ROW_GRID =
   'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[minmax(0,1.45fr)_minmax(5.75rem,0.85fr)_minmax(6.5rem,0.9fr)_minmax(7rem,0.8fr)_auto] sm:gap-3';
@@ -180,7 +180,7 @@ export function UsersSection({
       <div className="overflow-hidden rounded-xl border border-sidebar/10">
         {users.length > 0 ? (
           <div
-            className={`${ROW_GRID} hidden border-b border-sidebar/10 bg-mushroom/[0.05] px-3.5 py-2.5 text-[10px] font-display font-semibold uppercase tracking-[0.14em] text-ink-strong-muted sm:grid`}
+            className={`${ROW_GRID} admin-table-head hidden px-3.5 py-2.5 sm:grid`}
           >
             <span>User</span>
             <span>Chips</span>
@@ -317,8 +317,8 @@ export function UsersSection({
             );
           })}
           {users.length === 0 ? (
-            <li className="px-4 py-10 text-center text-sm text-ink-strong-muted">
-              No users match your search.
+            <li>
+              <EmptyState>No users match your search.</EmptyState>
             </li>
           ) : null}
         </ul>

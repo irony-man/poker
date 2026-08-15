@@ -1,3 +1,5 @@
+import { cn } from '@/lib/cn';
+
 export type ChoiceStyle = 'chip' | 'segmented' | 'pill' | 'underline';
 
 const option = {
@@ -26,11 +28,11 @@ const track = {
   chip: 'flex flex-wrap gap-2',
   segmented: 'flex rounded-xl border border-sidebar/15 bg-mushroom/50 p-1',
   pill: 'flex flex-nowrap items-center gap-1.5',
-  underline: 'flex gap-6 border-t border-sidebar/10',
+  underline: 'flex flex-nowrap gap-6 overflow-x-auto border-t border-sidebar/10',
 } as const;
 
 export function choiceTrackClass(style: ChoiceStyle, className = ''): string {
-  return [track[style], className].filter(Boolean).join(' ');
+  return cn(track[style], className);
 }
 
 export function choiceOptionClass(
@@ -38,7 +40,5 @@ export function choiceOptionClass(
   selected: boolean,
   className = '',
 ): string {
-  return [selected ? option[style].selected : option[style].idle, className]
-    .filter(Boolean)
-    .join(' ');
+  return cn(selected ? option[style].selected : option[style].idle, className);
 }

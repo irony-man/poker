@@ -78,6 +78,10 @@ describe('AdminController soundUploadUrl', () => {
       wallet as never,
       rooms as never,
       contests as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
       storage,
     );
     await expect(

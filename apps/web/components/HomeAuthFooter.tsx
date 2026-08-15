@@ -18,14 +18,14 @@ export function HomeAuthFooter() {
       {pageCopy.title}{' '}
       <Link
         href={authHref('sign-in', '/')}
-        className="font-display font-semibold uppercase tracking-wider text-sidebar underline-offset-4 hover:underline"
+        className="link-auth-footer"
       >
         Sign in
       </Link>
       {' · '}
       <Link
         href={authHref('sign-up', '/')}
-        className="font-display font-semibold uppercase tracking-wider text-sidebar underline-offset-4 hover:underline"
+        className="link-auth-footer"
       >
         Create account
       </Link>

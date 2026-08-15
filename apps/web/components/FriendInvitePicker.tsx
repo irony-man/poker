@@ -95,7 +95,7 @@ export function FriendInvitePicker({
 
   if (!sessionToken) {
     return (
-      <div className="rounded-xl border border-dashed border-sidebar/20 bg-mushroom/35 px-3 py-3">
+      <div className="surface-empty py-3">
         <p className="hud-label">{title}</p>
         <p className="mt-1 text-xs text-ink-strong-muted">Sign in to invite friends.</p>
       </div>
@@ -158,7 +158,7 @@ export function FriendInvitePicker({
       {loading && friends.length === 0 ? (
         <LoadingScreen compact label="Loading friends…" className="!py-3" />
       ) : visibleFriends.length === 0 ? (
-        <p className="mt-2.5 rounded-xl border border-dashed border-sidebar/20 bg-mushroom/35 px-3 py-2.5 text-xs text-ink-strong-muted">
+        <p className="surface-empty mt-2.5 text-xs text-ink-strong-muted">
           {friends.length === 0
             ? 'No friends yet. Add people from Friends, then invite them here.'
             : onlineOnly

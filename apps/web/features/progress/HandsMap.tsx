@@ -1,10 +1,18 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { PlayingCard } from '@/components/PlayingCard';
 import { Button } from '@/components/ui/Button';
+import { fetchMyHands } from '@/lib/api';
 import { LevelNode } from './LevelNode';
 import { MapPark } from './MapPark';
 import { NODE_SIZE, mapHeight, zigzagPositions } from './pathLayout';
+import {
+  formatHandWhen,
+  handsByLevel,
+  parsePlayedHand,
+  type PlayedHandLevel,
+} from './playedHand';
 import { badgeForNode, chapterProgress, nodeStatus, nodeWindow } from './progress';
 
 function GearIcon() {
@@ -36,18 +44,109 @@ function HandBadge({ n }: { n: number }) {
   );
 }
 
+function HoleThumb({ cards }: { cards: [string, string] | null }) {
+  return (
+    <div className="relative h-10 w-11 shrink-0">
+      <div className="absolute bottom-0 left-0 origin-bottom" style={{ transform: 'rotate(-10deg)' }}>
+        <PlayingCard code={cards?.[0]} faceDown={!cards} size="xs" dealDelay={0} />
+      </div>
+      <div
+        className="absolute bottom-0 left-3 z-[1] origin-bottom"
+        style={{ transform: 'rotate(8deg)' }}
+      >
+        <PlayingCard code={cards?.[1]} faceDown={!cards} size="xs" dealDelay={0} />
+      </div>
+    </div>
+  );
+}
+
+function PathLine({
+  positions,
+}: {
+  positions: Array<{ x: number; y: number }>;
+}) {
+  if (positions.length < 2) return null;
+  const d = positions
+    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y + 62}`)
+    .join(' ');
+  return (
+    <svg className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden>
+      <path
+        d={d}
+        fill="none"
+        stroke="rgb(var(--mushroom) / 0.38)"
+        strokeWidth="5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeDasharray="7 12"
+      />
+    </svg>
+  );
+}
+
+function HandPeek({
+  level,
+  hand,
+  onClose,
+}: {
+  level: number;
+  hand: PlayedHandLevel;
+  onClose: () => void;
+}) {
+  const when = formatHandWhen(hand.startedAt);
+  return (
+    <div className="rounded-2xl border border-mushroom/20 bg-sidebar/92 p-3 text-mushroom shadow-[0_12px_32px_rgb(0_0_0_/_0.4)] backdrop-blur-md">
+      <div className="flex items-start gap-3">
+        <HoleThumb cards={hand.holeCards} />
+        <div className="min-w-0 flex-1">
+          <p className="font-display text-sm font-bold text-mushroom">Hand {level}</p>
+          <p className="text-xs text-mushroom/70">
+            {hand.won ? 'Won' : 'Played'}
+            {hand.handName && hand.handName !== 'Uncontested' ? ` · ${hand.handName}` : ''}
+            {when ? ` · ${when}` : ''}
+            {hand.source === 'offline' ? ' · Solo' : ''}
+          </p>
+          {hand.community.length > 0 ? (
+            <div className="mt-2 flex gap-0.5">
+              {hand.community.map((code, i) => (
+                <PlayingCard key={`${code}-${i}`} code={code} size="xs" dealDelay={0} />
+              ))}
+            </div>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-mushroom/60 hover:bg-white/10 hover:text-mushroom"
+          aria-label="Close hand"
+        >
+          ×
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function HandsMap({
   handsPlayed,
   onSettings,
+  sessionToken,
+  userId,
+  tableColorId = 0,
 }: {
   handsPlayed: number;
   onSettings: () => void;
+  sessionToken: string;
+  userId: string;
+  tableColorId?: number;
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const currentRef = useRef<HTMLButtonElement>(null);
   const [width, setWidth] = useState(360);
   const [listOpen, setListOpen] = useState(false);
+  const [hands, setHands] = useState<PlayedHandLevel[]>([]);
+  const [selectedLevel, setSelectedLevel] = useState<number | null>(null);
 
   const { level, nextMilestone, fill } = chapterProgress(handsPlayed);
   const { start, end } = nodeWindow(level);
@@ -56,6 +155,23 @@ export function HandsMap({
     () => zigzagPositions(start, end, width),
     [start, end, width],
   );
+  const byLevel = useMemo(() => handsByLevel(hands, handsPlayed), [hands, handsPlayed]);
+  const selectedHand = selectedLevel != null ? byLevel.get(selectedLevel) ?? null : null;
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchMyHands(sessionToken, 50)
+      .then((res) => {
+        if (cancelled) return;
+        setHands(res.hands.map((row) => parsePlayedHand(row, userId)));
+      })
+      .catch(() => {
+        if (!cancelled) setHands([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionToken, userId]);
 
   useEffect(() => {
     const el = canvasRef.current;
@@ -82,7 +198,7 @@ export function HandsMap({
   const listLevels = Array.from({ length: end - start + 1 }, (_, i) => start + i);
 
   return (
-    <div className="relative flex h-[min(70vh,640px)] w-full flex-col overflow-hidden bg-mushroom">
+    <div className="relative flex h-[min(70vh,640px)] w-full flex-col overflow-hidden bg-sidebar">
       <header className="relative z-20 flex shrink-0 items-center justify-center border-b border-sidebar/10 bg-white px-3 py-3">
         <button
           type="button"
@@ -94,93 +210,131 @@ export function HandsMap({
         </button>
         <div className="flex items-center gap-2">
           <HandBadge n={level} />
-          <span className="font-display text-lg font-bold tracking-tight text-sidebar">Hands</span>
+          <span className="font-heading-section">Hands</span>
         </div>
       </header>
 
-      <div ref={scrollerRef} className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-        {listOpen ? (
-          <div className="flex h-full flex-col bg-white">
-            <div className="flex shrink-0 items-center justify-between border-b border-sidebar/10 px-4 py-3">
-              <h3 className="font-display text-sm font-bold text-sidebar">Hand levels</h3>
-              <button
-                type="button"
-                className="text-xs font-semibold text-ink-strong-muted hover:text-sidebar"
-                onClick={() => setListOpen(false)}
-              >
-                Back to map
-              </button>
-            </div>
-            <ul className="min-h-0 flex-1 overflow-y-auto pb-4">
-              {listLevels.map((n) => {
-                const status = nodeStatus(n, handsPlayed);
-                return (
-                  <li
-                    key={n}
-                    className="flex items-center justify-between border-b border-sidebar/8 px-4 py-2.5 text-sm last:border-b-0 even:bg-mushroom/35"
-                  >
-                    <span className="font-medium text-ink-strong">Hand {n}</span>
-                    <span
-                      className={`text-xs font-semibold uppercase tracking-wide ${
-                        status === 'completed'
-                          ? 'text-positive'
-                          : status === 'current'
-                            ? 'text-sidebar'
-                            : 'text-ink-strong-muted'
-                      }`}
+      <div className="relative min-h-0 flex-1">
+        <div ref={scrollerRef} className="h-full overflow-y-auto overflow-x-hidden">
+          {listOpen ? (
+            <div className="flex h-full flex-col bg-white">
+              <div className="flex shrink-0 items-center justify-between border-b border-sidebar/10 px-4 py-3">
+                <h3 className="font-display text-sm font-bold text-sidebar">Played hands</h3>
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-ink-strong-muted hover:text-sidebar"
+                  onClick={() => setListOpen(false)}
+                >
+                  Back to map
+                </button>
+              </div>
+              <ul className="min-h-0 flex-1 overflow-y-auto pb-4">
+                {listLevels.map((n) => {
+                  const status = nodeStatus(n, handsPlayed);
+                  const hand = byLevel.get(n) ?? null;
+                  const when = hand ? formatHandWhen(hand.startedAt) : '';
+                  return (
+                    <li
+                      key={n}
+                      className="flex items-center gap-3 border-b border-sidebar/8 px-4 py-2.5 text-sm last:border-b-0 even:bg-mushroom/35"
                     >
-                      {status === 'completed' ? 'Done' : status === 'current' ? 'Current' : 'Locked'}
-                    </span>
-                  </li>
+                      <HoleThumb cards={status === 'locked' ? null : hand?.holeCards ?? null} />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-ink-strong">Hand {n}</p>
+                        {hand && status !== 'locked' ? (
+                          <p className="truncate text-xs text-ink-strong-muted">
+                            {hand.won ? 'Won' : 'Played'}
+                            {hand.handName && hand.handName !== 'Uncontested'
+                              ? ` · ${hand.handName}`
+                              : ''}
+                            {when ? ` · ${when}` : ''}
+                          </p>
+                        ) : null}
+                      </div>
+                      <span
+                        className={`text-xs font-semibold uppercase tracking-wide ${
+                          status === 'completed'
+                            ? 'text-positive'
+                            : status === 'current'
+                              ? 'text-sidebar'
+                              : 'text-ink-strong-muted'
+                        }`}
+                      >
+                        {status === 'completed'
+                          ? hand?.won
+                            ? 'Won'
+                            : 'Done'
+                          : status === 'current'
+                            ? 'Current'
+                            : 'Locked'}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : (
+            <div ref={canvasRef} className="relative w-full" style={{ height }}>
+              <MapPark width={width} height={height} tableColorId={tableColorId} />
+              <PathLine positions={positions} />
+              {positions.map((pos) => {
+                const status = nodeStatus(pos.level, handsPlayed);
+                const isCurrent = status === 'current';
+                const hand = byLevel.get(pos.level) ?? null;
+                return (
+                  <button
+                    key={pos.level}
+                    ref={isCurrent ? currentRef : undefined}
+                    type="button"
+                    onClick={() => {
+                      if (hand) setSelectedLevel(pos.level);
+                      else if (isCurrent) scrollToCurrent();
+                    }}
+                    className="absolute -translate-x-1/2"
+                    style={{
+                      left: pos.x,
+                      top: pos.y,
+                      zIndex: isCurrent ? 10 : 1,
+                      width: NODE_SIZE,
+                    }}
+                    aria-label={
+                      status === 'locked'
+                        ? `Hand ${pos.level}, locked`
+                        : status === 'current'
+                          ? `Hand ${pos.level}, current`
+                          : `Hand ${pos.level}, completed`
+                    }
+                  >
+                    <LevelNode
+                      status={status}
+                      badge={badgeForNode(pos.level, handsPlayed, status)}
+                      current={isCurrent}
+                      checked={status === 'completed' || (status === 'current' && handsPlayed > 0)}
+                      hand={hand}
+                      level={pos.level}
+                    />
+                  </button>
                 );
               })}
-            </ul>
+            </div>
+          )}
+        </div>
+        {!listOpen && selectedHand && selectedLevel != null ? (
+          <div className="absolute inset-x-3 bottom-3 z-20">
+            <HandPeek
+              level={selectedLevel}
+              hand={selectedHand}
+              onClose={() => setSelectedLevel(null)}
+            />
           </div>
-        ) : (
-          <div ref={canvasRef} className="relative w-full" style={{ height }}>
-            <MapPark width={width} height={height} />
-            {positions.map((pos) => {
-              const status = nodeStatus(pos.level, handsPlayed);
-              const isCurrent = status === 'current';
-              return (
-                <button
-                  key={pos.level}
-                  ref={isCurrent ? currentRef : undefined}
-                  type="button"
-                  onClick={isCurrent ? scrollToCurrent : undefined}
-                  className="absolute -translate-x-1/2"
-                  style={{
-                    left: pos.x,
-                    top: pos.y,
-                    zIndex: isCurrent ? 10 : 1,
-                    width: NODE_SIZE,
-                  }}
-                  aria-label={
-                    status === 'locked'
-                      ? `Hand ${pos.level}, locked`
-                      : status === 'current'
-                        ? `Hand ${pos.level}, current`
-                        : `Hand ${pos.level}, completed`
-                  }
-                >
-                  <LevelNode
-                    status={status}
-                    badge={badgeForNode(pos.level, handsPlayed, status)}
-                    current={isCurrent}
-                    checked={status === 'completed' || (status === 'current' && handsPlayed > 0)}
-                  />
-                </button>
-              );
-            })}
-          </div>
-        )}
+        ) : null}
       </div>
 
       {!listOpen ? (
         <button
           type="button"
           onClick={scrollToCurrent}
-          className="absolute bottom-[8.5rem] right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-sidebar/12 bg-white text-sidebar shadow-[0_8px_20px_rgb(29_4_50_/_0.12)] transition hover:border-sidebar/30"
+          className="absolute bottom-[8.5rem] right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-mushroom/25 bg-sidebar/80 text-mushroom shadow-[0_8px_20px_rgb(0_0_0_/_0.28)] backdrop-blur-sm transition hover:border-mushroom/50"
           aria-label="Jump to current hand"
         >
           <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden>

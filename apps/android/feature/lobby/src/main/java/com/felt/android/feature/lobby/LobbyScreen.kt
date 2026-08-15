@@ -46,6 +46,7 @@ fun LobbyScreen(
     onJoined: (tableId: String, invite: String, spectate: Boolean) -> Unit,
     onOffline: (seats: Int, bots: Int, name: String) -> Unit,
     onContest: (contestId: String) -> Unit,
+    onHands: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: LobbyViewModel = hiltViewModel(),
 ) {
@@ -158,7 +159,7 @@ fun LobbyScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                         FeltLabel("Signed in as")
                         Text(
                             state.name,
@@ -167,9 +168,41 @@ fun LobbyScreen(
                             fontSize = 18.sp,
                         )
                     }
-                    FeltGhostButton(
-                        text = "Sign out",
-                        onClick = viewModel::signOut,
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FeltGhostButton(
+                            text = "Hands",
+                            onClick = onHands,
+                        )
+                        FeltGhostButton(
+                            text = "Sign out",
+                            onClick = viewModel::signOut,
+                        )
+                    }
+                }
+            }
+
+            HudPanel(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                            Text("HANDS", color = FeltColors.Gold, fontWeight = FontWeight.Bold)
+                            Text(
+                                "Career path · hole cards you've played",
+                                color = FeltColors.Cream.copy(alpha = 0.5f),
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                        }
+                        StatusChip(text = "Progress", accent = FeltColors.Cyan)
+                    }
+                    FeltPrimaryButton(
+                        text = "Open hands map",
+                        onClick = onHands,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }

@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/Button';
 import { TextAreaField, TextField } from '@/components/ui/TextField';
 import type { HomeLandingFeature } from '@/lib/api';
 import { MAX_HOME_BLOCKS } from '../tabs';
-import { Section } from '../ui';
+import { ADMIN_SAVE_BTN, SaveBar, Section } from '../ui';
 
 export const BLANK_HOME_BLOCK: HomeLandingFeature = {
   title: 'New feature',
@@ -171,7 +171,7 @@ export function HomeSection({
             </div>
           );
         })}
-        <div className="flex flex-wrap gap-2 pt-1">
+        <SaveBar hint={`${homeFeatures.length}/${MAX_HOME_BLOCKS} blocks`}>
           <Button
             variant="ghost"
             disabled={busy || homeFeatures.length >= MAX_HOME_BLOCKS}
@@ -180,17 +180,10 @@ export function HomeSection({
           >
             Add block
           </Button>
-          <Button
-            type="submit"
-            disabled={busy}
-            className="min-h-11 w-full sm:w-auto sm:min-w-[12rem]"
-          >
+          <Button type="submit" disabled={busy} className={ADMIN_SAVE_BTN}>
             {busyKey === 'home' ? 'Saving…' : 'Save home landing'}
           </Button>
-        </div>
-        <p className="text-xs text-ink-strong-muted">
-          {homeFeatures.length}/{MAX_HOME_BLOCKS} blocks
-        </p>
+        </SaveBar>
       </form>
     </Section>
   );

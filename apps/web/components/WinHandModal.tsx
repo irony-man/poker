@@ -6,6 +6,7 @@ import { MoneyAmount } from './CurrencyIcon';
 import { PlayerAvatar } from './PlayerAvatar';
 import { PlayingCard } from './PlayingCard';
 import { useIsNarrow } from '@/lib/tableLayout';
+import { cn } from '@/lib/cn';
 
 export type WinLine = {
   seat: number;
@@ -240,9 +241,7 @@ export function WinHandModal({
         type="button"
         onClick={onNextHand}
         size="sm"
-        className={`min-h-9 min-w-0 flex-1 px-3 py-2 text-xs font-display font-bold uppercase tracking-wide ${
-          isReady ? 'ring-2 ring-sidebar/25 ring-offset-2 ring-offset-white' : ''
-        }`}
+        className={cn('btn-segment', isReady && 'ring-2 ring-sidebar/25 ring-offset-2 ring-offset-white')}
       >
         {isReady ? 'Not ready' : 'Play Next Hand'}
       </Button>
@@ -253,7 +252,7 @@ export function WinHandModal({
         type="button"
         onClick={onSitIn}
         size="sm"
-        className="min-h-9 min-w-0 flex-1 px-3 py-2 text-xs font-display font-bold uppercase tracking-wide"
+        className="btn-segment"
       >
         Sit in
       </Button>
@@ -264,7 +263,7 @@ export function WinHandModal({
         type="button"
         onClick={onTopUp}
         size="sm"
-        className="min-h-9 min-w-0 flex-1 px-3 py-2 text-xs font-display font-bold uppercase tracking-wide"
+        className="btn-segment"
       >
         Top up
       </Button>
@@ -275,7 +274,7 @@ export function WinHandModal({
         type="button"
         onClick={onNeedChips}
         size="sm"
-        className="min-h-9 min-w-0 flex-1 px-3 py-2 text-xs font-display font-bold uppercase tracking-wide"
+        className="btn-segment"
       >
         Need chips
       </Button>
@@ -293,7 +292,7 @@ export function WinHandModal({
           role="dialog"
           aria-modal="true"
           aria-labelledby="win-hand-title"
-          className="flex max-h-[min(78dvh,36rem)] w-full flex-col overflow-hidden rounded-2xl border border-sidebar/12 bg-white shadow-[0_18px_48px_rgb(29_4_50_/_0.18)]"
+          className="surface-modal flex max-h-[min(78dvh,36rem)] w-full flex-col"
         >
           <div className="shrink-0 border-b border-sidebar/10 bg-mushroom/40 px-4 py-3 text-center sm:px-5 sm:py-5">
             <p className="text-[9px] font-display uppercase tracking-[0.28em] text-sidebar/50 sm:text-[10px]">

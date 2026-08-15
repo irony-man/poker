@@ -12,6 +12,7 @@ import { contestModeLabel } from '@/lib/contestLabels';
 import {
   fetchMe,
   listMyContests,
+  logout,
   requestAvatarUploadUrl,
   updateMe,
   type ContestView,
@@ -30,9 +31,10 @@ import { Button } from '@/components/ui/Button';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { Tabs } from '@/components/ui/Tabs';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
-import { readStoredSession, writeStoredSession } from '@/lib/session';
+import { clearStoredSession, readStoredSession, writeStoredSession } from '@/lib/session';
 import { useSession } from '@/lib/store';
 import { useLobbySession } from '@/lib/useLobbySession';
+import { cn } from '@/lib/cn';
 
 type ProfileTab = 'overview' | 'hands' | 'theme' | 'contests' | 'friends';
 
@@ -60,6 +62,7 @@ function ProfilePageInner() {
   const sessionToken = useSession((s) => s.sessionToken);
   const setChipBalance = useSession((s) => s.setChipBalance);
   const setWhuffieBalance = useSession((s) => s.setWhuffieBalance);
+  const clearSession = useSession((s) => s.clearSession);
   const { pendingCount } = useOnlineFriends();
   const [profile, setProfile] = useState<MeProfile | null>(null);
   const [friendCount, setFriendCount] = useState(0);
@@ -72,6 +75,7 @@ function ProfilePageInner() {
   const [savingAvatar, setSavingAvatar] = useState(false);
   const [draftTableColorId, setDraftTableColorId] = useState(0);
   const [savingTableColor, setSavingTableColor] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   const token = sessionToken ?? readStoredSession()?.sessionToken ?? null;
 
@@ -241,6 +245,25 @@ function ProfilePageInner() {
     }
   };
 
+  const handleSignOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      if (token) {
+        try {
+          await logout(token);
+        } catch {
+          /* ignore */
+        }
+      }
+      clearStoredSession();
+      clearSession();
+      router.push('/');
+    } finally {
+      setSigningOut(false);
+    }
+  };
+
   if (!authReady) {
     return <LoadingScreen label="Loading…" />;
   }
@@ -271,7 +294,7 @@ function ProfilePageInner() {
 
       {profile ? (
         <div className="flex w-full flex-col gap-5 sm:gap-6">
-          <section className="overflow-hidden rounded-2xl border border-sidebar/12 bg-white shadow-[0_14px_36px_rgb(29_4_50_/_0.08)]">
+          <section className={cn('surface-card overflow-hidden border-sidebar/12 p-0 shadow-[0_14px_36px_rgb(29_4_50_/_0.08)]')}>
             <div className="flex flex-col gap-6 p-5 sm:p-7 md:flex-row md:items-start md:gap-8">
               <div className="flex shrink-0 flex-col items-center md:items-start">
                 <button
@@ -318,20 +341,19 @@ function ProfilePageInner() {
                   <h2 className="truncate font-display text-3xl font-bold tracking-tight text-sidebar sm:text-[2rem]">
                     {profile.username}
                   </h2>
-                  <p className="mt-2.5 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                  <p className="mt-2.5 flex flex-wrap items-center gap-x-10 gap-y-1">
                     <MoneyAmount
                       amount={profile.chipBalance}
                       showChips
                       className="font-display text-xl font-bold tracking-tight text-sidebar sm:text-2xl"
                     />
-                    <span className="font-display text-lg font-semibold tabular-nums tracking-tight text-sidebar/80 sm:text-xl">
-                      {profile.whuffieBalance.toLocaleString()}
-                      <span className="ml-1.5 text-sm font-medium text-ink-strong-muted">
-                        Whuffies
-                      </span>
-                    </span>
+                    <MoneyAmount
+                      amount={profile.whuffieBalance}
+                      showWhuffies
+                      className="font-display text-lg font-semibold tracking-tight text-sidebar/80 sm:text-xl"
+                    />
                   </p>
-                  <p className="mt-3 text-sm leading-relaxed text-ink-strong-muted">
+                  <p className="mt-3 font-prose-muted">
                     {joined ? (
                       <>
                         Joined {joined}
@@ -343,7 +365,7 @@ function ProfilePageInner() {
                     <button
                       type="button"
                       onClick={() => selectTab('friends')}
-                      className="font-medium text-sidebar underline-offset-2 hover:underline"
+                      className="link-sidebar"
                     >
                       {friendCount} {friendCount === 1 ? 'friend' : 'friends'}
                     </button>
@@ -415,41 +437,34 @@ function ProfilePageInner() {
               role="tabpanel"
               id="profile-panel-overview"
               aria-labelledby="profile-tab-overview"
-              className="rounded-2xl border border-sidebar/12 bg-white p-5 shadow-[0_10px_28px_rgb(29_4_50_/_0.06)] sm:p-7"
+              className="surface-card-lg"
             >
-              <h3 className="font-display text-lg font-bold tracking-tight text-sidebar">
+              <h3 className="font-heading-section">
                 Quick links
               </h3>
-              <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-strong-muted">
+              <p className="mt-2 max-w-xl font-prose-muted">
                 Same bankroll for public, private, and contest tables — shown above.
               </p>
               <div className="mt-6 flex flex-wrap gap-2.5">
-                <Link
-                  href="/host"
-                  className="inline-flex items-center justify-center rounded-full border border-sidebar/30 bg-transparent px-4 py-2 text-xs font-display font-bold uppercase tracking-wider text-sidebar transition hover:border-sidebar hover:bg-sidebar/5"
-                >
+                <Link href="/host" className="btn-pill">
                   Host a table
                 </Link>
-                <button
-                  type="button"
-                  onClick={() => selectTab('hands')}
-                  className="inline-flex items-center justify-center rounded-full border border-sidebar/30 bg-transparent px-4 py-2 text-xs font-display font-bold uppercase tracking-wider text-sidebar transition hover:border-sidebar hover:bg-sidebar/5"
-                >
+                <button type="button" onClick={() => selectTab('hands')} className="btn-pill">
                   Hands map
                 </button>
-                <button
-                  type="button"
-                  onClick={() => selectTab('contests')}
-                  className="inline-flex items-center justify-center rounded-full border border-sidebar/30 bg-transparent px-4 py-2 text-xs font-display font-bold uppercase tracking-wider text-sidebar transition hover:border-sidebar hover:bg-sidebar/5"
-                >
+                <button type="button" onClick={() => selectTab('contests')} className="btn-pill">
                   Contest history
+                </button>
+                <button type="button" onClick={() => selectTab('friends')} className="btn-pill">
+                  Find friends
                 </button>
                 <button
                   type="button"
-                  onClick={() => selectTab('friends')}
-                  className="inline-flex items-center justify-center rounded-full border border-sidebar/30 bg-transparent px-4 py-2 text-xs font-display font-bold uppercase tracking-wider text-sidebar transition hover:border-sidebar hover:bg-sidebar/5"
+                  onClick={() => void handleSignOut()}
+                  disabled={signingOut}
+                  className={cn('btn-pill bg-danger')}
                 >
-                  Find friends
+                  {signingOut ? 'Signing out…' : 'Sign out'}
                 </button>
               </div>
             </section>
@@ -458,26 +473,31 @@ function ProfilePageInner() {
               role="tabpanel"
               id="profile-panel-hands"
               aria-labelledby="profile-tab-hands"
-              className="overflow-hidden rounded-2xl border border-sidebar/12 shadow-[0_10px_28px_rgb(29_4_50_/_0.06)]"
+              className={cn('surface-card-lg overflow-hidden bg-transparent p-0')}
             >
-              <HandsMap
-                handsPlayed={profile.handsPlayed ?? 0}
-                onSettings={() => selectTab('theme')}
-              />
+              {token ? (
+                <HandsMap
+                  handsPlayed={profile.handsPlayed ?? 0}
+                  onSettings={() => selectTab('theme')}
+                  sessionToken={token}
+                  userId={profile.id}
+                  tableColorId={profile.tableColorId}
+                />
+              ) : null}
             </section>
           ) : tab === 'theme' ? (
             <section
               role="tabpanel"
               id="profile-panel-theme"
               aria-labelledby="profile-tab-theme"
-              className="rounded-2xl border border-sidebar/12 bg-white p-5 shadow-[0_10px_28px_rgb(29_4_50_/_0.06)] sm:p-7"
+              className="surface-card-lg"
             >
               <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
                 <div className="min-w-0">
-                  <h3 className="font-display text-lg font-bold tracking-tight text-sidebar">
+                  <h3 className="font-heading-section">
                     Table theme
                   </h3>
-                  <p className="mt-1.5 max-w-lg text-sm leading-relaxed text-ink-strong-muted">
+                  <p className="mt-1.5 max-w-lg font-prose-muted">
                     Only you see this. Status colors stay the same.
                   </p>
                 </div>
@@ -611,14 +631,14 @@ function ProfilePageInner() {
               role="tabpanel"
               id="profile-panel-contests"
               aria-labelledby="profile-tab-contests"
-              className="rounded-2xl border border-sidebar/12 bg-white p-5 shadow-[0_10px_28px_rgb(29_4_50_/_0.06)] sm:p-7"
+              className="surface-card-lg"
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                 <div className="min-w-0">
-                  <h3 className="font-display text-lg font-bold tracking-tight text-sidebar">
+                  <h3 className="font-heading-section">
                     Contest matches
                   </h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-ink-strong-muted">
+                  <p className="mt-1.5 font-prose-muted">
                     Completed contests you played, with place and ranking prizes.
                   </p>
                 </div>
@@ -629,14 +649,14 @@ function ProfilePageInner() {
                   No completed contests yet.{' '}
                   <Link
                     href="/contests"
-                    className="font-medium text-sidebar underline-offset-2 hover:underline"
+                    className="link-sidebar"
                   >
                     Join or host one
                   </Link>
                   .
                 </p>
               ) : (
-                <ul className="mt-5 divide-y divide-sidebar/10 overflow-hidden rounded-xl border border-sidebar/12">
+                <ul className="surface-list mt-5">
                   {contestHistory.map((row) => {
                     const when = new Date(row.playedAt).toLocaleDateString(undefined, {
                       year: 'numeric',
@@ -664,9 +684,12 @@ function ProfilePageInner() {
                               {placeLabel(row.place)}
                             </span>
                             {row.prizeWhuffies > 0 ? (
-                              <span className="text-xs font-semibold tabular-nums text-brass-dim">
-                                +{row.prizeWhuffies.toLocaleString()} Whuffies
-                              </span>
+                              <MoneyAmount
+                                amount={row.prizeWhuffies}
+                                showWhuffies
+                                prefix="+"
+                                className="text-xs font-semibold text-brass-dim"
+                              />
                             ) : (
                               <span className="text-[11px] text-ink-strong-muted">No prize</span>
                             )}
@@ -683,7 +706,7 @@ function ProfilePageInner() {
               role="tabpanel"
               id="profile-panel-friends"
               aria-labelledby="profile-tab-friends"
-              className="rounded-2xl border border-sidebar/12 bg-white p-5 shadow-[0_10px_28px_rgb(29_4_50_/_0.06)] sm:p-7"
+              className="surface-card-lg"
             >
               <FriendsPanel
                 variant="embedded"

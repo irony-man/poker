@@ -95,8 +95,8 @@ export function MobileQuickReactions({ onEmoji }: { onEmoji: (emoji: string) => 
           aria-label="More reactions"
           className="absolute bottom-[calc(100%+0.35rem)] left-1.5 right-1.5 z-40 max-h-[min(40dvh,14rem)] overflow-hidden rounded-xl border border-sidebar/15 bg-white shadow-[0_12px_36px_rgb(29_4_50/0.18)]"
         >
-          <div className="flex items-center justify-between border-b border-sidebar/10 px-3 py-2">
-            <span className="text-[10px] font-display font-semibold uppercase tracking-[0.16em] text-sidebar">
+          <div className="hud-popup-header">
+            <span className="font-kicker-sidebar">
               React
             </span>
             <button

@@ -5,6 +5,7 @@ import {
   Get,
   Patch,
   Post,
+  Query,
   ServiceUnavailableException,
   UnauthorizedException,
   UseGuards,
@@ -17,6 +18,7 @@ import { SessionAuthGuard } from '../common/session-auth.guard.js';
 import type { User } from '../auth/auth.types.js';
 import { AuthService } from '../auth/auth.service.js';
 import { FriendsService } from '../friends/friends.service.js';
+import { HistoryService, toOwnerHandRows } from '../history/history.service.js';
 import { ALLOWED_AVATAR_CONTENT_TYPES } from '../storage/storage.constants.js';
 import { StorageService } from '../storage/storage.service.js';
 import { WalletService } from '../wallet/wallet.service.js';
@@ -51,6 +53,7 @@ export class UsersController {
     private readonly auth: AuthService,
     private readonly wallet: WalletService,
     private readonly friends: FriendsService,
+    private readonly history: HistoryService,
     private readonly config: ConfigService,
     private readonly storage: StorageService,
   ) {}
@@ -78,6 +81,16 @@ export class UsersController {
       friendCount,
       this.isAdmin(fresh),
     );
+  }
+
+  @Get('me/hands')
+  async myHands(@CurrentUser() user: User, @Query('limit') limit?: string) {
+    const n = limit ? Number(limit) : 50;
+    const hands = toOwnerHandRows(
+      await this.history.listHandsForUser(user.id, Number.isFinite(n) ? n : 50),
+      user.id,
+    );
+    return { hands };
   }
 
   @Post('me/avatar/upload-url')

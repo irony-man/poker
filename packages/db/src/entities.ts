@@ -130,8 +130,12 @@ export class TableEntity {
   createdAt!: Date;
 }
 
+export type HandHistorySource = 'online' | 'offline';
+export type ChatMessageKind = 'user' | 'system' | 'emoji';
+
 @Entity({ name: 'hand_history' })
 @Index('hand_history_table_idx', ['tableId'])
+@Index('hand_history_contest_idx', ['contestId'])
 export class HandHistoryEntity {
   @PrimaryColumn({ type: 'text' })
   id!: string;
@@ -146,6 +150,12 @@ export class HandHistoryEntity {
   @Column({ name: 'hand_id', type: 'text' })
   handId!: string;
 
+  @Column({ name: 'contest_id', type: 'text', nullable: true })
+  contestId!: string | null;
+
+  @Column({ name: 'source', type: 'text', default: 'online' })
+  source!: HandHistorySource;
+
   @Column({ name: 'started_at', type: 'timestamptz' })
   startedAt!: Date;
 
@@ -154,6 +164,41 @@ export class HandHistoryEntity {
 
   @Column({ name: 'result_json', type: 'text' })
   resultJson!: string;
+}
+
+@Entity({ name: 'chat_messages' })
+@Index('chat_messages_table_at_idx', ['tableId', 'at'])
+@Index('chat_messages_contest_at_idx', ['contestId', 'at'])
+export class ChatMessageEntity {
+  @PrimaryColumn({ type: 'text' })
+  id!: string;
+
+  @Column({ name: 'table_id', type: 'text' })
+  tableId!: string;
+
+  @Column({ name: 'contest_id', type: 'text', nullable: true })
+  contestId!: string | null;
+
+  @Column({ name: 'hand_id', type: 'text', nullable: true })
+  handId!: string | null;
+
+  @Column({ name: 'user_id', type: 'text' })
+  userId!: string;
+
+  @Column({ type: 'text' })
+  name!: string;
+
+  @Column({ type: 'text' })
+  text!: string;
+
+  @Column({ type: 'timestamptz' })
+  at!: Date;
+
+  @Column({ type: 'text' })
+  kind!: ChatMessageKind;
+
+  @Column({ type: 'text', default: 'online' })
+  source!: HandHistorySource;
 }
 
 export type ChipLedgerReason =
@@ -237,6 +282,7 @@ export const ALL_ENTITIES = [
   AuthTicketEntity,
   TableEntity,
   HandHistoryEntity,
+  ChatMessageEntity,
   ChipLedgerEntity,
   TableChipBalanceEntity,
   SocialStoreEntity,

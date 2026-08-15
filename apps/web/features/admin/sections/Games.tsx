@@ -1,7 +1,15 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import type { AdminContestRow, AdminTableRow } from '@/lib/api';
-import { Section } from '../ui';
+import { DataTable, EmptyState, Section, Subhead, Td, Th, THead, Tr } from '../ui';
+
+function OpenLink({ href }: { href: string }) {
+  return (
+    <Link href={href} className="link-sidebar">
+      Open
+    </Link>
+  );
+}
 
 export function GamesSection({
   tables,
@@ -21,110 +29,91 @@ export function GamesSection({
       title="Live games"
       description="Private tables and active contests on this server. Permanent public stake lobbies and finished contests are omitted."
       action={
-        <Button
-          variant="ghost"
-          disabled={busy}
-          onClick={onRefresh}
-          className="min-h-9 px-4 text-xs"
-        >
+        <Button variant="ghost" disabled={busy} onClick={onRefresh} className="min-h-9 px-4 text-xs">
           {busyKey === 'games' ? '…' : 'Refresh'}
         </Button>
       }
     >
       <div>
-        <h3 className="mb-2 text-xs font-display font-semibold uppercase tracking-[0.14em] text-ink-strong-muted">
-          Tables
-        </h3>
-        <div className="overflow-x-auto rounded-xl border border-sidebar/10">
-          <table className="w-full min-w-[36rem] text-left text-sm">
-            <thead>
-              <tr className="border-b border-sidebar/10 bg-mushroom/[0.05] text-[10px] font-display font-semibold uppercase tracking-[0.14em] text-ink-strong-muted">
-                <th className="px-3 py-2.5">Name</th>
-                <th className="px-3 py-2.5">Seats</th>
-                <th className="px-3 py-2.5">Type</th>
-                <th className="px-3 py-2.5">Hand</th>
-                <th className="px-3 py-2.5"> </th>
-              </tr>
-            </thead>
-            <tbody>
-              {tables.map((t) => (
-                <tr key={t.tableId} className="border-b border-sidebar/6">
-                  <td className="px-3 py-2.5 font-medium text-ink-strong">{t.name}</td>
-                  <td className="px-3 py-2.5 tabular-nums text-ink-strong-muted">
-                    {t.seatedCount}/{t.maxSeats}
-                  </td>
-                  <td className="px-3 py-2.5 text-ink-strong-muted">
-                    {t.contestId ? 'Contest table' : t.playMoney ? 'Private (play)' : 'Private'}
-                  </td>
-                  <td className="px-3 py-2.5 text-ink-strong-muted">
-                    {t.handInProgress
-                      ? t.street
-                        ? t.street
-                        : 'In hand'
-                      : t.idle
-                        ? 'Idle'
-                        : 'Waiting'}
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <Link
-                      href={`/table/${t.tableId}?invite=${t.inviteCode}`}
-                      className="font-medium text-sidebar underline-offset-2 hover:underline"
-                    >
-                      Open
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {tables.length === 0 ? (
-            <p className="px-3 py-6 text-center text-sm text-ink-strong-muted">No live tables.</p>
-          ) : null}
-        </div>
+        <Subhead>Tables</Subhead>
+        <DataTable
+          minWidth="36rem"
+          empty={tables.length === 0 ? <EmptyState>No live tables.</EmptyState> : null}
+        >
+          <THead>
+            <Th>Name</Th>
+            <Th>Seats</Th>
+            <Th>Type</Th>
+            <Th>Hand</Th>
+            <Th>
+              <span className="sr-only">Open</span>
+            </Th>
+          </THead>
+          <tbody>
+            {tables.map((t) => (
+              <Tr key={t.tableId}>
+                <Td className="font-medium text-ink-strong">{t.name}</Td>
+                <Td className="tabular-nums text-ink-strong-muted">
+                  {t.seatedCount}/{t.maxSeats}
+                </Td>
+                <Td className="text-ink-strong-muted">
+                  {t.contestId ? 'Contest table' : t.playMoney ? 'Private (play)' : 'Private'}
+                </Td>
+                <Td className="text-ink-strong-muted">
+                  {t.handInProgress ? (t.street ? t.street : 'In hand') : t.idle ? 'Idle' : 'Waiting'}
+                </Td>
+                <Td>
+                  <OpenLink href={`/table/${t.tableId}?invite=${t.inviteCode}`} />
+                </Td>
+              </Tr>
+            ))}
+          </tbody>
+        </DataTable>
       </div>
 
       <div>
-        <h3 className="mb-2 text-xs font-display font-semibold uppercase tracking-[0.14em] text-ink-strong-muted">
-          Contests
-        </h3>
-        <ul className="overflow-hidden rounded-xl border border-sidebar/10">
-          {contests.map((c) => {
-            const atTable = c.tableSeatedCount ?? null;
-            const active = c.activePlayers ?? null;
-            return (
-              <li
-                key={c.id}
-                className="flex flex-wrap items-center justify-between gap-2 border-b border-sidebar/6 px-3 py-2.5 text-sm last:border-0"
-              >
-                <span className="text-ink-strong">
-                  <span className="font-medium">{c.name}</span>{' '}
-                  <span className="text-ink-strong-muted">
-                    · {c.status} · {c.mode}
-                    {c.isPrivate ? ' · private' : ''}
-                    <br className="sm:hidden" />
-                    <span className="sm:before:content-['·_']">
-                      {c.entrants.length}/{c.fieldSize} registered
-                      {active != null ? ` · ${active} still in` : ''}
-                      {atTable != null && c.status === 'running' ? ` · ${atTable} at table` : ''}
-                      {c.eliminatedCount ? ` · ${c.eliminatedCount} out` : ''}
-                    </span>
-                  </span>
-                </span>
-                <Link
-                  href={`/contest/${c.id}`}
-                  className="font-medium text-sidebar underline-offset-2 hover:underline"
-                >
-                  Open
-                </Link>
-              </li>
-            );
-          })}
-          {contests.length === 0 ? (
-            <li className="px-3 py-6 text-center text-sm text-ink-strong-muted">
-              No active contests.
-            </li>
-          ) : null}
-        </ul>
+        <Subhead>Contests</Subhead>
+        <DataTable
+          minWidth="36rem"
+          empty={contests.length === 0 ? <EmptyState>No active contests.</EmptyState> : null}
+        >
+          <THead>
+            <Th>Name</Th>
+            <Th>Status</Th>
+            <Th>Field</Th>
+            <Th>
+              <span className="sr-only">Open</span>
+            </Th>
+          </THead>
+          <tbody>
+            {contests.map((c) => {
+              const atTable = c.tableSeatedCount ?? null;
+              const active = c.activePlayers ?? null;
+              return (
+                <Tr key={c.id}>
+                  <Td className="font-medium text-ink-strong">
+                    {c.name}
+                    {c.isPrivate ? (
+                      <span className="ml-1.5 text-xs font-normal text-ink-strong-muted">private</span>
+                    ) : null}
+                  </Td>
+                  <Td className="capitalize text-ink-strong-muted">
+                    {c.status} · {c.mode}
+                  </Td>
+                  <Td className="text-ink-strong-muted">
+                    {c.entrants.length}/{c.fieldSize} registered
+                    {active != null ? ` · ${active} still in` : ''}
+                    {atTable != null && c.status === 'running' ? ` · ${atTable} at table` : ''}
+                    {c.eliminatedCount ? ` · ${c.eliminatedCount} out` : ''}
+                  </Td>
+                  <Td>
+                    <OpenLink href={`/contest/${c.id}`} />
+                  </Td>
+                </Tr>
+              );
+            })}
+          </tbody>
+        </DataTable>
       </div>
     </Section>
   );

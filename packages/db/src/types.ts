@@ -27,13 +27,30 @@ export interface TableRowRow {
   createdAt: Date;
 }
 
+export type { HandHistorySource, ChatMessageKind } from './entities.js';
+
 export interface HandHistoryRow {
   id: string;
   tableId: string;
   handId: string;
+  contestId: string | null;
+  source: import('./entities.js').HandHistorySource;
   startedAt: Date;
   endedAt: Date | null;
   resultJson: string;
+}
+
+export interface ChatMessageRow {
+  id: string;
+  tableId: string;
+  contestId: string | null;
+  handId: string | null;
+  userId: string;
+  name: string;
+  text: string;
+  at: Date;
+  kind: import('./entities.js').ChatMessageKind;
+  source: import('./entities.js').HandHistorySource;
 }
 
 export type { ChipLedgerReason } from './entities.js';

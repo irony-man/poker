@@ -254,10 +254,10 @@ export default function ContestPage() {
         >
           {contestModeLabel(contest.mode)} · {statusLabel(contest.status)}
         </StatusChip>
-        <h1 className="mt-3 font-display text-3xl font-bold tracking-tight text-ink-strong sm:text-4xl">
+        <h1 className="font-title-page mt-3">
           {contest.name}
         </h1>
-        <p className="mt-2 text-sm leading-relaxed text-ink-strong-muted sm:text-base">
+        <p className="font-prose-muted mt-2 sm:text-base">
           Code{' '}
           <span className="font-mono font-semibold tracking-widest text-ink-strong">
             {contest.inviteCode}
@@ -266,7 +266,7 @@ export default function ContestPage() {
           {seatsLabel} · stack {contest.startingStack} · blinds {blinds}
           {handMeta}
         </p>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-strong-muted sm:text-base">
+        <p className="font-prose-muted mt-2 max-w-2xl sm:text-base">
           {modeDescription(contest)}
         </p>
       </header>
@@ -340,7 +340,7 @@ export default function ContestPage() {
               return (
                 <li
                   key={e.userId}
-                  className="flex items-center justify-between gap-2 rounded-xl border border-sidebar/12 bg-mushroom/55 px-3 py-2.5"
+                  className="surface-row flex items-center justify-between gap-2"
                 >
                   <span className="min-w-0 truncate text-sm font-medium text-ink-strong">
                     {e.name}
@@ -366,7 +366,7 @@ export default function ContestPage() {
             {(contest.pendingInvites ?? []).map((inv) => (
               <li
                 key={`invite-${inv.userId}`}
-                className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-sidebar/18 bg-mushroom/35 px-3 py-2.5"
+                className="surface-empty flex items-center justify-between gap-2 border-sidebar/18"
               >
                 <span className="min-w-0 truncate text-sm font-medium text-ink-strong-muted">
                   {inv.name}
@@ -449,14 +449,17 @@ export default function ContestPage() {
               .map((p) => (
                 <li
                   key={p.userId}
-                  className="flex items-center justify-between gap-2 rounded-xl border border-sidebar/12 bg-mushroom/55 px-3 py-2 text-sm"
+                  className="surface-row flex items-center justify-between gap-2 py-2 text-sm"
                 >
                   <span className="min-w-0 truncate font-medium text-ink-strong">{p.name}</span>
                   <span className="flex shrink-0 items-center gap-2 font-mono text-xs font-semibold text-sidebar">
                     {(p.prizeWhuffies ?? 0) > 0 ? (
-                      <span className="text-brass-dim">
-                        +{(p.prizeWhuffies ?? 0).toLocaleString()} Whuffies
-                      </span>
+                      <MoneyAmount
+                        amount={p.prizeWhuffies}
+                        showWhuffies
+                        prefix="+"
+                        className="text-brass-dim"
+                      />
                     ) : null}
                     <span>#{p.place}</span>
                   </span>

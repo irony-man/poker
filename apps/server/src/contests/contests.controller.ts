@@ -8,6 +8,7 @@ import {
   NotFoundException,
   Param,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { CreateContestBodySchema, InviteFriendsBodySchema } from '@poker/protocol';
@@ -15,6 +16,7 @@ import { AuthService } from '../auth/auth.service.js';
 import type { User } from '../auth/auth.types.js';
 import { CurrentUser, SessionAuthGuard } from '../common/session-auth.guard.js';
 import { FriendsService } from '../friends/friends.service.js';
+import { HistoryService, toPublicHandRows } from '../history/history.service.js';
 import { ContestsService } from './contests.service.js';
 
 @Controller('api/contests')
@@ -23,6 +25,7 @@ export class ContestsController {
     private readonly contests: ContestsService,
     private readonly auth: AuthService,
     private readonly friends: FriendsService,
+    private readonly history: HistoryService,
   ) {}
 
   @Post()
@@ -143,6 +146,28 @@ export class ContestsController {
     const contest = this.contests.getByInvite(code);
     if (!contest) throw new NotFoundException({ error: 'Contest not found' });
     return { contest };
+  }
+
+  @Get(':id/history')
+  async historyList(@Param('id') id: string) {
+    const hands = toPublicHandRows(await this.history.listHandsForContest(id, 50));
+    return { hands };
+  }
+
+  @Get(':id/chat')
+  async chatList(
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+    @Query('before') before?: string,
+  ) {
+    const n = limit ? Number(limit) : 80;
+    const b = before ? Number(before) : undefined;
+    const messages = await this.history.listChat({
+      contestId: id,
+      limit: Number.isFinite(n) ? n : 80,
+      before: b && Number.isFinite(b) ? b : undefined,
+    });
+    return { messages };
   }
 
   @Get(':id')

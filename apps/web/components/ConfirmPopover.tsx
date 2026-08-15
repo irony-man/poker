@@ -98,20 +98,20 @@ export function ConfirmPopover({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description ? descId : undefined}
-        className="w-full max-w-sm overflow-hidden rounded-2xl border border-sidebar/12 bg-white shadow-[0_18px_48px_rgb(29_4_50_/_0.2)]"
+        className="surface-modal w-full max-w-sm shadow-[0_18px_48px_rgb(29_4_50_/_0.2)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="border-b border-sidebar/10 bg-mushroom/40 px-4 py-3.5 sm:px-5 sm:py-4">
           <h2
             id={titleId}
-            className="font-display text-lg font-bold tracking-tight text-sidebar sm:text-xl"
+            className="font-heading-section sm:text-xl"
           >
             {title}
           </h2>
           {description ? (
             <p
               id={descId}
-              className="mt-1.5 text-sm leading-relaxed text-ink-strong-muted"
+              className="font-prose-muted mt-1.5"
             >
               {description}
             </p>

@@ -52,6 +52,15 @@ class SessionPreferences @Inject constructor(
         }
     }
 
+    suspend fun loadOfflineHandQueueJson(): String =
+        dataStore.data.first()[KEY_OFFLINE_HANDS] ?: "[]"
+
+    suspend fun saveOfflineHandQueueJson(json: String) {
+        dataStore.edit { prefs ->
+            prefs[KEY_OFFLINE_HANDS] = json
+        }
+    }
+
     suspend fun clear() {
         dataStore.edit { it.clear() }
     }
@@ -63,5 +72,6 @@ class SessionPreferences @Inject constructor(
         private val KEY_TICKET = stringPreferencesKey("ticket")
         private val KEY_SESSION_TOKEN = stringPreferencesKey("session_token")
         private val KEY_AVATAR_ID = intPreferencesKey("avatar_id")
+        private val KEY_OFFLINE_HANDS = stringPreferencesKey("offline_hand_queue")
     }
 }

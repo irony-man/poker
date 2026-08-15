@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { FileHistoryStore, playerUserIdsFromResult } from './history.store.js';
+import { redactUnrevealedHoleCards } from './history.service.js';
 
 describe('playerUserIdsFromResult', () => {
   it('returns unique seated user ids', () => {
@@ -21,6 +22,36 @@ describe('playerUserIdsFromResult', () => {
   it('returns empty for malformed results', () => {
     expect(playerUserIdsFromResult(null)).toEqual([]);
     expect(playerUserIdsFromResult({})).toEqual([]);
+  });
+});
+
+describe('redactUnrevealedHoleCards', () => {
+  it('keeps revealed hole cards and strips the rest', () => {
+    const json = JSON.stringify({
+      players: [
+        { userId: 'a', revealed: true, holeCards: [{ rank: 14, suit: 'h' }] },
+        { userId: 'b', revealed: false, holeCards: [{ rank: 13, suit: 's' }] },
+      ],
+    });
+    const out = JSON.parse(redactUnrevealedHoleCards(json)) as {
+      players: Array<{ userId: string; holeCards: unknown }>;
+    };
+    expect(out.players[0]?.holeCards).toEqual([{ rank: 14, suit: 'h' }]);
+    expect(out.players[1]?.holeCards).toBeNull();
+  });
+
+  it('keeps the viewer hole cards even when unrevealed', () => {
+    const json = JSON.stringify({
+      players: [
+        { userId: 'a', revealed: false, holeCards: [{ rank: 14, suit: 'h' }] },
+        { userId: 'b', revealed: false, holeCards: [{ rank: 13, suit: 's' }] },
+      ],
+    });
+    const out = JSON.parse(redactUnrevealedHoleCards(json, 'a')) as {
+      players: Array<{ userId: string; holeCards: unknown }>;
+    };
+    expect(out.players[0]?.holeCards).toEqual([{ rank: 14, suit: 'h' }]);
+    expect(out.players[1]?.holeCards).toBeNull();
   });
 });
 
@@ -61,5 +92,46 @@ describe('FileHistoryStore hand counts', () => {
     const byUser = await store.countHandsByUser();
     expect(byUser.get('alice')).toBe(2);
     expect(byUser.get('bob')).toBe(1);
+  });
+
+  it('is idempotent on tableId+handId', async () => {
+    const first = await store.recordHand({
+      tableId: 't1',
+      handId: 'h1',
+      startedAt: 1,
+      endedAt: 2,
+      result: { players: [{ userId: 'alice' }] },
+    });
+    const second = await store.recordHand({
+      tableId: 't1',
+      handId: 'h1',
+      startedAt: 3,
+      endedAt: 4,
+      result: { players: [{ userId: 'alice' }] },
+    });
+    expect(first).toBe(true);
+    expect(second).toBe(false);
+    expect(await store.countHandsForUser('alice')).toBe(1);
+  });
+
+  it('stores chat and lists by table', async () => {
+    await store.recordChat({
+      tableId: 't1',
+      userId: 'alice',
+      name: 'Alice',
+      text: 'hi',
+      at: 10,
+      kind: 'user',
+    });
+    await store.recordChat({
+      tableId: 't1',
+      userId: 'system',
+      name: 'Dealer',
+      text: 'flop',
+      at: 20,
+      kind: 'system',
+    });
+    const chat = await store.listChat({ tableId: 't1' });
+    expect(chat.map((c) => c.text)).toEqual(['hi', 'flop']);
   });
 });

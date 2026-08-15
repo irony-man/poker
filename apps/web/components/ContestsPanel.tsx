@@ -252,7 +252,7 @@ export function ContestsPanel({
                 <p className="font-display text-sm font-semibold tracking-tight text-ink-strong">
                   {tab.title}
                 </p>
-                <p className="mt-1 text-sm leading-relaxed text-ink-strong-muted">{tab.body}</p>
+                <p className="font-prose-muted mt-1">{tab.body}</p>
                 <ul className="mt-3 space-y-1.5">
                   {tab.points.map((point) => (
                     <li
@@ -356,7 +356,7 @@ export function ContestsPanel({
       {sessionToken ? (
         <Link
           href="/profile?tab=contests"
-          className="flex items-center justify-between gap-3 rounded-xl border border-sidebar/12 bg-mushroom/45 px-3.5 py-3 transition hover:border-sidebar/25 hover:bg-sidebar/[0.04] sm:px-4"
+          className="surface-row flex items-center justify-between gap-3 bg-mushroom/45 px-3.5 py-3 transition hover:border-sidebar/25 hover:bg-sidebar/[0.04] sm:px-4"
         >
           <span className="min-w-0">
             <span className="block font-display text-[0.68rem] font-bold uppercase tracking-[0.18em] text-ink-strong/45">

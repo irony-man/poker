@@ -25,15 +25,15 @@ export function LobbyPageShell({
   const pathname = usePathname();
 
   return (
-    <div className="lobby-fade-up flex w-full flex-col justify-start">
+    <div className="lobby-page-intro">
       <header className="mb-4 w-full shrink-0 sm:mb-5">
         {title && (
-          <h1 className="font-display text-3xl font-bold tracking-tight text-ink-strong sm:text-4xl">
+          <h1 className="font-title-page">
             {title}
           </h1>
         )}
         {subtitle && (
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-strong-muted sm:mt-2.5 sm:text-base">
+          <p className="font-prose-muted mt-2 max-w-2xl sm:mt-2.5 sm:text-base">
             {subtitle}
           </p>
         )}
@@ -42,14 +42,14 @@ export function LobbyPageShell({
             You&apos;ll need an account for this —{' '}
             <Link
               href={authHref('sign-in', pathname)}
-              className="font-semibold text-sidebar underline-offset-2 hover:underline"
+              className="link-sidebar font-semibold"
             >
               sign in
             </Link>{' '}
             or{' '}
             <Link
               href={authHref('sign-up', pathname)}
-              className="font-semibold text-sidebar underline-offset-2 hover:underline"
+              className="link-sidebar font-semibold"
             >
               create one
             </Link>

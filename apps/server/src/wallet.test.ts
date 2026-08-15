@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { AuthStore } from './auth/auth.store.js';
 import { MemoryKv } from './kv/kv.store.js';
-import type { HandHistoryStore } from './history/history.store.js';
+import { memoryHistoryStore, type HandHistoryStore } from './history/history.store.js';
 import { RoomManager } from './rooms/room.js';
 import { MemoryTableChipStore } from './table-chips/table-chips.store.js';
 import {
@@ -19,19 +19,7 @@ import {
 } from './wallet/wallet.constants.js';
 
 function memoryHistory(): HandHistoryStore {
-  return {
-    async recordTable() {},
-    async recordHand() {},
-    async listHands() {
-      return [];
-    },
-    async countHandsForUser() {
-      return 0;
-    },
-    async countHandsByUser() {
-      return new Map();
-    },
-  };
+  return memoryHistoryStore();
 }
 
 describe('AuthWalletStore', () => {

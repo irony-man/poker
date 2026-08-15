@@ -48,6 +48,7 @@ export {
   unregisterContest,
   startContest,
 } from './contests';
+export { uploadOfflineHand, fetchMyHands, type UploadHandPayload, type MyHandRow } from './history';
 export {
   fetchPublicSite,
   fetchPublicBotGroups,
@@ -90,6 +91,8 @@ export {
   fetchAdminSounds,
   patchAdminSounds,
   requestAdminSoundUploadUrl,
+  fetchAdminHands,
+  fetchAdminHand,
   type AdminUserRow,
   type AdminTableRow,
   type AdminContestRow,
@@ -97,4 +100,7 @@ export {
   type BotPersonalityId,
   type BotGroup,
   type PublicBotGroup,
+  type AdminHandSummary,
+  type AdminHandsPage,
+  type AdminHandDetail,
 } from './admin';

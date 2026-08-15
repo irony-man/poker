@@ -94,6 +94,7 @@ export {
   fetchAdminSounds,
   patchAdminSounds,
   requestAdminSoundUploadUrl,
+  requestAdminImageUploadUrl,
   fetchAdminHands,
   fetchAdminHand,
   type AdminUserRow,
@@ -106,4 +107,5 @@ export {
   type AdminHandSummary,
   type AdminHandsPage,
   type AdminHandDetail,
+  type SiteImagePurpose,
 } from './admin';

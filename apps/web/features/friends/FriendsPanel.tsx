@@ -6,7 +6,7 @@ import { PlayerAvatar } from '@/components/PlayerAvatar';
 import { Button } from '@/components/ui/Button';
 import { Tabs } from '@/components/ui/Tabs';
 import { TextField } from '@/components/ui/TextField';
-import { imageAssetUrl } from '@/lib/assets';
+import { imageAssetUrl, resolvePublicImage } from '@/lib/assets';
 import {
   challengeFriend,
   createFriendGroup,
@@ -36,6 +36,8 @@ export function FriendsPanel({
   onNavigateContest,
   variant = 'page',
   onFriendCountChange,
+  imageSrc,
+  imageAlt,
 }: {
   disabled: boolean;
   onNavigateTable: (tableId: string, inviteCode: string) => void;
@@ -43,6 +45,8 @@ export function FriendsPanel({
   /** Page uses lobby split+art; embedded is a single column for profile tab. */
   variant?: 'page' | 'embedded';
   onFriendCountChange?: (count: number) => void;
+  imageSrc?: string;
+  imageAlt?: string;
 }) {
   const confirm = useConfirm();
   const {
@@ -481,8 +485,8 @@ export function FriendsPanel({
 
   return (
     <LobbySplitCard
-      imageSrc={imageAssetUrl('home-host.png')}
-      imageAlt="Invite friends to your table"
+      imageSrc={resolvePublicImage(imageSrc || imageAssetUrl('home-host.png'))}
+      imageAlt={imageAlt || 'Invite friends to your table'}
       mediaHeader={playerSearch}
     >
       {socialBody}

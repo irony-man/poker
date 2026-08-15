@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, Suspense, useState } from 'react';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
+import { resolvePublicImage } from '@/lib/assets';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { Button } from '@/components/ui/Button';
 import { StatusChip } from '@/components/ui/StatusChip';
@@ -54,7 +55,10 @@ function SignInForm() {
         <p className="mt-2 text-sm text-ink-strong-muted">{pageCopy.subtitle}</p>
       </div>
       <form onSubmit={onSubmit}>
-        <LobbySplitCard imageSrc="/home-challenge.png" imageAlt="Sit down and sign in to play">
+        <LobbySplitCard
+          imageSrc={resolvePublicImage(pageCopy.image ?? '/home-challenge.png')}
+          imageAlt={pageCopy.imageAlt ?? 'Sit down and sign in to play'}
+        >
           <TextField
             variant="hud"
             label="Username"

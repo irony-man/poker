@@ -41,7 +41,12 @@ export default function PublicTablesPage() {
       signedIn={signedIn}
       error={error}
     >
-      <PublicTablesPanel disabled={busy} onJoin={joinPublicTable} />
+      <PublicTablesPanel
+        disabled={busy}
+        onJoin={joinPublicTable}
+        imageSrc={pageCopy.image}
+        imageAlt={pageCopy.imageAlt}
+      />
     </LobbyPageShell>
   );
 }

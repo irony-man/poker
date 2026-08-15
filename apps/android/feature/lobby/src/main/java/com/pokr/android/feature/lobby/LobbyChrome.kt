@@ -17,6 +17,10 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.mandatorySystemGestures
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -63,8 +67,13 @@ import com.pokr.android.core.designsystem.PokrLabel
 import com.pokr.android.core.designsystem.PokrPrimaryButton
 import com.pokr.android.core.designsystem.PokrRadius
 import com.pokr.android.core.designsystem.HudPanel
+import com.pokr.android.core.designsystem.LocalPokrUiTheme
 import com.pokr.android.core.designsystem.PlayerAvatar
 import com.pokr.android.core.designsystem.PokrLogo
+import com.pokr.android.core.designsystem.PokrUiTheme
+import com.pokr.android.core.designsystem.arcadeOffsetShadow
+import com.pokr.android.core.designsystem.pokrChoiceChipSurface
+import com.pokr.android.core.designsystem.pokrChoiceForeground
 import com.pokr.android.core.designsystem.R as DsR
 
 enum class LobbyTab {
@@ -121,11 +130,16 @@ fun LobbyBottomNav(
         LobbyTab.Friends to "Friends",
         LobbyTab.Offline to "Offline",
     )
+    val navInset = maxOf(
+        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+        WindowInsets.mandatorySystemGestures.asPaddingValues().calculateBottomPadding(),
+        16.dp,
+    )
     Row(
         modifier = modifier
             .fillMaxWidth()
             .background(PokrColors.Sidebar)
-            .padding(horizontal = 4.dp, vertical = 8.dp),
+            .padding(start = 4.dp, end = 4.dp, top = 10.dp, bottom = 10.dp + navInset),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -600,13 +614,24 @@ private fun <T> SegmentedTrack(
     content: (@Composable (option: T, selected: Boolean) -> Unit)?,
     format: (T) -> String,
 ) {
+    val arcade = LocalPokrUiTheme.current == PokrUiTheme.Arcade
     val trackShape = RoundedCornerShape(12.dp)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(trackShape)
-            .background(PokrColors.Mushroom.copy(alpha = 0.5f))
-            .border(1.dp, PokrColors.Sidebar.copy(alpha = 0.15f), trackShape)
+            .then(
+                if (arcade) Modifier.arcadeOffsetShadow(trackShape, offset = 3.dp)
+                else Modifier.clip(trackShape),
+            )
+            .background(
+                if (arcade) PokrColors.White else PokrColors.Mushroom.copy(alpha = 0.5f),
+                trackShape,
+            )
+            .border(
+                if (arcade) 2.dp else 1.dp,
+                if (arcade) Color.Black else PokrColors.Sidebar.copy(alpha = 0.15f),
+                trackShape,
+            )
             .padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(0.dp),
     ) {
@@ -618,7 +643,7 @@ private fun <T> SegmentedTrack(
                     .weight(1f)
                     .heightIn(min = 40.dp)
                     .then(
-                        if (selectedOption) {
+                        if (selectedOption && !arcade) {
                             Modifier.shadow(
                                 elevation = 6.dp,
                                 shape = optionShape,
@@ -630,7 +655,13 @@ private fun <T> SegmentedTrack(
                         },
                     )
                     .clip(optionShape)
-                    .background(if (selectedOption) PokrColors.Sidebar else Color.Transparent)
+                    .background(
+                        when {
+                            !selectedOption -> Color.Transparent
+                            arcade -> PokrColors.Mushroom
+                            else -> PokrColors.Sidebar
+                        },
+                    )
                     .clickable { onSelect(option) }
                     .padding(horizontal = 12.dp, vertical = 10.dp),
                 contentAlignment = Alignment.Center,
@@ -640,8 +671,11 @@ private fun <T> SegmentedTrack(
                 } else {
                     Text(
                         text = format(option).uppercase(),
-                        color = if (selectedOption) PokrColors.OnChrome
-                        else PokrColors.InkStrongMuted,
+                        color = when {
+                            selectedOption && arcade -> PokrColors.InkStrong
+                            selectedOption -> PokrColors.OnChrome
+                            else -> PokrColors.InkStrongMuted
+                        },
                         fontFamily = PokrFonts.Display,
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp,
@@ -665,9 +699,10 @@ private fun <T> ChipTrack(
     content: (@Composable (option: T, selected: Boolean) -> Unit)?,
     format: (T) -> String,
 ) {
+    val arcade = LocalPokrUiTheme.current == PokrUiTheme.Arcade
     FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (arcade) 10.dp else 8.dp),
+        verticalArrangement = Arrangement.spacedBy(if (arcade) 10.dp else 8.dp),
     ) {
         options.forEach { option ->
             val selectedOption = option == selected
@@ -675,17 +710,7 @@ private fun <T> ChipTrack(
             Box(
                 modifier = Modifier
                     .widthIn(min = 44.dp)
-                    .clip(shape)
-                    .background(
-                        if (selectedOption) PokrColors.Sidebar.copy(alpha = 0.1f)
-                        else PokrColors.Mushroom.copy(alpha = 0.5f),
-                    )
-                    .border(
-                        width = if (selectedOption) 2.dp else 1.dp,
-                        color = if (selectedOption) PokrColors.Sidebar
-                        else PokrColors.Sidebar.copy(alpha = 0.14f),
-                        shape = shape,
-                    )
+                    .pokrChoiceChipSurface(selected = selectedOption, shape = shape, arcade = arcade)
                     .clickable { onSelect(option) }
                     .padding(horizontal = 12.dp, vertical = 10.dp),
                 contentAlignment = Alignment.Center,
@@ -695,8 +720,7 @@ private fun <T> ChipTrack(
                 } else {
                     Text(
                         text = format(option),
-                        color = if (selectedOption) PokrColors.Sidebar
-                        else PokrColors.InkStrong.copy(alpha = 0.85f),
+                        color = pokrChoiceForeground(selected = selectedOption, arcade = arcade),
                         fontFamily = PokrFonts.Display,
                         fontWeight = if (selectedOption) FontWeight.Bold else FontWeight.SemiBold,
                         fontSize = 13.sp,

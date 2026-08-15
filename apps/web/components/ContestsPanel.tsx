@@ -10,6 +10,7 @@ import {
 } from '@/lib/api';
 import { useSession } from '@/lib/store';
 import { LobbySplitCard } from './LobbySplitCard';
+import { resolvePublicImage } from '@/lib/assets';
 import { ChoiceRow } from './ChoiceRow';
 import { FriendInvitePicker } from './FriendInvitePicker';
 import { Button } from '@/components/ui/Button';
@@ -134,6 +135,8 @@ export function ContestsPanel({
   disabled,
   sessionToken,
   displayName,
+  imageSrc,
+  imageAlt,
   onEnsureSession,
   onOpenContest,
   onJoinCode,
@@ -141,6 +144,8 @@ export function ContestsPanel({
   disabled?: boolean;
   sessionToken: string | null;
   displayName: string;
+  imageSrc?: string;
+  imageAlt?: string;
   onEnsureSession: () => Promise<{ userId: string; name: string; sessionToken: string }>;
   onOpenContest: (contestId: string) => void;
   onJoinCode: (code: string) => Promise<void>;
@@ -225,8 +230,8 @@ export function ContestsPanel({
 
   return (
     <LobbySplitCard
-      imageSrc="/home-knockout.png"
-      imageAlt="Multi-seat tournament table ready to fill"
+      imageSrc={resolvePublicImage(imageSrc || '/home-knockout.png')}
+      imageAlt={imageAlt || 'Multi-seat tournament table ready to fill'}
       alignTop
     >
       <form onSubmit={onCreate} className="flex flex-col gap-5">

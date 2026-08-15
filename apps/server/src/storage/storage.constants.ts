@@ -17,3 +17,13 @@ export const ALLOWED_SOUND_CONTENT_TYPES = {
 export type AllowedSoundContentType = keyof typeof ALLOWED_SOUND_CONTENT_TYPES;
 
 export const MAX_SOUND_BYTES = 5 * 1024 * 1024;
+
+export const ALLOWED_SITE_IMAGE_CONTENT_TYPES = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+} as const;
+
+export type AllowedSiteImageContentType = keyof typeof ALLOWED_SITE_IMAGE_CONTENT_TYPES;
+
+export const MAX_SITE_IMAGE_BYTES = 4 * 1024 * 1024;

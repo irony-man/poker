@@ -150,7 +150,6 @@ fun LobbyShell(
                         playMenuOpen = false
                     }
                 },
-                modifier = Modifier.navigationBarsPadding(),
             )
         }
 
@@ -159,7 +158,8 @@ fun LobbyShell(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth()
-                    .padding(bottom = 72.dp),
+                    .navigationBarsPadding()
+                    .padding(bottom = 84.dp),
             ) {
                 Spacer(modifier = Modifier.weight(1f))
                 Box(

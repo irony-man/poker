@@ -345,6 +345,34 @@ export async function requestAdminSoundUploadUrl(
   return res.json() as Promise<{ uploadUrl: string; publicUrl: string; expiresIn: number }>;
 }
 
+export type SiteImagePurpose =
+  | 'home'
+  | 'host'
+  | 'join'
+  | 'public'
+  | 'contests'
+  | 'friends'
+  | 'solo'
+  | 'signIn'
+  | 'signUp';
+
+export async function requestAdminImageUploadUrl(
+  sessionToken: string,
+  body: {
+    purpose: SiteImagePurpose;
+    contentType: 'image/jpeg' | 'image/png' | 'image/webp';
+    contentLength: number;
+  },
+): Promise<{ uploadUrl: string; publicUrl: string; expiresIn: number }> {
+  const res = await fetch(`${API_URL}/api/admin/images/upload-url`, {
+    method: 'POST',
+    headers: sessionHeaders(sessionToken),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await parseError(res, 'Could not start image upload'));
+  return res.json() as Promise<{ uploadUrl: string; publicUrl: string; expiresIn: number }>;
+}
+
 export interface AdminHandWinner {
   seat: number;
   amount: number;

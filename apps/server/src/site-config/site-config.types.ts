@@ -40,6 +40,9 @@ export type PageCopyKey =
 export interface PageCopy {
   title: string;
   subtitle: string;
+  /** Lobby split-card illustration. Empty on homeAuthFooter. */
+  image?: string;
+  imageAlt?: string;
 }
 
 export type PagesCopy = Record<PageCopyKey, PageCopy>;
@@ -298,39 +301,55 @@ export const DEFAULT_PAGES_COPY: PagesCopy = {
     title: 'Create a table',
     subtitle:
       "Set stakes and seats, choose starting bots, and open a private Hold'em room with a code you pick or we generate.",
+    image: '/host-table.png',
+    imageAlt: 'Host a private table for your group',
   },
   join: {
     title: 'Join a Table',
     subtitle:
       'Enter the invite code you were sent to take a seat or watch the hand, whether it is a private table or a contest.',
+    image: '/join-table.png',
+    imageAlt: 'Enter a table with an invite code',
   },
   public: {
     title: 'Public tables',
     subtitle:
       "Open Hold'em at the stakes you choose; sit down when a seat is free or spectate if you would rather watch.",
+    image: '/public-tables.png',
+    imageAlt: 'Open public ring games ready to join',
   },
   contests: {
     title: 'Host Contests',
     subtitle:
       'Host a room for friends in a Knockout freezeout or a fixed run of hands, set the max table size, invite people, and start when the seats look right.',
+    image: '/home-knockout.png',
+    imageAlt: 'Multi-seat tournament table ready to fill',
   },
   friends: {
     title: 'Community and Social',
     subtitle:
       'Find people by username, build groups for the tables you play together, invite a group to sit down, or challenge a friend to heads-up.',
+    image: '/home-host.png',
+    imageAlt: 'Invite friends to your table',
   },
   solo: {
     title: 'Offline Arena',
     subtitle:
       "Train against bots on this device with the same Hold'em rules as live tables, no connection or lobby, and a seat count you choose before the first deal.",
+    image: '/home-offline.png',
+    imageAlt: 'You versus a bot at a private practice table',
   },
   signIn: {
     title: 'Sign in',
     subtitle: 'Sign in with your username',
+    image: '/home-challenge.png',
+    imageAlt: 'Sit down and sign in to play',
   },
   signUp: {
     title: 'Create account',
     subtitle: 'Create a username and password',
+    image: '/home-knockout.png',
+    imageAlt: 'Join the table — create your account',
   },
   homeAuthFooter: {
     title: 'Ready to play?',
@@ -608,12 +627,30 @@ export function normalizeHomeFeatures(raw: unknown): HomeLandingFeature[] {
   return out.length > 0 ? out : DEFAULT_HOME_FEATURES.map((f) => ({ ...f }));
 }
 
+function normalizeImageRef(value: unknown, fallback: string): string {
+  if (typeof value !== 'string') return fallback;
+  const t = value.trim().slice(0, 500);
+  if (!t) return fallback;
+  if (t.startsWith('/') || /^https:\/\//i.test(t)) return t;
+  return fallback;
+}
+
 export function normalizePageCopy(raw: unknown, fallback: PageCopy): PageCopy {
   if (!raw || typeof raw !== 'object') return { ...fallback };
   const o = raw as Record<string, unknown>;
+  const imageFallback = fallback.image ?? '';
+  const altFallback = fallback.imageAlt ?? '';
+  const image = imageFallback
+    ? normalizeImageRef(o.image, imageFallback)
+    : typeof o.image === 'string'
+      ? normalizeImageRef(o.image, '')
+      : '';
+  const imageAlt = asTrimmedString(o.imageAlt, 200, altFallback);
   return {
     title: asTrimmedString(o.title, 200, fallback.title),
     subtitle: asTrimmedString(o.subtitle, 2000, fallback.subtitle),
+    ...(image ? { image } : {}),
+    ...(imageAlt ? { imageAlt } : {}),
   };
 }
 

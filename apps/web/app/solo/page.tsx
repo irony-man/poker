@@ -6,6 +6,7 @@ import { ChoiceRow } from '@/components/ChoiceRow';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
+import { resolvePublicImage } from '@/lib/assets';
 import { Button } from '@/components/ui/Button';
 import { fetchPublicBotGroups, type PublicBotGroup } from '@/lib/api';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
@@ -65,8 +66,8 @@ export default function SoloPage() {
     >
       <form onSubmit={onOffline}>
         <LobbySplitCard
-          imageSrc="/home-offline.png"
-          imageAlt="You versus a bot at a private practice table"
+          imageSrc={resolvePublicImage(pageCopy.image ?? '/home-offline.png')}
+          imageAlt={pageCopy.imageAlt ?? 'You versus a bot at a private practice table'}
         >
           <div className="min-w-0 space-y-4">
             <div>

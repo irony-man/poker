@@ -1,12 +1,88 @@
 package com.pokr.android.core.designsystem
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+
+/**
+ * Arcade hard offset shadow. Drawn behind the same measured size as the
+ * foreground, so [Modifier.fillMaxWidth] fills both the face and the shadow.
+ */
+fun Modifier.arcadeOffsetShadow(
+    shape: Shape,
+    offset: Dp = 4.dp,
+): Modifier = this
+    .padding(end = offset, bottom = offset)
+    .drawBehind {
+        val dx = offset.toPx()
+        translate(left = dx, top = dx) {
+            drawOutline(
+                outline = shape.createOutline(size, layoutDirection, this),
+                color = Color.Black,
+            )
+        }
+    }
+
+/** Stakes / seats / table-size chips — Arcade hard shadow vs Classic outline. */
+fun Modifier.pokrChoiceChipSurface(
+    selected: Boolean,
+    shape: Shape,
+    arcade: Boolean,
+    chrome: PokrChrome = PokrChrome.Lobby,
+): Modifier {
+    if (arcade) {
+        return this
+            .arcadeOffsetShadow(shape, offset = 3.dp)
+            .background(
+                if (selected) PokrColors.Mushroom else PokrColors.White,
+                shape,
+            )
+            .border(2.dp, Color.Black, shape)
+    }
+    val (bg, border, width) = when (chrome) {
+        PokrChrome.Lobby -> if (selected) {
+            Triple(PokrColors.Sidebar.copy(alpha = 0.1f), PokrColors.Sidebar, 2.dp)
+        } else {
+            Triple(PokrColors.Mushroom.copy(alpha = 0.5f), PokrColors.Sidebar.copy(alpha = 0.14f), 1.dp)
+        }
+        PokrChrome.Play -> if (selected) {
+            Triple(PokrColors.Mushroom.copy(alpha = 0.15f), PokrColors.Mushroom.copy(alpha = 0.55f), 2.dp)
+        } else {
+            Triple(PokrColors.Ink.copy(alpha = 0.45f), PokrColors.Mushroom.copy(alpha = 0.15f), 1.dp)
+        }
+    }
+    return this
+        .clip(shape)
+        .background(bg)
+        .border(width, border, shape)
+}
+
+/** Label color for [pokrChoiceChipSurface] — dark ink on Arcade selected yellow. */
+fun pokrChoiceForeground(
+    selected: Boolean,
+    arcade: Boolean,
+    muted: Boolean = false,
+    chrome: PokrChrome = PokrChrome.Lobby,
+): Color = when {
+    arcade && selected -> if (muted) PokrColors.InkStrong.copy(alpha = 0.7f) else PokrColors.InkStrong
+    arcade -> if (muted) PokrColors.InkStrongMuted else PokrColors.InkStrong.copy(alpha = 0.85f)
+    chrome == PokrChrome.Play && selected -> PokrColors.Mushroom
+    chrome == PokrChrome.Play -> if (muted) PokrColors.Cream.copy(alpha = 0.65f) else PokrColors.Cream.copy(alpha = 0.8f)
+    selected -> PokrColors.Sidebar
+    muted -> PokrColors.InkStrongMuted
+    else -> PokrColors.InkStrong.copy(alpha = 0.85f)
+}
 
 /** Yellow graph-paper ground in Arcade; mushroom fill in Classic. */
 fun Modifier.pokrPageGround(): Modifier = composed {

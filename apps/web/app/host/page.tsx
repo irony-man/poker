@@ -7,6 +7,7 @@ import { FriendInvitePicker } from '@/components/FriendInvitePicker';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
+import { resolvePublicImage } from '@/lib/assets';
 import { Button } from '@/components/ui/Button';
 import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
 import { TextField } from '@/components/ui/TextField';
@@ -115,7 +116,10 @@ export default function HostPage() {
       error={error}
     >
       <form onSubmit={onCreate}>
-        <LobbySplitCard imageSrc="/host-table.png" imageAlt="Host a private table for your group">
+        <LobbySplitCard
+          imageSrc={resolvePublicImage(pageCopy.image ?? '/host-table.png')}
+          imageAlt={pageCopy.imageAlt ?? 'Host a private table for your group'}
+        >
           <ChoiceRow
             label="Stakes"
             name="host-stakes"

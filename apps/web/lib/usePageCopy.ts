@@ -36,9 +36,15 @@ export function usePageCopy(key: PageCopyKey): PageCopy {
   }, []);
 
   const bag = pickPagesForTheme(pagesByTheme, pages, uiTheme);
+  const defaults = DEFAULT_PAGES_COPY[key];
   const next = bag?.[key];
   if (next?.title && next?.subtitle) {
-    return { title: next.title, subtitle: next.subtitle };
+    return {
+      title: next.title,
+      subtitle: next.subtitle,
+      image: next.image || defaults.image,
+      imageAlt: next.imageAlt || defaults.imageAlt,
+    };
   }
-  return DEFAULT_PAGES_COPY[key];
+  return defaults;
 }

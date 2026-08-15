@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/Button';
 import { TextAreaField, TextField } from '@/components/ui/TextField';
 import type { CopyTheme, HomeLandingFeature } from '@/lib/api';
 import { CopyThemeSwitcher } from '../CopyThemeSwitcher';
+import { AdminImageField } from '../AdminImageField';
 import { MAX_HOME_BLOCKS } from '../tabs';
 import { ADMIN_SAVE_BTN, SaveBar, Section } from '../ui';
 
@@ -28,6 +29,9 @@ export function HomeSection({
   onMove,
   onRemove,
   onAdd,
+  onUploadImage,
+  imageUploadDisabled,
+  uploadingImageIndex,
   onSave,
 }: {
   homeFeatures: HomeLandingFeature[];
@@ -42,13 +46,16 @@ export function HomeSection({
   onMove: (index: number, dir: -1 | 1) => void;
   onRemove: (index: number) => void;
   onAdd: () => void;
+  onUploadImage: (index: number) => void;
+  imageUploadDisabled: boolean;
+  uploadingImageIndex: number | null;
   onSave: (e: React.FormEvent) => void;
 }) {
   const lookLabel = copyTheme === 'v2' ? 'Arcade' : 'Classic';
   return (
     <Section
       title="Home landing"
-      description="Feature blocks on the home page — title, body, CTA, link, and image. Classic and Arcade can differ. Copy from the other look, then save."
+      description="Feature blocks on the home page — title, body, CTA, link, and image. Upload to S3 or paste a path. Classic and Arcade can differ."
       action={
         <Button
           variant="ghost"
@@ -155,22 +162,17 @@ export function HomeSection({
                       maxLength={500}
                       required
                     />
-                    <TextField
-                      label="Image path"
-                      value={feature.image}
-                      onChange={(e) => onUpdate(index, { image: e.target.value })}
-                      placeholder="/home-knockout.png"
-                      maxLength={500}
-                      required
-                    />
-                    <TextField
-                      label="Image alt"
-                      value={feature.imageAlt}
-                      onChange={(e) => onUpdate(index, { imageAlt: e.target.value })}
-                      maxLength={200}
-                      required
-                    />
                   </div>
+                  <AdminImageField
+                    image={feature.image}
+                    imageAlt={feature.imageAlt}
+                    disabled={busy}
+                    uploading={uploadingImageIndex === index}
+                    uploadDisabled={imageUploadDisabled}
+                    onImage={(value) => onUpdate(index, { image: value })}
+                    onImageAlt={(value) => onUpdate(index, { imageAlt: value })}
+                    onUpload={() => onUploadImage(index)}
+                  />
                   <label className="flex cursor-pointer items-center gap-2.5 text-sm text-ink-strong">
                     <input
                       type="checkbox"

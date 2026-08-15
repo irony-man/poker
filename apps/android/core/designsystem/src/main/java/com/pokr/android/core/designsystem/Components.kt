@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -47,21 +46,14 @@ fun HudPanel(
         PokrChrome.Play -> PokrColors.InkPanel.copy(alpha = 0.95f)
     }
     if (arcade) {
-        Box(modifier = modifier.padding(end = 4.dp, bottom = 4.dp)) {
-            Box(
-                Modifier
-                    .matchParentSize()
-                    .offset(4.dp, 4.dp)
-                    .background(Color.Black, shape),
-            )
-            Box(
-                modifier = Modifier
-                    .background(fill, shape)
-                    .border(3.dp, Color.Black, shape)
-                    .padding(18.dp),
-            ) {
-                content()
-            }
+        Box(
+            modifier = modifier
+                .arcadeOffsetShadow(shape)
+                .background(fill, shape)
+                .border(3.dp, Color.Black, shape)
+                .padding(18.dp),
+        ) {
+            content()
         }
         return
     }
@@ -93,34 +85,27 @@ fun PokrPrimaryButton(
     val arcade = LocalPokrUiTheme.current == PokrUiTheme.Arcade
     val shape = RoundedCornerShape(if (arcade) 16.dp else PokrRadius.Md)
     if (arcade) {
-        Box(modifier = modifier.padding(end = 4.dp, bottom = 4.dp)) {
-            Box(
-                Modifier
-                    .matchParentSize()
-                    .offset(4.dp, 4.dp)
-                    .background(Color.Black, shape),
-            )
-            Box(
-                modifier = Modifier
-                    .background(
-                        if (enabled) PokrColors.Sidebar else PokrColors.Sidebar.copy(alpha = 0.4f),
-                        shape,
-                    )
-                    .border(3.dp, Color.Black, shape)
-                    .clickable(enabled = enabled, onClick = onClick)
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = text.uppercase(),
-                    color = Color.White.copy(alpha = if (enabled) 1f else 0.5f),
-                    fontFamily = PokrFonts.Display,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    letterSpacing = 0.8.sp,
-                    maxLines = 1,
+        Box(
+            modifier = modifier
+                .arcadeOffsetShadow(shape)
+                .background(
+                    if (enabled) PokrColors.Mushroom else PokrColors.Mushroom.copy(alpha = 0.45f),
+                    shape,
                 )
-            }
+                .border(3.dp, Color.Black, shape)
+                .clickable(enabled = enabled, onClick = onClick)
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = text.uppercase(),
+                color = PokrColors.InkStrong.copy(alpha = if (enabled) 1f else 0.45f),
+                fontFamily = PokrFonts.Display,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                letterSpacing = 0.8.sp,
+                maxLines = 1,
+            )
         }
         return
     }
@@ -188,6 +173,7 @@ fun PokrGhostButton(
     }
     Box(
         modifier = modifier
+            .then(if (arcade) Modifier.arcadeOffsetShadow(shape, offset = 3.dp) else Modifier)
             .clip(shape)
             .background(bg)
             .border(if (arcade) 3.dp else 1.dp, border, shape)
@@ -214,12 +200,18 @@ fun PokrDangerButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    val shape = RoundedCornerShape(PokrRadius.Md)
+    val arcade = LocalPokrUiTheme.current == PokrUiTheme.Arcade
+    val shape = RoundedCornerShape(if (arcade) 16.dp else PokrRadius.Md)
     Box(
         modifier = modifier
+            .then(if (arcade) Modifier.arcadeOffsetShadow(shape, offset = 3.dp) else Modifier)
             .clip(shape)
             .background(PokrColors.Danger.copy(alpha = if (enabled) 0.12f else 0.05f))
-            .border(1.dp, PokrColors.Danger.copy(alpha = if (enabled) 0.35f else 0.15f), shape)
+            .border(
+                if (arcade) 3.dp else 1.dp,
+                if (arcade) Color.Black else PokrColors.Danger.copy(alpha = if (enabled) 0.35f else 0.15f),
+                shape,
+            )
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center,
@@ -243,12 +235,18 @@ fun PokrSoftButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    val shape = RoundedCornerShape(12.dp)
+    val arcade = LocalPokrUiTheme.current == PokrUiTheme.Arcade
+    val shape = RoundedCornerShape(if (arcade) 16.dp else 12.dp)
     Box(
         modifier = modifier
+            .then(if (arcade) Modifier.arcadeOffsetShadow(shape, offset = 3.dp) else Modifier)
             .clip(shape)
             .background(PokrColors.White)
-            .border(1.dp, PokrColors.Sidebar.copy(alpha = 0.2f), shape)
+            .border(
+                if (arcade) 3.dp else 1.dp,
+                if (arcade) Color.Black else PokrColors.Sidebar.copy(alpha = 0.2f),
+                shape,
+            )
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center,
@@ -272,56 +270,21 @@ fun PokrChoiceChip(
     modifier: Modifier = Modifier,
     chrome: PokrChrome = PokrChrome.Lobby,
 ) {
+    val arcade = LocalPokrUiTheme.current == PokrUiTheme.Arcade
     val shape = RoundedCornerShape(PokrRadius.Md)
-    val (bg, border, borderWidth, fg) = when (chrome) {
-        PokrChrome.Lobby -> if (selected) {
-            Quadruple(
-                PokrColors.Sidebar.copy(alpha = 0.1f),
-                PokrColors.Sidebar,
-                2.dp,
-                PokrColors.Sidebar,
-            )
-        } else {
-            Quadruple(
-                PokrColors.Mushroom.copy(alpha = 0.5f),
-                PokrColors.Sidebar.copy(alpha = 0.14f),
-                1.dp,
-                PokrColors.InkStrong.copy(alpha = 0.85f),
-            )
-        }
-        PokrChrome.Play -> if (selected) {
-            Quadruple(
-                PokrColors.Mushroom.copy(alpha = 0.15f),
-                PokrColors.Mushroom.copy(alpha = 0.55f),
-                2.dp,
-                PokrColors.Mushroom,
-            )
-        } else {
-            Quadruple(
-                PokrColors.Ink.copy(alpha = 0.45f),
-                PokrColors.Mushroom.copy(alpha = 0.15f),
-                1.dp,
-                PokrColors.Cream.copy(alpha = 0.8f),
-            )
-        }
-    }
     Text(
         text = text,
         modifier = modifier
-            .clip(shape)
-            .background(bg)
-            .border(borderWidth, border, shape)
+            .pokrChoiceChipSurface(selected = selected, shape = shape, arcade = arcade, chrome = chrome)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 8.dp),
-        color = fg,
+        color = pokrChoiceForeground(selected = selected, arcade = arcade, chrome = chrome),
         fontFamily = PokrFonts.Display,
         fontSize = 13.sp,
         fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
         maxLines = 1,
     )
 }
-
-private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 
 @Composable
 fun CasinoChip(

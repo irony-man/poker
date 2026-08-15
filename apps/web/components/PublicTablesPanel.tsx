@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
+import { resolvePublicImage } from '@/lib/assets';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { Button } from '@/components/ui/Button';
 import { StatusChip } from '@/components/ui/StatusChip';
@@ -13,9 +14,13 @@ import { formatMoneyLabel } from '@/lib/currency';
 export function PublicTablesPanel({
   disabled,
   onJoin,
+  imageSrc,
+  imageAlt,
 }: {
   disabled: boolean;
   onJoin: (tableId: string, inviteCode: string) => void | Promise<void>;
+  imageSrc?: string;
+  imageAlt?: string;
 }) {
   const tables = useSession((s) => s.publicTables);
   const connection = useSession((s) => s.connection);
@@ -47,7 +52,10 @@ export function PublicTablesPanel({
   }
 
   return (
-    <LobbySplitCard imageSrc="/public-tables.png" imageAlt="Open public ring games ready to join">
+    <LobbySplitCard
+      imageSrc={resolvePublicImage(imageSrc || '/public-tables.png')}
+      imageAlt={imageAlt || 'Open public ring games ready to join'}
+    >
       <p className="text-sm font-medium text-ink-strong-muted">
         Select the table size and sit down to play
       </p>

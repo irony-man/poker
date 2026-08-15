@@ -49,6 +49,8 @@ export default function ContestsListPage() {
         disabled={busy}
         sessionToken={sessionToken}
         displayName={name}
+        imageSrc={pageCopy.image}
+        imageAlt={pageCopy.imageAlt}
         onEnsureSession={ensureSession}
         onOpenContest={(id) => router.push(`/contest/${id}`)}
         onJoinCode={async (code) => {

@@ -110,11 +110,20 @@ describe('site config + runtime economy', () => {
 
   it('persists pages copy', async () => {
     const pages = site.getPages();
-    pages.host = { title: 'Host now', subtitle: 'Custom host blurb' };
+    pages.host = {
+      title: 'Host now',
+      subtitle: 'Custom host blurb',
+      image: 'https://cdn.example.com/uploads/images/host/pic.png',
+      imageAlt: 'Custom host art',
+    };
     await site.setPages(pages);
     const reloaded = new SiteConfigStore(dir);
     await reloaded.init();
     expect(reloaded.getPages().host.title).toBe('Host now');
+    expect(reloaded.getPages().host.image).toBe(
+      'https://cdn.example.com/uploads/images/host/pic.png',
+    );
+    expect(reloaded.getPages().host.imageAlt).toBe('Custom host art');
   });
 
   it('seeds arcade copy from classic when by-theme keys are missing', async () => {

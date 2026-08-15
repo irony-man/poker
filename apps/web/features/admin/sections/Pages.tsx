@@ -11,6 +11,7 @@ import {
   type PagesCopy,
 } from '@/lib/pageCopy';
 import { CopyThemeSwitcher } from '../CopyThemeSwitcher';
+import { AdminImageField } from '../AdminImageField';
 import {
   ADMIN_SAVE_BTN,
   DetailHeader,
@@ -31,6 +32,9 @@ export function PagesSection({
   onCopyFromOther,
   onOpenPage,
   onPagesCopy,
+  onUploadImage,
+  imageUploadDisabled,
+  uploadingImage,
   onSave,
 }: {
   pagesCopy: PagesCopy;
@@ -41,7 +45,13 @@ export function PagesSection({
   onCopyTheme: (theme: CopyTheme) => void;
   onCopyFromOther: () => void;
   onOpenPage: (key: string | null) => void;
-  onPagesCopy: (key: keyof PagesCopy, patch: { title?: string; subtitle?: string }) => void;
+  onPagesCopy: (
+    key: keyof PagesCopy,
+    patch: { title?: string; subtitle?: string; image?: string; imageAlt?: string },
+  ) => void;
+  onUploadImage: () => void;
+  imageUploadDisabled: boolean;
+  uploadingImage: boolean;
   onSave: (e: React.FormEvent) => void;
 }) {
   const selectedKey: PageCopyKey =
@@ -55,7 +65,7 @@ export function PagesSection({
   return (
     <Section
       title="Page text"
-      description="Titles and subtitles for lobby and auth pages. Classic and Arcade can differ. Copy from the other look, then save. Players see the bag that matches their selected look."
+      description="Titles, subtitles, and lobby illustrations. Classic and Arcade can differ. Upload to S3 or paste a path/URL, then save. Players see the bag that matches their selected look."
     >
       <CopyThemeSwitcher
         value={copyTheme}
@@ -112,6 +122,18 @@ export function PagesSection({
               maxLength={2000}
               required
             />
+            {!isFooter ? (
+              <AdminImageField
+                image={row.image ?? ''}
+                imageAlt={row.imageAlt ?? ''}
+                disabled={busy}
+                uploading={uploadingImage}
+                uploadDisabled={imageUploadDisabled}
+                onImage={(value) => onPagesCopy(selectedKey, { image: value })}
+                onImageAlt={(value) => onPagesCopy(selectedKey, { imageAlt: value })}
+                onUpload={onUploadImage}
+              />
+            ) : null}
           </div>
         </SplitPane>
         <SaveBar hint={`Players on ${lookLabel} see this copy on the matching lobby or auth screen.`}>

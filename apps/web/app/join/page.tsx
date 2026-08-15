@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
+import { resolvePublicImage } from '@/lib/assets';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { resolveContestInvite, resolveInvite } from '@/lib/api';
@@ -65,7 +66,10 @@ export default function JoinPage() {
           void enterInvite('play');
         }}
       >
-        <LobbySplitCard imageSrc="/join-table.png" imageAlt="Enter a table with an invite code">
+        <LobbySplitCard
+          imageSrc={resolvePublicImage(pageCopy.image ?? '/join-table.png')}
+          imageAlt={pageCopy.imageAlt ?? 'Enter a table with an invite code'}
+        >
           <TextField
             variant="hud"
             label="Invite code"

@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { ServiceUnavailableException } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
-import { SoundUploadUrlBodySchema } from '@poker/protocol';
+import { SiteImageUploadUrlBodySchema, SoundUploadUrlBodySchema } from '@poker/protocol';
 import { AdminController } from './admin/admin.controller.js';
 import { StorageService } from './storage/storage.service.js';
 
@@ -37,6 +37,51 @@ describe('StorageService sound uploads', () => {
   it('reports unconfigured when bucket or credentials missing', () => {
     const storage = makeStorage({ S3_BUCKET: 'test-bucket' });
     expect(storage.isConfigured()).toBe(false);
+  });
+});
+
+describe('StorageService site image uploads', () => {
+  it('generates keys under uploads/images/{purpose}/', () => {
+    const storage = makeStorage({
+      S3_BUCKET: 'test-bucket',
+      S3_PUBLIC_BASE_URL: 'https://test-bucket.s3.us-west-2.amazonaws.com',
+      AWS_REGION: 'us-west-2',
+    });
+    expect(storage.siteImageUploadKey('host', 'png')).toMatch(
+      /^uploads\/images\/host\/.+\.png$/,
+    );
+  });
+
+  it('recognizes allowed site image URLs on this bucket', () => {
+    const storage = makeStorage({
+      S3_PUBLIC_BASE_URL: 'https://test-bucket.s3.us-west-2.amazonaws.com',
+    });
+    expect(
+      storage.isAllowedSiteImageUrl(
+        'https://test-bucket.s3.us-west-2.amazonaws.com/uploads/images/join/abc.webp',
+      ),
+    ).toBe(true);
+    expect(storage.isAllowedSiteImageUrl('https://other.example.com/pic.png')).toBe(false);
+  });
+});
+
+describe('SiteImageUploadUrlBodySchema', () => {
+  it('accepts valid PNG upload requests', () => {
+    const parsed = SiteImageUploadUrlBodySchema.safeParse({
+      purpose: 'host',
+      contentType: 'image/png',
+      contentLength: 120_000,
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it('rejects oversized files', () => {
+    const parsed = SiteImageUploadUrlBodySchema.safeParse({
+      purpose: 'home',
+      contentType: 'image/jpeg',
+      contentLength: 5 * 1024 * 1024,
+    });
+    expect(parsed.success).toBe(false);
   });
 });
 
@@ -88,6 +133,13 @@ describe('AdminController soundUploadUrl', () => {
       controller.soundUploadUrl({
         kind: 'fold',
         contentType: 'audio/mpeg',
+        contentLength: 1024,
+      }),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    await expect(
+      controller.imageUploadUrl({
+        purpose: 'host',
+        contentType: 'image/png',
         contentLength: 1024,
       }),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);

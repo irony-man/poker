@@ -366,6 +366,25 @@ export const SoundUploadUrlBodySchema = z.object({
   contentLength: z.number().int().positive().max(5 * 1024 * 1024),
 });
 
+/** Admin-uploaded Home / lobby page illustrations. */
+export const SiteImagePurposeSchema = z.enum([
+  'home',
+  'host',
+  'join',
+  'public',
+  'contests',
+  'friends',
+  'solo',
+  'signIn',
+  'signUp',
+]);
+
+export const SiteImageUploadUrlBodySchema = z.object({
+  purpose: SiteImagePurposeSchema,
+  contentType: z.enum(['image/jpeg', 'image/png', 'image/webp']),
+  contentLength: z.number().int().positive().max(4 * 1024 * 1024),
+});
+
 /** App chrome look: Classic (v1) or Arcade (v2). Independent of table felt color. */
 export const UiThemeSchema = z.enum(['v1', 'v2']);
 export type UiTheme = z.infer<typeof UiThemeSchema>;
@@ -398,6 +417,8 @@ export type AuthSession = z.infer<typeof AuthSessionSchema>;
 export type AvatarUploadUrlBody = z.infer<typeof AvatarUploadUrlBodySchema>;
 export type TableSoundKind = z.infer<typeof TableSoundKindSchema>;
 export type SoundUploadUrlBody = z.infer<typeof SoundUploadUrlBodySchema>;
+export type SiteImagePurpose = z.infer<typeof SiteImagePurposeSchema>;
+export type SiteImageUploadUrlBody = z.infer<typeof SiteImageUploadUrlBodySchema>;
 export type UpdateMeBody = z.infer<typeof UpdateMeBodySchema>;
 
 /** @deprecated Use SignupBodySchema / LoginBodySchema */

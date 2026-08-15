@@ -26,6 +26,8 @@ export default function FriendsPage() {
     >
       <FriendsPanel
         disabled={!signedIn}
+        imageSrc={pageCopy.image}
+        imageAlt={pageCopy.imageAlt}
         onNavigateTable={(tableId, inviteCode) => {
           enterMobileFullscreen();
           router.push(`/table/${tableId}?invite=${inviteCode}`);

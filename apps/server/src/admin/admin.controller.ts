@@ -13,7 +13,7 @@ import {
   ServiceUnavailableException,
   UseGuards,
 } from '@nestjs/common';
-import { SoundUploadUrlBodySchema } from '@poker/protocol';
+import { SoundUploadUrlBodySchema, SiteImageUploadUrlBodySchema } from '@poker/protocol';
 import { z } from 'zod';
 import { AuthService } from '../auth/auth.service.js';
 import type { User } from '../auth/auth.types.js';
@@ -27,6 +27,7 @@ import { RealtimeService } from '../realtime/realtime.service.js';
 import { RoomsService } from '../rooms/rooms.service.js';
 import { SiteConfigService } from '../site-config/site-config.service.js';
 import {
+  ALLOWED_SITE_IMAGE_CONTENT_TYPES,
   ALLOWED_SOUND_CONTENT_TYPES,
 } from '../storage/storage.constants.js';
 import { StorageService } from '../storage/storage.service.js';
@@ -73,6 +74,8 @@ const HomeFeaturesBody = z.object({
 const PageCopyBody = z.object({
   title: z.string().min(1).max(200),
   subtitle: z.string().min(1).max(2000),
+  image: z.string().max(500).optional(),
+  imageAlt: z.string().max(200).optional(),
 });
 
 const PagesBody = z.object({
@@ -306,6 +309,24 @@ export class AdminController {
     }
     const ext = ALLOWED_SOUND_CONTENT_TYPES[parsed.data.contentType];
     const key = this.storage.soundUploadKey(parsed.data.kind, ext);
+    return this.storage.createPresignedUpload({
+      key,
+      contentType: parsed.data.contentType,
+      contentLength: parsed.data.contentLength,
+    });
+  }
+
+  @Post('images/upload-url')
+  async imageUploadUrl(@Body() body: unknown) {
+    if (!this.storage.isConfigured()) {
+      throw new ServiceUnavailableException({ error: 'File storage is not configured' });
+    }
+    const parsed = SiteImageUploadUrlBodySchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({ error: parsed.error.message });
+    }
+    const ext = ALLOWED_SITE_IMAGE_CONTENT_TYPES[parsed.data.contentType];
+    const key = this.storage.siteImageUploadKey(parsed.data.purpose, ext);
     return this.storage.createPresignedUpload({
       key,
       contentType: parsed.data.contentType,

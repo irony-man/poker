@@ -22,7 +22,10 @@ import com.pokr.android.core.designsystem.PokrGhostButton
 import com.pokr.android.core.designsystem.PokrLabel
 import com.pokr.android.core.designsystem.PokrPrimaryButton
 import com.pokr.android.core.designsystem.HudPanel
+import com.pokr.android.core.designsystem.LocalPokrUiTheme
+import com.pokr.android.core.designsystem.PokrUiTheme
 import com.pokr.android.core.designsystem.formatChips
+import com.pokr.android.core.designsystem.pokrChoiceForeground
 import com.pokr.android.core.model.STAKE_PRESETS
 import com.pokr.android.core.model.stakeById
 
@@ -127,13 +130,14 @@ fun HostTab(
                 onSelect = viewModel::onHostStakeChange,
                 content = { id, selected ->
                     val s = stakeById(id)
+                    val arcade = LocalPokrUiTheme.current == PokrUiTheme.Arcade
                     Column(
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                         horizontalAlignment = Alignment.Start,
                     ) {
                         Text(
                             s.label,
-                            color = if (selected) PokrColors.Sidebar else PokrColors.InkStrong.copy(alpha = 0.85f),
+                            color = pokrChoiceForeground(selected = selected, arcade = arcade),
                             fontFamily = PokrFonts.Display,
                             fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
                             fontSize = 13.sp,
@@ -145,7 +149,7 @@ fun HostTab(
                             ChipsStackIcon(height = 14.dp)
                             Text(
                                 "${formatChips(s.buyIn)}  ${s.smallBlind}/${s.bigBlind}",
-                                color = PokrColors.InkStrongMuted,
+                                color = pokrChoiceForeground(selected = selected, arcade = arcade, muted = true),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium,
                             )

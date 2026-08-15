@@ -28,6 +28,7 @@ import {
   patchAdminRoomSettings,
   patchAdminSounds,
   requestAdminSoundUploadUrl,
+  requestAdminImageUploadUrl,
   resetAdminUserChips,
   resetAdminUserWhuffies,
   deleteAdminUser,
@@ -42,6 +43,7 @@ import {
   type PagesByTheme,
   type SiteAnnouncement,
   type SiteEconomy,
+  type SiteImagePurpose,
   type TableSoundKind,
   type TableSoundsConfig,
   DEFAULT_TABLE_SOUND_URLS,
@@ -51,7 +53,7 @@ import {
 } from '@/lib/api';
 import { formatMoneyLabel } from '@/lib/currency';
 import { DEFAULT_HOME_FEATURES } from '@/components/HomeLanding';
-import { clonePagesCopy, type PagesCopy } from '@/lib/pageCopy';
+import { clonePagesCopy, PAGE_COPY_KEYS, type PageCopyKey, type PagesCopy } from '@/lib/pageCopy';
 import { readStoredSession } from '@/lib/session';
 import { useSession } from '@/lib/store';
 import { useLobbySession } from '@/lib/useLobbySession';
@@ -162,6 +164,12 @@ function AdminPageInner() {
   const [soundUploadDisabled, setSoundUploadDisabled] = useState(false);
   const soundUploadKindRef = useRef<TableSoundKind | null>(null);
   const soundFileInputRef = useRef<HTMLInputElement>(null);
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
+  const imageUploadTargetRef = useRef<{ type: 'home'; index: number } | { type: 'page' } | null>(
+    null,
+  );
+  const [imageUploadDisabled, setImageUploadDisabled] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState<string | null>(null);
   const [homeCopyTheme, setHomeCopyTheme] = useState<CopyTheme>('v1');
   const [pagesCopyTheme, setPagesCopyTheme] = useState<CopyTheme>('v1');
   const [homeFeaturesByTheme, setHomeFeaturesByTheme] =
@@ -696,6 +704,78 @@ function AdminPageInner() {
     flash(`Copied from ${from === 'v2' ? 'Arcade' : 'Classic'} — save to publish`);
   }
 
+  function triggerImageUpload(target: { type: 'home'; index: number } | { type: 'page' }) {
+    if (imageUploadDisabled || uploadingImage) return;
+    imageUploadTargetRef.current = target;
+    imageFileInputRef.current?.click();
+  }
+
+  async function uploadSiteImage(file: File, purpose: SiteImagePurpose): Promise<string> {
+    if (!token) throw new Error('Sign in to upload');
+    if (file.size > 4 * 1024 * 1024) {
+      throw new Error('Image must be 4 MB or smaller');
+    }
+    const contentType = file.type as 'image/jpeg' | 'image/png' | 'image/webp';
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(contentType)) {
+      throw new Error('Use JPEG, PNG, or WebP');
+    }
+    const { uploadUrl, publicUrl } = await requestAdminImageUploadUrl(token, {
+      purpose,
+      contentType,
+      contentLength: file.size,
+    });
+    const putRes = await fetch(uploadUrl, {
+      method: 'PUT',
+      body: file,
+      headers: { 'Content-Type': contentType },
+    });
+    if (!putRes.ok) throw new Error('Upload to storage failed');
+    return publicUrl;
+  }
+
+  async function onImageFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    const target = imageUploadTargetRef.current;
+    imageUploadTargetRef.current = null;
+    if (!file || !target) return;
+    const purpose: SiteImagePurpose =
+      target.type === 'home'
+        ? 'home'
+        : PAGE_COPY_KEYS.includes(openPage as PageCopyKey) && openPage !== 'homeAuthFooter'
+          ? (openPage as SiteImagePurpose)
+          : 'host';
+    const uploadKey = target.type === 'home' ? `home-${target.index}` : `page-${purpose}`;
+    setUploadingImage(uploadKey);
+    setError(null);
+    try {
+      const publicUrl = await uploadSiteImage(file, purpose);
+      if (target.type === 'home') {
+        updateHomeFeature(target.index, { image: publicUrl });
+      } else {
+        const key = (openPage && (PAGE_COPY_KEYS as string[]).includes(openPage)
+          ? openPage
+          : 'host') as PageCopyKey;
+        setPagesByTheme((bags) => ({
+          ...bags,
+          [pagesCopyTheme]: {
+            ...bags[pagesCopyTheme],
+            [key]: { ...bags[pagesCopyTheme][key], image: publicUrl },
+          },
+        }));
+      }
+      flash('Image uploaded — save to publish');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Could not upload image';
+      if (msg.includes('storage is not configured') || msg.includes('503')) {
+        setImageUploadDisabled(true);
+      }
+      setError(msg);
+    } finally {
+      setUploadingImage(null);
+    }
+  }
+
   async function searchUsers(e?: React.FormEvent) {
     e?.preventDefault();
     if (!token) return;
@@ -869,6 +949,13 @@ function AdminPageInner() {
       error={error}
       okMsg={okMsg}
     >
+      <input
+        ref={imageFileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+        className="sr-only"
+        onChange={(e) => void onImageFileSelected(e)}
+      />
         {tab === 'users' ? (
           <UsersSection
             userQuery={userQuery}
@@ -921,6 +1008,13 @@ function AdminPageInner() {
             onMove={moveHomeFeature}
             onRemove={removeHomeFeature}
             onAdd={addHomeFeature}
+            onUploadImage={(index) => triggerImageUpload({ type: 'home', index })}
+            imageUploadDisabled={imageUploadDisabled}
+            uploadingImageIndex={
+              uploadingImage?.startsWith('home-')
+                ? Number(uploadingImage.slice('home-'.length))
+                : null
+            }
             onSave={(e) => void saveHomeFeatures(e)}
           />
         ) : null}
@@ -944,6 +1038,9 @@ function AdminPageInner() {
                 },
               }))
             }
+            onUploadImage={() => triggerImageUpload({ type: 'page' })}
+            imageUploadDisabled={imageUploadDisabled}
+            uploadingImage={uploadingImage?.startsWith('page-') === true}
             onSave={(e) => void savePages(e)}
           />
         ) : null}

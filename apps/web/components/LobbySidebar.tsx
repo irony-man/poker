@@ -131,8 +131,8 @@ export function LobbySidebar({
               className={cn(
                 'nav-sidebar-item flex items-center justify-between gap-2',
                 active
-                  ? 'bg-mushroom/15 text-mushroom'
-                  : 'text-mushroom/55 hover:bg-mushroom/10 hover:text-mushroom/90',
+                  ? 'nav-sidebar-item-active bg-mushroom/15 text-mushroom'
+                  : 'text-mushroom/80 hover:bg-mushroom/12 hover:text-mushroom',
               )}
             >
               <span>{t.label}</span>

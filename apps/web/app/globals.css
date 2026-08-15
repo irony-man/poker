@@ -631,6 +631,10 @@ body > * {
     @apply rounded-md px-3 py-2.5 text-left text-sm font-display font-semibold uppercase tracking-[0.12em] transition;
   }
 
+  .sidebar-nav-kicker {
+    @apply px-3 pb-1.5 text-[10px] font-display font-semibold uppercase tracking-[0.16em] text-mushroom/70;
+  }
+
   .menu-item-dark {
     @apply block px-4 py-3 text-center text-xs font-display font-bold uppercase tracking-[0.14em] text-mushroom hover:bg-mushroom/10;
   }
@@ -1190,6 +1194,26 @@ html[data-ui-theme='v2'] .lobby-sidebar {
   color: #fff;
   border-right: 3px solid #000;
   box-shadow: 4px 0 0 0 #000;
+}
+
+html[data-ui-theme='v2'] .lobby-sidebar .sidebar-nav-kicker {
+  color: rgb(253 233 61);
+}
+
+html[data-ui-theme='v2'] .lobby-sidebar .nav-sidebar-item {
+  color: rgb(255 255 255 / 0.9);
+}
+
+html[data-ui-theme='v2'] .lobby-sidebar .nav-sidebar-item:hover {
+  background-color: rgb(255 255 255 / 0.12);
+  color: #fff;
+}
+
+html[data-ui-theme='v2'] .lobby-sidebar .nav-sidebar-item-active {
+  background-color: rgb(253 233 61);
+  color: #1a1028;
+  border: 2px solid #000;
+  box-shadow: 3px 3px 0 0 #000;
 }
 
 html[data-ui-theme='v2'] .hud-panel {

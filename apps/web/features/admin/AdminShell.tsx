@@ -34,7 +34,7 @@ function AdminNav({
     <nav className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 py-3" aria-label="Admin">
       {ADMIN_NAV.map((group) => (
         <div key={group.label}>
-          <p className="font-kicker-xs px-3 pb-1.5 text-mushroom/40">
+          <p className="sidebar-nav-kicker">
             {group.label}
           </p>
           <div className="flex flex-col gap-0.5">
@@ -51,8 +51,8 @@ function AdminNav({
                   className={cn(
                     'nav-sidebar-item py-2',
                     active
-                      ? 'bg-brass/15 text-brass'
-                      : 'text-mushroom/55 hover:bg-mushroom/10 hover:text-mushroom/90',
+                      ? 'nav-sidebar-item-active bg-brass/15 text-brass'
+                      : 'text-mushroom/80 hover:bg-mushroom/12 hover:text-mushroom',
                   )}
                 >
                   {item.label}

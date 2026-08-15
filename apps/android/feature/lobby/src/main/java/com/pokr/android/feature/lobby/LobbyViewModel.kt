@@ -158,6 +158,8 @@ class LobbyViewModel @Inject constructor(
                 .onSuccess { me ->
                     sessionPreferences.saveTableColorId(me.tableColorId)
                     sessionPreferences.saveUiTheme(me.uiTheme)
+                    sessionPreferences.saveTableLayout(me.tableLayout)
+                    sessionPreferences.saveSfxMuted(me.sfxMuted)
                 }
         }
     }

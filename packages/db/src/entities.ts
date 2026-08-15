@@ -44,6 +44,14 @@ export class UserEntity {
   @Column({ name: 'ui_theme', type: 'text', default: 'v1' })
   uiTheme!: string;
 
+  /** Table layout: Classic oval (`v1`) or stacked HUD (`v2`). */
+  @Column({ name: 'table_layout', type: 'text', default: 'v1' })
+  tableLayout!: string;
+
+  /** Viewer mute for table SFX. */
+  @Column({ name: 'sfx_muted', type: 'boolean', default: false })
+  sfxMuted!: boolean;
+
   @Column({ name: 'chip_balance', type: 'int', default: 10_000 })
   chipBalance!: number;
 

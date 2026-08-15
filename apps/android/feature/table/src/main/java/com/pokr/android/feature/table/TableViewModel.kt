@@ -11,6 +11,7 @@ import com.pokr.android.core.model.ClientMessage
 import com.pokr.android.core.model.ConnectionStatus
 import com.pokr.android.core.model.EmojiBurst
 import com.pokr.android.core.model.ServerMessage
+import com.pokr.android.core.model.UpdateMeBody
 import com.pokr.android.core.network.PokrApi
 import com.pokr.android.feature.table.OnlineTableRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -111,6 +112,21 @@ class TableViewModel @Inject constructor(
                 maybeAutoSit()
             }
             TableContract.Intent.LeaveTable -> leaveTable()
+            TableContract.Intent.ToggleSfxMute -> toggleSfxMute()
+        }
+    }
+
+    private fun toggleSfxMute() {
+        val next = !_uiState.value.sfxMuted
+        _uiState.update { it.copy(sfxMuted = next) }
+        sounds.enabled = !next
+        viewModelScope.launch {
+            sessionPreferences.saveSfxMuted(next)
+            runCatching { api.patchMe(UpdateMeBody(sfxMuted = next)) }
+                .onSuccess { me ->
+                    sessionPreferences.saveSfxMuted(me.sfxMuted)
+                    _uiState.update { it.copy(sfxMuted = me.sfxMuted) }
+                }
         }
     }
 
@@ -121,9 +137,16 @@ class TableViewModel @Inject constructor(
     private fun connect() {
         observeJob?.cancel()
         observeJob = viewModelScope.launch {
-            val colorId = runCatching { api.getMe().tableColorId }
-                .getOrElse { sessionPreferences.getTableColorId() }
+            val me = runCatching { api.getMe() }.getOrNull()
+            val colorId = me?.tableColorId ?: sessionPreferences.getTableColorId()
             sessionPreferences.saveTableColorId(colorId)
+            val sfxMuted = me?.sfxMuted ?: sessionPreferences.getSfxMuted()
+            sessionPreferences.saveSfxMuted(sfxMuted)
+            if (me != null) {
+                sessionPreferences.saveUiTheme(me.uiTheme)
+                sessionPreferences.saveTableLayout(me.tableLayout)
+            }
+            sounds.enabled = !sfxMuted
             val botGroups = runCatching { api.getSite().botGroups }.getOrDefault(emptyList())
             _uiState.update {
                 it.copy(
@@ -131,6 +154,7 @@ class TableViewModel @Inject constructor(
                     connection = ConnectionStatus.Connecting,
                     loading = true,
                     tableColorId = colorId,
+                    sfxMuted = sfxMuted,
                     botGroups = botGroups,
                     botGroupId = it.botGroupId
                         ?: botGroups.find { g -> g.isDefault }?.id

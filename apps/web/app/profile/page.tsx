@@ -25,6 +25,12 @@ import {
   saveTableColorId,
   tableColorPreset,
 } from '@/lib/tableColors';
+import {
+  clampTableLayout,
+  saveTableLayout,
+  type TableLayout,
+} from '@/lib/tableLayoutPref';
+import { isSfxMuted, setSfxMuted } from '@/lib/audio';
 import { clampUiTheme, saveUiTheme, type UiTheme } from '@/lib/uiTheme';
 import { MoneyAmount } from '@/components/CurrencyIcon';
 import { HandsMap } from '@/features/progress/HandsMap';
@@ -78,6 +84,10 @@ function ProfilePageInner() {
   const [savingTableColor, setSavingTableColor] = useState(false);
   const [draftUiTheme, setDraftUiTheme] = useState<UiTheme>('v1');
   const [savingUiTheme, setSavingUiTheme] = useState(false);
+  const [draftTableLayout, setDraftTableLayout] = useState<TableLayout>('v1');
+  const [savingTableLayout, setSavingTableLayout] = useState(false);
+  const [draftSfxMuted, setDraftSfxMuted] = useState(isSfxMuted);
+  const [savingSfxMuted, setSavingSfxMuted] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
   const token = sessionToken ?? readStoredSession()?.sessionToken ?? null;
@@ -119,6 +129,10 @@ function ProfilePageInner() {
       saveTableColorId(me.tableColorId);
       setDraftUiTheme(clampUiTheme(me.uiTheme));
       saveUiTheme(me.uiTheme);
+      setDraftTableLayout(clampTableLayout(me.tableLayout));
+      saveTableLayout(me.tableLayout);
+      setDraftSfxMuted(me.sfxMuted);
+      setSfxMuted(me.sfxMuted);
       setChipBalance(me.chipBalance);
       setWhuffieBalance(me.whuffieBalance);
       setFriendCount(me.friendCount ?? 0);
@@ -174,6 +188,8 @@ function ProfilePageInner() {
       saveAvatarId(me.avatarId);
       saveTableColorId(me.tableColorId);
       saveUiTheme(me.uiTheme);
+      saveTableLayout(me.tableLayout);
+      setSfxMuted(me.sfxMuted);
       const stored = readStoredSession();
       if (stored) {
         writeStoredSession({ ...stored, avatarId: me.avatarId });
@@ -217,6 +233,8 @@ function ProfilePageInner() {
       setFriendCount(me.friendCount ?? 0);
       saveTableColorId(me.tableColorId);
       saveUiTheme(me.uiTheme);
+      saveTableLayout(me.tableLayout);
+      setSfxMuted(me.sfxMuted);
       setEditingAvatar(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not upload avatar');
@@ -279,6 +297,65 @@ function ProfilePageInner() {
       setError(err instanceof Error ? err.message : 'Could not update look');
     } finally {
       setSavingUiTheme(false);
+    }
+  };
+
+  const saveLayout = async (next: TableLayout) => {
+    if (!token || !profile || savingTableLayout) return;
+    const clamped = clampTableLayout(next);
+    if (clamped === clampTableLayout(profile.tableLayout)) {
+      setDraftTableLayout(clamped);
+      saveTableLayout(clamped);
+      return;
+    }
+    const previous = draftTableLayout;
+    setDraftTableLayout(clamped);
+    saveTableLayout(clamped);
+    setSavingTableLayout(true);
+    setError(null);
+    try {
+      const me = await updateMe(token, { tableLayout: clamped });
+      setProfile(me);
+      setChipBalance(me.chipBalance);
+      setWhuffieBalance(me.whuffieBalance);
+      setFriendCount(me.friendCount ?? 0);
+      saveTableLayout(me.tableLayout);
+      setDraftTableLayout(clampTableLayout(me.tableLayout));
+    } catch (err) {
+      setDraftTableLayout(previous);
+      saveTableLayout(previous);
+      setError(err instanceof Error ? err.message : 'Could not update table layout');
+    } finally {
+      setSavingTableLayout(false);
+    }
+  };
+
+  const saveSounds = async (nextMuted: boolean) => {
+    if (!token || !profile || savingSfxMuted) return;
+    if (nextMuted === profile.sfxMuted) {
+      setDraftSfxMuted(nextMuted);
+      setSfxMuted(nextMuted);
+      return;
+    }
+    const previous = draftSfxMuted;
+    setDraftSfxMuted(nextMuted);
+    setSfxMuted(nextMuted);
+    setSavingSfxMuted(true);
+    setError(null);
+    try {
+      const me = await updateMe(token, { sfxMuted: nextMuted });
+      setProfile(me);
+      setChipBalance(me.chipBalance);
+      setWhuffieBalance(me.whuffieBalance);
+      setFriendCount(me.friendCount ?? 0);
+      setSfxMuted(me.sfxMuted);
+      setDraftSfxMuted(me.sfxMuted);
+    } catch (err) {
+      setDraftSfxMuted(previous);
+      setSfxMuted(previous);
+      setError(err instanceof Error ? err.message : 'Could not update sounds');
+    } finally {
+      setSavingSfxMuted(false);
     }
   };
 
@@ -632,9 +709,105 @@ function ProfilePageInner() {
 
               <div className="mt-8 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
                 <div className="min-w-0">
-                  <h3 className="font-heading-section">
-                    Table theme
-                  </h3>
+                  <h3 className="font-heading-section">Table layout</h3>
+                  <p className="mt-1.5 max-w-lg font-prose-muted">
+                    Classic oval or stacked HUD on portrait phones. Larger screens stay oval. Only
+                    you see this.
+                  </p>
+                </div>
+                {savingTableLayout ? (
+                  <p className="text-xs font-medium text-ink-strong-muted" role="status">
+                    Saving…
+                  </p>
+                ) : null}
+              </div>
+
+              <div
+                className="mt-5 grid grid-cols-2 gap-3"
+                role="radiogroup"
+                aria-label="Table layout"
+              >
+                {(
+                  [
+                    {
+                      id: 'v1' as const,
+                      label: 'Classic',
+                      hint: 'Oval table',
+                    },
+                    {
+                      id: 'v2' as const,
+                      label: 'Table v2',
+                      hint: 'Stacked HUD',
+                    },
+                  ] as const
+                ).map((layout) => {
+                  const selected = draftTableLayout === layout.id;
+                  return (
+                    <button
+                      key={layout.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      aria-label={layout.label}
+                      disabled={savingTableLayout}
+                      onClick={() => void saveLayout(layout.id)}
+                      className={`flex flex-col overflow-hidden rounded-2xl border-2 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar disabled:opacity-60 ${
+                        selected
+                          ? 'border-sidebar bg-sidebar/[0.06] shadow-[0_0_0_1px_rgb(29_4_50_/_0.1)]'
+                          : 'border-sidebar/10 bg-mushroom/30 hover:border-sidebar/22'
+                      }`}
+                    >
+                      <span
+                        className="table-theme relative block h-16 w-full"
+                        data-table-color={draftTableColorId}
+                        aria-hidden
+                      >
+                        <span className="felt-surface absolute inset-0" />
+                        {layout.id === 'v1' ? (
+                          <span className="felt-surface table-rim absolute inset-x-6 inset-y-3 rounded-[42%] border-[5px]" />
+                        ) : (
+                          <span className="absolute inset-x-3 inset-y-2 flex flex-col items-center justify-between py-1">
+                            <span className="flex w-full justify-center gap-1">
+                              <span className="h-3 w-3 rounded-full bg-white/80" />
+                              <span className="h-3 w-3 rounded-full bg-white/80" />
+                              <span className="h-3 w-3 rounded-full bg-white/80" />
+                            </span>
+                            <span className="h-2 w-16 rounded-sm bg-white/70" />
+                            <span className="h-3 w-10 rounded-sm bg-white/85" />
+                          </span>
+                        )}
+                      </span>
+                      <span className="flex items-center justify-between gap-2 px-3 py-2.5">
+                        <span>
+                          <span className="block text-sm font-semibold text-sidebar">
+                            {layout.label}
+                          </span>
+                          <span className="block text-[11px] text-ink-strong-muted">
+                            {layout.hint}
+                          </span>
+                        </span>
+                        {selected ? (
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-sidebar text-mushroom">
+                            <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none" aria-hidden>
+                              <path
+                                d="M3.5 8.5 6.5 11.5 12.5 4.5"
+                                stroke="currentColor"
+                                strokeWidth="2.25"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </span>
+                        ) : null}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-8 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+                <div className="min-w-0">
+                  <h3 className="font-heading-section">Felt color</h3>
                   <p className="mt-1.5 max-w-lg font-prose-muted">
                     Only you see this. Status colors stay the same.
                   </p>
@@ -659,30 +832,53 @@ function ProfilePageInner() {
                   aria-hidden
                 />
                 <div className="relative flex flex-col items-center gap-4">
-                  <div
-                    className="felt-surface table-rim shadow-felt relative h-[7.5rem] w-full max-w-md rounded-[42%] border-[10px] sm:h-36 sm:border-[12px]"
-                    aria-hidden
-                  >
-                    <div className="absolute inset-0 flex items-center justify-center gap-2">
-                      <span
-                        className="table-chrome-disc flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-extrabold"
-                        aria-hidden
-                      >
-                        D
-                      </span>
-                      <span
-                        className="inline-flex h-6 w-6 items-center justify-center rounded-full border-2 text-[9px] font-bold"
-                        style={{
-                          backgroundColor: 'rgb(var(--table-chip-face))',
-                          borderColor: 'rgb(var(--table-chip-rim))',
-                          color: 'rgb(var(--table-chip-ink))',
-                        }}
-                        aria-hidden
-                      >
-                        25
+                  {draftTableLayout === 'v2' ? (
+                    <div
+                      className="felt-surface relative flex h-[7.5rem] w-full max-w-md flex-col items-center justify-between px-4 py-3 sm:h-36"
+                      aria-hidden
+                    >
+                      <div className="flex w-full justify-center gap-2">
+                        <span className="h-6 w-6 rounded-full bg-white/85" />
+                        <span className="h-6 w-6 rounded-full bg-white/85" />
+                        <span className="h-6 w-6 rounded-full bg-white/85" />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="h-7 w-5 rounded-sm bg-white" />
+                        <span className="h-7 w-5 rounded-sm bg-white" />
+                        <span className="h-7 w-5 rounded-sm bg-white" />
+                        <span className="h-7 w-5 rounded-sm bg-mushroom" />
+                        <span className="h-7 w-5 rounded-sm bg-mushroom" />
+                      </div>
+                      <span className="font-display text-lg font-extrabold tabular-nums text-white">
+                        72
                       </span>
                     </div>
-                  </div>
+                  ) : (
+                    <div
+                      className="felt-surface table-rim shadow-felt relative h-[7.5rem] w-full max-w-md rounded-[42%] border-[10px] sm:h-36 sm:border-[12px]"
+                      aria-hidden
+                    >
+                      <div className="absolute inset-0 flex items-center justify-center gap-2">
+                        <span
+                          className="table-chrome-disc flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-extrabold"
+                          aria-hidden
+                        >
+                          D
+                        </span>
+                        <span
+                          className="inline-flex h-6 w-6 items-center justify-center rounded-full border-2 text-[9px] font-bold"
+                          style={{
+                            backgroundColor: 'rgb(var(--table-chip-face))',
+                            borderColor: 'rgb(var(--table-chip-rim))',
+                            color: 'rgb(var(--table-chip-ink))',
+                          }}
+                          aria-hidden
+                        >
+                          25
+                        </span>
+                      </div>
+                    </div>
+                  )}
                   <div className="flex flex-wrap items-center justify-center gap-2">
                     <span
                       className="table-stack-fill rounded-md px-3 py-1 text-center text-xs font-extrabold tabular-nums"
@@ -699,6 +895,7 @@ function ProfilePageInner() {
                   </div>
                   <p className="font-display text-sm font-bold tracking-tight text-sidebar">
                     {tableColorPreset(draftTableColorId).label}
+                    {draftTableLayout === 'v2' ? ' · Table v2' : ''}
                   </p>
                 </div>
               </div>
@@ -706,7 +903,7 @@ function ProfilePageInner() {
               <div
                 className="mt-5 grid grid-cols-3 gap-2.5 sm:grid-cols-3 sm:gap-3"
                 role="radiogroup"
-                aria-label="Table theme"
+                aria-label="Felt color"
               >
                 {TABLE_COLOR_PRESETS.map((preset) => {
                   const selected = draftTableColorId === preset.id;
@@ -759,6 +956,81 @@ function ProfilePageInner() {
                       >
                         {preset.label}
                       </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-8 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+                <div className="min-w-0">
+                  <h3 className="font-heading-section">Table sounds</h3>
+                  <p className="mt-1.5 max-w-lg font-prose-muted">
+                    Mute deal, action, and win audio. Only you hear this.
+                  </p>
+                </div>
+                {savingSfxMuted ? (
+                  <p className="text-xs font-medium text-ink-strong-muted" role="status">
+                    Saving…
+                  </p>
+                ) : null}
+              </div>
+
+              <div
+                className="mt-5 grid grid-cols-2 gap-3"
+                role="radiogroup"
+                aria-label="Table sounds"
+              >
+                {(
+                  [
+                    {
+                      muted: false,
+                      label: 'On',
+                      hint: 'Play table audio',
+                    },
+                    {
+                      muted: true,
+                      label: 'Muted',
+                      hint: 'Silence table audio',
+                    },
+                  ] as const
+                ).map((option) => {
+                  const selected = draftSfxMuted === option.muted;
+                  return (
+                    <button
+                      key={option.label}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      aria-label={option.label}
+                      disabled={savingSfxMuted}
+                      onClick={() => void saveSounds(option.muted)}
+                      className={`flex items-center justify-between gap-2 rounded-2xl border-2 px-3 py-3 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar disabled:opacity-60 ${
+                        selected
+                          ? 'border-sidebar bg-sidebar/[0.06] shadow-[0_0_0_1px_rgb(29_4_50_/_0.1)]'
+                          : 'border-sidebar/10 bg-mushroom/30 hover:border-sidebar/22'
+                      }`}
+                    >
+                      <span>
+                        <span className="block text-sm font-semibold text-sidebar">
+                          {option.label}
+                        </span>
+                        <span className="block text-[11px] text-ink-strong-muted">
+                          {option.hint}
+                        </span>
+                      </span>
+                      {selected ? (
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-sidebar text-mushroom">
+                          <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none" aria-hidden>
+                            <path
+                              d="M3.5 8.5 6.5 11.5 12.5 4.5"
+                              stroke="currentColor"
+                              strokeWidth="2.25"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </span>
+                      ) : null}
                     </button>
                   );
                 })}

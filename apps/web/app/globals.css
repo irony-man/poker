@@ -518,7 +518,7 @@ body > * {
 
   /* Unified table / play route toolbar — edge-aligned, not a floating card */
   .play-chrome-bar {
-    @apply flex shrink-0 items-center justify-between gap-2 px-3 py-2 sm:px-4 md:bg-transparent bg-mushroom;
+    @apply relative z-40 flex shrink-0 items-center justify-between gap-2 px-3 py-2 sm:px-4 md:bg-transparent bg-mushroom;
   }
 
   .play-chrome-rail {

@@ -18,6 +18,7 @@ import {
   type ActionPlacement,
 } from './FloatingActionDock';
 import { MobileQuickReactions } from './MobileQuickReactions';
+import { RecentChatTicker } from './RecentChatTicker';
 import { OnlineFriendsOverlay } from './OnlineFriends';
 import { TableActionToast, useSeatActionAutoClear } from './TableActionToast';
 import { useSession } from '@/lib/store';
@@ -86,6 +87,8 @@ export function TableShell({
   actions,
   actionsExpanded = false,
   tableColorId = 0,
+  dockActions = true,
+  voice,
 }: {
   children: ReactNode;
   onSend: (text: string) => void;
@@ -98,6 +101,10 @@ export function TableShell({
   actionsExpanded?: boolean;
   /** Viewer table theme preset (0–8). Scopes `.table-theme` CSS tokens. */
   tableColorId?: number;
+  /** When false, actions are rendered by the table (stacked HUD) instead of the dock. */
+  dockActions?: boolean;
+  /** Compact voice controls for the phone comms strip (online tables). */
+  voice?: ReactNode;
 }) {
   const narrow = useIsNarrow();
   const sessionToken = useSession((s) => s.sessionToken);
@@ -193,8 +200,8 @@ export function TableShell({
     });
   }, []);
 
-  const showFloat = !!actions && (narrow || actionPlacement === 'float');
-  const showChatDock = !!actions && !narrow && actionPlacement === 'chat' && desktopOpen;
+  const showFloat = dockActions && !!actions && (narrow || actionPlacement === 'float');
+  const showChatDock = dockActions && !!actions && !narrow && actionPlacement === 'chat' && desktopOpen;
 
   return (
     <div
@@ -212,6 +219,20 @@ export function TableShell({
         }`}
       >
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{children}</div>
+        {narrow && !mobileOpen ? (
+          voice ? (
+            <div className="flex shrink-0 items-end gap-1 px-1.5 pb-0.5 pt-0.5">
+              <div className="min-w-0 flex-1">
+                <RecentChatTicker onOpen={() => setMobileOpen(true)} />
+              </div>
+              <div className="shrink-0">{voice}</div>
+            </div>
+          ) : (
+            <div className="px-1.5 pb-0.5 pt-0.5">
+              <RecentChatTicker onOpen={() => setMobileOpen(true)} />
+            </div>
+          )
+        ) : null}
         {narrow ? <MobileQuickReactions onEmoji={onEmoji} /> : null}
         {showFloat ? (
           <FloatingActionDock

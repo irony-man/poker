@@ -11,6 +11,7 @@ const SIZE = {
   board: 'w-9 h-[3.375rem]',
   hand: 'w-12 h-[4.5rem] sm:w-16 sm:h-[6rem]',
   handSm: 'w-9 h-[3.4rem]',
+  handLg: 'w-[4.5rem] h-[6.75rem]',
 } as const;
 
 export type CardSize = keyof typeof SIZE;
@@ -195,7 +196,7 @@ function outerRadius(size: CardSize): string {
   if (size === 'xs' || size === 'peek' || size === 'board' || size === 'handSm') {
     return 'rounded-[0.2rem]';
   }
-  if (size === 'hand' || size === 'md' || size === 'lg') {
+  if (size === 'hand' || size === 'handLg' || size === 'md' || size === 'lg') {
     return 'rounded-[0.3rem] sm:rounded-[0.35rem]';
   }
   return 'rounded-[0.25rem] sm:rounded-[0.3rem]';
@@ -309,20 +310,24 @@ export function HoleCardFan({
   handId,
   winningCards,
   compact = false,
+  large = false,
 }: {
   cards: [string, string];
   handId?: string | null;
   winningCards?: Set<string> | null;
   compact?: boolean;
+  large?: boolean;
 }) {
   const key = handId ?? 'hand';
-  const cardSize = compact ? 'handSm' : 'hand';
+  const cardSize: CardSize = large ? 'handLg' : compact ? 'handSm' : 'hand';
   return (
     <div
       className={`relative z-[1] flex items-end justify-center ${
-        compact
-          ? 'mb-0.5 h-[3.25rem] w-[3.35rem]'
-          : 'mb-1 h-[4.85rem] w-[4.4rem] sm:h-[6.4rem] sm:w-[5.6rem]'
+        large
+          ? 'mb-1 h-[7.25rem] w-[7.25rem]'
+          : compact
+            ? 'mb-0.5 h-[3.25rem] w-[3.35rem]'
+            : 'mb-1 h-[4.85rem] w-[4.4rem] sm:h-[6.4rem] sm:w-[5.6rem]'
       }`}
     >
       <div

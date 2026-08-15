@@ -27,6 +27,7 @@ object TableContract {
         data object SitIn : Intent
         data object EnableSitToPlay : Intent
         data object LeaveTable : Intent
+        data object ToggleSfxMute : Intent
     }
 
     data class UiState(
@@ -43,6 +44,7 @@ object TableContract {
         val loading: Boolean = true,
         val spectating: Boolean = false,
         val tableColorId: Int = 0,
+        val sfxMuted: Boolean = false,
         val botGroups: List<PublicBotGroup> = emptyList(),
         val botGroupId: String? = null,
     )

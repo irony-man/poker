@@ -52,6 +52,8 @@ class ProfileViewModel @Inject constructor(
             }.onSuccess { (me, contests) ->
                 sessionPreferences.saveTableColorId(me.tableColorId)
                 sessionPreferences.saveUiTheme(me.uiTheme)
+                sessionPreferences.saveTableLayout(me.tableLayout)
+                sessionPreferences.saveSfxMuted(me.sfxMuted)
                 _uiState.update {
                     it.copy(profile = me, contests = contests, loading = false)
                 }
@@ -92,6 +94,41 @@ class ProfileViewModel @Inject constructor(
                 .onFailure { err ->
                     _uiState.update {
                         it.copy(saving = false, error = err.message ?: "Couldn't save look")
+                    }
+                }
+        }
+    }
+
+    fun saveTableLayout(layout: String) {
+        val next = if (layout == "v2") "v2" else "v1"
+        viewModelScope.launch {
+            _uiState.update { it.copy(saving = true, error = null) }
+            sessionPreferences.saveTableLayout(next)
+            runCatching { api.patchMe(UpdateMeBody(tableLayout = next)) }
+                .onSuccess { me ->
+                    sessionPreferences.saveTableLayout(me.tableLayout)
+                    _uiState.update { it.copy(profile = me, saving = false) }
+                }
+                .onFailure { err ->
+                    _uiState.update {
+                        it.copy(saving = false, error = err.message ?: "Couldn't save table layout")
+                    }
+                }
+        }
+    }
+
+    fun saveSfxMuted(muted: Boolean) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(saving = true, error = null) }
+            sessionPreferences.saveSfxMuted(muted)
+            runCatching { api.patchMe(UpdateMeBody(sfxMuted = muted)) }
+                .onSuccess { me ->
+                    sessionPreferences.saveSfxMuted(me.sfxMuted)
+                    _uiState.update { it.copy(profile = me, saving = false) }
+                }
+                .onFailure { err ->
+                    _uiState.update {
+                        it.copy(saving = false, error = err.message ?: "Couldn't save sounds")
                     }
                 }
         }

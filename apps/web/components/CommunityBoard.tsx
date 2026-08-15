@@ -35,6 +35,8 @@ export function CommunityBoard({
   compact = false,
   /** Phone landscape: one centered row of larger faces. */
   landscape = false,
+  /** Always render this many slots; undealt streets are face-down backs. */
+  fillSlots,
 }: {
   cards: string[];
   handId?: string | null;
@@ -46,9 +48,44 @@ export function CommunityBoard({
   /** Force phone layout (portrait or landscape) — ignore Tailwind sm: breakpoints. */
   compact?: boolean;
   landscape?: boolean;
+  fillSlots?: number;
 }) {
   const size: CardSize = landscape ? 'sm' : compact ? 'board' : cardSize;
   const emptyLabel = emptyBoardLabel(street ?? undefined);
+  const card = (c: string, i: number) => (
+    <PlayingCard
+      key={`${handId ?? 'board'}-${c}-${i}`}
+      code={c}
+      size={size}
+      dealDelay={i * 0.07}
+      highlight={highlightMode && !!winningCards?.has(c)}
+      dimmed={highlightMode && !winningCards?.has(c)}
+    />
+  );
+  const slotCount = fillSlots && fillSlots > 0 ? fillSlots : 0;
+  const slots =
+    slotCount > 0
+      ? Array.from({ length: slotCount }, (_, i) => cards[i] ?? null)
+      : null;
+
+  if (slots) {
+    return (
+      <div className="flex items-center justify-center gap-1.5">
+        {slots.map((c, i) =>
+          c ? (
+            card(c, i)
+          ) : (
+            <PlayingCard
+              key={`${handId ?? 'board'}-back-${i}`}
+              faceDown
+              size={size}
+              dealDelay={i * 0.04}
+            />
+          ),
+        )}
+      </div>
+    );
+  }
 
   if (cards.length === 0) {
     return (
@@ -65,17 +102,6 @@ export function CommunityBoard({
       </div>
     );
   }
-
-  const card = (c: string, i: number) => (
-    <PlayingCard
-      key={`${handId ?? 'board'}-${c}-${i}`}
-      code={c}
-      size={size}
-      dealDelay={i * 0.07}
-      highlight={highlightMode && !!winningCards?.has(c)}
-      dimmed={highlightMode && !winningCards?.has(c)}
-    />
-  );
 
   if (landscape) {
     return (

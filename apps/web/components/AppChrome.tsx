@@ -21,6 +21,8 @@ import { useSession } from '@/lib/store';
 import { fetchMe, logout as apiLogout } from '@/lib/api';
 import { loadSavedAvatarId, saveAvatarId } from '@/lib/avatars';
 import { saveTableColorId } from '@/lib/tableColors';
+import { setSfxMuted } from '@/lib/audio';
+import { loadSavedTableLayout, saveTableLayout } from '@/lib/tableLayoutPref';
 import { loadSavedUiTheme, saveUiTheme } from '@/lib/uiTheme';
 import { attachPlayFullscreen } from '@/lib/mobileFullscreen';
 import { ConfirmProvider } from '@/components/ConfirmPopover';
@@ -144,6 +146,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     saveUiTheme(loadSavedUiTheme());
+    saveTableLayout(loadSavedTableLayout());
   }, []);
 
   useEffect(() => {
@@ -163,6 +166,8 @@ export function AppChrome({ children }: { children: ReactNode }) {
         saveAvatarId(me.avatarId);
         saveTableColorId(me.tableColorId);
         saveUiTheme(me.uiTheme);
+        saveTableLayout(me.tableLayout);
+        setSfxMuted(me.sfxMuted);
       })
       .catch(() => {
         /* ignore — balance shown when available */

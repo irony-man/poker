@@ -134,9 +134,13 @@ fun ProfileScreen(
                             "theme" -> ThemePane(
                                 selectedColor = state.profile?.tableColorId ?: 0,
                                 selectedLook = state.profile?.uiTheme ?: "v1",
+                                selectedLayout = state.profile?.tableLayout ?: "v1",
+                                sfxMuted = state.profile?.sfxMuted == true,
                                 saving = state.saving,
                                 onSelectColor = viewModel::saveTableColor,
                                 onSelectLook = viewModel::saveUiTheme,
+                                onSelectLayout = viewModel::saveTableLayout,
+                                onSelectSfxMuted = viewModel::saveSfxMuted,
                             )
                             "contests" -> ContestsPane(
                                 contests = state.contests,
@@ -266,9 +270,13 @@ private fun BalanceChip(label: String, value: Int) {
 private fun ThemePane(
     selectedColor: Int,
     selectedLook: String,
+    selectedLayout: String,
+    sfxMuted: Boolean,
     saving: Boolean,
     onSelectColor: (Int) -> Unit,
     onSelectLook: (String) -> Unit,
+    onSelectLayout: (String) -> Unit,
+    onSelectSfxMuted: (Boolean) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         HudPanel(modifier = Modifier.fillMaxWidth(), chrome = PokrChrome.Lobby) {
@@ -305,6 +313,84 @@ private fun ThemePane(
                         accent = PokrPalette.Arcade.sidebar,
                         arcadeFrame = true,
                         onClick = { onSelectLook("v2") },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+        HudPanel(modifier = Modifier.fillMaxWidth(), chrome = PokrChrome.Lobby) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    "Table layout",
+                    color = PokrColors.Sidebar,
+                    fontFamily = PokrFonts.Display,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                )
+                FieldHelp("Classic oval or stacked HUD. Stacked applies on web portrait. Only you see this.")
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    LookCard(
+                        title = "Classic",
+                        hint = "Oval table",
+                        selected = selectedLayout != "v2",
+                        enabled = !saving,
+                        swatch = PokrColors.Mushroom,
+                        accent = PokrColors.Sidebar,
+                        arcadeFrame = false,
+                        onClick = { onSelectLayout("v1") },
+                        modifier = Modifier.weight(1f),
+                    )
+                    LookCard(
+                        title = "Table v2",
+                        hint = "Stacked HUD",
+                        selected = selectedLayout == "v2",
+                        enabled = !saving,
+                        swatch = PokrColors.Sidebar,
+                        accent = PokrColors.Mushroom,
+                        arcadeFrame = false,
+                        onClick = { onSelectLayout("v2") },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+        HudPanel(modifier = Modifier.fillMaxWidth(), chrome = PokrChrome.Lobby) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    "Table sounds",
+                    color = PokrColors.Sidebar,
+                    fontFamily = PokrFonts.Display,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                )
+                FieldHelp("Mute deal, action, and win audio. Only you hear this.")
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    LookCard(
+                        title = "On",
+                        hint = "Play table audio",
+                        selected = !sfxMuted,
+                        enabled = !saving,
+                        swatch = PokrColors.Mushroom,
+                        accent = PokrColors.Sidebar,
+                        arcadeFrame = false,
+                        onClick = { onSelectSfxMuted(false) },
+                        modifier = Modifier.weight(1f),
+                    )
+                    LookCard(
+                        title = "Muted",
+                        hint = "Silence table audio",
+                        selected = sfxMuted,
+                        enabled = !saving,
+                        swatch = PokrColors.InkStrongMuted,
+                        accent = PokrColors.Sidebar,
+                        arcadeFrame = false,
+                        onClick = { onSelectSfxMuted(true) },
                         modifier = Modifier.weight(1f),
                     )
                 }

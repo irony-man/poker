@@ -102,10 +102,26 @@ fun PlayChromeStatusPill(
 }
 
 @Composable
+fun TableSoundMuteButton(
+    muted: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    PlayChromeIconButton(
+        label = if (muted) "🔇" else "🔊",
+        contentDescription = if (muted) "Unmute table sounds" else "Mute table sounds",
+        onClick = onToggle,
+        modifier = modifier,
+    )
+}
+
+@Composable
 fun TablePlayHeader(
     overflowItems: List<TableOverflowItem>,
     modifier: Modifier = Modifier,
     statusPill: String? = null,
+    sfxMuted: Boolean = false,
+    onToggleSfxMute: (() -> Unit)? = null,
 ) {
     Row(
         modifier = modifier
@@ -127,6 +143,9 @@ fun TablePlayHeader(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            if (onToggleSfxMute != null) {
+                TableSoundMuteButton(muted = sfxMuted, onToggle = onToggleSfxMute)
+            }
             HowToPlayHelp()
             TableOverflowMenu(items = overflowItems)
         }

@@ -13,6 +13,8 @@ data class MeProfile(
     val avatarUrl: String? = null,
     val tableColorId: Int = 0,
     val uiTheme: String = "v1",
+    val tableLayout: String = "v1",
+    val sfxMuted: Boolean = false,
     val createdAt: Long = 0,
     val chipBalance: Int = 0,
     val whuffieBalance: Int = 0,
@@ -30,6 +32,10 @@ data class UpdateMeBody(
     val tableColorId: Int? = null,
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val uiTheme: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val tableLayout: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val sfxMuted: Boolean? = null,
 )
 
 @Serializable

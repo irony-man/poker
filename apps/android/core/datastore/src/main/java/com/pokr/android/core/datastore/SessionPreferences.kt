@@ -3,6 +3,7 @@ package com.pokr.android.core.datastore
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.pokr.android.core.model.SessionDto
@@ -72,6 +73,30 @@ class SessionPreferences @Inject constructor(
         }
     }
 
+    val tableLayoutFlow: Flow<String> = dataStore.data.map { prefs ->
+        if (prefs[KEY_TABLE_LAYOUT] == "v2") "v2" else "v1"
+    }
+
+    suspend fun getTableLayout(): String = tableLayoutFlow.first()
+
+    suspend fun saveTableLayout(layout: String) {
+        dataStore.edit { prefs ->
+            prefs[KEY_TABLE_LAYOUT] = if (layout == "v2") "v2" else "v1"
+        }
+    }
+
+    val sfxMutedFlow: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[KEY_SFX_MUTED] == true
+    }
+
+    suspend fun getSfxMuted(): Boolean = sfxMutedFlow.first()
+
+    suspend fun saveSfxMuted(muted: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[KEY_SFX_MUTED] = muted
+        }
+    }
+
     suspend fun loadOfflineHandQueueJson(): String =
         dataStore.data.first()[KEY_OFFLINE_HANDS] ?: "[]"
 
@@ -94,6 +119,8 @@ class SessionPreferences @Inject constructor(
         private val KEY_AVATAR_ID = intPreferencesKey("avatar_id")
         private val KEY_TABLE_COLOR_ID = intPreferencesKey("table_color_id")
         private val KEY_UI_THEME = stringPreferencesKey("ui_theme")
+        private val KEY_TABLE_LAYOUT = stringPreferencesKey("table_layout")
+        private val KEY_SFX_MUTED = booleanPreferencesKey("sfx_muted")
         private val KEY_OFFLINE_HANDS = stringPreferencesKey("offline_hand_queue")
     }
 }

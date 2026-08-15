@@ -7,6 +7,7 @@ import { ActionControls } from './ActionControls';
 import { CommunityBoard } from './CommunityBoard';
 import { DealerPotZone } from './DealerPotZone';
 import { HowToPlayHelp } from './HowToPlayHelp';
+import { TableSoundMuteButton } from './TableSoundMuteButton';
 import { LoadingScreen } from './LoadingScreen';
 import { SeatView } from './SeatView';
 import { CopyRoomLink } from './CopyRoomLink';
@@ -23,6 +24,8 @@ import { useHandPresentation } from '@/hooks/useHandPresentation';
 import { useTableSounds } from '@/hooks/useTableSounds';
 import { seatAnglesForHero, useIsLandscapePhone, useIsNarrow } from '@/lib/tableLayout';
 import { loadSavedTableColorId } from '@/lib/tableColors';
+import { useTableLayout } from '@/lib/useTableLayout';
+import { StackedTableLayout } from '@/components/table-v2/StackedTableLayout';
 import { useConfirm } from './ConfirmPopover';
 import { Button, buttonClass } from '@/components/ui/Button';
 import { StatusChip } from '@/components/ui/StatusChip';
@@ -54,6 +57,8 @@ export function TableView({
   const router = useRouter();
   const narrow = useIsNarrow();
   const landscape = useIsLandscapePhone();
+  const tableLayout = useTableLayout();
+  const stacked = tableLayout === 'v2' && narrow && !landscape;
   const botAddCount = 3;
   const [spectating, setSpectating] = useState(initialSpectate);
   const [tableColorId, setTableColorId] = useState(0);
@@ -408,28 +413,6 @@ export function TableView({
         tone: 'accent',
       });
     }
-    if (!voice.inVoice) {
-      mobileOverflowItems.push({
-        id: 'voice',
-        label: voice.state === 'joining' ? 'Joining voice…' : 'Join voice',
-        onClick: () => void voice.joinVoice(),
-        disabled: voice.state === 'joining',
-      });
-    } else {
-      mobileOverflowItems.push(
-        {
-          id: 'mute',
-          label: voice.muted ? 'Unmute mic' : 'Mute mic',
-          onClick: () => voice.toggleMute(),
-        },
-        {
-          id: 'leave-av',
-          label: 'Leave call',
-          onClick: () => voice.leaveVoice(),
-          tone: 'danger',
-        },
-      );
-    }
     mobileOverflowItems.push({
       id: 'chat',
       label: 'Chat',
@@ -511,22 +494,7 @@ export function TableView({
     });
   }
 
-  return (
-    <TableShell
-      tableColorId={tableColorId}
-      onSend={(text) => send({ type: 'chat', tableId, text })}
-      onEmoji={(emoji) => send({ type: 'emoji', tableId, emoji })}
-      chatOpen={chatOpen}
-      onChatOpenChange={setChatOpen}
-      actionsExpanded={
-        !!isMyTurn ||
-        contestOver ||
-        canReady ||
-        canSitIn ||
-        isSpectating ||
-        showDockReadyRoster
-      }
-      actions={
+  const actionControls = (
         <ActionControls
           onAction={onAction}
           spectating={isSpectating}
@@ -585,6 +553,36 @@ export function TableView({
             onBotGroupChange: botsAllowed ? setBotGroupId : undefined,
           }}
         />
+  );
+
+  return (
+    <TableShell
+      tableColorId={tableColorId}
+      onSend={(text) => send({ type: 'chat', tableId, text })}
+      onEmoji={(emoji) => send({ type: 'emoji', tableId, emoji })}
+      chatOpen={chatOpen}
+      onChatOpenChange={setChatOpen}
+      actionsExpanded={
+        !!isMyTurn ||
+        contestOver ||
+        canReady ||
+        canSitIn ||
+        isSpectating ||
+        showDockReadyRoster
+      }
+      actions={actionControls}
+      voice={
+        <VoiceCallBar
+          compact
+          inVoice={voice.inVoice}
+          state={voice.state}
+          muted={voice.muted}
+          peers={voice.peers}
+          error={voice.error}
+          onJoinVoice={voice.joinVoice}
+          onLeave={voice.leaveVoice}
+          onToggleMute={voice.toggleMute}
+        />
       }
     >
       <div className="flex min-h-0 flex-1 flex-col">
@@ -611,6 +609,7 @@ export function TableView({
               {inviteCode ? (
                 <CopyRoomLink tableId={tableId} inviteCode={inviteCode} compact />
               ) : null}
+              <TableSoundMuteButton />
               <HowToPlayHelp />
               <TableOverflowMenu items={mobileOverflowItems} />
             </div>
@@ -628,6 +627,7 @@ export function TableView({
                 onLeave={voice.leaveVoice}
                 onToggleMute={voice.toggleMute}
               />
+              <TableSoundMuteButton />
               <HowToPlayHelp />
               <Button type="button" variant="chromeLeave" onClick={() => void leaveRoom()}>
                 Leave
@@ -743,6 +743,27 @@ export function TableView({
                 : 'absolute inset-0 overflow-hidden felt-surface table-rim shadow-felt rounded-[42%] border-[12px]'
             }
           >
+          {stacked && table ? (
+            <StackedTableLayout
+              table={table}
+              priv={priv}
+              userId={userId}
+              spectating={isSpectating}
+              potTotal={potTotal}
+              highlightMode={highlightMode}
+              winningCards={winningCards}
+              canSit={!isSpectating && !isTournament}
+              onSit={(seat) => {
+                send({
+                  type: 'sit',
+                  tableId,
+                  seat,
+                  buyIn: table.config.buyIn,
+                });
+              }}
+            />
+          ) : (
+            <>
           {!narrow ? (
             <div className="play-table-oval-ring" />
           ) : null}
@@ -841,6 +862,8 @@ export function TableView({
               />
             );
           })}
+            </>
+          )}
           </div>
           </div>
 

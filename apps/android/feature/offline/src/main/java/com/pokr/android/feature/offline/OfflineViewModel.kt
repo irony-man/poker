@@ -10,6 +10,7 @@ import com.pokr.android.core.designsystem.avatarIdFromUserId
 import com.pokr.android.core.model.ChatMessage
 import com.pokr.android.core.model.LegalActions
 import com.pokr.android.core.model.PublicTable
+import com.pokr.android.core.model.UpdateMeBody
 import com.pokr.android.core.model.UploadHandRequest
 import com.pokr.android.core.network.PokrApi
 import com.pokr.android.core.network.PokrJson
@@ -70,6 +71,7 @@ data class OfflineUiState(
     val chatOpen: Boolean = false,
     val bootstrapped: Boolean = false,
     val tableColorId: Int = 0,
+    val sfxMuted: Boolean = false,
 )
 
 @HiltViewModel
@@ -118,20 +120,44 @@ class OfflineViewModel @Inject constructor(
             humanAvatarId = sessionPreferences.getAvatarId()
             val session = sessionPreferences.getSession()
             tableId = newOfflineTableId(session?.userId)
-            val colorId = if (session != null && session.sessionToken.isNotBlank()) {
+            val me = if (session != null && session.sessionToken.isNotBlank()) {
                 tokenHolder.set(session.sessionToken)
                 flushQueue()
-                runCatching { api.getMe().tableColorId }.getOrElse { sessionPreferences.getTableColorId() }
+                runCatching { api.getMe() }.getOrNull()
             } else {
-                sessionPreferences.getTableColorId()
+                null
             }
+            val colorId = me?.tableColorId ?: sessionPreferences.getTableColorId()
+            val sfxMuted = me?.sfxMuted ?: sessionPreferences.getSfxMuted()
             sessionPreferences.saveTableColorId(colorId)
-            _uiState.update { it.copy(tableColorId = colorId) }
+            sessionPreferences.saveSfxMuted(sfxMuted)
+            if (me != null) {
+                sessionPreferences.saveTableLayout(me.tableLayout)
+                sessionPreferences.saveUiTheme(me.uiTheme)
+            }
+            sounds.enabled = !sfxMuted
+            _uiState.update { it.copy(tableColorId = colorId, sfxMuted = sfxMuted) }
             bootstrap()
         }
     }
 
     fun toggleChat() = _uiState.update { it.copy(chatOpen = !it.chatOpen) }
+
+    fun toggleSfxMute() {
+        val next = !_uiState.value.sfxMuted
+        _uiState.update { it.copy(sfxMuted = next) }
+        sounds.enabled = !next
+        viewModelScope.launch {
+            sessionPreferences.saveSfxMuted(next)
+            if (!tokenHolder.get().isNullOrBlank()) {
+                runCatching { api.patchMe(UpdateMeBody(sfxMuted = next)) }
+                    .onSuccess { me ->
+                        sessionPreferences.saveSfxMuted(me.sfxMuted)
+                        _uiState.update { it.copy(sfxMuted = me.sfxMuted) }
+                    }
+            }
+        }
+    }
 
     fun sendChat(text: String) {
         val trimmed = text.trim()

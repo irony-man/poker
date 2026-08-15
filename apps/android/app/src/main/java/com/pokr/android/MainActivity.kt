@@ -11,8 +11,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import com.pokr.android.core.datastore.SessionPreferences
 import com.pokr.android.core.designsystem.PokrColors
+import com.pokr.android.core.designsystem.TableSoundPlayer
+import kotlinx.coroutines.launch
 import com.pokr.android.core.designsystem.PokrPalette
 import com.pokr.android.core.designsystem.PokrTheme
 import com.pokr.android.core.designsystem.PokrUiTheme
@@ -23,9 +26,15 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @Inject lateinit var sessionPreferences: SessionPreferences
+    @Inject lateinit var tableSounds: TableSoundPlayer
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        lifecycleScope.launch {
+            sessionPreferences.sfxMutedFlow.collect { muted ->
+                tableSounds.enabled = !muted
+            }
+        }
         val ink = PokrPalette.Classic.ink.toArgb()
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(ink),

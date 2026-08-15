@@ -201,6 +201,8 @@ fun TableScreen(
             TablePlayHeader(
                 statusPill = if (state.spectating) "Spec" else null,
                 overflowItems = overflowItems,
+                sfxMuted = state.sfxMuted,
+                onToggleSfxMute = { viewModel.dispatch(TableContract.Intent.ToggleSfxMute) },
             )
 
             state.lastError?.let { err ->

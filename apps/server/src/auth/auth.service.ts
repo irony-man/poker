@@ -94,6 +94,14 @@ export class AuthService implements OnModuleInit {
     return this.store.setUiTheme(userId, uiTheme);
   }
 
+  setTableLayout(userId: string, tableLayout: string): Promise<User | null> {
+    return this.store.setTableLayout(userId, tableLayout);
+  }
+
+  setSfxMuted(userId: string, sfxMuted: boolean): Promise<User | null> {
+    return this.store.setSfxMuted(userId, sfxMuted);
+  }
+
   incrementHandsPlayed(userId: string): Promise<void> {
     return this.store.incrementHandsPlayed(userId);
   }

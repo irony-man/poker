@@ -1,6 +1,15 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type RefObject,
+} from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/Button';
 import { PlayingCard } from './PlayingCard';
 
@@ -160,12 +169,53 @@ function RankingExample({
   );
 }
 
+function useHelpPanelStyle(
+  open: boolean,
+  anchorRef: RefObject<HTMLElement | null>,
+): CSSProperties {
+  const [style, setStyle] = useState<CSSProperties>({});
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const update = () => {
+      const bar = anchorRef.current?.closest('.play-chrome-bar');
+      const rect = (bar ?? anchorRef.current)?.getBoundingClientRect();
+      if (!rect) return;
+      const gutter = 12;
+      const top = Math.round(rect.bottom + 8);
+      const maxHeight = Math.max(160, Math.min(window.innerHeight - top - gutter, 32 * 16));
+      setStyle({
+        position: 'fixed',
+        top,
+        left: gutter,
+        right: gutter,
+        width: 'auto',
+        maxWidth: '24rem',
+        maxHeight,
+        marginLeft: 'auto',
+        zIndex: 70,
+      });
+    };
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
+  }, [open, anchorRef]);
+
+  return style;
+}
+
 /** Compact “How to play” help for table chrome (popover, not browser title tooltip). */
 export function HowToPlayHelp({ className = '' }: { className?: string }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<'basics' | 'rankings'>('rankings');
   const panelId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const panelStyle = useHelpPanelStyle(open, rootRef);
 
   useEffect(() => {
     if (!open) return;
@@ -173,7 +223,9 @@ export function HowToPlayHelp({ className = '' }: { className?: string }) {
       if (e.key === 'Escape') setOpen(false);
     };
     const onPointer = (e: PointerEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (rootRef.current?.contains(target) || panelRef.current?.contains(target)) return;
+      setOpen(false);
     };
     window.addEventListener('keydown', onKey);
     window.addEventListener('pointerdown', onPointer);
@@ -183,30 +235,17 @@ export function HowToPlayHelp({ className = '' }: { className?: string }) {
     };
   }, [open]);
 
-  return (
-    <div ref={rootRef} className={`relative ${className}`}>
-      <Button
-        type="button"
-        variant="chrome"
-        size="icon"
-        aria-expanded={open}
-        aria-controls={panelId}
-        aria-haspopup="dialog"
-        onClick={() => setOpen((v) => !v)}
-        title="How to play"
-      >
-        <span aria-hidden className="text-[13px] leading-none">
-          ?
-        </span>
-      </Button>
-
-      {open && (
-        <div
-          id={panelId}
-          role="dialog"
-          aria-label="How to play"
-          className="absolute right-0 top-[calc(100%+0.4rem)] z-[60] flex max-h-[min(70dvh,32rem)] w-[min(calc(100vw-1rem),22rem)] flex-col overflow-hidden rounded-xl border border-sidebar/12 bg-white shadow-[0_12px_40px_rgba(29,4,50,0.12)] sm:w-[24rem]"
-        >
+  const panel =
+    open && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            ref={panelRef}
+            id={panelId}
+            role="dialog"
+            aria-label="How to play"
+            style={panelStyle}
+            className="flex flex-col overflow-hidden rounded-xl border border-sidebar/12 bg-white shadow-[0_12px_40px_rgba(29,4,50,0.18)]"
+          >
           <div className="flex shrink-0 items-center justify-between gap-2 border-b border-sidebar/10 px-3 py-2.5 sm:px-4">
             <h3 className="font-display text-sm font-bold uppercase tracking-wider text-sidebar">
               How to play
@@ -299,8 +338,28 @@ export function HowToPlayHelp({ className = '' }: { className?: string }) {
               </>
             )}
           </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )
+      : null;
+
+  return (
+    <div ref={rootRef} className={`relative ${className}`}>
+      <Button
+        type="button"
+        variant="chrome"
+        size="icon"
+        aria-expanded={open}
+        aria-controls={panelId}
+        aria-haspopup="dialog"
+        onClick={() => setOpen((v) => !v)}
+        title="How to play"
+      >
+        <span aria-hidden className="text-[13px] leading-none">
+          ?
+        </span>
+      </Button>
+      {panel}
     </div>
   );
 }

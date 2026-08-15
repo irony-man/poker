@@ -389,6 +389,10 @@ export const SiteImageUploadUrlBodySchema = z.object({
 export const UiThemeSchema = z.enum(['v1', 'v2']);
 export type UiTheme = z.infer<typeof UiThemeSchema>;
 
+/** In-game table layout: Classic oval (v1) or stacked HUD (v2). Independent of felt color. */
+export const TableLayoutSchema = z.enum(['v1', 'v2']);
+export type TableLayout = z.infer<typeof TableLayoutSchema>;
+
 export const UpdateMeBodySchema = z
   .object({
     /** Preset profile picture index (0–7). */
@@ -399,15 +403,22 @@ export const UpdateMeBodySchema = z
     tableColorId: z.number().int().min(0).max(8).optional(),
     /** App chrome look: Classic (v1) or Arcade (v2). */
     uiTheme: UiThemeSchema.optional(),
+    /** Table layout: Classic oval (v1) or stacked HUD (v2). */
+    tableLayout: TableLayoutSchema.optional(),
+    /** Mute table SFX (deal / action / win). */
+    sfxMuted: z.boolean().optional(),
   })
   .refine(
     (body) =>
       body.avatarId !== undefined ||
       body.avatarUrl !== undefined ||
       body.tableColorId !== undefined ||
-      body.uiTheme !== undefined,
+      body.uiTheme !== undefined ||
+      body.tableLayout !== undefined ||
+      body.sfxMuted !== undefined,
     {
-      message: 'At least one of avatarId, avatarUrl, tableColorId, or uiTheme is required',
+      message:
+        'At least one of avatarId, avatarUrl, tableColorId, uiTheme, tableLayout, or sfxMuted is required',
     },
   );
 

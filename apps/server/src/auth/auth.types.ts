@@ -10,6 +10,10 @@ export interface User {
   tableColorId: number;
   /** App chrome look: Classic (`v1`) or Arcade (`v2`). */
   uiTheme: 'v1' | 'v2';
+  /** Table layout: Classic oval (`v1`) or stacked HUD (`v2`). */
+  tableLayout: 'v1' | 'v2';
+  /** Mute table SFX (deal / action / win). */
+  sfxMuted: boolean;
   passwordHash: string;
   /** Global play-money balance (chips). */
   chipBalance: number;

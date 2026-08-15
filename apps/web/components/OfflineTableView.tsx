@@ -30,6 +30,7 @@ import { CommunityBoard } from './CommunityBoard';
 import { DealerPotZone } from './DealerPotZone';
 import { SeatView } from './SeatView';
 import { HowToPlayHelp } from './HowToPlayHelp';
+import { TableSoundMuteButton } from './TableSoundMuteButton';
 import { isSeatActionLabel } from '@/lib/seatAction';
 import { TableOverflowMenu, type OverflowItem } from './TableOverflowMenu';
 import { TableShell } from './TableShell';
@@ -42,6 +43,8 @@ import { useHandPresentation } from '@/hooks/useHandPresentation';
 import { useTableSounds } from '@/hooks/useTableSounds';
 import { useSession, type ChatMessage, type PrivateView, type PublicTable } from '@/lib/store';
 import { seatAnglesForHero, useIsLandscapePhone, useIsNarrow } from '@/lib/tableLayout';
+import { useTableLayout } from '@/lib/useTableLayout';
+import { StackedTableLayout } from '@/components/table-v2/StackedTableLayout';
 import {
   buildOfflineHandResult,
   flushOfflineHandQueue,
@@ -188,6 +191,8 @@ export function OfflineTableView({
   const setActionBurst = useSession((s) => s.setActionBurst);
   const narrow = useIsNarrow();
   const landscape = useIsLandscapePhone();
+  const tableLayout = useTableLayout();
+  const stacked = tableLayout === 'v2' && narrow && !landscape;
 
   const [state, setState] = useState<HandState>(() => createEmptyTable(config));
   const [bootstrapped, setBootstrapped] = useState(false);
@@ -208,6 +213,11 @@ export function OfflineTableView({
   const handActionsRef = useRef<Array<EngineEvent & { at: number }>>([]);
   const handChatRef = useRef<ChatMessage[]>([]);
   const recordedHandsRef = useRef(new Set<string>());
+  const pendingAnnounceRef = useRef<{
+    state: HandState;
+    events: EngineEvent[];
+    extra?: ChatMessage;
+  } | null>(null);
 
   const clearTimer = () => {
     if (timerRef.current) {
@@ -432,7 +442,7 @@ export function OfflineTableView({
               ? applyAction(curr, curr.toAct, intent, config)
               : applyTimeout(curr, config);
             if (!result.ok) return curr;
-            syncChat(result.state, result.events);
+            pendingAnnounceRef.current = { state: result.state, events: result.events };
             return result.state;
           });
         }, delay);
@@ -448,19 +458,30 @@ export function OfflineTableView({
           }
           const result = applyTimeout(curr, config);
           if (!result.ok) return curr;
-          syncChat(result.state, result.events);
-          recordChat({
-            userId: 'system',
-            name: 'Dealer',
-            text: 'Time — folded',
-            at: Date.now(),
-          });
+          pendingAnnounceRef.current = {
+            state: result.state,
+            events: result.events,
+            extra: {
+              userId: 'system',
+              name: 'Dealer',
+              text: 'Time — folded',
+              at: Date.now(),
+            },
+          };
           return result.state;
         });
       }, config.turnTimeMs);
     },
-    [config, recordChat, syncChat],
+    [config],
   );
+
+  useEffect(() => {
+    const pending = pendingAnnounceRef.current;
+    if (!pending) return;
+    pendingAnnounceRef.current = null;
+    syncChat(pending.state, pending.events);
+    if (pending.extra) recordChat(pending.extra);
+  }, [state.version, recordChat, syncChat]);
 
   useEffect(() => {
     if (!bootstrapped) return;
@@ -612,22 +633,7 @@ export function OfflineTableView({
     });
   }
 
-  return (
-    <TableShell
-      tableColorId={tableColorId}
-      onSend={(text) =>
-        recordChat({ userId: HUMAN_ID, name: playerName, text, at: Date.now() })
-      }
-      onEmoji={(emoji) => {
-        const at = Date.now();
-        setEmoji({ emoji, name: playerName, at });
-        recordChat({ userId: HUMAN_ID, name: playerName, text: emoji, at });
-        window.setTimeout(() => setEmoji(null), 1800);
-      }}
-      chatOpen={chatOpen}
-      onChatOpenChange={setChatOpen}
-      actionsExpanded={!!isMyTurn || canStartHand || canSitIn}
-      actions={
+  const actionControls = (
         <ActionControls
           onAction={onAction}
           bare
@@ -653,7 +659,24 @@ export function OfflineTableView({
             onTopUp: doTopUp,
           }}
         />
+  );
+
+  return (
+    <TableShell
+      tableColorId={tableColorId}
+      onSend={(text) =>
+        recordChat({ userId: HUMAN_ID, name: playerName, text, at: Date.now() })
       }
+      onEmoji={(emoji) => {
+        const at = Date.now();
+        setEmoji({ emoji, name: playerName, at });
+        recordChat({ userId: HUMAN_ID, name: playerName, text: emoji, at });
+        window.setTimeout(() => setEmoji(null), 1800);
+      }}
+      chatOpen={chatOpen}
+      onChatOpenChange={setChatOpen}
+      actionsExpanded={!!isMyTurn || canStartHand || canSitIn}
+      actions={actionControls}
     >
       <div className="flex min-h-0 flex-1 flex-col">
         <header className="play-chrome-bar">
@@ -672,11 +695,13 @@ export function OfflineTableView({
           </div>
           {narrow ? (
             <div className="play-chrome-rail">
+              <TableSoundMuteButton />
               <HowToPlayHelp />
               <TableOverflowMenu items={offlineOverflow} />
             </div>
           ) : (
             <div className="play-chrome-rail">
+              <TableSoundMuteButton />
               <HowToPlayHelp />
               <Button href="/" variant="chrome" className="no-underline">
                 Lobby
@@ -694,6 +719,18 @@ export function OfflineTableView({
                 : 'absolute inset-0 overflow-hidden felt-surface table-rim shadow-felt rounded-[42%] border-[12px]'
             }
           >
+          {stacked ? (
+            <StackedTableLayout
+              table={publicTable}
+              priv={priv}
+              userId={HUMAN_ID}
+              spectating={false}
+              potTotal={potTotal}
+              highlightMode={highlightMode}
+              winningCards={winningCards}
+            />
+          ) : (
+            <>
           {!narrow ? (
             <div className="play-table-oval-ring" />
           ) : null}
@@ -758,6 +795,8 @@ export function OfflineTableView({
               />
             );
           })}
+            </>
+          )}
           </div>
           </div>
         </div>

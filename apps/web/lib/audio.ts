@@ -7,7 +7,10 @@ import {
   type TableSoundsConfig,
 } from '@/lib/api';
 
-const MUTE_KEY = 'poker:sfxMuted';
+export const SFX_MUTE_STORAGE_KEY = 'poker:sfxMuted';
+export const SFX_MUTE_EVENT = 'poker:sfxMuted';
+
+const MUTE_KEY = SFX_MUTE_STORAGE_KEY;
 
 type SoundConfig = {
   enabled: boolean;
@@ -128,6 +131,24 @@ export function setSfxMuted(muted: boolean): void {
   } catch {
     /* ignore */
   }
+  window.dispatchEvent(new CustomEvent(SFX_MUTE_EVENT, { detail: muted }));
+}
+
+export function subscribeSfxMuted(listener: (muted: boolean) => void): () => void {
+  if (typeof window === 'undefined') return () => undefined;
+  const onCustom = (event: Event) => {
+    listener(Boolean((event as CustomEvent).detail));
+  };
+  const onStorage = (event: StorageEvent) => {
+    if (event.key !== MUTE_KEY) return;
+    listener(event.newValue === '1');
+  };
+  window.addEventListener(SFX_MUTE_EVENT, onCustom);
+  window.addEventListener('storage', onStorage);
+  return () => {
+    window.removeEventListener(SFX_MUTE_EVENT, onCustom);
+    window.removeEventListener('storage', onStorage);
+  };
 }
 
 /** Play a table SFX sample. Soft-fails on autoplay / missing files. */

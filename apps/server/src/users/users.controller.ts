@@ -38,6 +38,8 @@ function toMeProfile(
     avatarUrl: user.avatarUrl,
     tableColorId: user.tableColorId,
     uiTheme: user.uiTheme ?? 'v1',
+    tableLayout: user.tableLayout ?? 'v1',
+    sfxMuted: user.sfxMuted === true,
     createdAt: user.createdAt,
     chipBalance,
     whuffieBalance,
@@ -164,6 +166,12 @@ export class UsersController {
     }
     if (parsed.data.uiTheme !== undefined) {
       updated = await this.auth.setUiTheme(user.id, parsed.data.uiTheme);
+    }
+    if (parsed.data.tableLayout !== undefined) {
+      updated = await this.auth.setTableLayout(user.id, parsed.data.tableLayout);
+    }
+    if (parsed.data.sfxMuted !== undefined) {
+      updated = await this.auth.setSfxMuted(user.id, parsed.data.sfxMuted);
     }
     if (!updated) {
       throw new UnauthorizedException({ error: 'Unknown user' });

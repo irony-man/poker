@@ -7,11 +7,14 @@ export function MoveTimerStrip({
   endsAt,
   totalMs,
   compact = false,
+  tone = 'default',
 }: {
   endsAt: number | null | undefined;
   totalMs: number;
   /** Tighter padding for landscape action strip. */
   compact?: boolean;
+  /** Felt: thin cream bar for the stacked HUD. */
+  tone?: 'default' | 'felt';
 }) {
   const remaining = useTurnRemainingMs(endsAt);
   if (!endsAt || remaining <= 0 || totalMs <= 0) return null;
@@ -19,16 +22,27 @@ export function MoveTimerStrip({
   const pct = Math.min(100, Math.max(0, (remaining / totalMs) * 100));
   const urgent = remaining <= 5000;
   const secs = formatTurnSeconds(remaining);
+  const felt = tone === 'felt';
 
   return (
     <div
-      className={compact ? 'w-full shrink-0 px-1.5 pt-0.5' : 'w-full shrink-0 px-2 pt-1'}
+      className={
+        felt
+          ? 'w-full shrink-0 px-4'
+          : compact
+            ? 'w-full shrink-0 px-1.5 pt-0.5'
+            : 'w-full shrink-0 px-2 pt-1'
+      }
       aria-label={`Time left ${secs} seconds`}
     >
-      <div className={`w-full overflow-hidden rounded-full ${compact ? 'h-1' : 'h-1.5'}`}>
+      <div
+        className={`w-full overflow-hidden rounded-full ${
+          felt ? 'h-0.5 bg-white/20' : compact ? 'h-1' : 'h-1.5'
+        }`}
+      >
         <div
           className={`h-full rounded-full transition-[width] duration-100 ease-linear ${
-            urgent ? 'bg-danger' : 'bg-gradient-to-r from-sidebar to-[#5a2a7a]'
+            urgent ? 'bg-danger' : felt ? 'bg-white' : 'bg-gradient-to-r from-sidebar to-[#5a2a7a]'
           }`}
           style={{ width: `${pct}%` }}
         />

@@ -173,6 +173,8 @@ fun OfflineTableScreen(
             TablePlayHeader(
                 statusPill = "Offline",
                 overflowItems = overflowItems,
+                sfxMuted = state.sfxMuted,
+                onToggleSfxMute = viewModel::toggleSfxMute,
             )
 
             PokrTableLayout(

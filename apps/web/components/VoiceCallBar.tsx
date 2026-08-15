@@ -31,17 +31,22 @@ export function VoiceCallBar({
         : `${peers.length} players`;
 
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-1">
+    <div
+      className={`flex items-center gap-1 ${
+        compact ? 'shrink-0 flex-nowrap' : 'min-w-0 flex-wrap'
+      }`}
+    >
       {!inVoice ? (
         <Button
           type="button"
           variant="chrome"
+          size={compact ? 'compact' : 'md'}
           onClick={() => void onJoinVoice()}
           disabled={state === 'joining'}
-          className="disabled:opacity-50"
+          className={compact ? 'h-9 px-2.5 disabled:opacity-50' : 'disabled:opacity-50'}
           title="Join table voice chat"
         >
-          {state === 'joining' ? 'Connecting…' : compact ? 'Mic' : 'Voice'}
+          {state === 'joining' ? 'Connecting…' : 'Voice'}
         </Button>
       ) : (
         <>
@@ -63,6 +68,8 @@ export function VoiceCallBar({
           <Button
             type="button"
             variant={muted ? 'chrome' : 'chromeActive'}
+            size={compact ? 'compact' : 'md'}
+            className={compact ? 'h-9 px-2.5' : undefined}
             onClick={onToggleMute}
             title={muted ? 'Unmute microphone' : 'Mute microphone'}
           >
@@ -71,6 +78,7 @@ export function VoiceCallBar({
           <Button
             type="button"
             variant="chromeDanger"
+            size={compact ? 'icon' : 'md'}
             onClick={onLeave}
             title="Leave voice call"
           >

@@ -1,12 +1,9 @@
-import type {
-  InputHTMLAttributes,
-  ReactNode,
-  SelectHTMLAttributes,
-  TextareaHTMLAttributes,
-} from 'react';
+'use client';
+
+import { useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
 
 export const FORM_FIELD_CLASS =
-  'w-full rounded-lg border border-sidebar/15 bg-cream px-3 py-2.5 text-sm text-ink-strong shadow-sm outline-none transition placeholder:text-ink-strong-muted/50 focus:border-sidebar/40 focus:ring-2 focus:ring-sidebar/10';
+  'w-full rounded-lg border border-sidebar/15 bg-cream px-3 py-2.5 text-sm text-ink-strong shadow-sm outline-none transition placeholder:text-ink-strong-muted/70 focus:border-sidebar/40 focus-visible:ring-2 focus-visible:ring-sidebar/25';
 
 export const FORM_LABEL_CLASS =
   'block text-xs font-display font-semibold uppercase tracking-[0.12em] text-ink-strong-muted';
@@ -54,9 +51,11 @@ export function TextField({
   help?: ReactNode;
   variant?: FieldVariant;
 }) {
+  const autoId = useId();
+  const fieldId = id ?? autoId;
   return (
-    <FieldWrap id={id} label={label} help={help} variant={variant}>
-      <input id={id} className={fieldClass(variant, className)} {...props} />
+    <FieldWrap id={fieldId} label={label} help={help} variant={variant}>
+      <input id={fieldId} className={fieldClass(variant, className)} {...props} />
     </FieldWrap>
   );
 }
@@ -71,9 +70,11 @@ export function TextAreaField({
   label?: ReactNode;
   help?: ReactNode;
 }) {
+  const autoId = useId();
+  const fieldId = id ?? autoId;
   return (
-    <FieldWrap id={id} label={label} help={help} variant="form">
-      <textarea id={id} className={fieldClass('form', className)} {...props} />
+    <FieldWrap id={fieldId} label={label} help={help} variant="form">
+      <textarea id={fieldId} className={fieldClass('form', className)} {...props} />
     </FieldWrap>
   );
 }
@@ -90,9 +91,11 @@ export function SelectField({
   help?: ReactNode;
   children: ReactNode;
 }) {
+  const autoId = useId();
+  const fieldId = id ?? autoId;
   return (
-    <FieldWrap id={id} label={label} help={help} variant="form">
-      <select id={id} className={fieldClass('form', className)} {...props}>
+    <FieldWrap id={fieldId} label={label} help={help} variant="form">
+      <select id={fieldId} className={fieldClass('form', className)} {...props}>
         {children}
       </select>
     </FieldWrap>

@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import { AppleEmoji } from '@/components/AppleEmoji';
+import { useModalFocus } from '@/lib/useModalFocus';
 
 /** Fast-tap reactions for the mobile table (also used as chat frequent row). */
 export const QUICK_REACTIONS = [
@@ -62,21 +63,21 @@ export function MobileQuickReactions({ onEmoji }: { onEmoji: (emoji: string) => 
   const [moreOpen, setMoreOpen] = useState(false);
   const panelId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useModalFocus({
+    open: moreOpen,
+    containerRef: panelRef,
+    onClose: () => setMoreOpen(false),
+  });
 
   useEffect(() => {
     if (!moreOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMoreOpen(false);
-    };
     const onPointer = (e: PointerEvent) => {
       if (!rootRef.current?.contains(e.target as Node)) setMoreOpen(false);
     };
-    window.addEventListener('keydown', onKey);
     window.addEventListener('pointerdown', onPointer);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      window.removeEventListener('pointerdown', onPointer);
-    };
+    return () => window.removeEventListener('pointerdown', onPointer);
   }, [moreOpen]);
 
   const react = (emoji: string) => {
@@ -90,9 +91,12 @@ export function MobileQuickReactions({ onEmoji }: { onEmoji: (emoji: string) => 
     <div ref={rootRef} className="relative z-30 shrink-0 px-1.5 pb-1 pt-0.5">
       {moreOpen && (
         <div
+          ref={panelRef}
           id={panelId}
           role="dialog"
+          aria-modal="true"
           aria-label="More reactions"
+          tabIndex={-1}
           className="glass-sheet absolute bottom-[calc(100%+0.35rem)] left-1.5 right-1.5 z-40 max-h-[min(40dvh,14rem)] overflow-hidden rounded-xl border border-sidebar/15 shadow-[0_12px_36px_rgb(29_4_50/0.18)]"
         >
           <div className="hud-popup-header">
@@ -102,7 +106,8 @@ export function MobileQuickReactions({ onEmoji }: { onEmoji: (emoji: string) => 
             <button
               type="button"
               onClick={() => setMoreOpen(false)}
-              className="rounded px-1.5 py-0.5 text-[10px] font-display font-semibold uppercase tracking-wider text-ink-strong-muted hover:text-sidebar"
+              aria-label="Close reactions"
+              className="rounded px-1.5 py-0.5 text-[11px] font-display font-semibold uppercase tracking-wider text-ink-strong-muted hover:text-sidebar"
             >
               Close
             </button>
@@ -146,7 +151,7 @@ export function MobileQuickReactions({ onEmoji }: { onEmoji: (emoji: string) => 
           onClick={() => setMoreOpen((v) => !v)}
           aria-expanded={moreOpen}
           aria-controls={panelId}
-          className={`shrink-0 rounded-full px-2.5 py-1.5 text-[10px] font-display font-bold uppercase tracking-wider transition ${
+          className={`shrink-0 rounded-full px-2.5 py-1.5 text-[11px] font-display font-bold uppercase tracking-wider transition ${
             moreOpen
               ? 'bg-sidebar text-mushroom'
               : 'bg-sidebar/8 text-sidebar hover:bg-sidebar/12'

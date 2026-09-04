@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/Button';
+import { useModalFocus } from '@/lib/useModalFocus';
 import { PlayingCard } from './PlayingCard';
 
 const TIPS: { title: string; body: string }[] = [
@@ -217,22 +218,18 @@ export function HowToPlayHelp({ className = '' }: { className?: string }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const panelStyle = useHelpPanelStyle(open, rootRef);
 
+  const close = () => setOpen(false);
+  useModalFocus({ open, containerRef: panelRef, onClose: close });
+
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
     const onPointer = (e: PointerEvent) => {
       const target = e.target as Node;
       if (rootRef.current?.contains(target) || panelRef.current?.contains(target)) return;
       setOpen(false);
     };
-    window.addEventListener('keydown', onKey);
     window.addEventListener('pointerdown', onPointer);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      window.removeEventListener('pointerdown', onPointer);
-    };
+    return () => window.removeEventListener('pointerdown', onPointer);
   }, [open]);
 
   const panel =
@@ -242,7 +239,9 @@ export function HowToPlayHelp({ className = '' }: { className?: string }) {
             ref={panelRef}
             id={panelId}
             role="dialog"
+            aria-modal="true"
             aria-label="How to play"
+            tabIndex={-1}
             style={panelStyle}
             className="glass-sheet flex flex-col overflow-hidden rounded-xl border border-sidebar/12 shadow-[0_12px_40px_rgba(29,4,50,0.18)]"
           >
@@ -271,7 +270,8 @@ export function HowToPlayHelp({ className = '' }: { className?: string }) {
                 key={id}
                 type="button"
                 onClick={() => setTab(id)}
-                className={`rounded px-2.5 py-1 text-[10px] font-display font-semibold uppercase tracking-wider transition ${
+                aria-pressed={tab === id}
+                className={`rounded px-2.5 py-1 text-[11px] font-display font-semibold uppercase tracking-wider transition ${
                   tab === id
                     ? 'bg-sidebar text-mushroom'
                     : 'text-ink-strong-muted hover:bg-sidebar/8 hover:text-sidebar'
@@ -297,7 +297,7 @@ export function HowToPlayHelp({ className = '' }: { className?: string }) {
                     </li>
                   ))}
                 </ul>
-                <p className="mt-3 border-t border-sidebar/10 pt-2 text-[10px] leading-snug text-ink-strong-muted">
+                <p className="mt-3 border-t border-sidebar/10 pt-2 text-[11px] leading-snug text-ink-strong-muted">
                   Texas Hold&apos;em · highest hand wins · use your two cards + five community
                   cards
                 </p>
@@ -314,7 +314,7 @@ export function HowToPlayHelp({ className = '' }: { className?: string }) {
                       className="w-full bg-mushroom/40 px-3 py-2.5 sm:px-4"
                     >
                       <div className="flex w-full items-start gap-2.5">
-                        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sidebar text-[9px] font-display font-bold text-mushroom">
+                        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sidebar text-[11px] font-display font-bold text-mushroom">
                           {i + 1}
                         </span>
                         <div className="min-w-0 flex-1">
@@ -332,7 +332,7 @@ export function HowToPlayHelp({ className = '' }: { className?: string }) {
                     </li>
                   ))}
                 </ol>
-                <p className="px-3 py-3 text-[10px] leading-snug text-ink-strong-muted sm:px-4">
+                <p className="px-3 py-3 text-[11px] leading-snug text-ink-strong-muted sm:px-4">
                   Texas Hold&apos;em · best 5-card hand from 2 hole cards + board
                 </p>
               </>
@@ -352,6 +352,7 @@ export function HowToPlayHelp({ className = '' }: { className?: string }) {
         aria-expanded={open}
         aria-controls={panelId}
         aria-haspopup="dialog"
+        aria-label="How to play"
         onClick={() => setOpen((v) => !v)}
         title="How to play"
       >

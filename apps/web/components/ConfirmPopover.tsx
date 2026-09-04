@@ -12,6 +12,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/Button';
+import { useModalFocus } from '@/lib/useModalFocus';
 
 export type ConfirmOptions = {
   title: string;
@@ -61,27 +62,22 @@ export function ConfirmPopover({
 }) {
   const titleId = useId();
   const descId = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
   const [mounted, setMounted] = useState(false);
+  const initialFocusRef = tone === 'danger' ? cancelRef : confirmRef;
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onCancel();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    const focusTarget = tone === 'danger' ? cancelRef.current : confirmRef.current;
-    queueMicrotask(() => focusTarget?.focus());
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onCancel, tone]);
+  useModalFocus({
+    open,
+    containerRef: panelRef,
+    initialFocusRef,
+    onClose: onCancel,
+  });
 
   if (!mounted || !open) return null;
 
@@ -94,6 +90,7 @@ export function ConfirmPopover({
       }}
     >
       <div
+        ref={panelRef}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={titleId}

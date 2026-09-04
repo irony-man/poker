@@ -131,7 +131,7 @@ export default function HostPage() {
               return (
                 <div className="inline-flex flex-col items-start leading-tight">
                   <div>{s.label}</div>
-                  <div className="text-[10px] flex items-center gap-1 font-medium opacity-70">
+                  <div className="flex items-center gap-1 text-xs font-medium text-ink-strong-muted">
                     <MoneyAmount
                         amount={s.buyIn}
                         showChips
@@ -164,6 +164,7 @@ export default function HostPage() {
               />
               {botCount > 0 && botGroups.length > 0 ? (
                 <ChoiceRow
+                  label="Bot names"
                   name="host-bot-group"
                   selected={botGroupId ?? botGroups[0]!.id}
                   options={botGroups.map((g) => g.id)}

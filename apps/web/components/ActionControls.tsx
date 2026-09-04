@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useModalFocus } from '@/lib/useModalFocus';
 import { MoveTimerStrip } from './TurnTimer';
 import { ReadyPlayersRoster, type ReadyRosterPlayer } from './WinHandModal';
 import { useSession, type PrivateView, type PublicTable } from '@/lib/store';
@@ -336,6 +337,15 @@ export function ActionControls({
   const [confirm, setConfirm] = useState<null | { action: string; amount?: number; label: string }>(
     null,
   );
+  const confirmBoxRef = useRef<HTMLDivElement>(null);
+  const confirmCancelRef = useRef<HTMLButtonElement>(null);
+  const dismissConfirm = useCallback(() => setConfirm(null), []);
+  useModalFocus({
+    open: confirm != null,
+    containerRef: confirmBoxRef,
+    initialFocusRef: confirmCancelRef,
+    onClose: dismissConfirm,
+  });
 
   useEffect(() => {
     setBetAmount(min);
@@ -464,13 +474,26 @@ export function ActionControls({
 
   if (confirm) {
     return (
-      <div className={shell}>
+      <div
+        ref={confirmBoxRef}
+        className={shell}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="action-confirm-title"
+        tabIndex={-1}
+      >
         <div className="flex h-full min-h-0 flex-1 flex-col justify-center space-y-3 p-3 sm:p-4">
-          <p className="text-center text-sm font-medium text-ink-strong">
+          <p id="action-confirm-title" className="text-center text-sm font-medium text-ink-strong">
             Confirm <span className="font-bold text-sidebar">{confirm.label}</span>?
           </p>
           <div className="grid grid-cols-2 gap-2">
-            <Button type="button" variant="ghost" className="min-h-11" onClick={() => setConfirm(null)}>
+            <Button
+              ref={confirmCancelRef}
+              type="button"
+              variant="ghost"
+              className="min-h-11"
+              onClick={dismissConfirm}
+            >
               Cancel
             </Button>
             <Button
@@ -510,7 +533,7 @@ export function ActionControls({
           type="button"
           variant="soft"
           onClick={() => setBet(val)}
-          className="min-h-8 px-1.5 text-[10px]"
+          className="min-h-6 px-1.5 text-[11px]"
         >
           {label}
         </Button>
@@ -529,7 +552,11 @@ export function ActionControls({
     const thirdIsAllin = !canBet && legal.types.includes('allin');
 
     return (
-      <div className="flex h-full min-h-0 flex-col text-ink-strong">
+      <div
+        className="flex h-full min-h-0 flex-col text-ink-strong"
+        role="group"
+        aria-label="Table actions"
+      >
         {timer}
         {canBet && (
           <div className="flex shrink-0 items-center gap-1 border-b border-sidebar/12 px-1.5 py-0.5">
@@ -561,7 +588,7 @@ export function ActionControls({
                   type="button"
                   variant="soft"
                   onClick={() => setBet(val)}
-                  className="px-1.5 py-0.5 text-[9px]"
+                  className="min-h-6 px-1.5 text-[11px]"
                 >
                   {label}
                 </Button>
@@ -619,18 +646,18 @@ export function ActionControls({
   /* —— Portrait mobile: compact text —— */
   if (narrow) {
     return (
-      <div className={shell}>
+      <div className={shell} role="group" aria-label="Table actions">
         {timer}
         <div className="flex min-h-0 flex-1 flex-col justify-between space-y-1 p-1.5">
           {canBet && (
             <div className="space-y-1">
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-strong-muted">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-strong-muted">
                   {betLabel} to
                 </span>
                 <span className="font-mono text-sm font-bold tabular-nums text-sidebar">
                   {formatMoneyAmount(amount)}
-                  <span className="ml-1.5 text-[10px] font-medium text-ink-strong-muted">
+                  <span className="ml-1.5 text-[11px] font-medium text-ink-strong-muted">
                     {formatMoneyAmount(min)}–{formatMoneyAmount(max)}
                   </span>
                 </span>
@@ -693,18 +720,18 @@ export function ActionControls({
 
   /* —— Desktop: fill fixed 160px dock —— */
   return (
-    <div className={shell}>
+    <div className={shell} role="group" aria-label="Table actions">
       <MoveTimerStrip endsAt={turnEndsAt} totalMs={turnTotalMs} compact />
       <div className="flex min-h-0 flex-1 flex-col justify-between gap-1.5 px-3 pb-2 pt-1">
         {canBet && (
           <div className="space-y-1">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-strong-muted">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-strong-muted">
                 {betLabel} to
               </span>
               <span className="font-mono text-sm font-bold tabular-nums text-sidebar">
                 {formatMoneyAmount(amount)}
-                <span className="ml-1.5 text-[10px] font-medium text-ink-strong-muted">
+                <span className="ml-1.5 text-[11px] font-medium text-ink-strong-muted">
                   {formatMoneyAmount(min)}–{formatMoneyAmount(max)}
                 </span>
               </span>
@@ -754,7 +781,7 @@ export function ActionControls({
                   type="button"
                   variant="soft"
                   onClick={() => setBet(val)}
-                  className="px-1 py-1.5 text-[10px]"
+                  className="min-h-6 px-1 py-1.5 text-[11px]"
                 >
                   {label}
                 </Button>

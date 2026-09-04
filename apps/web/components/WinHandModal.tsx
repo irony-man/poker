@@ -1,10 +1,11 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { Button } from '@/components/ui/Button';
 import { MoneyAmount } from './CurrencyIcon';
 import { PlayerAvatar } from './PlayerAvatar';
 import { PlayingCard } from './PlayingCard';
+import { useModalFocus } from '@/lib/useModalFocus';
 import { useIsNarrow } from '@/lib/tableLayout';
 import { cn } from '@/lib/cn';
 
@@ -74,15 +75,15 @@ export function ReadyPlayersRoster({
         className={`flex items-center justify-between gap-2 ${compact ? 'mb-1.5' : 'mb-2.5'}`}
       >
         <h3
-          className={`font-display font-bold uppercase tracking-[0.16em] text-sidebar/70 ${
-            compact ? 'text-[9px]' : 'text-[10px]'
+          className={`font-display font-bold uppercase tracking-[0.16em] text-sidebar ${
+            compact ? 'text-[11px]' : 'text-xs'
           }`}
         >
           {heading}
         </h3>
         <p
-          className={`font-display font-semibold tabular-nums tracking-wide text-sidebar/65 ${
-            compact ? 'text-[9px]' : 'text-[10px]'
+          className={`font-display font-semibold tabular-nums tracking-wide text-sidebar ${
+            compact ? 'text-[11px]' : 'text-xs'
           }`}
           aria-label={`${rCount} of ${rTotal} ready`}
         >
@@ -158,13 +159,13 @@ export function ReadyPlayersRoster({
               </div>
               <span
                 className={`w-full truncate text-center font-display font-semibold leading-tight ${
-                  compact ? 'text-[9px]' : 'text-[9px] sm:text-[10px]'
+                  compact ? 'text-[11px]' : 'text-[11px] sm:text-xs'
                 } ${
                   p.sittingOut
-                    ? 'text-amber-800/80'
+                    ? 'text-amber-800'
                     : p.ready
                       ? 'text-sidebar'
-                      : 'text-sidebar/50'
+                      : 'text-sidebar/80'
                 }`}
                 title={label}
               >
@@ -178,7 +179,7 @@ export function ReadyPlayersRoster({
                 )}
               </span>
               {p.sittingOut ? (
-                <span className="text-[7px] font-bold uppercase tracking-wide text-amber-800/70">
+                <span className="text-[11px] font-bold uppercase tracking-wide text-amber-900">
                   Out
                 </span>
               ) : null}
@@ -233,6 +234,14 @@ export function WinHandModal({
   onNeedChips?: () => void;
 }) {
   const roster = readyPlayers ?? [];
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useModalFocus({
+    open: true,
+    containerRef: dialogRef,
+    initialFocusRef: closeRef,
+    onClose: onDismiss,
+  });
 
   let primary: ReactNode;
   if (canStartNext) {
@@ -281,7 +290,7 @@ export function WinHandModal({
     );
   } else {
     primary = (
-      <p className="flex-1 text-center text-[10px] text-ink-strong-muted">Waiting…</p>
+      <p className="flex-1 text-center text-xs text-ink-strong-muted">Waiting…</p>
     );
   }
 
@@ -289,13 +298,15 @@ export function WinHandModal({
     <div className="fixed inset-0 z-[60] flex items-end justify-center bg-ink-overlay/55 p-3 backdrop-blur-[3px] sm:items-center sm:p-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
       <div className="flex w-full max-w-lg flex-col items-stretch gap-3 sm:gap-4">
         <div
+          ref={dialogRef}
           role="dialog"
           aria-modal="true"
           aria-labelledby="win-hand-title"
+          tabIndex={-1}
           className="surface-modal flex max-h-[min(78dvh,36rem)] w-full flex-col"
         >
           <div className="shrink-0 border-b border-sidebar/10 bg-mushroom/40 px-4 py-3 text-center sm:px-5 sm:py-5">
-            <p className="text-[9px] font-display uppercase tracking-[0.28em] text-sidebar/50 sm:text-[10px]">
+            <p className="text-[11px] font-display uppercase tracking-[0.28em] text-sidebar sm:text-xs">
               Hand complete
             </p>
             <h2
@@ -384,9 +395,10 @@ export function WinHandModal({
               )}
               {primary}
               <button
+                ref={closeRef}
                 type="button"
                 onClick={onDismiss}
-                className="rounded-md border border-sidebar/20 bg-white px-2.5 py-1.5 text-[11px] font-display font-semibold text-sidebar/70 hover:bg-mushroom/60 hover:text-sidebar"
+                className="rounded-md border border-sidebar/20 bg-white px-2.5 py-1.5 text-[11px] font-display font-semibold text-sidebar hover:bg-mushroom/60"
               >
                 Close
               </button>

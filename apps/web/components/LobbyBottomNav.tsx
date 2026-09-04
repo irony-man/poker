@@ -84,8 +84,8 @@ function NavIcon({ name, active }: { name: MobileBottomIcon; active: boolean }) 
 function SlotLabel({ text, active }: { text: string; active: boolean }) {
   return (
     <span
-      className={`mt-0.5 max-w-full truncate px-0.5 text-[9px] font-display font-semibold uppercase tracking-[0.06em] ${
-        active ? 'text-mushroom' : 'text-mushroom/45'
+      className={`mt-0.5 max-w-full truncate px-0.5 text-[11px] font-display font-semibold uppercase tracking-[0.06em] ${
+        active ? 'text-mushroom' : 'text-mushroom/80'
       }`}
     >
       {text}
@@ -95,7 +95,7 @@ function SlotLabel({ text, active }: { text: string; active: boolean }) {
 
 function slotClass(active: boolean) {
   return `relative flex h-[3.65rem] flex-1 flex-col items-center justify-center gap-0 pt-1 transition ${
-    active ? 'text-mushroom' : 'text-mushroom/45 hover:text-mushroom/80'
+    active ? 'text-mushroom' : 'text-mushroom/80 hover:text-mushroom'
   }`;
 }
 
@@ -130,7 +130,7 @@ export function LobbyBottomNav() {
   return (
     <nav
       className="lobby-sidebar z-20 shrink-0 border-t border-mushroom/10 md:hidden"
-      aria-label="Lobby"
+      aria-label="Mobile lobby"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="flex items-stretch">

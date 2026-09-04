@@ -12,6 +12,7 @@ import { LoadingScreen } from './LoadingScreen';
 import { SeatView } from './SeatView';
 import { CopyRoomLink } from './CopyRoomLink';
 import { TableOverflowMenu, type OverflowItem } from './TableOverflowMenu';
+import { TableLiveAnnouncer } from './TableLiveAnnouncer';
 import { TableShell } from './TableShell';
 import { VoiceCallBar } from './VoiceCallBar';
 import { WinHandModal } from './WinHandModal';
@@ -586,6 +587,7 @@ export function TableView({
       }
     >
       <div className="flex min-h-0 flex-1 flex-col">
+        <TableLiveAnnouncer />
         {/* Cohesive play chrome: brand + room tools */}
         <header className="play-chrome-bar">
           <div className="play-table-logo-row">

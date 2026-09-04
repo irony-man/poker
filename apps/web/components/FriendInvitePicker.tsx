@@ -166,7 +166,10 @@ export function FriendInvitePicker({
               : 'Everyone on your list already joined.'}
         </p>
       ) : (
-        <ul className="mt-2.5 max-h-44 space-y-1 overflow-y-auto pr-0.5">
+        <ul
+          className="mt-2.5 max-h-44 space-y-1 overflow-y-auto pr-0.5"
+          aria-label={title ?? 'Friends to invite'}
+        >
           {visibleFriends.map((f) => {
             const isOn = selected.has(f.userId);
             const atCap = !isOn && selectedIds.length >= maxSelect;

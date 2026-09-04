@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useCallback, type KeyboardEvent, type ReactNode } from 'react';
 import {
   type ChoiceStyle,
   choiceOptionClass,
@@ -45,10 +45,41 @@ export function Tabs<T extends string>({
         ? 'overflow-x-auto'
         : undefined;
 
+  const onKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLDivElement>) => {
+      if (disabled || options.length === 0) return;
+      const ids = options.map((t) => t.id);
+      const i = ids.indexOf(selected);
+      const from = i < 0 ? 0 : i;
+      let next = from;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        next = (from + 1) % ids.length;
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        next = (from - 1 + ids.length) % ids.length;
+      } else if (e.key === 'Home') {
+        next = 0;
+      } else if (e.key === 'End') {
+        next = ids.length - 1;
+      } else {
+        return;
+      }
+      e.preventDefault();
+      const id = ids[next]!;
+      const list = e.currentTarget;
+      onSelect(id);
+      queueMicrotask(() => {
+        list.querySelector<HTMLElement>(`#${idPrefix}-${id}`)?.focus();
+      });
+    },
+    [disabled, idPrefix, onSelect, options, selected],
+  );
+
   return (
     <div
       role="tablist"
       aria-label={label}
+      aria-orientation="horizontal"
+      onKeyDown={onKeyDown}
       className={choiceTrackClass(variant, [trackExtra, className].filter(Boolean).join(' '))}
     >
       {options.map((tab) => {
@@ -60,6 +91,7 @@ export function Tabs<T extends string>({
             type="button"
             role="tab"
             id={tabId}
+            tabIndex={isSelected ? 0 : -1}
             aria-selected={isSelected}
             aria-controls={tab.panelId}
             disabled={disabled}

@@ -23,7 +23,7 @@ export function ChatPanel({
 }) {
   const chat = useSession((s) => s.chat);
   const emojiBurst = useSession((s) => s.emojiBurst);
-  const scroller = useRef<HTMLDivElement>(null);
+  const scroller = useRef<HTMLUListElement>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [draft, setDraft] = useState('');
 
@@ -63,13 +63,14 @@ export function ChatPanel({
         )}
       </header>
 
-      {/* Messages */}
-      <div
+      {/* Messages — list semantics only; street/pot/turn live in TableLiveAnnouncer. */}
+      <ul
         ref={scroller}
         className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-3 py-4 sm:px-4"
+        aria-label="Table chat"
       >
         {chat.length === 0 ? (
-          <div className="flex h-full min-h-[10rem] flex-col items-center justify-center px-4 text-center">
+          <li className="flex h-full min-h-[10rem] flex-col items-center justify-center px-4 text-center">
             <div className="glass-sheet mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-sidebar/10 shadow-[0_6px_18px_rgb(29_4_50/0.08)]">
               <AppleEmoji emoji="💬" size={28} decorative />
             </div>
@@ -79,7 +80,7 @@ export function ChatPanel({
             <p className="mt-1 max-w-[14rem] text-xs leading-relaxed text-ink-strong-muted">
               Drop a reaction or say hi when the hand gets interesting.
             </p>
-          </div>
+          </li>
         ) : (
           chat.map((m, i) => {
             const isSystem = m.userId === 'system';
@@ -90,10 +91,9 @@ export function ChatPanel({
                 /\bwins\b/i.test(m.text) || /^split pot\b/i.test(m.text.trim());
               if (isHandResult) {
                 return (
-                  <div
+                  <li
                     key={`${m.at}-${i}`}
                     className="mx-auto my-2 w-full max-w-[95%] rounded-xl bg-sidebar px-3.5 py-2.5 text-center shadow-[0_6px_16px_rgb(29_4_50/0.18)]"
-                    role="status"
                   >
                     <p className="text-[11px] font-display font-bold uppercase tracking-[0.14em] text-mushroom/70">
                       Hand complete
@@ -101,13 +101,13 @@ export function ChatPanel({
                     <p className="mt-0.5 text-sm font-semibold leading-snug text-mushroom">
                       {m.text}
                     </p>
-                  </div>
+                  </li>
                 );
               }
               return (
-                <div
+                <li
                   key={`${m.at}-${i}`}
-                  className="glass-sheet mx-auto max-w-[95%] rounded-full border border-sidebar/10 px-3.5 py-1.5 text-center text-[12px] text-ink-strong-muted"
+                  className="glass-sheet mx-auto max-w-[95%] list-none rounded-full border border-sidebar/10 px-3.5 py-1.5 text-center text-[12px] text-ink-strong-muted"
                 >
                   {isDealer ? (
                     <span className="italic">{m.text}</span>
@@ -119,13 +119,13 @@ export function ChatPanel({
                       <span className="italic">{m.text}</span>
                     </span>
                   )}
-                </div>
+                </li>
               );
             }
             return (
-              <div
+              <li
                 key={`${m.at}-${i}`}
-                className="glass-sheet rounded-2xl border border-sidebar/8 px-3.5 py-2.5 shadow-[0_2px_10px_rgb(29_4_50/0.05)]"
+                className="glass-sheet list-none rounded-2xl border border-sidebar/8 px-3.5 py-2.5 shadow-[0_2px_10px_rgb(29_4_50/0.05)]"
               >
                 <p className="font-display text-[11px] font-bold uppercase tracking-[0.12em] text-sidebar">
                   {m.name}
@@ -133,11 +133,11 @@ export function ChatPanel({
                 <p className="mt-1 break-words text-sm leading-snug text-ink-strong">
                   <AppleEmojiText text={m.text} emojiSize={20} />
                 </p>
-              </div>
+              </li>
             );
           })
         )}
-      </div>
+      </ul>
 
       {emojiBurst && (
         <div className="pointer-events-none absolute inset-x-0 top-1/4 z-10 flex justify-center animate-bounce">

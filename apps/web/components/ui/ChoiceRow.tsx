@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import {
   type ChoiceStyle,
   choiceOptionClass,
@@ -28,6 +28,8 @@ export function ChoiceRow<T extends string | number>({
   variant?: ChoiceStyle;
   disabled?: boolean;
 }) {
+  const autoName = useId();
+  const groupName = name || autoName;
   return (
     <fieldset className="block min-w-0">
       {label ? <legend className="hud-label mb-2">{label}</legend> : null}
@@ -38,7 +40,7 @@ export function ChoiceRow<T extends string | number>({
       >
         {options.map((option) => {
           const isSelected = option === selected;
-          const id = `${name}-${String(option)}`;
+          const id = `${groupName}-${String(option)}`;
           return (
             <label
               key={String(option)}
@@ -48,7 +50,7 @@ export function ChoiceRow<T extends string | number>({
               <input
                 id={id}
                 type="radio"
-                name={name}
+                name={groupName}
                 value={String(option)}
                 checked={isSelected}
                 disabled={disabled}

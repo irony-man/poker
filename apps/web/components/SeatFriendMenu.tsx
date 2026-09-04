@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import { respondFriendRequest, sendFriendRequest } from '@/lib/api';
+import { useModalFocus } from '@/lib/useModalFocus';
 import { useSession } from '@/lib/store';
 
 /** Session-scoped outbound request targets until social_sync catches up. */
@@ -104,6 +105,8 @@ export function SeatFriendMenu({
     }
   }, [isFriend, targetUserId]);
 
+  useModalFocus({ open, containerRef: panelRef, onClose });
+
   useEffect(() => {
     if (!open) {
       setError(null);
@@ -112,18 +115,13 @@ export function SeatFriendMenu({
     const onDown = (e: MouseEvent) => {
       if (!panelRef.current?.contains(e.target as Node)) onClose();
     };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
     // Defer so the opening click doesn't instantly close.
     const t = window.setTimeout(() => {
       document.addEventListener('mousedown', onDown);
-      document.addEventListener('keydown', onKey);
     }, 0);
     return () => {
       window.clearTimeout(t);
       document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
     };
   }, [open, onClose]);
 
@@ -174,24 +172,26 @@ export function SeatFriendMenu({
     <div
       ref={panelRef}
       role="dialog"
+      aria-modal="true"
       aria-label={`Friend actions for ${name}`}
+      tabIndex={-1}
       onClick={(e) => e.stopPropagation()}
       className="absolute left-1/2 top-full z-50 mt-1 w-[7.5rem] -translate-x-1/2 rounded-lg border border-white/15 bg-sidebar/95 p-1.5 shadow-[0_8px_20px_rgba(0,0,0,0.55)] backdrop-blur-sm"
     >
-      <p className="truncate px-1 pb-1 text-[10px] font-bold text-mushroom/90">{name}</p>
+      <p className="truncate px-1 pb-1 text-[11px] font-bold text-mushroom">{name}</p>
 
       {isFriend ? (
-        <p className="rounded-md bg-mushroom/15 px-1.5 py-1 text-center text-[10px] font-semibold uppercase tracking-wide text-mushroom/70">
+        <p className="rounded-md bg-mushroom/15 px-1.5 py-1 text-center text-[11px] font-semibold uppercase tracking-wide text-mushroom/85">
           Friends
         </p>
       ) : incoming ? (
         <div className="flex flex-col gap-1">
-          <p className="px-0.5 text-[9px] leading-snug text-mushroom/60">Wants to be friends</p>
+          <p className="px-0.5 text-[11px] leading-snug text-mushroom/85">Wants to be friends</p>
           <button
             type="button"
             disabled={busy}
             onClick={() => void onRespond(true)}
-            className="rounded-md bg-gold/90 px-1.5 py-1 text-[10px] font-bold uppercase tracking-wide text-sidebar hover:bg-gold disabled:opacity-50"
+            className="min-h-6 rounded-md bg-gold/90 px-1.5 py-1 text-[11px] font-bold uppercase tracking-wide text-sidebar hover:bg-gold disabled:opacity-50"
           >
             Accept
           </button>
@@ -199,13 +199,13 @@ export function SeatFriendMenu({
             type="button"
             disabled={busy}
             onClick={() => void onRespond(false)}
-            className="rounded-md bg-black/40 px-1.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-mushroom/80 hover:bg-black/55 disabled:opacity-50"
+            className="min-h-6 rounded-md bg-black/40 px-1.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-mushroom hover:bg-black/55 disabled:opacity-50"
           >
             Decline
           </button>
         </div>
       ) : sent ? (
-        <p className="rounded-md bg-mushroom/15 px-1.5 py-1 text-center text-[10px] font-semibold uppercase tracking-wide text-mushroom/70">
+        <p className="rounded-md bg-mushroom/15 px-1.5 py-1 text-center text-[11px] font-semibold uppercase tracking-wide text-mushroom/85">
           Request sent
         </p>
       ) : (
@@ -213,14 +213,14 @@ export function SeatFriendMenu({
           type="button"
           disabled={busy || !sessionToken}
           onClick={() => void onAdd()}
-          className="w-full rounded-md bg-gold/90 px-1.5 py-1 text-[10px] font-bold uppercase tracking-wide text-sidebar hover:bg-gold disabled:opacity-50"
+          className="min-h-6 w-full rounded-md bg-gold/90 px-1.5 py-1 text-[11px] font-bold uppercase tracking-wide text-sidebar hover:bg-gold disabled:opacity-50"
         >
           {busy ? '…' : 'Add friend'}
         </button>
       )}
 
       {error ? (
-        <p role="alert" className="mt-1 px-0.5 text-[9px] leading-snug text-red-300">
+        <p role="alert" className="mt-1 px-0.5 text-[11px] leading-snug text-red-200">
           {error}
         </p>
       ) : null}

@@ -27,6 +27,7 @@ import { loadSavedUiTheme, saveUiTheme } from '@/lib/uiTheme';
 import { attachPlayFullscreen } from '@/lib/mobileFullscreen';
 import { ConfirmProvider } from '@/components/ConfirmPopover';
 import { SiteAnnouncementBanner } from '@/components/SiteAnnouncement';
+import { SkipLink } from '@/components/SkipLink';
 import { useSessionSocket } from '@/lib/ws';
 
 function PersonIcon() {
@@ -197,7 +198,11 @@ export function AppChrome({ children }: { children: ReactNode }) {
     return (
       <ConfirmProvider>
         <OnlineFriendsProvider signedIn={signedIn}>
-          <main className="play-shell relative flex h-full min-h-0 flex-1 flex-col overflow-hidden px-0 py-0">
+          <SkipLink />
+          <main
+            id="main-content"
+            className="play-shell relative flex h-full min-h-0 flex-1 flex-col overflow-hidden px-0 py-0"
+          >
             {children}
           </main>
         </OnlineFriendsProvider>
@@ -219,6 +224,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
     <ConfirmProvider>
       <OnlineFriendsProvider signedIn={signedIn}>
         <div className="lobby-shell">
+          <SkipLink />
           <Suspense fallback={null}>
             <LobbySidebar
               signedIn={signedIn}
@@ -250,6 +256,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
             </header>
 
             <main
+              id="main-content"
               className={`flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain pb-4 md:pb-0 ${
                 isHome
                   ? 'px-5 py-6 sm:px-10 sm:py-8 lg:px-14 lg:py-10 xl:px-20'

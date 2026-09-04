@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AvatarPicker, PlayerAvatar } from '@/components/PlayerAvatar';
 import { FriendsPanel } from '@/components/FriendsPanel';
 import { LoadingScreen } from '@/components/LoadingScreen';
@@ -35,8 +35,10 @@ import { clampUiTheme, saveUiTheme, type UiTheme } from '@/lib/uiTheme';
 import { MoneyAmount } from '@/components/CurrencyIcon';
 import { HandsMap } from '@/features/progress/HandsMap';
 import { Button } from '@/components/ui/Button';
+import { SelectedCheck } from '@/components/ui/SelectedCheck';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { Tabs } from '@/components/ui/Tabs';
+import { useRadioGroupKeyboard } from '@/lib/useRadioGroupKeyboard';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { clearStoredSession, readStoredSession, writeStoredSession } from '@/lib/session';
 import { useSession } from '@/lib/store';
@@ -51,6 +53,44 @@ type ContestMatchRow = {
   prizeWhuffies: number;
   playedAt: number;
 };
+
+function ThemeRadioGroup<T extends string | number | boolean>({
+  label,
+  options,
+  selected,
+  onSelect,
+  disabled,
+  className,
+  children,
+}: {
+  label: string;
+  options: readonly T[];
+  selected: T;
+  onSelect: (value: T) => void;
+  disabled?: boolean;
+  className: string;
+  children: (ctx: { tabIndexFor: (value: T) => number }) => ReactNode;
+}) {
+  const groupRef = useRef<HTMLDivElement>(null);
+  const { onKeyDown, tabIndexFor } = useRadioGroupKeyboard({
+    options,
+    selected,
+    onSelect,
+    groupRef,
+    disabled,
+  });
+  return (
+    <div
+      ref={groupRef}
+      role="radiogroup"
+      aria-label={label}
+      onKeyDown={onKeyDown}
+      className={className}
+    >
+      {children({ tabIndexFor })}
+    </div>
+  );
+}
 
 function parseProfileTab(raw: string | null): ProfileTab {
   if (raw === 'friends' || raw === 'contests' || raw === 'theme' || raw === 'hands') return raw;
@@ -620,12 +660,16 @@ function ProfilePageInner() {
                 ) : null}
               </div>
 
-              <div
+              <ThemeRadioGroup
+                label="App look"
                 className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3"
-                role="radiogroup"
-                aria-label="App look"
+                options={['v1', 'v2', 'v3'] as const}
+                selected={draftUiTheme}
+                onSelect={(id) => void saveLook(id)}
+                disabled={savingUiTheme}
               >
-                {(
+                {({ tabIndexFor }) =>
+                (
                   [
                     {
                       id: 'v1' as const,
@@ -656,11 +700,13 @@ function ProfilePageInner() {
                       key={look.id}
                       type="button"
                       role="radio"
+                      data-radio-value={look.id}
+                      tabIndex={tabIndexFor(look.id)}
                       aria-checked={selected}
-                      aria-label={look.label}
+                      aria-label={`${look.label}, ${look.hint}`}
                       disabled={savingUiTheme}
                       onClick={() => void saveLook(look.id)}
-                      className={`flex flex-col overflow-hidden rounded-2xl border-2 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar disabled:opacity-60 ${
+                      className={`flex flex-col overflow-hidden rounded-2xl border-2 text-left transition disabled:opacity-60 ${
                         selected
                           ? 'border-sidebar bg-sidebar/[0.06] shadow-[0_0_0_1px_rgb(29_4_50_/_0.1)]'
                           : 'border-sidebar/10 bg-mushroom/30 hover:border-sidebar/22'
@@ -700,28 +746,17 @@ function ProfilePageInner() {
                           <span className="block text-sm font-semibold text-sidebar">
                             {look.label}
                           </span>
-                          <span className="block text-[11px] text-ink-strong-muted">
+                          <span className="block text-xs text-ink-strong-muted">
                             {look.hint}
                           </span>
                         </span>
-                        {selected ? (
-                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-sidebar text-mushroom">
-                            <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none" aria-hidden>
-                              <path
-                                d="M3.5 8.5 6.5 11.5 12.5 4.5"
-                                stroke="currentColor"
-                                strokeWidth="2.25"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                          </span>
-                        ) : null}
+                        {selected ? <SelectedCheck /> : null}
                       </span>
                     </button>
                   );
-                })}
-              </div>
+                })
+                }
+              </ThemeRadioGroup>
 
               <div className="mt-8 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
                 <div className="min-w-0">
@@ -738,12 +773,16 @@ function ProfilePageInner() {
                 ) : null}
               </div>
 
-              <div
+              <ThemeRadioGroup
+                label="Table layout"
                 className="mt-5 grid grid-cols-2 gap-3"
-                role="radiogroup"
-                aria-label="Table layout"
+                options={['v1', 'v2'] as const}
+                selected={draftTableLayout}
+                onSelect={(id) => void saveLayout(id)}
+                disabled={savingTableLayout}
               >
-                {(
+                {({ tabIndexFor }) =>
+                (
                   [
                     {
                       id: 'v1' as const,
@@ -763,11 +802,13 @@ function ProfilePageInner() {
                       key={layout.id}
                       type="button"
                       role="radio"
+                      data-radio-value={layout.id}
+                      tabIndex={tabIndexFor(layout.id)}
                       aria-checked={selected}
-                      aria-label={layout.label}
+                      aria-label={`${layout.label}, ${layout.hint}`}
                       disabled={savingTableLayout}
                       onClick={() => void saveLayout(layout.id)}
-                      className={`flex flex-col overflow-hidden rounded-2xl border-2 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar disabled:opacity-60 ${
+                      className={`flex flex-col overflow-hidden rounded-2xl border-2 text-left transition disabled:opacity-60 ${
                         selected
                           ? 'border-sidebar bg-sidebar/[0.06] shadow-[0_0_0_1px_rgb(29_4_50_/_0.1)]'
                           : 'border-sidebar/10 bg-mushroom/30 hover:border-sidebar/22'
@@ -798,28 +839,17 @@ function ProfilePageInner() {
                           <span className="block text-sm font-semibold text-sidebar">
                             {layout.label}
                           </span>
-                          <span className="block text-[11px] text-ink-strong-muted">
+                          <span className="block text-xs text-ink-strong-muted">
                             {layout.hint}
                           </span>
                         </span>
-                        {selected ? (
-                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-sidebar text-mushroom">
-                            <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none" aria-hidden>
-                              <path
-                                d="M3.5 8.5 6.5 11.5 12.5 4.5"
-                                stroke="currentColor"
-                                strokeWidth="2.25"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                          </span>
-                        ) : null}
+                        {selected ? <SelectedCheck /> : null}
                       </span>
                     </button>
                   );
-                })}
-              </div>
+                })
+                }
+              </ThemeRadioGroup>
 
               <div className="mt-8 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
                 <div className="min-w-0">
@@ -916,23 +946,29 @@ function ProfilePageInner() {
                 </div>
               </div>
 
-              <div
+              <ThemeRadioGroup
+                label="Felt color"
                 className="mt-5 grid grid-cols-3 gap-2.5 sm:grid-cols-3 sm:gap-3"
-                role="radiogroup"
-                aria-label="Felt color"
+                options={TABLE_COLOR_PRESETS.map((p) => p.id)}
+                selected={draftTableColorId}
+                onSelect={(id) => void saveTableColor(id)}
+                disabled={savingTableColor}
               >
-                {TABLE_COLOR_PRESETS.map((preset) => {
+                {({ tabIndexFor }) =>
+                  TABLE_COLOR_PRESETS.map((preset) => {
                   const selected = draftTableColorId === preset.id;
                   return (
                     <button
                       key={preset.id}
                       type="button"
                       role="radio"
+                      data-radio-value={preset.id}
+                      tabIndex={tabIndexFor(preset.id)}
                       aria-checked={selected}
                       aria-label={preset.label}
                       disabled={savingTableColor}
                       onClick={() => void saveTableColor(preset.id)}
-                      className={`group relative flex flex-col items-center gap-2 rounded-xl border px-2 py-3 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar disabled:opacity-60 sm:px-3 sm:py-3.5 ${
+                      className={`group relative flex flex-col items-center gap-2 rounded-xl border px-2 py-3 transition disabled:opacity-60 sm:px-3 sm:py-3.5 ${
                         selected
                           ? 'border-sidebar bg-sidebar/[0.06] shadow-[0_0_0_1px_rgb(29_4_50_/_0.1)]'
                           : 'border-sidebar/10 bg-mushroom/30 hover:border-sidebar/22 hover:bg-mushroom/55'
@@ -947,35 +983,21 @@ function ProfilePageInner() {
                       >
                         <span className="felt-surface table-rim block h-10 w-full rounded-[42%] border-[5px] shadow-[inset_0_0_0_1.5px_rgb(var(--felt-rim-edge)/0.55),0_2px_8px_rgb(29_4_50/0.18)] sm:h-11 sm:border-[6px]" />
                         {selected ? (
-                          <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-sidebar text-mushroom shadow-sm">
-                            <svg
-                              className="h-3 w-3"
-                              viewBox="0 0 16 16"
-                              fill="none"
-                              aria-hidden
-                            >
-                              <path
-                                d="M3.5 8.5 6.5 11.5 12.5 4.5"
-                                stroke="currentColor"
-                                strokeWidth="2.25"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                          </span>
+                          <SelectedCheck className="absolute -right-1 -top-1" />
                         ) : null}
                       </span>
                       <span
-                        className={`text-center text-[11px] font-semibold leading-tight sm:text-xs ${
-                          selected ? 'text-sidebar' : 'text-sidebar/75'
+                        className={`text-center text-xs font-semibold leading-tight ${
+                          selected ? 'text-sidebar' : 'text-sidebar'
                         }`}
                       >
                         {preset.label}
                       </span>
                     </button>
                   );
-                })}
-              </div>
+                })
+                }
+              </ThemeRadioGroup>
 
               <div className="mt-8 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
                 <div className="min-w-0">
@@ -991,12 +1013,16 @@ function ProfilePageInner() {
                 ) : null}
               </div>
 
-              <div
+              <ThemeRadioGroup
+                label="Table sounds"
                 className="mt-5 grid grid-cols-2 gap-3"
-                role="radiogroup"
-                aria-label="Table sounds"
+                options={[false, true]}
+                selected={draftSfxMuted}
+                onSelect={(muted) => void saveSounds(muted)}
+                disabled={savingSfxMuted}
               >
-                {(
+                {({ tabIndexFor }) =>
+                (
                   [
                     {
                       muted: false,
@@ -1016,11 +1042,13 @@ function ProfilePageInner() {
                       key={option.label}
                       type="button"
                       role="radio"
+                      data-radio-value={String(option.muted)}
+                      tabIndex={tabIndexFor(option.muted)}
                       aria-checked={selected}
-                      aria-label={option.label}
+                      aria-label={`${option.label}, ${option.hint}`}
                       disabled={savingSfxMuted}
                       onClick={() => void saveSounds(option.muted)}
-                      className={`flex items-center justify-between gap-2 rounded-2xl border-2 px-3 py-3 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar disabled:opacity-60 ${
+                      className={`flex items-center justify-between gap-2 rounded-2xl border-2 px-3 py-3 text-left transition disabled:opacity-60 ${
                         selected
                           ? 'border-sidebar bg-sidebar/[0.06] shadow-[0_0_0_1px_rgb(29_4_50_/_0.1)]'
                           : 'border-sidebar/10 bg-mushroom/30 hover:border-sidebar/22'
@@ -1030,27 +1058,16 @@ function ProfilePageInner() {
                         <span className="block text-sm font-semibold text-sidebar">
                           {option.label}
                         </span>
-                        <span className="block text-[11px] text-ink-strong-muted">
+                        <span className="block text-xs text-ink-strong-muted">
                           {option.hint}
                         </span>
                       </span>
-                      {selected ? (
-                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-sidebar text-mushroom">
-                          <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none" aria-hidden>
-                            <path
-                              d="M3.5 8.5 6.5 11.5 12.5 4.5"
-                              stroke="currentColor"
-                              strokeWidth="2.25"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </span>
-                      ) : null}
+                      {selected ? <SelectedCheck /> : null}
                     </button>
                   );
-                })}
-              </div>
+                })
+                }
+              </ThemeRadioGroup>
             </section>
           ) : tab === 'contests' ? (
             <section

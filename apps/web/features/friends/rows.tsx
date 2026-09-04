@@ -51,11 +51,16 @@ export function FriendToggleRow({
   showCheck?: boolean;
   showOnline?: boolean;
 }) {
+  const status = showOnline ? (friend.online ? 'online' : 'offline') : null;
+  const name = [friend.name, status, selected ? 'selected' : null].filter(Boolean).join(', ');
+
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onToggle}
+      aria-pressed={selected}
+      aria-label={name}
       className={`flex w-full items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left transition disabled:opacity-45 ${
         selected
           ? 'border-sidebar/40 bg-sidebar/[0.08] text-ink-strong'
@@ -94,7 +99,7 @@ export function FriendToggleRow({
       </span>
       <span className="min-w-0 flex-1 truncate text-sm font-medium">{friend.name}</span>
       {showOnline && friend.online ? (
-        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-emerald-700/80">
+        <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-emerald-800">
           Online
         </span>
       ) : null}

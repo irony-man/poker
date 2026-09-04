@@ -63,7 +63,7 @@ data class PokrPalette(
             inkRaised = Color(0xFF2E1048),
             inkOverlay = Color(0xFF08030E),
             inkStrong = Color(0xFF1D0432),
-            inkStrongMuted = Color(0xFF5A465F),
+            inkStrongMuted = Color(0xFF4A3650),
             mushroom = Color(0xFFE6D9D7),
             sidebar = Color(0xFF1D0432),
             lobbyPanel = Color(0xFFFFFFFF),
@@ -74,7 +74,7 @@ data class PokrPalette(
             feltRim = Color(0xFF120220),
             feltRimEdge = Color(0xFFA88CA2),
             cream = Color(0xFFF2EAE8),
-            creamMuted = Color(0xFFA896A6),
+            creamMuted = Color(0xFFBCAABA),
             stackRed = Color(0xFF1D0432),
             onChrome = Color(0xFFE6D9D7),
         )

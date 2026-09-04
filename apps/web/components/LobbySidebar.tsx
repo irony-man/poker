@@ -128,6 +128,7 @@ export function LobbySidebar({
             <Link
               key={t.href}
               href={t.href}
+              aria-current={active ? 'page' : undefined}
               className={cn(
                 'nav-sidebar-item flex items-center justify-between gap-2',
                 active
@@ -143,11 +144,14 @@ export function LobbySidebar({
         {signedIn && isAdmin ? (
           <Link
             href="/admin"
+            aria-current={
+              pathname === '/admin' || pathname.startsWith('/admin/') ? 'page' : undefined
+            }
             className={cn(
               'nav-sidebar-item',
               pathname === '/admin' || pathname.startsWith('/admin/')
                 ? 'bg-brass/15 text-brass'
-                : 'text-brass/70 hover:bg-brass/10 hover:text-brass',
+                : 'text-brass hover:bg-brass/10',
             )}
           >
             Admin
@@ -196,7 +200,7 @@ export function LobbySidebar({
                         <MoneyAmount
                           amount={chipBalance}
                           showChips
-                          className="text-[11px] font-medium text-mushroom/75"
+                          className="text-xs font-medium text-mushroom/85"
                           iconClassName="opacity-70"
                           chipsClassName="!h-3.5 sm:!h-3.5"
                         />
@@ -204,12 +208,12 @@ export function LobbySidebar({
                           <MoneyAmount
                             amount={whuffieBalance}
                             showWhuffies
-                            className="text-[10px] font-medium text-mushroom/55"
+                            className="text-[11px] font-medium text-mushroom/80"
                           />
                         ) : null}
                       </span>
                     ) : (
-                      <span className="mt-1 block text-[11px] text-mushroom/40">Bankroll…</span>
+                      <span className="mt-1 block text-[11px] text-mushroom/80">Bankroll…</span>
                     )}
                   </span>
                   <ChevronIcon className="h-4 w-4 shrink-0 text-mushroom/30 transition group-hover:translate-x-0.5 group-hover:text-mushroom/55" />
@@ -218,7 +222,7 @@ export function LobbySidebar({
                   <button
                     type="button"
                     onClick={() => void onCopyUsername()}
-                    className="inline-flex w-7 shrink-0 items-center justify-center self-stretch rounded-lg text-mushroom/40 transition hover:bg-mushroom/12 hover:text-mushroom"
+                    className="inline-flex w-7 shrink-0 items-center justify-center self-stretch rounded-lg text-mushroom/80 transition hover:bg-mushroom/12 hover:text-mushroom"
                     aria-label={copied ? 'Username copied' : 'Copy username'}
                     title={copied ? 'Copied' : 'Copy username'}
                   >
@@ -234,7 +238,7 @@ export function LobbySidebar({
             <button
               type="button"
               onClick={onLogout}
-              className="w-full rounded-lg px-2 py-1.5 text-center text-[11px] font-display font-semibold uppercase tracking-[0.14em] text-mushroom/45 transition hover:bg-mushroom/8 hover:text-mushroom/80"
+              className="w-full rounded-lg px-2 py-1.5 text-center text-xs font-display font-semibold uppercase tracking-[0.14em] text-mushroom/80 transition hover:bg-mushroom/8 hover:text-mushroom"
             >
               Sign out
             </button>

@@ -33,6 +33,7 @@ import { HowToPlayHelp } from './HowToPlayHelp';
 import { TableSoundMuteButton } from './TableSoundMuteButton';
 import { isSeatActionLabel } from '@/lib/seatAction';
 import { TableOverflowMenu, type OverflowItem } from './TableOverflowMenu';
+import { TableLiveAnnouncer } from './TableLiveAnnouncer';
 import { TableShell } from './TableShell';
 import { Button, buttonClass } from '@/components/ui/Button';
 import { WinHandModal } from './WinHandModal';
@@ -679,6 +680,7 @@ export function OfflineTableView({
       actions={actionControls}
     >
       <div className="flex min-h-0 flex-1 flex-col">
+        <TableLiveAnnouncer table={publicTable} userId={HUMAN_ID} />
         <header className="play-chrome-bar">
           <div className="play-table-logo-row">
             <Image

@@ -224,6 +224,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
     <ConfirmProvider>
       <OnlineFriendsProvider signedIn={signedIn}>
         <div className="lobby-shell">
+          <SkipLink />
           <Suspense fallback={null}>
             <LobbySidebar
               signedIn={signedIn}
@@ -254,7 +255,6 @@ export function AppChrome({ children }: { children: ReactNode }) {
               />
             </header>
 
-            <SkipLink />
             <main
               id="main-content"
               className={`flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain pb-4 md:pb-0 ${

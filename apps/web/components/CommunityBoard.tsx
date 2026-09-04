@@ -1,6 +1,7 @@
 'use client';
 
-import { PlayingCard, type CardSize } from './PlayingCard';
+import type { ReactNode } from 'react';
+import { PlayingCard, speakCard, type CardSize } from './PlayingCard';
 
 function emptyBoardLabel(street: string | undefined): string | null {
   switch (street) {
@@ -52,6 +53,15 @@ export function CommunityBoard({
 }) {
   const size: CardSize = landscape ? 'sm' : compact ? 'board' : cardSize;
   const emptyLabel = emptyBoardLabel(street ?? undefined);
+  const boardName = cards.length
+    ? `Community cards, ${street ?? 'board'}: ${cards.map(speakCard).join(', ')}`
+    : `Community cards${emptyLabel ? `, ${emptyLabel}` : ''}`;
+
+  const wrap = (node: ReactNode) => (
+    <div role="group" aria-label={boardName}>
+      {node}
+    </div>
+  );
   const card = (c: string, i: number) => (
     <PlayingCard
       key={`${handId ?? 'board'}-${c}-${i}`}
@@ -69,7 +79,7 @@ export function CommunityBoard({
       : null;
 
   if (slots) {
-    return (
+    return wrap(
       <div className="flex items-center justify-center gap-1.5">
         {slots.map((c, i) =>
           c ? (
@@ -83,36 +93,36 @@ export function CommunityBoard({
             />
           ),
         )}
-      </div>
+      </div>,
     );
   }
 
   if (cards.length === 0) {
-    return (
+    return wrap(
       <div
         className={`flex items-center justify-center ${
           compact || landscape ? 'min-h-[2.75rem]' : 'min-h-[4.25rem] sm:min-h-[5.25rem]'
         }`}
       >
         {emptyLabel ? (
-          <span className="text-cream/45 text-xs font-display uppercase tracking-[0.18em]">
+          <span className="table-label-on-felt text-xs font-display uppercase tracking-[0.18em]">
             {emptyLabel}
           </span>
         ) : null}
-      </div>
+      </div>,
     );
   }
 
   if (landscape) {
-    return (
+    return wrap(
       <div className="flex items-center justify-center gap-1 drop-shadow-lg">
         {cards.map((c, i) => card(c, i))}
-      </div>
+      </div>,
     );
   }
 
   if (compact) {
-    return (
+    return wrap(
       <div className="flex flex-col items-center gap-0.5">
         <div className="flex items-center justify-center gap-0.5">
           {cards.slice(0, 3).map((c, i) => card(c, i))}
@@ -122,11 +132,11 @@ export function CommunityBoard({
             {cards.slice(3).map((c, i) => card(c, i + 3))}
           </div>
         )}
-      </div>
+      </div>,
     );
   }
 
-  return (
+  return wrap(
     <>
       {/* Mobile: flop row + turn/river row */}
       <div className="flex flex-col items-center gap-0.5 sm:hidden">
@@ -143,6 +153,6 @@ export function CommunityBoard({
       <div className="hidden items-center gap-1 sm:flex sm:min-h-[5.25rem]">
         {cards.map((c, i) => card(c, i))}
       </div>
-    </>
+    </>,
   );
 }

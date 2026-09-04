@@ -39,6 +39,38 @@ const SUIT_GLYPH: Record<string, string> = {
   s: '♠',
 };
 
+const RANK_NAME: Record<string, string> = {
+  A: 'Ace',
+  K: 'King',
+  Q: 'Queen',
+  J: 'Jack',
+  T: '10',
+  '9': '9',
+  '8': '8',
+  '7': '7',
+  '6': '6',
+  '5': '5',
+  '4': '4',
+  '3': '3',
+  '2': '2',
+};
+
+const SUIT_NAME: Record<string, string> = {
+  h: 'hearts',
+  d: 'diamonds',
+  c: 'clubs',
+  s: 'spades',
+};
+
+/** Spoken name for a two-character engine card code (`Ah` → “Ace of hearts”). */
+export function speakCard(code: string): string {
+  if (code.length !== 2) return code;
+  const rank = RANK_NAME[code[0]!.toUpperCase()];
+  const suit = SUIT_NAME[code[1]!.toLowerCase()];
+  if (!rank || !suit) return code;
+  return `${rank} of ${suit}`;
+}
+
 function parseCode(
   code: string,
 ): { rankChar: string; rank: string; suit: string; red: boolean } | null {
@@ -269,6 +301,7 @@ export function PlayingCard({
         animate={{ y: 0, opacity: 1, scale: 1, rotateZ: 0 }}
         transition={{ type: 'spring', stiffness: 360, damping: 24, delay: dealDelay }}
         className={shell}
+        role="img"
         aria-label="Facedown card"
       >
         <CardBack size={resolved} />
@@ -295,7 +328,8 @@ export function PlayingCard({
       animate={{ y: 0, opacity: 1, scale: 1, rotateZ: 0 }}
       transition={{ type: 'spring', stiffness: 360, damping: 24, delay: dealDelay }}
       className={shell}
-      aria-label={code}
+      role="img"
+      aria-label={speakCard(code)}
     >
       <CardFace rank={parsed.rank} suit={parsed.suit} red={parsed.red} size={resolved} />
       {highlight ? (

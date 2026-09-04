@@ -60,8 +60,8 @@ function SeatKickButton({
       aria-label="Kick player"
       className={
         compact
-          ? 'absolute -right-1 -top-1 z-30 flex h-4 min-w-4 items-center justify-center rounded-full bg-black/70 px-0.5 text-[9px] font-bold leading-none text-white/70 hover:bg-red-950/90 hover:text-red-300'
-          : 'absolute -right-1.5 -top-1.5 z-30 rounded bg-black/70 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white/70 shadow hover:bg-red-950/90 hover:text-red-300'
+          ? 'absolute -right-1 -top-1 z-30 flex h-6 min-w-6 items-center justify-center rounded-full bg-black/80 px-1 text-[11px] font-bold leading-none text-white hover:bg-red-950/90 hover:text-red-300'
+          : 'absolute -right-1.5 -top-1.5 z-30 min-h-6 rounded bg-black/80 px-1.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-white shadow hover:bg-red-950/90 hover:text-red-300'
       }
     >
       {compact ? '×' : 'Kick'}
@@ -154,7 +154,7 @@ export function SeatView({
       return (
         <div
           style={{ left: `${x}%`, top: `${y}%` }}
-          className="absolute -translate-x-1/2 -translate-y-1/2 rounded-md border border-dashed border-white/25 bg-black/25 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white/45"
+          className="absolute -translate-x-1/2 -translate-y-1/2 min-h-6 rounded-md border border-dashed border-white/50 bg-black/45 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide table-label-on-felt"
         >
           Empty
         </div>
@@ -168,8 +168,8 @@ export function SeatView({
         <button
           type="button"
           onClick={onSit}
-          className={`rounded border border-dashed border-white/40 bg-black/35 font-bold uppercase tracking-wide text-white/80 hover:border-white hover:text-white ${
-            compact ? 'px-1.5 py-0.5 text-[8px]' : 'rounded-md px-2.5 py-1 text-[10px]'
+          className={`min-h-6 rounded border border-dashed border-white/60 bg-black/50 font-bold uppercase tracking-wide text-white hover:border-white ${
+            compact ? 'px-2 py-1 text-[11px]' : 'rounded-md px-2.5 py-1 text-[11px]'
           }`}
         >
           Sit
@@ -178,8 +178,8 @@ export function SeatView({
           <button
             type="button"
             onClick={onAddBot}
-            className={`rounded border border-dashed border-white/40 bg-black/35 font-bold uppercase tracking-wide text-white/80 hover:border-white hover:text-white ${
-              compact ? 'px-1.5 py-0.5 text-[8px]' : 'rounded-md px-2.5 py-1 text-[10px]'
+            className={`min-h-6 rounded border border-dashed border-white/60 bg-black/50 font-bold uppercase tracking-wide text-white hover:border-white ${
+              compact ? 'px-2 py-1 text-[11px]' : 'rounded-md px-2.5 py-1 text-[11px]'
             }`}
           >
             Bot
@@ -202,6 +202,18 @@ export function SeatView({
   const hasHoleCards = !folded && !!(faceDown || showCards);
   /** Compact self seats float hole cards above the chrome; lift badge clear of them. */
   const actionLiftRem = hasHoleCards && compact && isSelf ? 4.75 : 0;
+  const seatAria = [
+    player.name?.trim() || `Seat ${player.seat + 1}`,
+    formatMoneyAmount(player.stack),
+    isSelf ? 'you' : null,
+    folded ? 'folded' : sittingOut ? 'sitting out' : player.status === 'allin' ? 'all-in' : null,
+    isToAct ? 'to act' : null,
+    isDealer ? 'dealer' : null,
+    isWinner ? 'winner' : null,
+    handName ?? null,
+  ]
+    .filter(Boolean)
+    .join(', ');
 
   return (
     <>
@@ -216,6 +228,8 @@ export function SeatView({
 
       <div
         style={{ left: `${x}%`, top: `${y}%` }}
+        role="group"
+        aria-label={seatAria}
         className={`absolute -translate-x-1/2 -translate-y-1/2 ${
           isToAct || isWinner || showAction || friendMenuOpen ? 'z-20' : 'z-10'
         }`}
@@ -236,7 +250,7 @@ export function SeatView({
             }`}
           >
             {isDealer && (
-              <span className="table-chrome-disc table-chrome-disc-ring absolute -right-1 top-0 z-20 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-black shadow ring-1">
+              <span className="table-chrome-disc table-chrome-disc-ring absolute -right-1 top-0 z-20 flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-black shadow ring-1">
                 D
               </span>
             )}
@@ -333,7 +347,7 @@ export function SeatView({
                   className="block w-full rounded-none"
                 >
                   <div
-                    className={`truncate px-1 py-0.5 text-center text-[10px] font-bold leading-none ${
+                    className={`truncate px-1 py-0.5 text-center text-[11px] font-bold leading-none ${
                       isSelf ? 'bg-mushroom text-sidebar' : 'bg-[#efe6e4] text-sidebar'
                     } ${canFriend ? 'hover:brightness-95' : ''}`}
                   >
@@ -352,22 +366,22 @@ export function SeatView({
             </div>
 
             {player.status === 'allin' && !folded && (
-              <div className="table-label-on-felt mt-0.5 text-[9px] font-bold uppercase tracking-wider">
+              <div className="table-label-on-felt mt-0.5 text-[11px] font-bold uppercase tracking-wider">
                 All-in
               </div>
             )}
             {sittingOut && (
-              <div className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-200 drop-shadow">
+              <div className="mt-0.5 text-[11px] font-bold uppercase tracking-wider text-amber-200 drop-shadow">
                 Out
               </div>
             )}
             {!sittingOut && player.pendingSitOut && (
-              <div className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-200 drop-shadow">
+              <div className="mt-0.5 text-[11px] font-bold uppercase tracking-wider text-amber-200 drop-shadow">
                 Out next
               </div>
             )}
             {showReady && !sittingOut && !player.pendingSitOut && (
-              <div className="table-label-on-felt mt-0.5 text-[9px] font-bold uppercase tracking-wider">
+              <div className="table-label-on-felt mt-0.5 text-[11px] font-bold uppercase tracking-wider">
                 Ready
               </div>
             )}
@@ -450,8 +464,8 @@ export function SeatView({
 
             {handName && !compact && (
               <div
-                className={`relative z-[1] mb-0.5 rounded px-1.5 py-0.5 text-[8px] font-bold tracking-wide ${
-                  isWinner ? 'table-stack-winner' : 'bg-black/70 text-white/90'
+                className={`relative z-[1] mb-0.5 rounded px-1.5 py-0.5 text-[11px] font-bold tracking-wide ${
+                  isWinner ? 'table-stack-winner' : 'bg-black/70 text-white'
                 }`}
               >
                 {handName}
@@ -497,7 +511,7 @@ export function SeatView({
                       className="block w-full rounded-none"
                     >
                       <span
-                        className={`block truncate bg-[#efe6e4] px-0.5 py-0.5 text-center text-[8px] font-bold leading-none text-sidebar ${
+                        className={`block truncate bg-[#efe6e4] px-0.5 py-0.5 text-center text-[11px] font-bold leading-none text-sidebar ${
                           canFriend ? 'hover:brightness-95' : ''
                         }`}
                       >
@@ -561,7 +575,7 @@ export function SeatView({
                       className="block rounded-none"
                     >
                       <span
-                        className={`block max-w-[3.2rem] truncate rounded-b-sm bg-[#efe6e4] px-1.5 py-1 text-[10px] font-bold leading-none text-sidebar sm:max-w-[3.6rem] rounded-sm ${
+                        className={`block max-w-[3.2rem] truncate rounded-b-sm bg-[#efe6e4] px-1.5 py-1 text-[11px] font-bold leading-none text-sidebar sm:max-w-[3.6rem] rounded-sm ${
                           canFriend ? 'hover:brightness-95' : ''
                         }`}
                       >
@@ -590,8 +604,8 @@ export function SeatView({
 
             {handName && compact && (
               <div
-                className={`relative z-[1] mt-0.5 max-w-full truncate rounded px-1 py-px text-[7px] font-bold tracking-wide ${
-                  isWinner ? 'table-stack-winner' : 'bg-black/70 text-white/90'
+                className={`relative z-[1] mt-0.5 max-w-full truncate rounded px-1 py-0.5 text-[11px] font-bold tracking-wide ${
+                  isWinner ? 'table-stack-winner' : 'bg-black/70 text-white'
                 }`}
               >
                 {handName}
@@ -599,27 +613,27 @@ export function SeatView({
             )}
 
             {player.status === 'allin' && (
-              <div className="table-label-on-felt relative z-[1] mt-0.5 text-[7px] font-bold uppercase tracking-[0.14em]">
+              <div className="table-label-on-felt relative z-[1] mt-0.5 text-[11px] font-bold uppercase tracking-[0.14em]">
                 All-in
               </div>
             )}
             {folded && (
-              <div className="relative z-[1] mt-0.5 text-[7px] font-bold uppercase tracking-[0.14em] text-white/70">
+              <div className="relative z-[1] mt-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-white">
                 Fold
               </div>
             )}
             {sittingOut && (
-              <div className="relative z-[1] mt-0.5 text-[7px] font-bold uppercase tracking-[0.14em] text-amber-300/90">
+              <div className="relative z-[1] mt-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-amber-200">
                 Sitting out
               </div>
             )}
             {!sittingOut && player.pendingSitOut && (
-              <div className="relative z-[1] mt-0.5 text-[7px] font-bold uppercase tracking-[0.14em] text-amber-200/90">
+              <div className="relative z-[1] mt-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-amber-200">
                 Out next
               </div>
             )}
             {showReady && !sittingOut && !player.pendingSitOut && (
-              <div className="table-label-on-felt relative z-[1] mt-0.5 text-[7px] font-bold uppercase tracking-[0.14em]">
+              <div className="table-label-on-felt relative z-[1] mt-0.5 text-[11px] font-bold uppercase tracking-[0.14em]">
                 Ready
               </div>
             )}
@@ -635,7 +649,7 @@ export function SeatView({
           <button
             type="button"
             onClick={onRemoveBot}
-            className="mt-0.5 text-[10px] text-white/40 hover:text-red-300"
+            className="mt-0.5 min-h-6 text-[11px] text-white/80 hover:text-red-300"
           >
             Remove
           </button>
@@ -645,7 +659,7 @@ export function SeatView({
             type="button"
             onClick={onRemoveBot}
             aria-label="Remove bot"
-            className="mt-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-black/50 text-[9px] text-white/50 hover:text-red-300"
+            className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-[11px] text-white hover:text-red-300"
           >
             ×
           </button>

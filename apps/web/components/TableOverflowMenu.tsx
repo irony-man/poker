@@ -69,6 +69,7 @@ export function TableOverflowMenu({
         onClick={() => setOpen((v) => !v)}
         className="text-base leading-none"
         title="More"
+        aria-label="More table actions"
       >
         ⋯
       </Button>

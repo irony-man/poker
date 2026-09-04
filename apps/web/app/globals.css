@@ -176,7 +176,8 @@ body {
   transform: translateY(-160%);
 }
 
-.skip-link:focus {
+.skip-link:focus,
+.skip-link:focus-visible {
   transform: none;
   outline: 2px solid rgb(var(--mushroom));
   outline-offset: 2px;

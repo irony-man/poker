@@ -46,9 +46,9 @@ export function ChatPanel({
   };
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col bg-gradient-to-b from-[#f4eeec] via-mushroom to-[#e8ddd9] text-ink-strong">
+    <div className="chat-panel-shell relative flex h-full min-h-0 flex-col bg-gradient-to-b from-[#f4eeec] via-mushroom to-[#e8ddd9] text-ink-strong">
       {/* Header */}
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-sidebar/10 bg-white/55 px-4 py-3.5 backdrop-blur-sm">
+      <header className="glass-sheet flex shrink-0 items-center justify-between gap-3 border-b border-sidebar/10 px-4 py-3.5 backdrop-blur-sm">
         <h2 className="font-display text-sm font-bold uppercase tracking-[0.16em] text-sidebar">
           Chat
         </h2>
@@ -56,7 +56,7 @@ export function ChatPanel({
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 rounded-full border border-sidebar/15 bg-white px-3 py-1.5 text-[10px] font-display font-semibold uppercase tracking-wider text-ink-strong-muted shadow-[0_2px_8px_rgb(29_4_50/0.06)] transition hover:border-sidebar/30 hover:text-sidebar"
+            className="glass-sheet shrink-0 rounded-full border border-sidebar/15 px-3 py-1.5 text-[10px] font-display font-semibold uppercase tracking-wider text-ink-strong-muted shadow-[0_2px_8px_rgb(29_4_50/0.06)] transition hover:border-sidebar/30 hover:text-sidebar"
           >
             {closeLabel}
           </button>
@@ -70,7 +70,7 @@ export function ChatPanel({
       >
         {chat.length === 0 ? (
           <div className="flex h-full min-h-[10rem] flex-col items-center justify-center px-4 text-center">
-            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-sidebar/10 bg-white shadow-[0_6px_18px_rgb(29_4_50/0.08)]">
+            <div className="glass-sheet mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-sidebar/10 shadow-[0_6px_18px_rgb(29_4_50/0.08)]">
               <AppleEmoji emoji="💬" size={28} decorative />
             </div>
             <p className="font-heading-sub">
@@ -107,7 +107,7 @@ export function ChatPanel({
               return (
                 <div
                   key={`${m.at}-${i}`}
-                  className="mx-auto max-w-[95%] rounded-full border border-sidebar/10 bg-white/55 px-3.5 py-1.5 text-center text-[12px] text-ink-strong-muted"
+                  className="glass-sheet mx-auto max-w-[95%] rounded-full border border-sidebar/10 px-3.5 py-1.5 text-center text-[12px] text-ink-strong-muted"
                 >
                   {isDealer ? (
                     <span className="italic">{m.text}</span>
@@ -125,7 +125,7 @@ export function ChatPanel({
             return (
               <div
                 key={`${m.at}-${i}`}
-                className="rounded-2xl border border-sidebar/8 bg-white/80 px-3.5 py-2.5 shadow-[0_2px_10px_rgb(29_4_50/0.05)]"
+                className="glass-sheet rounded-2xl border border-sidebar/8 px-3.5 py-2.5 shadow-[0_2px_10px_rgb(29_4_50/0.05)]"
               >
                 <p className="font-display text-[11px] font-bold uppercase tracking-[0.12em] text-sidebar">
                   {m.name}
@@ -186,7 +186,7 @@ export function ChatPanel({
       )}
 
       {/* Composer */}
-      <div className="shrink-0 border-t border-sidebar/10 bg-white/70 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5 backdrop-blur-sm sm:px-3.5">
+      <div className="glass-sheet shrink-0 border-t border-sidebar/10 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5 backdrop-blur-sm sm:px-3.5">
         <div className="mb-2 flex flex-wrap items-center gap-1">
           {FREQUENT.map((e) => (
             <button
@@ -205,7 +205,7 @@ export function ChatPanel({
             className={`ml-0.5 rounded-full border px-3 py-1.5 text-[10px] font-display font-bold uppercase tracking-wider transition ${
               pickerOpen
                 ? 'border-sidebar bg-sidebar text-mushroom'
-                : 'border-sidebar/15 bg-white text-sidebar hover:border-sidebar/30'
+                : 'glass-sheet border-sidebar/15 text-sidebar hover:border-sidebar/30'
             }`}
             aria-expanded={pickerOpen}
             aria-label="All emojis"
@@ -215,7 +215,7 @@ export function ChatPanel({
         </div>
 
         <form
-          className="flex items-center gap-2 rounded-2xl border border-sidebar/12 bg-white p-1.5 pl-3 shadow-[0_4px_16px_rgb(29_4_50/0.06)]"
+          className="glass-sheet flex items-center gap-2 rounded-2xl border border-sidebar/12 p-1.5 pl-3 shadow-[0_4px_16px_rgb(29_4_50/0.06)]"
           onSubmit={(e) => {
             e.preventDefault();
             submit();

@@ -610,7 +610,7 @@ function ProfilePageInner() {
                 <div className="min-w-0">
                   <h3 className="font-heading-section">App look</h3>
                   <p className="mt-1.5 max-w-lg font-prose-muted">
-                    Classic or Arcade. Only you see this. Gameplay stays the same.
+                    Classic, Arcade, or Glass. Only you see this. Gameplay stays the same.
                   </p>
                 </div>
                 {savingUiTheme ? (
@@ -621,7 +621,7 @@ function ProfilePageInner() {
               </div>
 
               <div
-                className="mt-5 grid grid-cols-2 gap-3"
+                className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3"
                 role="radiogroup"
                 aria-label="App look"
               >
@@ -640,6 +640,13 @@ function ProfilePageInner() {
                       hint: 'Go Old School',
                       swatchClass: 'bg-[#FDE93D]',
                       accentClass: 'bg-[#5B21B6]',
+                    },
+                    {
+                      id: 'v3' as const,
+                      label: 'Glass',
+                      hint: 'Dusk aurora',
+                      swatchClass: 'bg-[#2A1848]',
+                      accentClass: 'bg-white/70',
                     },
                   ] as const
                 ).map((look) => {
@@ -673,10 +680,19 @@ function ProfilePageInner() {
                             }}
                           />
                         ) : null}
+                        {look.id === 'v3' ? (
+                          <span
+                            className="absolute inset-0"
+                            style={{
+                              backgroundImage:
+                                'radial-gradient(ellipse at 16% -8%, rgb(168 100 255 / 0.55), transparent 52%), radial-gradient(ellipse at 92% 10%, rgb(80 200 220 / 0.32), transparent 46%), radial-gradient(ellipse at 50% 120%, rgb(200 80 180 / 0.28), transparent 52%)',
+                            }}
+                          />
+                        ) : null}
                         <span
                           className={`absolute bottom-2 left-2 h-7 w-12 rounded-md ${look.accentClass} ${
                             look.id === 'v2' ? 'border-2 border-black shadow-[2px_2px_0_0_#000]' : ''
-                          }`}
+                          } ${look.id === 'v3' ? 'border border-white/50 shadow-[0_0_14px_rgb(80_200_220_/_0.45),0_1px_0_rgb(210_236_255_/_0.7)_inset] backdrop-blur-[2px]' : ''}`}
                         />
                       </span>
                       <span className="flex items-center justify-between gap-2 px-3 py-2.5">

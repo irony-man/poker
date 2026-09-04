@@ -81,6 +81,13 @@
   --scrollbar-track: rgb(var(--sidebar) / 0.07);
   --scrollbar-thumb: rgb(var(--sidebar) / 0.38);
   --scrollbar-thumb-hover: rgb(var(--sidebar) / 0.58);
+
+  /* Glass (v3) — unused until html[data-ui-theme='v3'] remaps them */
+  --glass-fill: 255 252 250;
+  --glass-fill-strong: 255 255 255;
+  --glass-stroke: 255 255 255;
+  --glass-highlight: 255 255 255;
+  --glass-blur: 20px;
 }
 
 html {
@@ -594,6 +601,11 @@ body > * {
     @apply overflow-hidden rounded-2xl border bg-white;
     border-color: rgb(var(--sidebar) / 0.12);
     box-shadow: 0 18px 48px rgb(29 4 50 / 0.18);
+  }
+
+  /* Shared sheet for docks / popovers. Classic + Arcade stay solid white; Glass frosts it. */
+  .glass-sheet {
+    background-color: #fff;
   }
 
   .surface-list {
@@ -1326,4 +1338,376 @@ html[data-ui-theme='v2'] .play-chrome-control-active {
 html[data-ui-theme='v2'] .play-chrome-leave {
   border: 3px solid #000;
   box-shadow: 3px 3px 0 0 #000;
+}
+
+/*
+ * Glass (v3) — dusk aurora. Colorful twilight ground so frost reads;
+ * ice rims + inset highlight. Table color presets still tint the oval;
+ * this look only changes the oval material. Status, brass, and card faces
+ * stay put. --ink-strong stays dark for frost/white controls.
+ */
+html[data-ui-theme='v3'] {
+  --ink: 10 6 22;
+  --ink-panel: 28 18 56;
+  --ink-raised: 52 36 96;
+  --ink-overlay: 6 4 16;
+  --sidebar: 96 64 168;
+  --mushroom: 42 24 72;
+  --ink-strong: 22 12 40;
+  --ink-strong-muted: 88 72 110;
+  --cream: 255 255 255;
+  --cream-muted: 196 184 214;
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --shadow-panel:
+    0 1px 0 0 rgb(var(--glass-highlight) / 0.55) inset,
+    0 16px 48px rgb(8 4 20 / 0.28);
+  --shadow-raised:
+    0 1px 0 0 rgb(var(--glass-highlight) / 0.5) inset,
+    0 10px 28px rgb(8 4 20 / 0.22);
+  --shadow-glow: 0 0 32px rgb(80 200 220 / 0.2);
+  --shadow-card: 0 12px 36px rgb(8 4 20 / 0.24);
+  --scrollbar-track: rgb(var(--glass-fill) / 0.08);
+  --scrollbar-thumb: rgb(var(--glass-fill) / 0.28);
+  --scrollbar-thumb-hover: rgb(var(--glass-fill) / 0.44);
+  --glass-fill: 255 255 255;
+  --glass-fill-strong: 255 255 255;
+  --glass-stroke: 255 255 255;
+  --glass-highlight: 210 236 255;
+  --glass-blur: 28px;
+}
+
+html[data-ui-theme='v3'],
+html[data-ui-theme='v3'] body,
+html[data-ui-theme='v3'] .lobby-shell,
+html[data-ui-theme='v3'] .lobby-main,
+html[data-ui-theme='v3'] .play-shell {
+  background-color: rgb(var(--mushroom));
+  background-image:
+    radial-gradient(ellipse at 16% -8%, rgb(168 100 255 / 0.45), transparent 52%),
+    radial-gradient(ellipse at 92% 10%, rgb(80 200 220 / 0.28), transparent 46%),
+    radial-gradient(ellipse at 50% 112%, rgb(200 80 180 / 0.22), transparent 52%);
+}
+
+/* Page-ground copy sits on dusk; cards reset their own ink-strong. */
+html[data-ui-theme='v3'] .lobby-main .font-title-page,
+html[data-ui-theme='v3'] .lobby-page-intro > header .font-title-page {
+  color: rgb(var(--cream));
+}
+
+html[data-ui-theme='v3'] .lobby-page-intro > header .font-prose-muted,
+html[data-ui-theme='v3'] .lobby-page-intro > header .text-ink-strong-muted,
+html[data-ui-theme='v3'] .lobby-main > header .font-prose-muted,
+html[data-ui-theme='v3'] .lobby-main section.lobby-fade-up p.text-ink-strong-muted {
+  color: rgb(var(--cream-muted));
+}
+
+html[data-ui-theme='v3'] .lobby-page-intro > header .link-sidebar {
+  color: rgb(var(--glass-highlight));
+}
+
+html[data-ui-theme='v3'] .lobby-main > header .text-ink-strong,
+html[data-ui-theme='v3'] .lobby-main section.lobby-fade-up h2 {
+  color: rgb(var(--cream));
+}
+
+html[data-ui-theme='v3'] .lobby-main .lobby-fade-up.text-ink-strong-muted {
+  color: rgb(var(--cream-muted));
+}
+
+html[data-ui-theme='v3'] .lobby-main .link-auth-footer {
+  color: rgb(var(--glass-highlight));
+}
+
+/* Classic uses mushroom as light-on-chrome text; dusk ground would make that unreadable. */
+html[data-ui-theme='v3'] .text-mushroom {
+  color: rgb(var(--cream));
+}
+
+html[data-ui-theme='v3'] .lobby-sidebar {
+  background-color: rgb(var(--ink-panel) / 0.38);
+  backdrop-filter: blur(28px) saturate(1.45);
+  -webkit-backdrop-filter: blur(28px) saturate(1.45);
+  border-right: 1px solid rgb(80 200 220 / 0.22);
+  box-shadow: 0 1px 0 0 rgb(var(--glass-highlight) / 0.28) inset;
+  color: #fff;
+}
+
+html[data-ui-theme='v3'] .lobby-sidebar .sidebar-nav-kicker {
+  color: rgb(var(--cream) / 0.72);
+}
+
+html[data-ui-theme='v3'] .lobby-sidebar .nav-sidebar-item {
+  color: rgb(255 255 255 / 0.88);
+}
+
+html[data-ui-theme='v3'] .lobby-sidebar .nav-sidebar-item:hover {
+  background-color: rgb(255 255 255 / 0.12);
+  color: #fff;
+}
+
+html[data-ui-theme='v3'] .lobby-sidebar .nav-sidebar-item-active {
+  background-color: rgb(var(--glass-fill) / 0.18);
+  color: #fff;
+  border: 1px solid rgb(var(--glass-highlight) / 0.4);
+  box-shadow: 0 1px 0 0 rgb(var(--glass-highlight) / 0.45) inset;
+}
+
+html[data-ui-theme='v3'] .hud-panel {
+  overflow: hidden;
+  border: 1px solid rgb(var(--glass-highlight) / 0.28);
+  background-color: rgb(var(--ink-panel) / 0.38);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  border-radius: var(--radius-lg);
+}
+
+html[data-ui-theme='v3'] .hud-panel::before {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(var(--glass-highlight) / 0.55),
+    transparent
+  );
+}
+
+html[data-ui-theme='v3'] .lobby-shell .hud-panel {
+  background-color: rgb(var(--glass-fill) / 0.62);
+  color: rgb(var(--ink-strong));
+  border-color: rgb(var(--glass-stroke) / 0.55);
+}
+
+html[data-ui-theme='v3'] .surface-card,
+html[data-ui-theme='v3'] .surface-card-lg,
+html[data-ui-theme='v3'] .surface-modal {
+  border: 1px solid rgb(var(--glass-stroke) / 0.5);
+  background-color: rgb(var(--glass-fill) / 0.62);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  border-radius: var(--radius-xl);
+}
+
+html[data-ui-theme='v3'] .surface-row,
+html[data-ui-theme='v3'] .surface-empty,
+html[data-ui-theme='v3'] .surface-empty-lg,
+html[data-ui-theme='v3'] .surface-list {
+  border-color: rgb(var(--glass-stroke) / 0.4);
+  background-color: rgb(var(--glass-fill) / 0.55);
+  backdrop-filter: blur(20px) saturate(1.3);
+  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+}
+
+html[data-ui-theme='v3'] .glass-sheet {
+  background-color: rgb(var(--glass-fill) / 0.58);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  border-color: rgb(var(--glass-stroke) / 0.45);
+  box-shadow: var(--shadow-panel);
+}
+
+html[data-ui-theme='v3'] .chat-panel-shell {
+  background-image: none;
+  background-color: rgb(var(--ink-panel) / 0.38);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  border-color: rgb(var(--glass-highlight) / 0.28);
+}
+
+html[data-ui-theme='v3'] .btn-primary,
+html[data-ui-theme='v3'] .lobby-shell .btn-primary {
+  background-image: none;
+  background-color: rgb(var(--sidebar) / 0.7);
+  color: #fff;
+  border: 1px solid rgb(var(--glass-highlight) / 0.4);
+  box-shadow:
+    0 1px 0 0 rgb(var(--glass-highlight) / 0.5) inset,
+    0 8px 22px rgb(96 64 168 / 0.32);
+  backdrop-filter: blur(12px) saturate(1.3);
+  -webkit-backdrop-filter: blur(12px) saturate(1.3);
+  border-radius: var(--radius-md);
+  filter: none;
+}
+
+html[data-ui-theme='v3'] .btn-primary:hover,
+html[data-ui-theme='v3'] .lobby-shell .btn-primary:hover {
+  filter: none;
+  background-color: rgb(var(--ink-raised) / 0.78);
+}
+
+html[data-ui-theme='v3'] .btn-ghost,
+html[data-ui-theme='v3'] .lobby-shell .btn-ghost,
+html[data-ui-theme='v3'] .play-shell .btn-ghost {
+  border: 1px solid rgb(var(--glass-stroke) / 0.45);
+  background-color: rgb(var(--glass-fill) / 0.55);
+  color: rgb(var(--ink-strong));
+  box-shadow: 0 1px 0 0 rgb(var(--glass-highlight) / 0.4) inset;
+  backdrop-filter: blur(12px) saturate(1.25);
+  -webkit-backdrop-filter: blur(12px) saturate(1.25);
+}
+
+html[data-ui-theme='v3'] .btn-soft,
+html[data-ui-theme='v3'] .btn-secondary,
+html[data-ui-theme='v3'] .btn-pill {
+  border-color: rgb(var(--glass-stroke) / 0.42);
+  background-color: rgb(var(--glass-fill) / 0.55);
+  box-shadow: 0 1px 0 0 rgb(var(--glass-highlight) / 0.4) inset;
+  backdrop-filter: blur(12px) saturate(1.25);
+  -webkit-backdrop-filter: blur(12px) saturate(1.25);
+}
+
+html[data-ui-theme='v3'] .hud-input,
+html[data-ui-theme='v3'] .lobby-shell .hud-input,
+html[data-ui-theme='v3'] .field-select,
+html[data-ui-theme='v3'] .lobby-shell .field-select {
+  border-color: rgb(var(--glass-stroke) / 0.42);
+  background-color: rgb(var(--glass-fill) / 0.62);
+  box-shadow: 0 1px 0 0 rgb(var(--glass-highlight) / 0.35) inset;
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  border-radius: var(--radius-sm);
+}
+
+html[data-ui-theme='v3'] .choice-chip,
+html[data-ui-theme='v3'] .lobby-shell .choice-chip {
+  border-color: rgb(var(--glass-stroke) / 0.4);
+  background-color: rgb(var(--glass-fill) / 0.55);
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+}
+
+html[data-ui-theme='v3'] .choice-chip-selected,
+html[data-ui-theme='v3'] .lobby-shell .choice-chip-selected {
+  background-color: rgb(var(--sidebar) / 0.55);
+  color: #fff;
+  border-color: rgb(var(--glass-highlight) / 0.5);
+}
+
+html[data-ui-theme='v3'] .status-chip,
+html[data-ui-theme='v3'] .lobby-shell .status-chip {
+  border-color: rgb(var(--glass-stroke) / 0.4);
+  background-color: rgb(var(--glass-fill) / 0.55);
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+}
+
+html[data-ui-theme='v3'] .play-chrome-bar {
+  background-color: rgb(var(--ink-panel) / 0.38);
+  backdrop-filter: blur(20px) saturate(1.35);
+  -webkit-backdrop-filter: blur(20px) saturate(1.35);
+  border-color: rgb(var(--glass-highlight) / 0.22);
+}
+
+html[data-ui-theme='v3'] .play-chrome-control,
+html[data-ui-theme='v3'] .play-chrome-control-icon {
+  border-color: rgb(var(--glass-highlight) / 0.32);
+  background-color: rgb(var(--ink-panel) / 0.42);
+  box-shadow: 0 1px 0 0 rgb(var(--glass-highlight) / 0.4) inset;
+  backdrop-filter: blur(12px) saturate(1.25);
+  -webkit-backdrop-filter: blur(12px) saturate(1.25);
+}
+
+html[data-ui-theme='v3'] .play-chrome-control-active {
+  background-color: rgb(var(--sidebar) / 0.62);
+  color: #fff;
+  border-color: rgb(var(--glass-highlight) / 0.45);
+}
+
+html[data-ui-theme='v3'] .play-chrome-leave {
+  border-color: rgb(var(--danger) / 0.45);
+  box-shadow: 0 8px 20px rgb(192 57 43 / 0.22);
+}
+
+html[data-ui-theme='v3'] .felt-surface {
+  background:
+    radial-gradient(ellipse at 50% 18%, rgb(var(--glass-highlight) / 0.38), transparent 42%),
+    radial-gradient(ellipse at 50% 55%, rgb(var(--felt-mid) / 0.38), transparent 70%),
+    radial-gradient(
+      ellipse at center,
+      rgb(var(--felt) / 0.52) 0%,
+      rgb(var(--felt-deep) / 0.72) 70%,
+      transparent 100%
+    );
+  backdrop-filter: blur(18px) saturate(1.3);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  box-shadow:
+    inset 0 1px 0 rgb(var(--glass-highlight) / 0.42),
+    inset 0 0 80px rgb(0 0 0 / 0.22),
+    inset 0 0 0 1px rgb(80 200 220 / 0.16);
+}
+
+html[data-ui-theme='v3'] .table-rim {
+  border-color: rgb(var(--glass-highlight) / 0.28);
+  box-shadow:
+    inset 0 1px 0 rgb(var(--glass-highlight) / 0.5),
+    inset 0 0 0 1px rgb(var(--felt-rim-edge) / 0.35),
+    0 0 0 1px rgb(80 200 220 / 0.16),
+    0 20px 50px rgb(8 4 20 / 0.32);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  html[data-ui-theme='v3'] .hud-panel,
+  html[data-ui-theme='v3'] .lobby-shell .hud-panel,
+  html[data-ui-theme='v3'] .surface-card,
+  html[data-ui-theme='v3'] .surface-card-lg,
+  html[data-ui-theme='v3'] .surface-modal,
+  html[data-ui-theme='v3'] .surface-row,
+  html[data-ui-theme='v3'] .surface-empty,
+  html[data-ui-theme='v3'] .surface-empty-lg,
+  html[data-ui-theme='v3'] .surface-list,
+  html[data-ui-theme='v3'] .glass-sheet,
+  html[data-ui-theme='v3'] .btn-primary,
+  html[data-ui-theme='v3'] .lobby-shell .btn-primary,
+  html[data-ui-theme='v3'] .btn-ghost,
+  html[data-ui-theme='v3'] .lobby-shell .btn-ghost,
+  html[data-ui-theme='v3'] .play-shell .btn-ghost,
+  html[data-ui-theme='v3'] .btn-soft,
+  html[data-ui-theme='v3'] .hud-input,
+  html[data-ui-theme='v3'] .lobby-shell .hud-input,
+  html[data-ui-theme='v3'] .field-select,
+  html[data-ui-theme='v3'] .lobby-shell .field-select,
+  html[data-ui-theme='v3'] .choice-chip,
+  html[data-ui-theme='v3'] .play-chrome-bar,
+  html[data-ui-theme='v3'] .play-chrome-control,
+  html[data-ui-theme='v3'] .play-chrome-control-icon,
+  html[data-ui-theme='v3'] .lobby-sidebar,
+  html[data-ui-theme='v3'] .felt-surface,
+  html[data-ui-theme='v3'] .chat-panel-shell {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  html[data-ui-theme='v3'] .hud-panel,
+  html[data-ui-theme='v3'] .play-chrome-bar,
+  html[data-ui-theme='v3'] .chat-panel-shell {
+    background-color: rgb(var(--ink-panel) / 0.92);
+  }
+
+  html[data-ui-theme='v3'] .lobby-shell .hud-panel,
+  html[data-ui-theme='v3'] .surface-card,
+  html[data-ui-theme='v3'] .surface-card-lg,
+  html[data-ui-theme='v3'] .surface-modal,
+  html[data-ui-theme='v3'] .glass-sheet {
+    background-color: rgb(var(--glass-fill) / 0.94);
+  }
+
+  html[data-ui-theme='v3'] .lobby-sidebar {
+    background-color: rgb(var(--ink-panel) / 0.94);
+  }
+
+  html[data-ui-theme='v3'] .felt-surface {
+    background:
+      radial-gradient(ellipse at 50% 18%, rgb(var(--glass-highlight) / 0.18), transparent 42%),
+      radial-gradient(ellipse at 50% 55%, rgb(var(--felt-mid) / 0.55), transparent 70%),
+      radial-gradient(
+        ellipse at center,
+        rgb(var(--felt) / 0.88) 0%,
+        rgb(var(--felt-deep) / 0.96) 70%,
+        rgb(var(--felt-deep)) 100%
+      );
+  }
 }

@@ -16,7 +16,7 @@ export function RecentChatTicker({ onOpen }: { onOpen: () => void }) {
       type="button"
       onClick={onOpen}
       aria-label="Open chat"
-      className="flex max-h-[4.5rem] w-full min-w-0 flex-col justify-end gap-0.5 overflow-hidden rounded-xl border border-sidebar/10 bg-white/88 px-2.5 py-1.5 text-left shadow-[0_4px_14px_rgb(29_4_50/0.08)] backdrop-blur-sm"
+      className="glass-sheet flex max-h-[4.5rem] w-full min-w-0 flex-col justify-end gap-0.5 overflow-hidden rounded-xl border border-sidebar/10 px-2.5 py-1.5 text-left shadow-[0_4px_14px_rgb(29_4_50/0.08)] backdrop-blur-sm"
     >
       {lines.map((m, i) => (
         <p

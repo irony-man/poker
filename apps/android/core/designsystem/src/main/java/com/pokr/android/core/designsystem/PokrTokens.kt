@@ -11,18 +11,26 @@ import androidx.compose.ui.unit.dp
 enum class PokrUiTheme {
     Classic,
     Arcade,
+    Glass,
     ;
 
-    fun toApi(): String = if (this == Arcade) "v2" else "v1"
+    fun toApi(): String = when (this) {
+        Arcade -> "v2"
+        Glass -> "v3"
+        Classic -> "v1"
+    }
 
     companion object {
-        fun fromApi(value: String?): PokrUiTheme =
-            if (value == "v2") Arcade else Classic
+        fun fromApi(value: String?): PokrUiTheme = when (value) {
+            "v2" -> Arcade
+            "v3" -> Glass
+            else -> Classic
+        }
     }
 }
 
 /**
- * Surface tokens that follow Classic vs Arcade.
+ * Surface tokens that follow Classic vs Arcade vs Glass.
  * Status / brass / card faces stay on [PokrColors] as invariants.
  */
 @Immutable
@@ -93,6 +101,29 @@ data class PokrPalette(
             stackRed = Color(0xFF5B21B6),
             onChrome = Color(0xFFFFFFFF),
         )
+
+        /** Matches web `html[data-ui-theme='v3']` dusk-aurora token remap. */
+        val Glass = PokrPalette(
+            ink = Color(0xFF0A0616),
+            inkPanel = Color(0xFF1C1238),
+            inkRaised = Color(0xFF342460),
+            inkOverlay = Color(0xFF060410),
+            inkStrong = Color(0xFF160C28),
+            inkStrongMuted = Color(0xFF58486E),
+            mushroom = Color(0xFF2A1848),
+            sidebar = Color(0xFF6040A8),
+            lobbyPanel = Color(0xFFFFFFFF),
+            feltGreen = Color(0xFF1C1238),
+            feltGreenDark = Color(0xFF120C20),
+            feltMid = Color(0xFF342460),
+            feltEdge = Color(0xFF060410),
+            feltRim = Color(0xFF120C20),
+            feltRimEdge = Color(0xFFC4B8D6),
+            cream = Color(0xFFFFFFFF),
+            creamMuted = Color(0xFFC4B8D6),
+            stackRed = Color(0xFF6040A8),
+            onChrome = Color(0xFFFFFFFF),
+        )
     }
 }
 
@@ -102,7 +133,7 @@ val LocalPokrPalette = staticCompositionLocalOf { PokrPalette.Classic }
 /**
  * Canonical design tokens — POKR purple / mushroom (mirrors web globals.css).
  *
- * Surface getters read the active palette (set by [PokrTheme]) so Classic/Arcade
+ * Surface getters read the active palette (set by [PokrTheme]) so Classic/Arcade/Glass
  * restyle existing screens. Not @Composable — DrawScope / Canvas cannot call
  * composable getters; [PokrTheme] keys the tree so reads stay in sync.
  * Status, brass, and card faces stay constant. See `docs/DESIGN_SYSTEM.md`.

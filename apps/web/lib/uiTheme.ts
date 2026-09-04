@@ -1,21 +1,23 @@
 /** App chrome look. Independent of table felt color. */
 
-export type UiTheme = 'v1' | 'v2';
+export type UiTheme = 'v1' | 'v2' | 'v3';
 
 export const UI_THEME_STORAGE_KEY = 'pokr-ui-theme';
 export const UI_THEME_EVENT = 'pokr-ui-theme';
 
 export function clampUiTheme(value: unknown): UiTheme {
-  return value === 'v2' ? 'v2' : 'v1';
+  if (value === 'v2') return 'v2';
+  if (value === 'v3') return 'v3';
+  return 'v1';
 }
 
 export function applyUiTheme(theme: UiTheme): void {
   if (typeof document === 'undefined') return;
   const next = clampUiTheme(theme);
-  if (next === 'v2') {
-    document.documentElement.setAttribute('data-ui-theme', 'v2');
-  } else {
+  if (next === 'v1') {
     document.documentElement.removeAttribute('data-ui-theme');
+  } else {
+    document.documentElement.setAttribute('data-ui-theme', next);
   }
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(UI_THEME_EVENT, { detail: next }));
@@ -25,7 +27,6 @@ export function applyUiTheme(theme: UiTheme): void {
 /** Prefer the live `html` attribute so FOUC script and Profile saves stay in sync. */
 export function readActiveUiTheme(): UiTheme {
   if (typeof document !== 'undefined') {
-    if (document.documentElement.getAttribute('data-ui-theme') === 'v2') return 'v2';
     if (document.documentElement.hasAttribute('data-ui-theme')) {
       return clampUiTheme(document.documentElement.getAttribute('data-ui-theme'));
     }

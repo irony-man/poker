@@ -34,12 +34,13 @@ fun Modifier.arcadeOffsetShadow(
         }
     }
 
-/** Stakes / seats / table-size chips — Arcade hard shadow vs Classic outline. */
+/** Stakes / seats / table-size chips — Arcade hard shadow vs Classic/Glass outline. */
 fun Modifier.pokrChoiceChipSurface(
     selected: Boolean,
     shape: Shape,
     arcade: Boolean,
     chrome: PokrChrome = PokrChrome.Lobby,
+    glass: Boolean = false,
 ): Modifier {
     if (arcade) {
         return this
@@ -49,6 +50,20 @@ fun Modifier.pokrChoiceChipSurface(
                 shape,
             )
             .border(2.dp, Color.Black, shape)
+    }
+    if (glass) {
+        return this
+            .clip(shape)
+            .background(
+                if (selected) PokrColors.Sidebar.copy(alpha = 0.45f)
+                else Color.White.copy(alpha = 0.22f),
+                shape,
+            )
+            .border(
+                1.dp,
+                Color.White.copy(alpha = if (selected) 0.45f else 0.3f),
+                shape,
+            )
     }
     val (bg, border, width) = when (chrome) {
         PokrChrome.Lobby -> if (selected) {
@@ -74,9 +89,12 @@ fun pokrChoiceForeground(
     arcade: Boolean,
     muted: Boolean = false,
     chrome: PokrChrome = PokrChrome.Lobby,
+    glass: Boolean = false,
 ): Color = when {
     arcade && selected -> if (muted) PokrColors.InkStrong.copy(alpha = 0.7f) else PokrColors.InkStrong
     arcade -> if (muted) PokrColors.InkStrongMuted else PokrColors.InkStrong.copy(alpha = 0.85f)
+    glass && selected -> if (muted) Color.White.copy(alpha = 0.75f) else Color.White
+    glass -> if (muted) PokrColors.InkStrongMuted else PokrColors.InkStrong.copy(alpha = 0.85f)
     chrome == PokrChrome.Play && selected -> PokrColors.Mushroom
     chrome == PokrChrome.Play -> if (muted) PokrColors.Cream.copy(alpha = 0.65f) else PokrColors.Cream.copy(alpha = 0.8f)
     selected -> PokrColors.Sidebar

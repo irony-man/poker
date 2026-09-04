@@ -139,7 +139,7 @@ export function SocialNotificationHost() {
         {extraCount > 0 ? (
           <Link
             href="/friends"
-            className="block rounded-xl border border-sidebar/15 bg-[rgb(255_252_250_/0.97)] px-3 py-2 text-center text-xs font-semibold text-sidebar shadow-[0_8px_24px_rgb(29_4_50/0.16)] backdrop-blur-xl hover:bg-white"
+            className="glass-sheet block rounded-xl border border-sidebar/15 px-3 py-2 text-center text-xs font-semibold text-sidebar shadow-[0_8px_24px_rgb(29_4_50/0.16)] backdrop-blur-xl hover:bg-white"
           >
             +{extraCount} more on Friends
           </Link>

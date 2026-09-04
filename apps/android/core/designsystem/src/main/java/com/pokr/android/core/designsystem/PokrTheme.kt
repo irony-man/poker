@@ -19,7 +19,11 @@ fun PokrTheme(
     uiTheme: PokrUiTheme = PokrUiTheme.Classic,
     content: @Composable () -> Unit,
 ) {
-    val palette = if (uiTheme == PokrUiTheme.Arcade) PokrPalette.Arcade else PokrPalette.Classic
+    val palette = when (uiTheme) {
+        PokrUiTheme.Arcade -> PokrPalette.Arcade
+        PokrUiTheme.Glass -> PokrPalette.Glass
+        PokrUiTheme.Classic -> PokrPalette.Classic
+    }
     PokrColors.active = palette
     val colorScheme = darkColorScheme(
         primary = palette.sidebar,

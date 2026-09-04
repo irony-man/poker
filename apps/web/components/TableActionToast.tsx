@@ -83,7 +83,7 @@ export function TableActionToast() {
     >
       <div
         key={shownAt}
-        className={`table-action-toast pointer-events-auto w-full max-w-[17.5rem] overflow-hidden rounded-xl border border-danger/35 bg-[rgb(255_252_250_/0.97)] shadow-[0_10px_32px_rgb(29_4_50/0.24),0_1px_0_rgb(255_255_255/0.65)_inset] backdrop-blur-xl ${
+        className={`glass-sheet table-action-toast pointer-events-auto w-full max-w-[17.5rem] overflow-hidden rounded-xl border border-danger/35 bg-[rgb(255_252_250_/0.97)] shadow-[0_10px_32px_rgb(29_4_50/0.24),0_1px_0_rgb(255_255_255/0.65)_inset] backdrop-blur-xl ${
           leaving ? 'table-action-toast-out' : 'table-action-toast-in'
         }`}
       >

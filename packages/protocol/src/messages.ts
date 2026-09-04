@@ -385,8 +385,8 @@ export const SiteImageUploadUrlBodySchema = z.object({
   contentLength: z.number().int().positive().max(4 * 1024 * 1024),
 });
 
-/** App chrome look: Classic (v1) or Arcade (v2). Independent of table felt color. */
-export const UiThemeSchema = z.enum(['v1', 'v2']);
+/** App chrome look: Classic (v1), Arcade (v2), or Glass (v3). Independent of table felt color. */
+export const UiThemeSchema = z.enum(['v1', 'v2', 'v3']);
 export type UiTheme = z.infer<typeof UiThemeSchema>;
 
 /** In-game table layout: Classic oval (v1) or stacked HUD (v2). Independent of felt color. */
@@ -401,7 +401,7 @@ export const UpdateMeBodySchema = z
     avatarUrl: z.string().url().max(512).nullable().optional(),
     /** Preset table felt theme index (0–8). */
     tableColorId: z.number().int().min(0).max(8).optional(),
-    /** App chrome look: Classic (v1) or Arcade (v2). */
+    /** App chrome look: Classic (v1), Arcade (v2), or Glass (v3). */
     uiTheme: UiThemeSchema.optional(),
     /** Table layout: Classic oval (v1) or stacked HUD (v2). */
     tableLayout: TableLayoutSchema.optional(),

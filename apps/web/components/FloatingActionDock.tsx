@@ -89,7 +89,7 @@ export function ActionDockBody({
 }) {
   return (
     <div
-      className={`flex w-full flex-col overflow-y-auto overscroll-contain bg-white ${maxHeightClass} ${
+      className={`glass-sheet flex w-full flex-col overflow-y-auto overscroll-contain ${maxHeightClass} ${
         fillMinHeight ? 'min-h-[9.5rem]' : 'min-h-0'
       } ${className}`}
     >
@@ -110,11 +110,11 @@ export function ChatActionDock({
 }) {
   return (
     <div
-      className={`shrink-0 border-t bg-white ${
+      className={`glass-sheet shrink-0 border-t ${
         expanded ? 'border-sidebar/25' : 'border-sidebar/12'
       }`}
     >
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-sidebar/10 bg-white px-3 py-1.5">
+      <div className="glass-sheet flex shrink-0 items-center justify-between gap-2 border-b border-sidebar/10 px-3 py-1.5">
         <span
           className={`text-[10px] font-display uppercase tracking-[0.18em] ${
             expanded ? 'text-sidebar' : 'text-ink-strong-muted'
@@ -238,7 +238,7 @@ export function FloatingActionDock({
   if (narrow) {
     if (landscape) {
       return (
-        <div className="relative z-40 shrink-0 border-t border-sidebar/15 bg-white shadow-[0_-8px_24px_rgb(29_4_50/0.1)]">
+        <div className="glass-sheet relative z-40 shrink-0 border-t border-sidebar/15 shadow-[0_-8px_24px_rgb(29_4_50/0.1)]">
           <div className="mx-auto w-full max-w-5xl">
             <ActionDockBody
               fillMinHeight={false}
@@ -254,14 +254,14 @@ export function FloatingActionDock({
 
     return (
       <div
-        className={`relative z-40 shrink-0 border-t bg-white ${
+        className={`glass-sheet relative z-40 shrink-0 border-t ${
           expanded
             ? 'border-sidebar/20 shadow-[0_-6px_20px_rgb(29_4_50/0.1)]'
             : 'border-sidebar/12'
         }`}
       >
         <div
-          className={`mx-auto w-full max-w-4xl border bg-white ${
+          className={`glass-sheet mx-auto w-full max-w-4xl border ${
             expanded ? 'border-sidebar/25 ring-1 ring-sidebar/10' : 'border-sidebar/15'
           }`}
         >
@@ -298,7 +298,7 @@ export function FloatingActionDock({
           type="button"
           data-no-drag
           onClick={() => setOpen(true)}
-          className={`rounded-full border bg-white px-5 py-3 text-xs font-display font-bold uppercase tracking-[0.18em] shadow-[0_8px_24px_rgb(29_4_50/0.12)] ${
+          className={`glass-sheet rounded-full border px-5 py-3 text-xs font-display font-bold uppercase tracking-[0.18em] shadow-[0_8px_24px_rgb(29_4_50/0.12)] ${
             expanded
               ? 'border-sidebar/40 text-sidebar animate-hud-pulse'
               : 'border-sidebar/20 text-ink-strong-muted'
@@ -308,7 +308,7 @@ export function FloatingActionDock({
         </button>
       ) : (
         <div
-          className={`flex w-[min(100vw-2rem,28rem)] flex-col overflow-hidden rounded-xl border bg-white shadow-[0_16px_48px_rgb(29_4_50/0.14)] ${
+          className={`glass-sheet flex w-[min(100vw-2rem,28rem)] flex-col overflow-hidden rounded-xl border shadow-[0_16px_48px_rgb(29_4_50/0.14)] ${
             expanded ? 'border-sidebar/30 ring-1 ring-sidebar/10' : 'border-sidebar/18'
           }`}
         >

@@ -76,7 +76,7 @@ export function TableOverflowMenu({
         <div
           id={panelId}
           role="menu"
-          className="absolute right-0 top-[calc(100%+0.4rem)] z-50 min-w-[13rem] overflow-hidden rounded-xl border border-sidebar/12 bg-white py-1 shadow-[0_14px_40px_rgba(29,4,50,0.14)]"
+          className="glass-sheet absolute right-0 top-[calc(100%+0.4rem)] z-50 min-w-[13rem] overflow-hidden rounded-xl border border-sidebar/12 py-1 shadow-[0_14px_40px_rgba(29,4,50,0.14)]"
         >
           {primary.map((item) => (
             <button

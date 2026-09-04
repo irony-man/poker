@@ -25,7 +25,7 @@ Change a Classic value in both places or not at all.
 | Ink raised | `#2E1048` | `--ink-raised` | `PokrColors.InkRaised` | Raised play fills |
 | Ink overlay | `#08030E` | `--ink-overlay` | `PokrColors.InkOverlay` | Modal scrims |
 | Ink strong | `#1D0432` | `--ink-strong` | `PokrColors.InkStrong` | Text on light pages |
-| Ink strong muted | `#5A465F` | `--ink-strong-muted` | `PokrColors.InkStrongMuted` | Secondary text on light |
+| Ink strong muted | `#4A3650` | `--ink-strong-muted` | `PokrColors.InkStrongMuted` | Secondary text on light (≥7:1 on mushroom) |
 | Mushroom | `#E6D9D7` | `--mushroom` | `PokrColors.Mushroom` | Page / lobby ground |
 | Lobby panel | `#FFFCFA` | lobby `hud-panel` fill | `PokrColors.LobbyPanel` | Light cards |
 | Felt / Felt deep | `#1D0432` / `#120220` | `--felt` / `--felt-deep` | `PokrColors.FeltGreen*` | Table surface |
@@ -34,7 +34,7 @@ Change a Classic value in both places or not at all.
 | Brass | `#D6BA80` | `--brass` | `PokrColors.Brass` | Money / rare accent |
 | Brass light / dim | `#ECDAB0` / `#765C30` | `--brass-light` / `--brass-dim` | `PokrColors.BrassLight` / `.BrassDim` | Accent hover / shadow |
 | Cream | `#F2EAE8` | `--cream` | `PokrColors.Cream` | Light text on dark chrome |
-| Cream muted | `#A896A6` | `--cream-muted` | `PokrColors.CreamMuted` | Muted text on dark |
+| Cream muted | `#BCAABA` | `--cream-muted` | `PokrColors.CreamMuted` | Muted text on dark (≥8:1 on sidebar) |
 | Danger | `#C0392B` | `--danger` | `PokrColors.Danger` | Fold / errors |
 | Positive | `#48A87A` | `--positive` | `PokrColors.Positive` | Live / win |
 | Patina | `#BAA2C6` | `--patina` | `PokrColors.Patina` | Informational |
@@ -100,5 +100,5 @@ Numbers are money: use tabular figures (web `.tabular` / `tabular-nums`).
 - One brand purple in Classic. Primary CTAs use the `#341252` → `#1D0432` gradient with mushroom label text. Arcade CTAs are solid purple, white label, thick black border.
 - Brass means money or rare emphasis — not every heading. Arcade does not remap brass.
 - Color carries one meaning: danger = fold/errors, positive = live/win, patina = info. These stay global across looks.
-- Body text floors at 10px. Glow belongs on live state, never on static chrome.
+- Body and caption text floors at 11px (12px when it is body-adjacent). Glow belongs on live state, never on static chrome.
 - Playing card backs use mushroom stock + sidebar hatch (not wood/brass). Cards do not follow Arcade.

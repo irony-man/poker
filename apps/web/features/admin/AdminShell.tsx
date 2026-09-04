@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
+import { SkipLink } from '@/components/SkipLink';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { imageAssetUrl } from '@/lib/assets';
 import { formatMoneyLabel } from '@/lib/currency';
@@ -81,7 +82,7 @@ function AdminBrand({ onClick }: { onClick?: () => void }) {
         className="h-11 w-auto object-contain object-left mix-blend-screen"
         priority
       />
-      <p className="mt-2 font-display text-[10px] font-semibold uppercase tracking-[0.18em] text-brass/80">
+      <p className="mt-2 font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-brass">
         Admin
       </p>
     </Link>
@@ -186,7 +187,11 @@ export function AdminShell({
           </p>
         </header>
 
-        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 py-4 sm:px-8 sm:py-5 lg:px-12">
+        <SkipLink />
+        <main
+          id="main-content"
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 py-4 sm:px-8 sm:py-5 lg:px-12"
+        >
           <header className="mb-5 hidden md:block">
             <h1 className="font-title-page">Admin</h1>
             <p className="mt-1.5 text-sm text-ink-strong-muted">Site, players, and live tables</p>

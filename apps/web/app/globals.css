@@ -25,7 +25,8 @@
   --sidebar: 29 4 50;
   --mushroom: 230 217 215;
   --ink-strong: 29 4 50;
-  --ink-strong-muted: 90 70 95;
+  /* ≥7:1 on mushroom — secondary/caption copy at 11–12px */
+  --ink-strong-muted: 74 54 80;
 
   /* Table oval = sidebar purple family */
   --felt: 29 4 50;
@@ -40,7 +41,8 @@
 
   /* Text — mushroom-adjacent cream for play chrome */
   --cream: 242 234 232;
-  --cream-muted: 168 150 166;
+  /* ≥8:1 on sidebar purple — muted labels on dark chrome */
+  --cream-muted: 188 170 186;
 
   /* State */
   --danger: 192 57 43;
@@ -157,6 +159,37 @@ body {
   background-color: rgb(var(--mushroom));
   background-image: none;
   color: rgb(var(--ink-strong));
+}
+
+.skip-link {
+  position: absolute;
+  left: 0.75rem;
+  top: 0.75rem;
+  z-index: 200;
+  border-radius: 0.5rem;
+  background-color: rgb(var(--sidebar));
+  color: rgb(var(--mushroom));
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 700;
+  padding: 0.5rem 0.85rem;
+  transform: translateY(-160%);
+}
+
+.skip-link:focus {
+  transform: none;
+  outline: 2px solid rgb(var(--mushroom));
+  outline-offset: 2px;
+}
+
+:focus-visible {
+  outline: 2px solid rgb(var(--sidebar));
+  outline-offset: 2px;
+}
+
+.lobby-sidebar :focus-visible,
+.hud-panel :focus-visible {
+  outline-color: rgb(var(--mushroom));
 }
 
 /* Mobile browser fullscreen during play — fill the display edge-to-edge. */
@@ -315,6 +348,7 @@ body > * {
   border-color: rgb(var(--sidebar));
   background-color: rgb(var(--sidebar) / 0.1);
   color: rgb(var(--sidebar));
+  box-shadow: 0 0 0 1px rgb(var(--sidebar));
 }
 
 .lobby-shell .choice-chip-selected:hover {
@@ -631,8 +665,8 @@ body > * {
   }
 
   .sidebar-footer-link {
-    @apply block rounded-lg px-3 py-2 text-center text-[11px] font-display font-semibold uppercase tracking-[0.14em] transition hover:text-mushroom;
-    color: rgb(var(--mushroom) / 0.55);
+    @apply block rounded-lg px-3 py-2 text-center text-xs font-display font-semibold uppercase tracking-[0.14em] transition hover:text-mushroom;
+    color: rgb(var(--mushroom) / 0.8);
   }
 
   .sidebar-footer-link:hover {
@@ -644,7 +678,7 @@ body > * {
   }
 
   .sidebar-nav-kicker {
-    @apply px-3 pb-1.5 text-[10px] font-display font-semibold uppercase tracking-[0.16em] text-mushroom/70;
+    @apply px-3 pb-1.5 text-[11px] font-display font-semibold uppercase tracking-[0.16em] text-mushroom/80;
   }
 
   .menu-item-dark {
@@ -676,7 +710,7 @@ body > * {
   }
 
   .admin-table-head {
-    @apply border-b border-sidebar/10 text-[10px] font-display font-semibold uppercase tracking-[0.14em] text-ink-strong-muted;
+    @apply border-b border-sidebar/10 text-[11px] font-display font-semibold uppercase tracking-[0.14em] text-ink-strong-muted;
     background-color: rgb(var(--mushroom) / 0.05);
   }
 
@@ -703,11 +737,11 @@ body > * {
   }
 
   .font-kicker-xs {
-    @apply text-[10px] font-display font-semibold uppercase tracking-[0.16em] text-ink-strong-muted;
+    @apply text-[11px] font-display font-semibold uppercase tracking-[0.16em] text-ink-strong-muted;
   }
 
   .font-kicker-sidebar {
-    @apply text-[10px] font-display font-semibold uppercase tracking-[0.16em] text-sidebar;
+    @apply text-[11px] font-display font-semibold uppercase tracking-[0.16em] text-sidebar;
   }
 
   .font-prose-muted {

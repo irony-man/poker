@@ -7,6 +7,7 @@ import { LoadingScreen } from '@/components/LoadingScreen';
 import { Button } from '@/components/ui/Button';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { authHref } from '@/lib/authRedirect';
+import { ensurePlaySession } from '@/lib/ensurePlaySession';
 import { clearStoredSession, readStoredSession } from '@/lib/session';
 import { useSession } from '@/lib/store';
 
@@ -15,7 +16,6 @@ function LudoPlayInner() {
   const search = useSearchParams();
   const invite = search.get('invite');
   const spectate = search.get('mode') === 'spectate';
-  const setSession = useSession((s) => s.setSession);
   const clearSession = useSession((s) => s.clearSession);
   const clearLudo = useSession((s) => s.clearLudo);
   const ludoId = params.id;
@@ -35,7 +35,8 @@ function LudoPlayInner() {
     setNeedsAuth(!stored);
   }, []);
 
-  function bootSession() {
+  useEffect(() => {
+    if (needsAuth !== false) return;
     const stored = readStoredSession();
     if (!stored) {
       setNeedsAuth(true);
@@ -43,38 +44,35 @@ function LudoPlayInner() {
     }
     const key = `${ludoId}:${stored.userId}`;
     if (bootedFor.current === key) return;
-    bootedFor.current = key;
 
+    let cancelled = false;
     setBooting(true);
     setReady(false);
     setError(null);
-    try {
-      setSession({
-        userId: stored.userId,
-        username: stored.username,
-        name: stored.name,
-        ticket: stored.ticket,
-        sessionToken: stored.sessionToken,
+    void ensurePlaySession()
+      .then(() => {
+        if (cancelled) return;
+        bootedFor.current = key;
+        setNeedsAuth(false);
+        setReady(true);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        bootedFor.current = null;
+        clearStoredSession();
+        clearSession();
+        setNeedsAuth(true);
+        setReady(false);
+        setError(err instanceof Error ? err.message : 'Session expired');
+      })
+      .finally(() => {
+        if (!cancelled) setBooting(false);
       });
-      setNeedsAuth(false);
-      setReady(true);
-    } catch (err) {
-      bootedFor.current = null;
-      clearStoredSession();
-      clearSession();
-      setNeedsAuth(true);
-      setReady(false);
-      setError(err instanceof Error ? err.message : 'Session expired');
-    } finally {
-      setBooting(false);
-    }
-  }
 
-  useEffect(() => {
-    if (needsAuth !== false) return;
-    bootSession();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ludoId, needsAuth]);
+    return () => {
+      cancelled = true;
+    };
+  }, [ludoId, needsAuth, clearSession]);
 
   if (needsAuth === null) {
     return <LoadingScreen label="Loading…" compact />;

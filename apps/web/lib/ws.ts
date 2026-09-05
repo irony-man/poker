@@ -10,10 +10,10 @@ import type {
   PendingRequest,
   PublicTableSummary,
 } from '@/lib/api';
-import { WS_URL } from '@/lib/api';
+import { WS_URL, refreshTicket } from '@/lib/api';
 import { emitSocketMessage } from './socketMessages';
 import { isSeatActionLabel } from '@/lib/seatAction';
-import { clearStoredSession } from './session';
+import { clearStoredSession, readStoredSession, writeStoredSession } from './session';
 import { useSession, type PrivateView, type PublicTable } from './store';
 
 const RECONNECT_DELAY_MS = 2_000;
@@ -29,6 +29,8 @@ let pingTimer: ReturnType<typeof setInterval> | null = null;
 let emojiClearTimer: ReturnType<typeof setTimeout> | null = null;
 /** How many React roots hold the session socket open. */
 let holdCount = 0;
+/** Avoid parallel /api/ticket storms after bad_auth. */
+let recoveringAuth = false;
 
 function clearTimers(): void {
   if (reconnectTimer) {
@@ -181,10 +183,67 @@ function dispatchMessage(msg: { type?: string; [key: string]: unknown }): void {
         clearStoredSession();
         s.clearSession();
       }
+      if (code === 'bad_auth') {
+        void recoverBadAuth();
+      }
       break;
     }
     default:
       break;
+  }
+}
+
+/** Re-mint WS ticket from HTTP session after bad_auth; otherwise force sign-in. */
+async function recoverBadAuth(): Promise<void> {
+  if (recoveringAuth) return;
+  recoveringAuth = true;
+  authSentForTicket = null;
+  try {
+    const stored = readStoredSession();
+    const sessionToken = stored?.sessionToken ?? useSession.getState().sessionToken;
+    if (!sessionToken) {
+      clearStoredSession();
+      useSession.getState().clearSession();
+      useSession.getState().setConnection('closed');
+      return;
+    }
+    const fresh = await refreshTicket(sessionToken);
+    const next = {
+      userId: fresh.userId,
+      username: fresh.username,
+      name: fresh.name,
+      ticket: fresh.ticket,
+      sessionToken,
+      avatarId: fresh.avatarId ?? stored?.avatarId,
+      ...(typeof fresh.chipBalance === 'number' ? { chipBalance: fresh.chipBalance } : {}),
+      ...(typeof fresh.whuffieBalance === 'number' ? { whuffieBalance: fresh.whuffieBalance } : {}),
+    };
+    writeStoredSession({
+      userId: next.userId,
+      username: next.username,
+      name: next.name,
+      ticket: next.ticket,
+      sessionToken,
+      avatarId: next.avatarId,
+      ...(typeof next.chipBalance === 'number' ? { chipBalance: next.chipBalance } : {}),
+      ...(typeof next.whuffieBalance === 'number' ? { whuffieBalance: next.whuffieBalance } : {}),
+    });
+    useSession.getState().setSession(next);
+    useSession.getState().setError(null);
+    sharedTicket = fresh.ticket;
+    if (sharedWs && sharedWs.readyState === WebSocket.OPEN) {
+      authSentForTicket = fresh.ticket;
+      sharedWs.send(JSON.stringify({ type: 'auth', ticket: fresh.ticket }));
+    } else if (holdCount > 0) {
+      connectShared();
+    }
+  } catch {
+    clearStoredSession();
+    useSession.getState().clearSession();
+    useSession.getState().setConnection('closed');
+    useSession.getState().setError('Session expired — sign in again', 'bad_auth');
+  } finally {
+    recoveringAuth = false;
   }
 }
 

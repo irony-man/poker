@@ -167,6 +167,30 @@ export function LudoView({
     );
   }
 
+  if (!ludo && (lastErrorCode === 'bad_auth' || connection === 'closed')) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
+        <p className="text-on-chrome">
+          {lastErrorCode === 'bad_auth' ? 'Session expired' : "Can't reach the board"}
+        </p>
+        <p className="max-w-sm text-sm text-on-chrome/70">
+          {lastError ??
+            (lastErrorCode === 'bad_auth'
+              ? 'Sign in again, then reopen the board.'
+              : 'Check that the server is awake, then try again.')}
+        </p>
+        <div className="flex flex-wrap justify-center gap-2">
+          <Button type="button" onClick={() => window.location.reload()}>
+            Retry
+          </Button>
+          <Button type="button" variant="ghost" onClick={() => router.push('/')}>
+            Back to lobby
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (!ludo) {
     return (
       <div className="flex flex-1 items-center justify-center">

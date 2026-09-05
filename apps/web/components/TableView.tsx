@@ -49,6 +49,7 @@ export function TableView({
   const priv = useSession((s) => s.private);
   const userId = useSession((s) => s.userId);
   const connection = useSession((s) => s.connection);
+  const lastError = useSession((s) => s.lastError);
   const lastErrorCode = useSession((s) => s.lastErrorCode);
   const boundTableId = useSession((s) => s.boundTableId);
   const setError = useSession((s) => s.setError);
@@ -357,6 +358,25 @@ export function TableView({
             ? 'Table closed — opening contest results…'
             : 'Table not found — returning home…'}
         </p>
+      </div>
+    );
+  }
+
+  if (!table && lastErrorCode === 'bad_auth') {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
+        <p className="text-ink-strong">Session expired</p>
+        <p className="max-w-sm text-sm text-ink-strong-muted">
+          {lastError ?? 'Sign in again, then reopen the table.'}
+        </p>
+        <div className="flex flex-wrap justify-center gap-2">
+          <Button type="button" onClick={() => window.location.reload()}>
+            Retry
+          </Button>
+          <Button type="button" variant="ghost" onClick={() => router.push('/')}>
+            Back to lobby
+          </Button>
+        </div>
       </div>
     );
   }

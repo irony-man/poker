@@ -1466,13 +1466,44 @@ html[data-ui-theme='v3'] .text-mushroom {
   color: rgb(var(--cream));
 }
 
+/* Opacity variants still compile to rgb(var(--mushroom) / …) — force cream there too. */
+html[data-ui-theme='v3'] .text-mushroom\/30 {
+  color: rgb(var(--cream) / 0.3);
+}
+html[data-ui-theme='v3'] .text-mushroom\/55 {
+  color: rgb(var(--cream) / 0.55);
+}
+html[data-ui-theme='v3'] .text-mushroom\/70 {
+  color: rgb(var(--cream) / 0.7);
+}
+html[data-ui-theme='v3'] .text-mushroom\/80 {
+  color: rgb(var(--cream) / 0.8);
+}
+html[data-ui-theme='v3'] .text-mushroom\/85 {
+  color: rgb(var(--cream) / 0.85);
+}
+html[data-ui-theme='v3'] .text-mushroom\/90 {
+  color: rgb(var(--cream) / 0.9);
+}
+
 html[data-ui-theme='v3'] .lobby-sidebar {
+  /* Light-on-chrome: mushroom must stay light for text-mushroom/* utilities. */
+  --mushroom: 255 255 255;
+  --cream: 255 255 255;
+  --on-chrome: 255 255 255;
   background-color: rgb(var(--ink-panel) / 0.38);
   backdrop-filter: blur(28px) saturate(1.45);
   -webkit-backdrop-filter: blur(28px) saturate(1.45);
   border-right: 1px solid rgb(80 200 220 / 0.22);
   box-shadow: 0 1px 0 0 rgb(var(--glass-highlight) / 0.28) inset;
   color: #fff;
+}
+
+/* Mobile top bar uses bg-sidebar without .lobby-sidebar. */
+html[data-ui-theme='v3'] .lobby-main > header {
+  --mushroom: 255 255 255;
+  --cream: 255 255 255;
+  --on-chrome: 255 255 255;
 }
 
 html[data-ui-theme='v3'] .lobby-sidebar .sidebar-nav-kicker {

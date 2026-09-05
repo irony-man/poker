@@ -93,10 +93,13 @@ export function OnlineFriendsProvider({
     }
   }, [signedIn, sessionToken, applySocial]);
 
-  // REST bootstrap when WS social_sync hasn't arrived (expired ticket, cold WS, etc.).
+  // Prefer WS social_sync; REST only if nothing arrived shortly after sign-in.
   useEffect(() => {
     if (!signedIn || !sessionToken || socialLoaded) return;
-    void refresh();
+    const t = window.setTimeout(() => {
+      if (!useSession.getState().socialLoaded) void refresh();
+    }, 2_000);
+    return () => window.clearTimeout(t);
   }, [signedIn, sessionToken, socialLoaded, refresh]);
 
   const value = useMemo<OnlineFriendsContextValue>(() => {

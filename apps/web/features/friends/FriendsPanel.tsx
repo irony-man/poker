@@ -166,7 +166,6 @@ export function FriendsPanel({
       await respondFriendRequest(requestId, accept, auth());
       flash(accept ? 'Friend added' : 'Request declined');
       await refresh();
-      void refreshSocial();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
     } finally {
@@ -203,7 +202,6 @@ export function FriendsPanel({
       await removeFriend(friend.userId, auth());
       flash(`Removed ${friend.name}`);
       await refresh();
-      void refreshSocial();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not remove friend');
     } finally {
@@ -250,7 +248,6 @@ export function FriendsPanel({
       setChallenges((list) => list.filter((c) => c.id !== challengeId));
       flash('Invite declined');
       await refresh();
-      void refreshSocial();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not decline invite');
     } finally {

@@ -179,7 +179,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [sessionToken, setChipBalance, setWhuffieBalance, pathname]);
+  }, [sessionToken, setChipBalance, setWhuffieBalance]);
 
   const onLogout = useCallback(async () => {
     const token = sessionToken ?? readStoredSession()?.sessionToken;

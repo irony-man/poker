@@ -1,4 +1,3 @@
-import { refreshTicket } from '@/lib/api';
 import {
   clearStoredSession,
   readStoredSession,
@@ -22,32 +21,20 @@ export function applyPlaySession(session: StoredSession): void {
 }
 
 /**
- * Mint a fresh WS ticket from the HTTP session before joining a table/board.
- * Stored tickets can go stale after server restarts even when the session is valid.
+ * Hydrate the play session from local storage (no network).
+ * Stale WS tickets are recovered in `ws.ts` via bad_auth → /api/ticket.
  */
 export async function ensurePlaySession(): Promise<StoredSession> {
   const stored = readStoredSession();
   if (!stored) {
     throw new Error('Sign in required');
   }
+  applyPlaySession(stored);
+  return stored;
+}
 
-  try {
-    const fresh = await refreshTicket(stored.sessionToken);
-    const next: StoredSession = {
-      userId: fresh.userId,
-      username: fresh.username,
-      name: fresh.name,
-      ticket: fresh.ticket,
-      sessionToken: stored.sessionToken,
-      avatarId: fresh.avatarId ?? stored.avatarId,
-      ...(typeof fresh.chipBalance === 'number' ? { chipBalance: fresh.chipBalance } : {}),
-      ...(typeof fresh.whuffieBalance === 'number' ? { whuffieBalance: fresh.whuffieBalance } : {}),
-    };
-    applyPlaySession(next);
-    return next;
-  } catch (err) {
-    clearStoredSession();
-    useSession.getState().clearSession();
-    throw err instanceof Error ? err : new Error('Session expired');
-  }
+/** Clear local auth after a fatal session failure. */
+export function wipePlaySession(): void {
+  clearStoredSession();
+  useSession.getState().clearSession();
 }

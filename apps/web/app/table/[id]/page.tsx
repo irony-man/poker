@@ -7,8 +7,8 @@ import { LoadingScreen } from '@/components/LoadingScreen';
 import { Button } from '@/components/ui/Button';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { authHref } from '@/lib/authRedirect';
-import { ensurePlaySession } from '@/lib/ensurePlaySession';
-import { clearStoredSession, readStoredSession } from '@/lib/session';
+import { ensurePlaySession, wipePlaySession } from '@/lib/ensurePlaySession';
+import { readStoredSession } from '@/lib/session';
 import { useSession } from '@/lib/store';
 
 function TablePageInner() {
@@ -17,7 +17,6 @@ function TablePageInner() {
   const invite = search.get('invite');
   const spectate = search.get('mode') === 'spectate';
   const contest = search.get('contest');
-  const clearSession = useSession((s) => s.clearSession);
   const clearTable = useSession((s) => s.clearTable);
   const tableId = params.id;
   const [ready, setReady] = useState(false);
@@ -60,8 +59,7 @@ function TablePageInner() {
       .catch((err) => {
         if (cancelled) return;
         bootedFor.current = null;
-        clearStoredSession();
-        clearSession();
+        wipePlaySession();
         setNeedsAuth(true);
         setReady(false);
         setError(err instanceof Error ? err.message : 'Session expired');
@@ -73,7 +71,7 @@ function TablePageInner() {
     return () => {
       cancelled = true;
     };
-  }, [tableId, needsAuth, clearSession]);
+  }, [tableId, needsAuth]);
 
   if (needsAuth === null) {
     return <LoadingScreen label="Loading…" compact />;

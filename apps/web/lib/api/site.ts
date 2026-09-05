@@ -39,7 +39,7 @@ export interface HomeFeaturesByTheme {
 
 export type { PageCopy, PageCopyKey, PagesCopy } from '@/lib/pageCopy';
 
-export async function fetchPublicSite(): Promise<{
+export type PublicSitePayload = {
   announcement: SiteAnnouncement;
   homeFeatures?: HomeLandingFeature[];
   pages?: PagesCopy;
@@ -47,18 +47,31 @@ export async function fetchPublicSite(): Promise<{
   pagesByTheme?: PagesByTheme;
   botGroups?: PublicBotGroup[];
   sounds?: TableSoundsConfig;
-}> {
-  const res = await fetch(`${API_URL}/api/site`);
-  if (!res.ok) throw new Error(await parseError(res, 'Could not load site'));
-  return res.json() as Promise<{
-    announcement: SiteAnnouncement;
-    homeFeatures?: HomeLandingFeature[];
-    pages?: PagesCopy;
-    homeFeaturesByTheme?: HomeFeaturesByTheme;
-    pagesByTheme?: PagesByTheme;
-    botGroups?: PublicBotGroup[];
-    sounds?: TableSoundsConfig;
-  }>;
+};
+
+const SITE_CACHE_TTL_MS = 60_000;
+let siteCache: { at: number; data: PublicSitePayload } | null = null;
+let siteInflight: Promise<PublicSitePayload> | null = null;
+
+/** Shared /api/site fetch — coalesces concurrent callers and caches briefly. */
+export async function fetchPublicSite(): Promise<PublicSitePayload> {
+  const now = Date.now();
+  if (siteCache && now - siteCache.at < SITE_CACHE_TTL_MS) {
+    return siteCache.data;
+  }
+  if (siteInflight) return siteInflight;
+
+  siteInflight = (async () => {
+    const res = await fetch(`${API_URL}/api/site`);
+    if (!res.ok) throw new Error(await parseError(res, 'Could not load site'));
+    const data = (await res.json()) as PublicSitePayload;
+    siteCache = { at: Date.now(), data };
+    return data;
+  })().finally(() => {
+    siteInflight = null;
+  });
+
+  return siteInflight;
 }
 
 export async function fetchPublicBotGroups(): Promise<PublicBotGroup[]> {

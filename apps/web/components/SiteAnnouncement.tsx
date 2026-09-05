@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { fetchPublicSite } from '@/lib/api';
 
-const POLL_MS = 45_000;
+const POLL_MS = 90_000;
 
 /** Site-wide announcement bar from admin-managed `/api/site`. */
 export function SiteAnnouncementBanner() {

@@ -27,6 +27,7 @@ const STATIC_IMAGES = [
   'home-challenge.png',
   'home-host.png',
   'home-knockout.png',
+  'home-ludo.png',
   'home-offline.png',
   'host-table.png',
   'join-table.png',
@@ -85,6 +86,15 @@ async function main(): Promise<void> {
     uploads.push({
       localPath: file,
       key: `static/sounds/${path.basename(file)}`,
+    });
+  }
+
+  for (const file of await listFiles(path.join(publicDir, 'ludo'))) {
+    const ext = path.extname(file).toLowerCase();
+    if (!MIME[ext]) continue;
+    uploads.push({
+      localPath: file,
+      key: `static/ludo/${path.basename(file)}`,
     });
   }
 

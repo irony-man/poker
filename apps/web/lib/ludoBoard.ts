@@ -8,12 +8,27 @@ export const LUDO_START_SQUARES = [0, 13, 26, 39] as const;
 export const LUDO_SAFE_SQUARES = [0, 8, 13, 21, 26, 34, 39, 47] as const;
 export const LUDO_SAFE_SQUARE_SET: ReadonlySet<number> = new Set(LUDO_SAFE_SQUARES);
 
-/** Classic piece colors — keep in sync with Android board if it copies these coords. */
+/** Classic piece colors — saturated primary board palette. */
 export const LUDO_COLOR_HEX: Record<LudoColor, string> = {
-  red: '#C0392B',
-  green: '#48A87A',
-  yellow: '#E0B84A',
-  blue: '#3D7CC9',
+  red: '#E31C23',
+  green: '#2E9B3E',
+  yellow: '#F5C518',
+  blue: '#1A6FDB',
+};
+
+/** Start-square arrow direction (points along the track). */
+export const LUDO_START_ARROW: Record<LudoSeat, 'right' | 'down' | 'left' | 'up'> = {
+  0: 'right',
+  1: 'down',
+  2: 'left',
+  3: 'up',
+};
+
+export const LUDO_TOKEN_SRC: Record<LudoColor, string> = {
+  red: '/ludo/token-red.svg',
+  green: '/ludo/token-green.svg',
+  yellow: '/ludo/token-yellow.svg',
+  blue: '/ludo/token-blue.svg',
 };
 
 export type BoardCell = { row: number; col: number };
@@ -185,6 +200,27 @@ export function isLudoSafeTrack(index: number): boolean {
   return LUDO_SAFE_SQUARE_SET.has(index);
 }
 
+export function isLudoStartTrack(index: number): boolean {
+  return (LUDO_START_SQUARES as readonly number[]).includes(index);
+}
+
+export function startSeatForTrack(index: number): LudoSeat | null {
+  const seat = (LUDO_START_SQUARES as readonly number[]).indexOf(index);
+  return seat >= 0 ? (seat as LudoSeat) : null;
+}
+
+/** Outer frame of a 6×6 yard (colored border in the classic board UI). */
+export function isLudoYardBorder(row: number, col: number, seat: LudoSeat): boolean {
+  const b = YARD_BOUNDS[seat];
+  if (!b) return false;
+  if (row < b.row0 || row > b.row1 || col < b.col0 || col > b.col1) return false;
+  return row === b.row0 || row === b.row1 || col === b.col0 || col === b.col1;
+}
+
+export function yardBoundsForSeat(seat: LudoSeat) {
+  return YARD_BOUNDS[seat]!;
+}
+
 export function cellKey(cell: BoardCell): string {
   return `${cell.row},${cell.col}`;
 }
@@ -238,4 +274,72 @@ export function describeLudoPos(pos: LudoTokenPos): string {
   if (pos.kind === 'track') return `track ${pos.index}`;
   if (pos.kind === 'stretch') return `home column ${pos.index + 1}`;
   return 'home';
+}
+
+export function sameLudoPos(a: LudoTokenPos, b: LudoTokenPos): boolean {
+  if (a.kind !== b.kind) return false;
+  if (a.kind === 'track' && b.kind === 'track') return a.index === b.index;
+  if (a.kind === 'stretch' && b.kind === 'stretch') return a.index === b.index;
+  return true;
+}
+
+const TRACK_LEN = 52;
+const MAIN_MAX_PROGRESS = 51;
+const HOME_STRETCH_LEN = 5;
+const HOME_PROGRESS = MAIN_MAX_PROGRESS + 1 + HOME_STRETCH_LEN;
+
+export function ludoTokenProgress(seat: number, pos: LudoTokenPos): number {
+  switch (pos.kind) {
+    case 'yard':
+      return -1;
+    case 'track':
+      return (pos.index - LUDO_START_SQUARES[seat]! + TRACK_LEN) % TRACK_LEN;
+    case 'stretch':
+      return MAIN_MAX_PROGRESS + 1 + pos.index;
+    case 'home':
+      return HOME_PROGRESS;
+  }
+}
+
+export function ludoPosFromProgress(seat: number, progress: number): LudoTokenPos {
+  if (progress < 0) return { kind: 'yard' };
+  if (progress <= MAIN_MAX_PROGRESS) {
+    return { kind: 'track', index: (LUDO_START_SQUARES[seat]! + progress) % TRACK_LEN };
+  }
+  const stretch = progress - (MAIN_MAX_PROGRESS + 1);
+  if (stretch < HOME_STRETCH_LEN) return { kind: 'stretch', index: stretch };
+  return { kind: 'home' };
+}
+
+/** Cells a token visits from `from` to `to`, including the destination (not the start). */
+export function cellsAlongMove(
+  seat: number,
+  from: LudoTokenPos,
+  to: LudoTokenPos,
+  tokenIndex = 0,
+): BoardCell[] {
+  if (sameLudoPos(from, to)) return [];
+
+  if (to.kind === 'yard' && from.kind !== 'yard') {
+    return [cellForLudoToken(seat, to, tokenIndex)];
+  }
+
+  const start = ludoTokenProgress(seat, from);
+  const end = ludoTokenProgress(seat, to);
+  const cells: BoardCell[] = [];
+
+  if (start < 0 && end >= 0) {
+    cells.push(cellForLudoToken(seat, ludoPosFromProgress(seat, 0), tokenIndex));
+    for (let p = 1; p <= end; p++) {
+      cells.push(cellForLudoToken(seat, ludoPosFromProgress(seat, p), tokenIndex));
+    }
+    return cells;
+  }
+
+  if (end > start) {
+    for (let p = start + 1; p <= end; p++) {
+      cells.push(cellForLudoToken(seat, ludoPosFromProgress(seat, p), tokenIndex));
+    }
+  }
+  return cells;
 }

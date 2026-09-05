@@ -345,7 +345,7 @@ export const DEFAULT_PAGES_COPY: PagesCopy = {
     title: 'Ludo',
     subtitle:
       'A side quest — race four tokens home with friends or bots. No stakes, no wallet, just a 2–4 player board and a code you share.',
-    image: '/home-offline.png',
+    image: '/home-ludo.png',
     imageAlt: 'Host a Ludo side quest with no stakes',
   },
   signIn: {

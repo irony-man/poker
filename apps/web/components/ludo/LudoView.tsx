@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CopyRoomLink } from '@/components/CopyRoomLink';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 import { TableOverflowMenu, type OverflowItem } from '@/components/TableOverflowMenu';
@@ -13,7 +13,7 @@ import { MoveTimerStrip } from '@/components/TurnTimer';
 import type { ReadyRosterPlayer } from '@/components/WinHandModal';
 import type { LudoPlayerView } from '@poker/protocol';
 import { fetchLudoChat } from '@/lib/api';
-import { ludoColorForSeat, ludoHexForSeat } from '@/lib/ludoBoard';
+import { ludoColorForSeat, ludoHexForSeat, sameLudoPos } from '@/lib/ludoBoard';
 import { useIsNarrow } from '@/lib/tableLayout';
 import { useSession } from '@/lib/store';
 import { useLudoSocket } from '@/lib/ws';
@@ -46,6 +46,10 @@ export function LudoView({
   const [chatOpen, setChatOpen] = useState(false);
   const [winDismissed, setWinDismissed] = useState(false);
   const [spectating, setSpectating] = useState(initialSpectate);
+  const [rolling, setRolling] = useState(false);
+  const [lastDieBySeat, setLastDieBySeat] = useState<Partial<Record<number, number>>>({});
+  const autoMovedSeq = useRef<number | null>(null);
+  const prevLudo = useRef<typeof ludo>(null);
   const { send, leaveLudo } = useLudoSocket(ludoId, { spectate: spectating });
 
   useEffect(() => {
@@ -122,6 +126,74 @@ export function LudoView({
   const humans = seats.filter((s) => s.userId && !s.isBot);
   const readyHumans = humans.filter((s) => s.ready);
   const displayCode = inviteCode || ludo?.inviteCode || '';
+
+  useEffect(() => {
+    if (!rolling) return;
+    if (ludo?.die != null || !isMyTurn || ludo?.status !== 'playing' || lastError) {
+      setRolling(false);
+    }
+  }, [rolling, ludo?.die, ludo?.status, isMyTurn, lastError]);
+
+  useEffect(() => {
+    if (ludo?.die != null && ludo.toAct != null) {
+      setLastDieBySeat((prev) => ({ ...prev, [ludo.toAct!]: ludo.die! }));
+    }
+  }, [ludo?.die, ludo?.toAct, ludo?.seq]);
+
+  useEffect(() => {
+    if (waiting) setLastDieBySeat({});
+  }, [waiting, ludoId]);
+
+  useEffect(() => {
+    const prev = prevLudo.current;
+    prevLudo.current = ludo;
+    if (!ludo || !playing || !prev || prev.id !== ludo.id) return;
+
+    const who = (seat: number) => {
+      const p = ludo.seats.find((s) => s.seat === seat) ?? prev.seats.find((s) => s.seat === seat);
+      if (!p) return ludoColorForSeat(seat);
+      if (p.userId && p.userId === userId) return 'You';
+      if (p.isBot) return p.name ?? 'Bot';
+      return p.name ?? ludoColorForSeat(seat);
+    };
+
+    if (prev.die == null && ludo.die != null && prev.toAct != null) {
+      pushChat({
+        userId: 'system',
+        name: 'Ludo',
+        text: `${who(prev.toAct)} rolled ${ludo.die}`,
+        at: Date.now(),
+      });
+    }
+
+    for (const seat of ludo.seats) {
+      const before = prev.seats.find((s) => s.seat === seat.seat);
+      if (!before) continue;
+      for (const token of seat.tokens) {
+        const old = before.tokens.find((t) => t.index === token.index);
+        if (!old || sameLudoPos(old.pos, token.pos)) continue;
+        const name = who(seat.seat);
+        let text = `${name} moved`;
+        if (token.pos.kind === 'yard' && old.pos.kind !== 'yard') text = `${name} was sent home`;
+        else if (old.pos.kind === 'yard') text = `${name} entered the board`;
+        else if (token.pos.kind === 'home' && old.pos.kind !== 'home') text = `${name} finished a token`;
+        pushChat({ userId: 'system', name: 'Ludo', text, at: Date.now() });
+      }
+    }
+  }, [ludo, playing, userId, pushChat]);
+
+  useEffect(() => {
+    if (!ludo || !needMove || rolling || legalMoves.length !== 1) return;
+    if (autoMovedSeq.current === ludo.seq) return;
+    const tokenIndex = legalMoves[0]!.tokenIndex;
+    const seq = ludo.seq;
+    const id = window.setTimeout(() => {
+      if (autoMovedSeq.current === seq) return;
+      autoMovedSeq.current = seq;
+      send({ type: 'ludo_move', ludoId, tokenIndex, seq });
+    }, 520);
+    return () => window.clearTimeout(id);
+  }, [needMove, rolling, legalMoves, ludo, ludoId, send]);
 
   const readyPlayers: ReadyRosterPlayer[] = humans.map((p) => ({
     seat: p.seat,
@@ -267,21 +339,25 @@ export function LudoView({
           {lastError}
         </p>
       ) : null}
-      {needRoll ? (
-        <Button
-          type="button"
-          className="min-h-12 w-full text-base"
-          onClick={() => send({ type: 'ludo_roll', ludoId, seq: ludo.seq })}
-        >
-          Roll
-        </Button>
-      ) : null}
-      {needMove ? (
+      {playing && needRoll ? (
         <p className="text-center text-[11px] font-display font-semibold uppercase tracking-wider text-ink-strong">
-          Tap a highlighted token · {ludo.die}
+          Tap your dice
         </p>
       ) : null}
-      {isMyTurn && ludo.die != null && legalMoves.length === 0 ? (
+      {needMove && legalMoves.length === 1 ? (
+        <p className="text-center text-[11px] font-display font-semibold uppercase tracking-wider text-ink-strong">
+          Moving your token
+        </p>
+      ) : needMove && ludo.die === 6 ? (
+        <p className="text-center text-[11px] font-display font-semibold uppercase tracking-wider text-ink-strong">
+          Six! Tap a token · extra roll after
+        </p>
+      ) : needMove ? (
+        <p className="text-center text-[11px] font-display font-semibold uppercase tracking-wider text-ink-strong">
+          You got {ludo.die} · tap a token
+        </p>
+      ) : null}
+      {isMyTurn && ludo.die != null && legalMoves.length === 0 && !rolling ? (
         <p className="text-center text-[11px] text-ink-strong-muted">No legal moves</p>
       ) : null}
       {playing && !isMyTurn ? (
@@ -352,11 +428,13 @@ export function LudoView({
       onChatOpenChange={setChatOpen}
       actionsExpanded={
         needRoll ||
+        rolling ||
         needMove ||
         waiting ||
         finished ||
         isSpectating ||
-        Boolean(lastError)
+        Boolean(lastError) ||
+        Boolean(playing && ludo.die != null)
       }
       actions={actions}
       chatEmptyHint="Cheer a capture or call the next six."
@@ -407,21 +485,23 @@ export function LudoView({
 
         <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2 sm:px-3">
           <div className="flex flex-wrap items-center gap-2 px-0.5">
-            <StatusChip tone={playing ? 'positive' : finished ? 'brass' : 'neutral'}>
+            <StatusChip tone={playing ? 'playPositive' : finished ? 'playBrass' : 'play'}>
               {finished ? 'Finished' : playing ? 'Playing' : 'Waiting'}
             </StatusChip>
-            {ludo.die != null ? (
-              <StatusChip tone="brass" className="tabular-nums">
-                Die {ludo.die}
+            {ludo.die != null && !rolling ? (
+              <StatusChip tone={ludo.die === 6 ? 'playPositive' : 'playBrass'} className="tabular-nums">
+                {ludo.die === 6 ? 'Six!' : `You got ${ludo.die}`}
               </StatusChip>
+            ) : rolling ? (
+              <StatusChip tone="playMuted">Rolling…</StatusChip>
             ) : null}
             {waiting || finished ? (
-              <StatusChip tone="muted" className="tabular-nums">
+              <StatusChip tone="playMuted" className="tabular-nums">
                 Ready {readyHumans.length}/{Math.max(humans.length, 1)}
               </StatusChip>
             ) : null}
             {playing && ludo.toAct != null ? (
-              <StatusChip tone="positive">
+              <StatusChip tone="playPositive">
                 {ludo.toAct === mySeat
                   ? 'Your turn'
                   : `${seats.find((s) => s.seat === ludo.toAct)?.name ?? ludoColorForSeat(ludo.toAct)}`}
@@ -455,8 +535,8 @@ export function LudoView({
                     <div
                       className={`flex items-center gap-1.5 rounded-full border px-2 py-1 ${
                         toAct
-                          ? 'border-brass/50 bg-brass/15'
-                          : 'border-on-chrome/15 bg-ink-raised'
+                          ? 'border-brass/60 bg-brass/20'
+                          : 'border-white/25 bg-white/10'
                       }`}
                     >
                       <PlayerAvatar
@@ -475,7 +555,7 @@ export function LudoView({
                         {p.userId === userId ? 'You' : p.name ?? color}
                       </span>
                       {p.ready && (waiting || finished) ? (
-                        <span className="text-[9px] font-display font-bold uppercase tracking-wider text-positive">
+                        <span className="rounded-sm bg-emerald-400/20 px-1 py-px text-[9px] font-display font-bold uppercase tracking-wider text-emerald-300">
                           Ready
                         </span>
                       ) : null}
@@ -491,6 +571,33 @@ export function LudoView({
             legalMoves={needMove ? legalMoves : []}
             mySeat={mySeat}
             disabled={!needMove}
+            seatSides={Object.fromEntries(
+              seats
+                .filter((p) => p.userId || p.isBot)
+                .map((p) => [
+                  p.seat,
+                  {
+                    label:
+                      p.userId === userId
+                        ? 'You'
+                        : p.isBot
+                          ? 'Bot'
+                          : (p.name ?? ludoColorForSeat(p.seat)),
+                    userId: p.userId,
+                    avatarId: p.avatarId,
+                    avatarUrl: p.avatarUrl,
+                    die: lastDieBySeat[p.seat] ?? (playing && ludo.toAct === p.seat ? ludo.die : null),
+                    rolling: rolling && ludo.toAct === p.seat,
+                    canRoll: needRoll && p.seat === mySeat,
+                  },
+                ]),
+            )}
+            toActSeat={playing ? ludo.toAct : null}
+            onRoll={() => {
+              if (!ludo || rolling || !needRoll) return;
+              setRolling(true);
+              send({ type: 'ludo_roll', ludoId, seq: ludo.seq });
+            }}
             onMove={(tokenIndex) =>
               send({ type: 'ludo_move', ludoId, tokenIndex, seq: ludo.seq })
             }

@@ -5,6 +5,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -88,9 +89,15 @@ export function OnlineFriendsProvider({
         groups: data.groups ?? [],
       });
     } catch {
-      /* push path is source of truth; REST is one-shot fallback after local mutations */
+      /* push path is source of truth; REST is bootstrap / mutation fallback */
     }
   }, [signedIn, sessionToken, applySocial]);
+
+  // REST bootstrap when WS social_sync hasn't arrived (expired ticket, cold WS, etc.).
+  useEffect(() => {
+    if (!signedIn || !sessionToken || socialLoaded) return;
+    void refresh();
+  }, [signedIn, sessionToken, socialLoaded, refresh]);
 
   const value = useMemo<OnlineFriendsContextValue>(() => {
     if (!signedIn || !sessionToken) {

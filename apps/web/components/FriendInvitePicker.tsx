@@ -2,10 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { LoadingScreen } from '@/components/LoadingScreen';
+import { useOnlineFriends } from '@/components/OnlineFriends';
 import { choiceOptionClass } from '@/components/ui/choiceStyles';
 import { FriendToggleRow } from '@/features/friends/rows';
 import type { FriendGroup } from '@/lib/api';
 import { useSession } from '@/lib/store';
+
+const SOCIAL_LOAD_TIMEOUT_MS = 10_000;
 
 /** Multi-select friends list for hosting tables / contests (live via social_sync). */
 export function FriendInvitePicker({
@@ -30,10 +33,26 @@ export function FriendInvitePicker({
 }) {
   const social = useSession((s) => s.social);
   const socialLoaded = useSession((s) => s.socialLoaded);
+  const { refreshSocial } = useOnlineFriends();
   const friends = social?.friends ?? [];
   const groups = social?.groups ?? [];
-  const loading = Boolean(sessionToken && !socialLoaded);
   const [onlineOnly, setOnlineOnly] = useState(false);
+  const [loadTimedOut, setLoadTimedOut] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+
+  // Stop spinning if neither WS social_sync nor REST bootstrap filled the store.
+  useEffect(() => {
+    if (!sessionToken || socialLoaded) {
+      setLoadTimedOut(false);
+      return;
+    }
+    setLoadTimedOut(false);
+    const t = setTimeout(() => setLoadTimedOut(true), SOCIAL_LOAD_TIMEOUT_MS);
+    return () => clearTimeout(t);
+  }, [sessionToken, socialLoaded, loadAttempt]);
+
+  const loading = Boolean(sessionToken && !socialLoaded && (retrying || !loadTimedOut));
 
   const selected = useMemo(() => new Set(selectedIds), [selectedIds]);
   const excluded = useMemo(() => new Set(excludeUserIds), [excludeUserIds]);
@@ -119,7 +138,7 @@ export function FriendInvitePicker({
           aria-checked={onlineOnly}
           disabled={disabled}
           onClick={() => setOnlineOnly((v) => !v)}
-          className={choiceOptionClass('pill', onlineOnly)}
+          className={choiceOptionClass('chip', onlineOnly)}
         >
           Online only
           {onlineFriends.length > 0 ? (
@@ -131,7 +150,7 @@ export function FriendInvitePicker({
             type="button"
             disabled={disabled || selectedIds.length >= maxSelect}
             onClick={selectOnline}
-            className={choiceOptionClass('pill', false)}
+            className={choiceOptionClass('chip', false)}
           >
             Select online
           </button>
@@ -146,7 +165,7 @@ export function FriendInvitePicker({
               type="button"
               disabled={disabled}
               onClick={() => selectGroup(g)}
-              className={choiceOptionClass('pill', false)}
+              className={choiceOptionClass('chip', false)}
               title={`Select friends in ${g.name}`}
             >
               {g.name}
@@ -157,6 +176,22 @@ export function FriendInvitePicker({
 
       {loading && friends.length === 0 ? (
         <LoadingScreen compact label="Loading friends…" className="!py-3" />
+      ) : loadTimedOut && !socialLoaded && friends.length === 0 ? (
+        <div className="surface-empty mt-2.5 space-y-2 text-xs text-ink-strong-muted">
+          <p>Couldn’t load friends. Check your connection and try again.</p>
+          <button
+            type="button"
+            disabled={disabled || retrying}
+            className={choiceOptionClass('chip', false)}
+            onClick={() => {
+              setRetrying(true);
+              setLoadAttempt((n) => n + 1);
+              void refreshSocial().finally(() => setRetrying(false));
+            }}
+          >
+            {retrying ? 'Retrying…' : 'Retry'}
+          </button>
+        </div>
       ) : visibleFriends.length === 0 ? (
         <p className="surface-empty mt-2.5 text-xs text-ink-strong-muted">
           {friends.length === 0

@@ -15,11 +15,13 @@ export function ChatPanel({
   onEmoji,
   onClose,
   closeLabel = 'Hide',
+  emptyHint = 'Drop a reaction or say hi when the hand gets interesting.',
 }: {
   onSend: (text: string) => void;
   onEmoji: (emoji: string) => void;
   onClose?: () => void;
   closeLabel?: string;
+  emptyHint?: string;
 }) {
   const chat = useSession((s) => s.chat);
   const emojiBurst = useSession((s) => s.emojiBurst);
@@ -49,7 +51,7 @@ export function ChatPanel({
     <div className="chat-panel-shell relative flex h-full min-h-0 flex-col bg-gradient-to-b from-[#f4eeec] via-mushroom to-[#e8ddd9] text-ink-strong">
       {/* Header */}
       <header className="glass-sheet flex shrink-0 items-center justify-between gap-3 border-b border-sidebar/10 px-4 py-3.5 backdrop-blur-sm">
-        <h2 className="font-display text-sm font-bold uppercase tracking-[0.16em] text-sidebar">
+        <h2 className="font-display text-sm font-bold uppercase tracking-[0.16em] text-ink-strong">
           Chat
         </h2>
         {onClose && (
@@ -78,7 +80,7 @@ export function ChatPanel({
               Quiet so far
             </p>
             <p className="mt-1 max-w-[14rem] text-xs leading-relaxed text-ink-strong-muted">
-              Drop a reaction or say hi when the hand gets interesting.
+              {emptyHint}
             </p>
           </li>
         ) : (
@@ -95,10 +97,10 @@ export function ChatPanel({
                     key={`${m.at}-${i}`}
                     className="mx-auto my-2 w-full max-w-[95%] rounded-xl bg-sidebar px-3.5 py-2.5 text-center shadow-[0_6px_16px_rgb(29_4_50/0.18)]"
                   >
-                    <p className="text-[11px] font-display font-bold uppercase tracking-[0.14em] text-mushroom/70">
+                    <p className="text-[11px] font-display font-bold uppercase tracking-[0.14em] text-on-chrome/80">
                       Hand complete
                     </p>
-                    <p className="mt-0.5 text-sm font-semibold leading-snug text-mushroom">
+                    <p className="mt-0.5 text-sm font-semibold leading-snug text-on-chrome">
                       {m.text}
                     </p>
                   </li>

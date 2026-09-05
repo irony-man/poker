@@ -9,6 +9,7 @@ fun LobbyScreen(
     onJoined: (tableId: String, invite: String, spectate: Boolean) -> Unit,
     onOffline: (seats: Int, bots: Int, name: String) -> Unit,
     onContest: (contestId: String) -> Unit,
+    onLudo: (ludoId: String, invite: String, spectate: Boolean) -> Unit,
     onProfile: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -17,6 +18,7 @@ fun LobbyScreen(
         onJoined = onJoined,
         onOffline = onOffline,
         onContest = onContest,
+        onLudo = onLudo,
         onProfile = onProfile,
         modifier = modifier,
     )

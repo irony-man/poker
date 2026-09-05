@@ -25,6 +25,7 @@
     "@nestjs/websockets": "^11.0.12",
     "@poker/db": "*",
     "@poker/engine": "*",
+    "@poker/ludo-engine": "*",
     "@poker/protocol": "*",
     "argon2": "^0.45.1",
     "dotenv": "^17.4.2",

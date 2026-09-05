@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { buildLudoJoinLink, buildLudoJoinShareText } from '@/lib/ludoLink';
 import { buildTableJoinLink, buildTableJoinShareText } from '@/lib/tableLink';
 
 /** Shows the room code; click copies the join link (+ code text). */
@@ -9,10 +10,12 @@ export function CopyRoomLink({
   tableId,
   inviteCode,
   compact = false,
+  kind = 'table',
 }: {
   tableId: string;
   inviteCode: string;
   compact?: boolean;
+  kind?: 'table' | 'ludo';
 }) {
   const [copied, setCopied] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -24,8 +27,14 @@ export function CopyRoomLink({
   }, []);
 
   const copy = useCallback(async () => {
-    const text = buildTableJoinShareText(tableId, inviteCode);
-    const link = buildTableJoinLink(tableId, inviteCode);
+    const text =
+      kind === 'ludo'
+        ? buildLudoJoinShareText(tableId, inviteCode)
+        : buildTableJoinShareText(tableId, inviteCode);
+    const link =
+      kind === 'ludo'
+        ? buildLudoJoinLink(tableId, inviteCode)
+        : buildTableJoinLink(tableId, inviteCode);
     try {
       await navigator.clipboard.writeText(text);
     } catch {
@@ -50,7 +59,7 @@ export function CopyRoomLink({
     setCopied(true);
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => setCopied(false), 1800);
-  }, [tableId, inviteCode]);
+  }, [tableId, inviteCode, kind]);
 
   return (
     <Button

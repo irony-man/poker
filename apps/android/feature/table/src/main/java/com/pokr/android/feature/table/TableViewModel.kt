@@ -232,7 +232,9 @@ class TableViewModel @Inject constructor(
                         is ServerMessage.PublicTablesSync,
                         is ServerMessage.PublicContestsSync,
                         is ServerMessage.MyContestsSync,
-                        is ServerMessage.SocialSync -> Unit // SocialRepository applies this
+                        is ServerMessage.SocialSync,
+                        is ServerMessage.LudoStateSync,
+                        is ServerMessage.LudoChat -> Unit // SocialRepository / LudoViewModel apply these
                     }
                 }
             }

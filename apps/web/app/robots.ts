@@ -8,6 +8,7 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: [
         '/table/',
+        '/ludo/',
         '/contest/',
         '/offline',
         '/sign-in',

@@ -98,4 +98,22 @@ sealed interface ServerMessage {
         val pendingChallenges: List<PendingChallenge> = emptyList(),
         val groups: List<FriendGroupView> = emptyList(),
     ) : ServerMessage
+
+    @Serializable
+    @SerialName("ludo_state_sync")
+    data class LudoStateSync(
+        val ludo: LudoPublicView,
+        val you: LudoYou,
+        val legalMoves: List<LudoLegalMove>? = null,
+    ) : ServerMessage
+
+    @Serializable
+    @SerialName("ludo_chat")
+    data class LudoChat(
+        val ludoId: String,
+        val userId: String,
+        val name: String,
+        val text: String,
+        val at: Long,
+    ) : ServerMessage
 }

@@ -214,12 +214,13 @@ fun JoinTab(
     onPlayMode: (String) -> Unit,
     onJoined: (tableId: String, invite: String, spectate: Boolean) -> Unit,
     onContest: (contestId: String) -> Unit,
+    onLudo: (ludoId: String, invite: String, spectate: Boolean) -> Unit,
 ) {
     LobbyScrollColumn {
         PlayModeSelect(playMode = playMode, onPlayMode = onPlayMode)
         LobbyPageHeader(
             title = "Join a Table",
-            subtitle = "Enter the invite code you were sent to take a seat or watch the hand, whether it is a private table or a contest.",
+            subtitle = "Enter the invite code you were sent to take a seat or watch — a private table, a contest, or a Ludo board.",
         )
         LobbySplitCard(imageRes = LobbyIllustrations.join, imageAlt = "Enter a table with an invite code") {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -236,11 +237,12 @@ fun JoinTab(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 PokrPrimaryButton(
-                    text = "Enter table",
+                    text = "Enter",
                     onClick = {
                         viewModel.join(
                             onTable = { id, invite -> onJoined(id, invite, false) },
                             onContest = onContest,
+                            onLudo = { id, invite -> onLudo(id, invite, false) },
                         )
                     },
                     enabled = !state.busy && state.inviteCode.isNotBlank(),
@@ -251,12 +253,67 @@ fun JoinTab(
                     onClick = {
                         viewModel.join(
                             onTable = { id, invite -> onJoined(id, invite, true) },
+                            onLudo = { id, invite -> onLudo(id, invite, true) },
                         )
                     },
                     enabled = !state.busy && state.inviteCode.isNotBlank(),
                     modifier = Modifier.weight(1f),
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun LudoTab(
+    state: LobbyUiState,
+    viewModel: LobbyViewModel,
+    onLudo: (ludoId: String, invite: String) -> Unit,
+) {
+    val maxBots = (state.ludoMaxSeats - 1).coerceAtLeast(0)
+    LobbyScrollColumn {
+        LobbyPageHeader(
+            title = "Ludo",
+            subtitle = "A side quest with no stakes. Host a 2–4 player board, add bots, and share a 4–8 digit code.",
+        )
+        LobbySplitCard(imageRes = LobbyIllustrations.contests, imageAlt = "Host a Ludo board") {
+            ChoiceRow(
+                label = "Seats",
+                selected = state.ludoMaxSeats,
+                options = (2..4).toList(),
+                onSelect = viewModel::onLudoMaxSeatsChange,
+            )
+            ChoiceRow(
+                label = "Starting bots",
+                selected = state.ludoBotCount.coerceAtMost(maxBots),
+                options = (0..maxBots).toList(),
+                onSelect = viewModel::onLudoBotCountChange,
+            ) { if (it == 0) "None" else "$it" }
+            if (state.signedIn) {
+                FriendInvitePicker(
+                    friends = state.friends,
+                    groups = state.groups,
+                    selectedIds = state.inviteFriendIds,
+                    onChange = viewModel::onInviteFriendsChange,
+                    disabled = state.busy,
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                PokrLabel("Room code (optional)")
+                LobbyTextField(
+                    value = state.ludoRoomCode,
+                    onValueChange = viewModel::onLudoRoomCodeChange,
+                    placeholder = "Auto · or 4–8 digits",
+                    numeric = true,
+                )
+            }
+            PokrPrimaryButton(
+                text = "Create Ludo board",
+                onClick = { viewModel.hostLudo(onLudo) },
+                enabled = !state.busy,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            FieldHelp("No wallet, no buy-in — just the race home.")
         }
     }
 }

@@ -7,7 +7,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -406,12 +409,33 @@ fun PotDisplay(
     amount: Int,
     modifier: Modifier = Modifier,
 ) {
+    val stackCount = when {
+        amount >= 100 -> 4
+        amount >= 20 -> 3
+        amount >= 5 -> 2
+        else -> 1
+    }
+    val chip = 28.dp
+    val step = 4.dp
     Row(
         modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Bottom,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        CasinoChip(amount = amount.coerceAtLeast(1), size = ChipSize.Sm)
+        Box(
+            modifier = Modifier
+                .width(chip)
+                .height(chip + step * (stackCount - 1)),
+            contentAlignment = Alignment.BottomStart,
+        ) {
+            repeat(stackCount) { i ->
+                CasinoChip(
+                    amount = amount.coerceAtLeast(1),
+                    size = ChipSize.Sm,
+                    modifier = Modifier.offset(y = -(step * i)),
+                )
+            }
+        }
         Text(
             text = formatMoney(amount),
             color = PokrColors.Cream,
@@ -447,7 +471,7 @@ fun DealerPotZone(
                     fontWeight = FontWeight.Black,
                     modifier = Modifier
                         .clip(RoundedCornerShape(999.dp))
-                        .background(PokrColors.Mushroom)
+                        .background(PokrColors.OnChrome)
                         .border(2.dp, PokrColors.Brass.copy(alpha = 0.8f), RoundedCornerShape(999.dp))
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                 )

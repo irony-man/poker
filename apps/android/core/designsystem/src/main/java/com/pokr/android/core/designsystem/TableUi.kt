@@ -197,7 +197,7 @@ fun PokrTableLayout(
                             }
                         }
                         if (table.community.isEmpty() && table.street != "waiting") {
-                            Text("Dealing…", color = PokrColors.Cream.copy(alpha = 0.4f), fontSize = 12.sp)
+                            Text("Dealing…", color = PokrColors.Cream.copy(alpha = 0.9f), fontSize = 12.sp)
                         }
                     }
                 }
@@ -281,7 +281,7 @@ private fun SeatChip(
                 if (canSit) {
                     PokrGhostButton(text = "Sit", onClick = onSit, chrome = PokrChrome.Play)
                 } else {
-                    Text("Empty", fontSize = 11.sp, color = PokrColors.Cream.copy(alpha = 0.4f))
+                    Text("Empty", fontSize = 11.sp, color = PokrColors.Cream.copy(alpha = 0.85f))
                 }
                 return@Column
             }

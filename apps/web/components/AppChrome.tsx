@@ -88,7 +88,10 @@ function MobileProfileButton({ signedIn }: { signedIn: boolean }) {
 /** App shell: lobby sidebar + main, or immersive play with no chrome. */
 export function AppChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const tablePlay = pathname.startsWith('/table/') || pathname === '/offline';
+  const tablePlay =
+    pathname.startsWith('/table/') ||
+    pathname === '/offline' ||
+    (pathname.startsWith('/ludo/') && pathname !== '/ludo');
   /** Full-bleed play only — contest lobby uses sidebar + scrollable main like other tools. */
   const immersive = tablePlay;
   const isAdminRoute = pathname === '/admin' || pathname.startsWith('/admin/');

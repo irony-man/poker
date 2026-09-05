@@ -5,11 +5,12 @@ import {
   OnGatewayDisconnect,
   WebSocketGateway,
 } from '@nestjs/websockets';
-import { ClientMessageSchema } from '@poker/protocol';
+import { ClientMessageSchema, type ClientMessage } from '@poker/protocol';
 import type { RawData, WebSocket } from 'ws';
 import { AuthService } from '../auth/auth.service.js';
 import { ContestsService } from '../contests/contests.service.js';
 import { FriendsService } from '../friends/friends.service.js';
+import { LudoRoomsService } from '../ludo/ludo.service.js';
 import { PresenceService } from '../presence/presence.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 import { RoomsService } from '../rooms/rooms.service.js';
@@ -21,8 +22,24 @@ type SocketState = {
   name: string | null;
   tableId: string | null;
   contestId: string | null;
+  ludoId: string | null;
   send: (msg: unknown) => void;
 };
+
+type LudoPlayMessage = Extract<
+  ClientMessage,
+  {
+    type:
+      | 'ludo_sit'
+      | 'ludo_stand'
+      | 'ludo_set_ready'
+      | 'ludo_roll'
+      | 'ludo_move'
+      | 'ludo_add_bot'
+      | 'ludo_remove_bot'
+      | 'ludo_chat';
+  }
+>;
 
 @WebSocketGateway({ path: '/ws' })
 export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -33,6 +50,7 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly auth: AuthService,
     private readonly wallet: WalletService,
     private readonly rooms: RoomsService,
+    private readonly ludo: LudoRoomsService,
     private readonly contests: ContestsService,
     private readonly friends: FriendsService,
     private readonly presence: PresenceService,
@@ -51,6 +69,7 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
       name: null,
       tableId: null,
       contestId: null,
+      ludoId: null,
       send,
     });
     this.realtime.registerSocket(send);
@@ -66,11 +85,17 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
   handleDisconnect(@ConnectedSocket() client: WebSocket): void {
     const st = this.states.get(client);
     if (!st) return;
-    const { userId, tableId, contestId, send } = st;
+    const { userId, tableId, contestId, ludoId, send } = st;
     if (userId && tableId) {
       const room = this.rooms.get(tableId);
       if (room?.detachIfActive(userId, send)) {
         room.scheduleDisconnect(userId);
+      }
+    }
+    if (userId && ludoId) {
+      const board = this.ludo.get(ludoId);
+      if (board?.detachIfActive(userId, send)) {
+        board.scheduleDisconnect(userId);
       }
     }
     if (userId && contestId) {
@@ -169,7 +194,62 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
+    if (msg.type === 'join_ludo') {
+      const board = this.ludo.get(msg.ludoId);
+      if (!board) {
+        send({
+          type: 'error',
+          message: 'Board not found — server may have restarted. Create a new board from the lobby.',
+          code: 'not_found',
+        });
+        return;
+      }
+      if (st.tableId) {
+        this.rooms.get(st.tableId)?.leave(userId);
+        st.tableId = null;
+      }
+      if (st.ludoId && st.ludoId !== msg.ludoId) {
+        this.ludo.get(st.ludoId)?.leave(userId);
+      }
+      st.ludoId = msg.ludoId;
+      const authUser = this.auth.getUser(userId);
+      const avatarId = authUser?.avatarId ?? 0;
+      const avatarUrl = authUser?.avatarUrl ?? null;
+      board.attach({ userId, name, avatarId, avatarUrl, send });
+      if (!msg.spectate) {
+        const seated = board.autoSit(userId, name);
+        if (!seated.ok && seated.error && seated.error !== 'Board full') {
+          send({ type: 'error', message: seated.error, code: 'sit_failed' });
+        }
+      }
+      return;
+    }
+
+    if (msg.type === 'leave_ludo') {
+      this.ludo.get(msg.ludoId)?.leave(userId);
+      if (st.ludoId === msg.ludoId) st.ludoId = null;
+      return;
+    }
+
+    if (
+      msg.type === 'ludo_sit' ||
+      msg.type === 'ludo_stand' ||
+      msg.type === 'ludo_set_ready' ||
+      msg.type === 'ludo_roll' ||
+      msg.type === 'ludo_move' ||
+      msg.type === 'ludo_add_bot' ||
+      msg.type === 'ludo_remove_bot' ||
+      msg.type === 'ludo_chat'
+    ) {
+      this.dispatchLudo(userId, name, msg, send);
+      return;
+    }
+
     if (msg.type === 'join_table') {
+      if (st.ludoId) {
+        this.ludo.get(st.ludoId)?.leave(userId);
+        st.ludoId = null;
+      }
       const room = this.rooms.get(msg.tableId);
       if (!room) {
         send({
@@ -325,6 +405,69 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
         if (!result.ok) send({ type: 'error', message: result.error ?? 'Voice signal failed' });
         break;
       }
+      default:
+        break;
+    }
+  }
+
+  private dispatchLudo(
+    userId: string,
+    name: string,
+    msg: LudoPlayMessage,
+    send: (msg: unknown) => void,
+  ): void {
+    const board = this.ludo.get(msg.ludoId);
+    if (!board) {
+      send({ type: 'error', message: 'Board not found', code: 'not_found' });
+      return;
+    }
+
+    switch (msg.type) {
+      case 'ludo_sit': {
+        const result = board.sit(userId, name, msg.seat);
+        if (!result.ok) send({ type: 'error', message: result.error ?? 'Sit failed' });
+        break;
+      }
+      case 'ludo_stand': {
+        const result = board.stand(userId, msg.seat);
+        if (!result.ok) send({ type: 'error', message: result.error ?? 'Stand failed' });
+        break;
+      }
+      case 'ludo_set_ready': {
+        const result = board.setReady(userId, msg.ready);
+        if (!result.ok) send({ type: 'error', message: result.error ?? 'Ready failed' });
+        break;
+      }
+      case 'ludo_roll': {
+        const result = board.roll(userId, msg.seq);
+        if (!result.ok) send({ type: 'error', message: result.error ?? 'Roll failed' });
+        break;
+      }
+      case 'ludo_move': {
+        const result = board.move(userId, msg.tokenIndex, msg.seq);
+        if (!result.ok) send({ type: 'error', message: result.error ?? 'Move failed' });
+        break;
+      }
+      case 'ludo_add_bot': {
+        const seating = this.site.getBotSeatingConfig();
+        const result = board.addBot(
+          userId,
+          msg.seat ?? undefined,
+          1,
+          seating.names,
+          seating,
+        );
+        if (!result.ok) send({ type: 'error', message: result.error ?? 'Add bot failed' });
+        break;
+      }
+      case 'ludo_remove_bot': {
+        const result = board.removeBot(msg.seat);
+        if (!result.ok) send({ type: 'error', message: result.error ?? 'Remove bot failed' });
+        break;
+      }
+      case 'ludo_chat':
+        board.chat(userId, name, msg.text);
+        break;
       default:
         break;
     }

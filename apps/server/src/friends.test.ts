@@ -161,6 +161,28 @@ describe('FriendsStore', () => {
     expect(pending[0]!.tableId).toBeNull();
   });
 
+  it('invites friends to a ludo board', async () => {
+    const req = await friends.sendRequest('user-alice', 'user-bob');
+    await friends.respondRequest('user-bob', req.id, true);
+
+    const challenges = await friends.createFriendInvites(
+      'user-alice',
+      ['user-bob'],
+      { kind: 'ludo', ludoId: 'ludo-1', inviteCode: '4242' },
+    );
+    expect(challenges).toHaveLength(1);
+    expect(challenges[0]!.kind).toBe('ludo');
+    expect(challenges[0]!.ludoId).toBe('ludo-1');
+
+    const pending = await friends.listPendingChallenges(auth, 'user-bob');
+    expect(pending).toHaveLength(1);
+    expect(pending[0]!.kind).toBe('ludo');
+    expect(pending[0]!.ludoId).toBe('ludo-1');
+    expect(pending[0]!.tableId).toBeNull();
+    expect(pending[0]!.contestId).toBeNull();
+    expect(pending[0]!.inviteCode).toBe('4242');
+  });
+
   it('expires game invites after 2 minutes', async () => {
     vi.useFakeTimers();
     try {

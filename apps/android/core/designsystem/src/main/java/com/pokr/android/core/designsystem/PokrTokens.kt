@@ -189,6 +189,28 @@ object PokrColors {
         get() = Brush.verticalGradient(listOf(FeltMid, Sidebar))
 }
 
+/** Ludo seat colors (0 red, 1 green, 2 yellow, 3 blue). */
+object LudoSeatColors {
+    val Red = Color(0xFFC0392B)
+    val Green = Color(0xFF2E8B57)
+    val Yellow = Color(0xFFE0B43A)
+    val Blue = Color(0xFF2F6FBF)
+
+    fun of(seat: Int): Color = when (seat) {
+        0 -> Red
+        1 -> Green
+        2 -> Yellow
+        else -> Blue
+    }
+
+    fun label(seat: Int): String = when (seat) {
+        0 -> "Red"
+        1 -> "Green"
+        2 -> "Yellow"
+        else -> "Blue"
+    }
+}
+
 /**
  * Chrome context: light lobby pages vs dark play HUD.
  * Matches web `.lobby-shell` vs default `.hud-*` / play chrome.

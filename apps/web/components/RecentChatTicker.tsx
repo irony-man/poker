@@ -23,7 +23,7 @@ export function RecentChatTicker({ onOpen }: { onOpen: () => void }) {
           key={`${m.at}-${m.userId}-${i}`}
           className="flex min-w-0 items-baseline gap-1.5 truncate text-[12px] leading-snug text-ink-strong"
         >
-          <span className="shrink-0 font-display text-[10px] font-bold uppercase tracking-wider text-sidebar">
+          <span className="shrink-0 font-display text-[10px] font-bold uppercase tracking-wider text-ink-strong">
             {m.name}
           </span>
           <span className="min-w-0 truncate">

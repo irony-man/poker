@@ -117,7 +117,7 @@ export function ChatActionDock({
       <div className="glass-sheet flex shrink-0 items-center justify-between gap-2 border-b border-sidebar/10 px-3 py-1.5">
         <span
           className={`text-[10px] font-display uppercase tracking-[0.18em] ${
-            expanded ? 'text-sidebar' : 'text-ink-strong-muted'
+            expanded ? 'text-ink-strong' : 'text-ink-strong-muted'
           }`}
         >
           {expanded ? 'Your move' : 'Actions'}
@@ -300,7 +300,7 @@ export function FloatingActionDock({
           onClick={() => setOpen(true)}
           className={`glass-sheet rounded-full border px-5 py-3 text-xs font-display font-bold uppercase tracking-[0.18em] shadow-[0_8px_24px_rgb(29_4_50/0.12)] ${
             expanded
-              ? 'border-sidebar/40 text-sidebar animate-hud-pulse'
+              ? 'border-sidebar/40 text-ink-strong animate-hud-pulse'
               : 'border-sidebar/20 text-ink-strong-muted'
           }`}
         >
@@ -312,10 +312,10 @@ export function FloatingActionDock({
             expanded ? 'border-sidebar/30 ring-1 ring-sidebar/10' : 'border-sidebar/18'
           }`}
         >
-          <div className="flex shrink-0 cursor-grab items-center justify-between gap-2 border-b border-sidebar/12 bg-mushroom/30 px-3 py-1.5 active:cursor-grabbing">
+          <div className="flex shrink-0 cursor-grab items-center justify-between gap-2 border-b border-sidebar/12 bg-white/70 px-3 py-1.5 active:cursor-grabbing">
             <span
               className={`min-w-0 truncate text-[10px] font-display font-semibold uppercase tracking-[0.18em] ${
-                expanded ? 'text-sidebar' : 'text-sidebar/70'
+                expanded ? 'text-ink-strong' : 'text-ink-strong-muted'
               }`}
             >
               Drag · {expanded ? 'your move' : 'actions'}

@@ -12,6 +12,7 @@ const routes: {
   { path: '/join', changeFrequency: 'monthly', priority: 0.7 },
   { path: '/contests', changeFrequency: 'weekly', priority: 0.8 },
   { path: '/public', changeFrequency: 'weekly', priority: 0.7 },
+  { path: '/ludo', changeFrequency: 'monthly', priority: 0.6 },
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

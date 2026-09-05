@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef } from 'react';
+import type { LudoLegalMove, LudoPublicView, LudoYou } from '@poker/protocol';
 import type {
   ContestView,
   FriendGroup,
@@ -144,6 +145,29 @@ function dispatchMessage(msg: { type?: string; [key: string]: unknown }): void {
         tableId: typeof msg.tableId === 'string' ? msg.tableId : undefined,
         message: typeof msg.message === 'string' ? msg.message : undefined,
         place: typeof msg.place === 'number' ? msg.place : undefined,
+      });
+      break;
+    }
+    case 'ludo_state_sync': {
+      if (msg.ludo && typeof msg.ludo === 'object') {
+        const you =
+          msg.you && typeof msg.you === 'object'
+            ? (msg.you as LudoYou)
+            : { seat: null };
+        const legalMoves = Array.isArray(msg.legalMoves)
+          ? (msg.legalMoves as LudoLegalMove[])
+          : undefined;
+        s.applyLudoStateSync(msg.ludo as LudoPublicView, you, legalMoves);
+      }
+      break;
+    }
+    case 'ludo_chat': {
+      if (s.boundLudoId && msg.ludoId && String(msg.ludoId) !== s.boundLudoId) break;
+      s.pushChat({
+        userId: String(msg.userId ?? ''),
+        name: String(msg.name ?? ''),
+        text: String(msg.text ?? ''),
+        at: typeof msg.at === 'number' ? msg.at : Date.now(),
       });
       break;
     }
@@ -423,4 +447,79 @@ export function useContestSocket(contestId: string | null) {
       joinedRef.current = contestId;
     }
   }, [connection, contestId, ticket]);
+}
+
+/**
+ * Join a Ludo board on the shared session socket.
+ * Does not own the connection lifecycle.
+ */
+export function useLudoSocket(ludoId: string | null, opts?: { spectate?: boolean }) {
+  const spectate = opts?.spectate ?? false;
+  const bindLudo = useSession((s) => s.bindLudo);
+  const setError = useSession((s) => s.setError);
+  const connection = useSession((s) => s.connection);
+  const lastErrorCode = useSession((s) => s.lastErrorCode);
+  const spectateRef = useRef(spectate);
+  const joinedRef = useRef<string | null>(null);
+  spectateRef.current = spectate;
+
+  const sendJoin = useCallback(
+    (id: string, force = false) => {
+      if (useSession.getState().connection !== 'open') return;
+      if (!force && joinedRef.current === id) return;
+      if (
+        sessionSocketSend({
+          type: 'join_ludo',
+          ludoId: id,
+          ...(spectateRef.current ? { spectate: true } : {}),
+        })
+      ) {
+        joinedRef.current = id;
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!ludoId) return;
+    bindLudo(ludoId);
+    joinedRef.current = null;
+    sendJoin(ludoId, true);
+    const id = window.setInterval(() => sendJoin(ludoId), 500);
+    return () => {
+      window.clearInterval(id);
+      if (joinedRef.current === ludoId) {
+        sessionSocketSend({ type: 'leave_ludo', ludoId });
+        joinedRef.current = null;
+      }
+    };
+  }, [ludoId, bindLudo, sendJoin]);
+
+  useEffect(() => {
+    if (connection !== 'open' || !ludoId) return;
+    sendJoin(ludoId, true);
+  }, [connection, ludoId, sendJoin]);
+
+  useEffect(() => {
+    if (
+      lastErrorCode === 'not_found' ||
+      lastErrorCode === 'kicked' ||
+      lastErrorCode === 'bad_auth' ||
+      lastErrorCode === 'account_deleted'
+    ) {
+      joinedRef.current = ludoId;
+    }
+  }, [lastErrorCode, ludoId]);
+
+  const send = useCallback((payload: unknown): boolean => sessionSocketSend(payload), []);
+
+  const leaveLudo = useCallback(() => {
+    if (!ludoId) return;
+    joinedRef.current = null;
+    sessionSocketSend({ type: 'leave_ludo', ludoId });
+    bindLudo(null);
+    setError(null);
+  }, [ludoId, bindLudo, setError]);
+
+  return { send, leaveLudo };
 }

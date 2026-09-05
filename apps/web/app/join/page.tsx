@@ -8,7 +8,7 @@ import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { resolvePublicImage } from '@/lib/assets';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
-import { resolveContestInvite, resolveInvite } from '@/lib/api';
+import { resolveContestInvite, resolveInvite, resolveLudoInvite } from '@/lib/api';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { useLobbySession } from '@/lib/useLobbySession';
 import { usePageCopy } from '@/lib/usePageCopy';
@@ -21,27 +21,32 @@ export default function JoinPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function enterContestCode(code: string) {
-    const session = await ensureSession();
-    const { contest } = await resolveContestInvite(code);
-    const { registerContest } = await import('@/lib/api');
-    await registerContest(contest.id, { sessionToken: session.sessionToken });
-    router.push(`/contest/${contest.id}`);
-  }
-
   async function enterInvite(mode: 'play' | 'spectate') {
     enterMobileFullscreen();
     setBusy(true);
     setError(null);
     try {
-      await ensureSession();
+      const session = await ensureSession();
+      const code = invite.trim();
+      const spectate = mode === 'spectate' ? '&mode=spectate' : '';
       try {
-        const t = await resolveInvite(invite.trim());
-        const spectate = mode === 'spectate' ? '&mode=spectate' : '';
+        const t = await resolveInvite(code);
         router.push(`/table/${t.tableId}?invite=${t.inviteCode}${spectate}`);
+        return;
       } catch {
-        await enterContestCode(invite.trim());
+        /* not a poker table — try contest, then Ludo */
       }
+      try {
+        const { contest } = await resolveContestInvite(code);
+        const { registerContest } = await import('@/lib/api');
+        await registerContest(contest.id, { sessionToken: session.sessionToken });
+        router.push(`/contest/${contest.id}`);
+        return;
+      } catch {
+        /* not a contest — try Ludo */
+      }
+      const board = await resolveLudoInvite(code);
+      router.push(`/ludo/${board.ludoId}?invite=${board.inviteCode}${spectate}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
     } finally {

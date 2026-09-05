@@ -55,7 +55,7 @@ fun WinHandDialog(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
                     text = "HAND COMPLETE",
-                    color = PokrColors.Mushroom.copy(alpha = 0.7f),
+                    color = PokrColors.OnChrome.copy(alpha = 0.85f),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 2.sp,
@@ -64,7 +64,7 @@ fun WinHandDialog(
                 )
                 Text(
                     text = if (youWon) "You won" else "Winner",
-                    color = PokrColors.Mushroom,
+                    color = PokrColors.OnChrome,
                     fontSize = 28.sp,
                     fontWeight = FontWeight.ExtraBold,
                     modifier = Modifier.fillMaxWidth(),
@@ -154,7 +154,7 @@ fun WinHandDialog(
                             } else {
                                 Text(
                                     text = "Won without showdown",
-                                    color = PokrColors.Cream.copy(alpha = 0.4f),
+                                    color = PokrColors.OnChrome.copy(alpha = 0.85f),
                                     fontSize = 11.sp,
                                     modifier = Modifier.padding(top = 8.dp),
                                 )
@@ -172,7 +172,7 @@ fun WinHandDialog(
                 } else {
                     Text(
                         text = "Waiting for the next hand…",
-                        color = PokrColors.Cream.copy(alpha = 0.45f),
+                        color = PokrColors.OnChrome.copy(alpha = 0.85f),
                         fontSize = 12.sp,
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center,

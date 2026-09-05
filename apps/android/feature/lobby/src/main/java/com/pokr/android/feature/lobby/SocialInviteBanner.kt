@@ -34,6 +34,7 @@ import com.pokr.android.core.model.PendingChallenge
 fun SocialInviteBanner(
     onOpenTable: (tableId: String, invite: String) -> Unit,
     onOpenContest: (contestId: String) -> Unit,
+    onOpenLudo: (ludoId: String, invite: String) -> Unit = { _, _ -> },
     onOpenFriends: () -> Unit,
     compact: Boolean = false,
     modifier: Modifier = Modifier,
@@ -69,7 +70,7 @@ fun SocialInviteBanner(
                 compact = compact,
                 pad = pad,
                 onPrimary = {
-                    viewModel.joinChallenge(challenge, onOpenTable, onOpenContest)
+                    viewModel.joinChallenge(challenge, onOpenTable, onOpenContest, onOpenLudo)
                 },
                 onSecondary = { viewModel.declineChallenge(challenge.id) },
             )
@@ -192,13 +193,16 @@ private fun challengeTitle(c: PendingChallenge): String {
     return when {
         group != null -> group
         c.kind == "contest" || !c.contestId.isNullOrBlank() -> "Contest invite"
+        c.kind == "ludo" || !c.ludoId.isNullOrBlank() -> "Ludo invite"
         else -> "Table invite"
     }
 }
 
 private fun challengeSubtitle(c: PendingChallenge): String =
-    if (c.kind == "contest" || !c.contestId.isNullOrBlank()) {
-        "${c.challenger.name} invited you to a contest"
-    } else {
-        "${c.challenger.name} wants to play"
+    when {
+        c.kind == "contest" || !c.contestId.isNullOrBlank() ->
+            "${c.challenger.name} invited you to a contest"
+        c.kind == "ludo" || !c.ludoId.isNullOrBlank() ->
+            "${c.challenger.name} invited you to Ludo"
+        else -> "${c.challenger.name} wants to play"
     }

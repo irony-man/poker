@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.pokr.android.core.datastore.SessionPreferences
 import com.pokr.android.core.model.ContestView
 import com.pokr.android.core.model.CreateContestRequest
+import com.pokr.android.core.model.CreateLudoRequest
 import com.pokr.android.core.model.CreateTableRequest
 import com.pokr.android.core.model.DEFAULT_STAKE_ID
 import com.pokr.android.core.model.FriendGroupView
@@ -47,6 +48,9 @@ data class LobbyUiState(
     val contestFieldSize: Int = 6,
     val contestHandLimit: Int = 20,
     val contestInvite: String = "",
+    val ludoMaxSeats: Int = 4,
+    val ludoBotCount: Int = 0,
+    val ludoRoomCode: String = "",
     val inviteFriendIds: List<String> = emptyList(),
     val friends: List<FriendProfile> = emptyList(),
     val groups: List<FriendGroupView> = emptyList(),
@@ -139,6 +143,11 @@ class LobbyViewModel @Inject constructor(
     fun onContestInviteChange(value: String) =
         _uiState.update { it.copy(contestInvite = value.filter { ch -> ch.isDigit() }.take(8)) }
     fun onInviteFriendsChange(ids: List<String>) = _uiState.update { it.copy(inviteFriendIds = ids.take(8)) }
+    fun onLudoMaxSeatsChange(value: Int) =
+        _uiState.update { it.copy(ludoMaxSeats = value.coerceIn(2, 4), ludoBotCount = it.ludoBotCount.coerceAtMost(value - 1)) }
+    fun onLudoBotCountChange(value: Int) = _uiState.update { it.copy(ludoBotCount = value) }
+    fun onLudoRoomCodeChange(value: String) =
+        _uiState.update { it.copy(ludoRoomCode = value.filter { ch -> ch.isDigit() }.take(8)) }
     fun onHostBotGroupChange(id: String) = _uiState.update { it.copy(hostBotGroupId = id) }
     fun clearError() = _uiState.update { it.copy(error = null) }
 
@@ -275,6 +284,7 @@ class LobbyViewModel @Inject constructor(
     fun join(
         onTable: (tableId: String, invite: String) -> Unit,
         onContest: ((contestId: String) -> Unit)? = null,
+        onLudo: ((ludoId: String, invite: String) -> Unit)? = null,
     ) {
         viewModelScope.launch {
             _uiState.update { it.copy(busy = true, error = null) }
@@ -285,17 +295,26 @@ class LobbyViewModel @Inject constructor(
                 if (table != null) {
                     return@runCatching JoinTarget.Table(table.tableId, table.inviteCode)
                 }
-                if (onContest == null) error("Table not found")
-                val contest = api.resolveContestInvite(code).contest
-                if (contest.status == "registering") {
-                    api.registerContest(contest.id)
+                if (onContest != null) {
+                    val contest = runCatching { api.resolveContestInvite(code).contest }.getOrNull()
+                    if (contest != null) {
+                        if (contest.status == "registering") {
+                            api.registerContest(contest.id)
+                        }
+                        return@runCatching JoinTarget.Contest(contest.id)
+                    }
                 }
-                JoinTarget.Contest(contest.id)
+                if (onLudo == null) error("Table not found")
+                val ludo = api.resolveLudoInvite(code)
+                val id = ludo.resolvedId()
+                if (id.isBlank()) error("Ludo board not found")
+                JoinTarget.Ludo(id, ludo.resolvedInvite().ifBlank { code })
             }.onSuccess { target ->
                 _uiState.update { it.copy(busy = false) }
                 when (target) {
                     is JoinTarget.Table -> onTable(target.tableId, target.invite)
                     is JoinTarget.Contest -> onContest?.invoke(target.contestId)
+                    is JoinTarget.Ludo -> onLudo?.invoke(target.ludoId, target.invite)
                 }
             }.onFailure { err ->
                 _uiState.update { it.copy(busy = false, error = err.message ?: "Join failed") }
@@ -303,9 +322,42 @@ class LobbyViewModel @Inject constructor(
         }
     }
 
+    fun hostLudo(onSuccess: (ludoId: String, invite: String) -> Unit) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(busy = true, error = null) }
+            runCatching {
+                val state = _uiState.value
+                val code = state.ludoRoomCode.trim()
+                if (code.isNotEmpty() && !code.matches(Regex("^\\d{4,8}$"))) {
+                    error("Room code must be 4–8 digits")
+                }
+                val session = requireSession()
+                val created = api.createLudo(
+                    CreateLudoRequest(
+                        userId = session.userId,
+                        name = "${session.name}'s Ludo",
+                        maxSeats = state.ludoMaxSeats.coerceIn(2, 4),
+                        botCount = state.ludoBotCount.coerceAtMost(state.ludoMaxSeats - 1),
+                        inviteCode = code.ifBlank { null },
+                        inviteFriendIds = state.inviteFriendIds,
+                    ),
+                )
+                val id = created.resolvedId()
+                if (id.isBlank()) error("Could not create Ludo board")
+                id to created.resolvedInvite()
+            }.onSuccess { (ludoId, invite) ->
+                _uiState.update { it.copy(busy = false) }
+                onSuccess(ludoId, invite)
+            }.onFailure { err ->
+                _uiState.update { it.copy(busy = false, error = err.message ?: "Host failed") }
+            }
+        }
+    }
+
     private sealed class JoinTarget {
         data class Table(val tableId: String, val invite: String) : JoinTarget()
         data class Contest(val contestId: String) : JoinTarget()
+        data class Ludo(val ludoId: String, val invite: String) : JoinTarget()
     }
 
     fun offline(onNavigate: (seats: Int, bots: Int, name: String) -> Unit) {

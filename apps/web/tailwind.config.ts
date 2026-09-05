@@ -24,6 +24,7 @@ export default {
         },
         sidebar: token('sidebar'),
         mushroom: token('mushroom'),
+        'on-chrome': token('on-chrome'),
         felt: {
           DEFAULT: token('felt'),
           deep: token('felt-deep'),

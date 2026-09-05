@@ -35,7 +35,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.ui.Alignment
@@ -51,6 +53,10 @@ import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -82,6 +88,7 @@ enum class LobbyTab {
     Public,
     Contests,
     Friends,
+    Ludo,
     Offline,
 }
 
@@ -128,6 +135,7 @@ fun LobbyBottomNav(
         LobbyTab.Public to "Public",
         LobbyTab.Contests to "Contests",
         LobbyTab.Friends to "Friends",
+        LobbyTab.Ludo to "Ludo",
         LobbyTab.Offline to "Offline",
     )
     val navInset = maxOf(
@@ -145,7 +153,7 @@ fun LobbyBottomNav(
     ) {
         items.forEach { (tab, label) ->
             val active = selected == tab
-            val color = if (active) PokrColors.OnChrome else PokrColors.OnChrome.copy(alpha = 0.55f)
+            val color = if (active) PokrColors.OnChrome else PokrColors.OnChrome.copy(alpha = 0.82f)
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -180,7 +188,7 @@ fun LobbyBottomNav(
                     fontFamily = PokrFonts.Display,
                     fontWeight = if (active) FontWeight.Bold else FontWeight.SemiBold,
                     fontSize = 8.sp,
-                    letterSpacing = 0.4.sp,
+                    letterSpacing = 0.2.sp,
                     maxLines = 1,
                 )
             }
@@ -296,6 +304,25 @@ private fun LobbyNavIcon(tab: LobbyTab, active: Boolean, color: Color) {
                     quadraticTo(size.width * 0.68f, size.height * 0.58f, size.width * 0.7f, size.height * 0.82f)
                 }
                 drawPath(body, color, style = stroke)
+            }
+            LobbyTab.Ludo -> {
+                drawRoundRect(
+                    color = color,
+                    topLeft = androidx.compose.ui.geometry.Offset(size.width * 0.18f, size.height * 0.18f),
+                    size = androidx.compose.ui.geometry.Size(size.width * 0.64f, size.height * 0.64f),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(5f, 5f),
+                    style = style,
+                )
+                drawCircle(
+                    color = color,
+                    radius = size.minDimension * 0.06f,
+                    center = androidx.compose.ui.geometry.Offset(size.width * 0.38f, size.height * 0.38f),
+                )
+                drawCircle(
+                    color = color,
+                    radius = size.minDimension * 0.06f,
+                    center = androidx.compose.ui.geometry.Offset(size.width * 0.62f, size.height * 0.62f),
+                )
             }
             LobbyTab.Offline -> {
                 drawRoundRect(
@@ -474,6 +501,7 @@ fun LobbyTextField(
     val shape = RoundedCornerShape(PokrRadius.Md)
     val interactionSource = remember { MutableInteractionSource() }
     val focused by interactionSource.collectIsFocusedAsState()
+    var passwordVisible by remember { mutableStateOf(false) }
     val textStyle = TextStyle(
         color = PokrColors.InkStrong,
         fontFamily = PokrFonts.Body,
@@ -488,7 +516,11 @@ fun LobbyTextField(
         textStyle = textStyle,
         cursorBrush = SolidColor(PokrColors.Sidebar),
         interactionSource = interactionSource,
-        visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
+        visualTransformation = if (password && !passwordVisible) {
+            PasswordVisualTransformation()
+        } else {
+            VisualTransformation.None
+        },
         keyboardOptions = KeyboardOptions(
             keyboardType = when {
                 password -> KeyboardType.Password
@@ -498,7 +530,7 @@ fun LobbyTextField(
             imeAction = ImeAction.Done,
         ),
         decorationBox = { inner ->
-            Box(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(40.dp)
@@ -510,22 +542,76 @@ fun LobbyTextField(
                         else PokrColors.Sidebar.copy(alpha = 0.15f),
                         shape = shape,
                     )
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                contentAlignment = Alignment.CenterStart,
+                    .padding(start = 12.dp, end = if (password) 4.dp else 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (value.isEmpty() && placeholder != null) {
-                    Text(
-                        text = placeholder,
-                        color = PokrColors.InkStrongMuted.copy(alpha = 0.65f),
-                        fontSize = 14.sp,
-                        lineHeight = 18.sp,
-                        fontFamily = PokrFonts.Body,
-                    )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    if (value.isEmpty() && placeholder != null) {
+                        Text(
+                            text = placeholder,
+                            color = PokrColors.InkStrongMuted.copy(alpha = 0.65f),
+                            fontSize = 14.sp,
+                            lineHeight = 18.sp,
+                            fontFamily = PokrFonts.Body,
+                        )
+                    }
+                    inner()
                 }
-                inner()
+                if (password) {
+                    val toggleLabel = if (passwordVisible) "Hide password" else "Show password"
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .semantics {
+                                contentDescription = toggleLabel
+                                role = Role.Button
+                            }
+                            .clickable { passwordVisible = !passwordVisible },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        PasswordVisibilityIcon(
+                            visible = passwordVisible,
+                            color = PokrColors.InkStrongMuted,
+                        )
+                    }
+                }
             }
         },
     )
+}
+
+@Composable
+private fun PasswordVisibilityIcon(visible: Boolean, color: Color) {
+    Canvas(modifier = Modifier.size(18.dp)) {
+        val stroke = Stroke(width = 2.4f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+        val eye = Path().apply {
+            moveTo(size.width * 0.08f, size.height * 0.5f)
+            quadraticTo(size.width * 0.5f, size.height * 0.12f, size.width * 0.92f, size.height * 0.5f)
+            quadraticTo(size.width * 0.5f, size.height * 0.88f, size.width * 0.08f, size.height * 0.5f)
+            close()
+        }
+        drawPath(eye, color, style = stroke)
+        drawCircle(
+            color = color,
+            radius = size.minDimension * 0.14f,
+            center = androidx.compose.ui.geometry.Offset(size.width * 0.5f, size.height * 0.5f),
+            style = stroke,
+        )
+        if (visible) {
+            drawLine(
+                color = color,
+                start = androidx.compose.ui.geometry.Offset(size.width * 0.12f, size.height * 0.12f),
+                end = androidx.compose.ui.geometry.Offset(size.width * 0.88f, size.height * 0.88f),
+                strokeWidth = 2.4f,
+                cap = StrokeCap.Round,
+            )
+        }
+    }
 }
 
 @Composable

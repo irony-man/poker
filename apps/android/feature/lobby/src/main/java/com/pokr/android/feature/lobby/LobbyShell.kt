@@ -31,6 +31,7 @@ fun LobbyShell(
     onJoined: (tableId: String, invite: String, spectate: Boolean) -> Unit,
     onOffline: (seats: Int, bots: Int, name: String) -> Unit,
     onContest: (contestId: String) -> Unit,
+    onLudo: (ludoId: String, invite: String, spectate: Boolean) -> Unit,
     onProfile: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LobbyViewModel = hiltViewModel(),
@@ -87,6 +88,7 @@ fun LobbyShell(
                             onPlayMode = { playMode = it },
                             onJoined = onJoined,
                             onContest = onContest,
+                            onLudo = onLudo,
                         )
                     } else {
                         HostTab(
@@ -118,6 +120,16 @@ fun LobbyShell(
                         FriendsTab(
                             onOpenTable = { tableId, invite -> onJoined(tableId, invite, false) },
                             onOpenContest = onContest,
+                            onOpenLudo = { ludoId, invite -> onLudo(ludoId, invite, false) },
+                        )
+                    }
+                    LobbyTab.Ludo -> if (!state.signedIn) {
+                        LobbyScrollColumn { SignInGate(onGoHome = ::goHome) }
+                    } else {
+                        LudoTab(
+                            state = state,
+                            viewModel = viewModel,
+                            onLudo = { id, invite -> onLudo(id, invite, false) },
                         )
                     }
                     LobbyTab.Offline -> OfflineTab(

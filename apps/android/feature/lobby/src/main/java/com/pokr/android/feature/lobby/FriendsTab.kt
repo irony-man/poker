@@ -33,6 +33,7 @@ import com.pokr.android.core.model.PendingRequestView
 fun FriendsTab(
     onOpenTable: (tableId: String, invite: String) -> Unit,
     onOpenContest: (contestId: String) -> Unit = {},
+    onOpenLudo: (ludoId: String, invite: String) -> Unit = { _, _ -> },
     viewModel: FriendsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -41,6 +42,7 @@ fun FriendsTab(
         viewModel = viewModel,
         onOpenTable = onOpenTable,
         onOpenContest = onOpenContest,
+        onOpenLudo = onOpenLudo,
     )
 }
 
@@ -50,6 +52,7 @@ fun FriendsContent(
     viewModel: FriendsViewModel,
     onOpenTable: (tableId: String, invite: String) -> Unit,
     onOpenContest: (contestId: String) -> Unit = {},
+    onOpenLudo: (ludoId: String, invite: String) -> Unit = { _, _ -> },
 ) {
     LobbyScrollColumn {
         LobbyPageHeader(
@@ -102,6 +105,7 @@ fun FriendsContent(
                                         challenge = challenge,
                                         onTable = onOpenTable,
                                         onContest = onOpenContest,
+                                        onLudo = onOpenLudo,
                                     )
                                 },
                                 onDecline = { viewModel.declineChallenge(challenge.id) },
@@ -194,6 +198,7 @@ private fun ChallengeRow(
     onDecline: () -> Unit,
 ) {
     val isContest = challenge.kind == "contest" || !challenge.contestId.isNullOrBlank()
+    val isLudo = challenge.kind == "ludo" || !challenge.ludoId.isNullOrBlank()
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -213,7 +218,11 @@ private fun ChallengeRow(
                 fontSize = 15.sp,
             )
             Text(
-                if (isContest) "Contest challenge" else "Heads-up challenge",
+                when {
+                    isLudo -> "Ludo challenge"
+                    isContest -> "Contest challenge"
+                    else -> "Heads-up challenge"
+                },
                 color = PokrColors.InkStrongMuted,
                 fontSize = 12.sp,
             )

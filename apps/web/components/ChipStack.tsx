@@ -176,7 +176,7 @@ export function ChipStack({
   }
 
   const disc = size === 'lg' ? 36 : 26;
-  const stackCount = amount >= 200 ? 4 : amount >= 50 ? 3 : amount >= 20 ? 2 : 1;
+  const stackCount = amount >= 100 ? 4 : amount >= 20 ? 3 : amount >= 5 ? 2 : 1;
 
   return (
     <div className="inline-flex items-end gap-2.5">

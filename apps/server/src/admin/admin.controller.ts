@@ -22,6 +22,7 @@ import { CurrentUser, SessionAuthGuard } from '../common/session-auth.guard.js';
 import { ContestsService } from '../contests/contests.service.js';
 import { FriendsService } from '../friends/friends.service.js';
 import { HistoryService } from '../history/history.service.js';
+import { LudoRoomsService } from '../ludo/ludo.service.js';
 import { PresenceService } from '../presence/presence.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 import { RoomsService } from '../rooms/rooms.service.js';
@@ -86,6 +87,7 @@ const PagesBody = z.object({
     contests: PageCopyBody,
     friends: PageCopyBody,
     solo: PageCopyBody,
+    ludo: PageCopyBody,
     signIn: PageCopyBody,
     signUp: PageCopyBody,
     homeAuthFooter: PageCopyBody,
@@ -145,6 +147,7 @@ export class AdminController {
     private readonly auth: AuthService,
     private readonly wallet: WalletService,
     private readonly rooms: RoomsService,
+    private readonly ludo: LudoRoomsService,
     private readonly contests: ContestsService,
     private readonly friends: FriendsService,
     private readonly history: HistoryService,
@@ -471,6 +474,7 @@ export class AdminController {
       code: 'account_deleted',
     });
     this.rooms.leaveUser(userId);
+    this.ludo.leaveUser(userId);
     await this.contests.removeUser(userId);
     await this.friends.purgeUser(userId);
     this.presence.clear(userId);

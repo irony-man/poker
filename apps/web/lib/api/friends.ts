@@ -21,9 +21,10 @@ export interface PendingChallenge {
   id: string;
   challenger: FriendProfile;
   /** Omitted on very old payloads; treat as table. */
-  kind?: 'table' | 'contest';
+  kind?: 'table' | 'contest' | 'ludo';
   tableId: string | null;
   contestId?: string | null;
+  ludoId?: string | null;
   inviteCode: string;
   createdAt: number;
   groupId?: string;

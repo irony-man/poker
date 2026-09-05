@@ -3,3 +3,4 @@ export * from './stakes.js';
 export * from './voice.js';
 export * from './contests.js';
 export * from './history.js';
+export * from './ludo.js';

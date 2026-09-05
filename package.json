@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build -w @poker/engine -w @poker/protocol -w @poker/db -w @poker/server -w @poker/web",
+    "build": "npm run build -w @poker/engine -w @poker/ludo-engine -w @poker/protocol -w @poker/db -w @poker/server -w @poker/web",
     "build:web": "npm run build -w @poker/web",
     "dev": "npm run dev -w @poker/server & npm run dev -w @poker/web",
     "dev:server": "npm run dev -w @poker/server",
@@ -15,7 +15,7 @@
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose stop postgres",
     "db:logs": "docker compose logs -f postgres",
-    "test": "npm run test -w @poker/engine -w @poker/server",
+    "test": "npm run test -w @poker/engine -w @poker/ludo-engine -w @poker/server",
     "test:engine": "npm run test -w @poker/engine",
     "smoke": "npm run smoke -w @poker/server",
     "sync:assets": "npm run sync:assets -w @poker/server",

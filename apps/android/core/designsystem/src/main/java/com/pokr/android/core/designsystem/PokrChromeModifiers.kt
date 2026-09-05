@@ -55,7 +55,7 @@ fun Modifier.pokrChoiceChipSurface(
         return this
             .clip(shape)
             .background(
-                if (selected) PokrColors.Sidebar.copy(alpha = 0.45f)
+                if (selected) PokrColors.InkRaised
                 else Color.White.copy(alpha = 0.22f),
                 shape,
             )

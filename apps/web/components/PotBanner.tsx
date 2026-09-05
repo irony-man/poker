@@ -1,6 +1,6 @@
 'use client';
 
-import { ChipDisc, formatChips } from './ChipStack';
+import { ChipStack, formatChips } from './ChipStack';
 
 /** Large center pot like classic mobile freepoker tables. */
 export function PotBanner({
@@ -10,31 +10,21 @@ export function PotBanner({
 }: {
   amount: number;
   sidePotCount?: number;
-  /** Phone landscape: multi-chip pile + display pot (reference layout). */
+  /** Phone landscape: stack above the amount (reference layout). */
   landscape?: boolean;
 }) {
   const value = Math.max(0, amount);
   return (
     <div className="pointer-events-none flex flex-col items-center gap-1">
       <div
-        className={`flex items-center drop-shadow-[0_4px_12px_rgba(0,0,0,0.55)] ${
-          landscape ? 'flex-col gap-0.5' : 'gap-2'
+        className={`flex items-end drop-shadow-[0_4px_12px_rgba(0,0,0,0.55)] ${
+          landscape ? 'flex-col items-center gap-0.5' : 'gap-2'
         }`}
       >
-        {landscape ? (
-          <div className="relative mb-0.5 flex h-5 w-12 items-end justify-center">
-            <span className="absolute left-1 bottom-0">
-              <ChipDisc amount={Math.max(value, 1)} size={18} />
-            </span>
-            <span className="absolute left-1/2 bottom-0 -translate-x-1/2 z-[1]">
-              <ChipDisc amount={Math.max(value, 25)} size={20} />
-            </span>
-            <span className="absolute right-1 bottom-0">
-              <ChipDisc amount={Math.max(value, 100)} size={18} />
-            </span>
-          </div>
+        {value > 0 ? (
+          <ChipStack amount={value} size="md" label={false} />
         ) : (
-          <ChipDisc amount={Math.max(value, 1)} size={28} />
+          <ChipStack amount={1} size="md" label={false} />
         )}
         <span
           className={`tabular-nums tracking-tight text-white ${
@@ -44,11 +34,10 @@ export function PotBanner({
           }`}
         >
           {formatChips(value)}
-
         </span>
       </div>
       {sidePotCount > 1 && (
-        <span className="rounded bg-black/45 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white/70">
+        <span className="rounded bg-black/45 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-cream/85">
           {sidePotCount} pots
         </span>
       )}

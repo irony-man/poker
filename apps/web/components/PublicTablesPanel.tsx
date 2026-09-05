@@ -79,11 +79,11 @@ export function PublicTablesPanel({
           return (
             <div
               key={stake.id}
-              className="flex flex-col gap-3 rounded-lg border border-sidebar/12 bg-mushroom/45 p-4"
+              className="surface-card flex flex-col gap-3 p-4"
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="font-display text-lg font-bold uppercase tracking-wider text-sidebar">
+                  <p className="font-display text-lg font-bold uppercase tracking-wider text-ink-strong">
                     {stake.label}
                   </p>
                   <p className="text-xs font-medium text-ink-strong-muted">

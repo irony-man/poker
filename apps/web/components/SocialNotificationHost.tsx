@@ -63,6 +63,7 @@ export function SocialNotificationHost() {
       await joinFriendChallenge(challenge.id, { sessionToken });
       void refreshSocial();
       const isContest = challenge.kind === 'contest' || Boolean(challenge.contestId);
+      const isLudo = challenge.kind === 'ludo' || Boolean(challenge.ludoId);
       if (isContest && challenge.contestId) {
         try {
           await registerContest(challenge.contestId, { sessionToken });
@@ -70,6 +71,11 @@ export function SocialNotificationHost() {
           /* already registered or full */
         }
         router.push(`/contest/${challenge.contestId}`);
+      } else if (isLudo && challenge.ludoId) {
+        const q = challenge.inviteCode
+          ? `?invite=${encodeURIComponent(challenge.inviteCode)}`
+          : '';
+        router.push(`/ludo/${challenge.ludoId}${q}`);
       } else if (challenge.tableId) {
         const q = challenge.inviteCode
           ? `?invite=${encodeURIComponent(challenge.inviteCode)}`
@@ -157,12 +163,16 @@ export function SocialNotificationHost() {
 function challengeTitle(c: PendingChallenge): string {
   if (c.groupName) return c.groupName;
   if (c.kind === 'contest' || c.contestId) return 'Contest invite';
+  if (c.kind === 'ludo' || c.ludoId) return 'Ludo invite';
   return 'Table invite';
 }
 
 function challengeSubtitle(c: PendingChallenge): string {
   if (c.kind === 'contest' || c.contestId) {
     return `${c.challenger.name} invited you to a contest`;
+  }
+  if (c.kind === 'ludo' || c.ludoId) {
+    return `${c.challenger.name} invited you to Ludo`;
   }
   return `${c.challenger.name} wants to play`;
 }

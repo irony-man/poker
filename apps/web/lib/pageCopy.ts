@@ -7,6 +7,7 @@ export type PageCopyKey =
   | 'contests'
   | 'friends'
   | 'solo'
+  | 'ludo'
   | 'signIn'
   | 'signUp'
   | 'homeAuthFooter';
@@ -28,6 +29,7 @@ export const PAGE_COPY_KEYS: PageCopyKey[] = [
   'contests',
   'friends',
   'solo',
+  'ludo',
   'signIn',
   'signUp',
   'homeAuthFooter',
@@ -40,6 +42,7 @@ export const PAGE_COPY_LABELS: Record<PageCopyKey, string> = {
   contests: 'Contests',
   friends: 'Friends',
   solo: 'Offline',
+  ludo: 'Ludo',
   signIn: 'Sign in',
   signUp: 'Sign up',
   homeAuthFooter: 'Home auth footer',
@@ -52,6 +55,7 @@ export const PAGE_COPY_PATHS: Record<PageCopyKey, string> = {
   contests: '/contests',
   friends: '/friends',
   solo: '/solo',
+  ludo: '/ludo',
   signIn: '/sign-in',
   signUp: '/sign-up',
   homeAuthFooter: '/',
@@ -60,7 +64,7 @@ export const PAGE_COPY_PATHS: Record<PageCopyKey, string> = {
 export const PAGE_COPY_GROUPS: { label: string; keys: PageCopyKey[] }[] = [
   {
     label: 'Lobby',
-    keys: ['host', 'join', 'public', 'contests', 'friends', 'solo'],
+    keys: ['host', 'join', 'public', 'contests', 'friends', 'solo', 'ludo'],
   },
   {
     label: 'Account',
@@ -79,7 +83,7 @@ export const DEFAULT_PAGES_COPY: PagesCopy = {
   join: {
     title: 'Join a Table',
     subtitle:
-      'Enter the invite code you were sent to take a seat or watch the hand, whether it is a private table or a contest.',
+      'Enter the invite code you were sent to take a seat or watch, whether it is a private table, a contest, or a Ludo board.',
     image: '/join-table.png',
     imageAlt: 'Enter a table with an invite code',
   },
@@ -110,6 +114,13 @@ export const DEFAULT_PAGES_COPY: PagesCopy = {
       "Train against bots on this device with the same Hold'em rules as live tables, no connection or lobby, and a seat count you choose before the first deal.",
     image: '/home-offline.png',
     imageAlt: 'You versus a bot at a private practice table',
+  },
+  ludo: {
+    title: 'Ludo',
+    subtitle:
+      'A side quest — race four tokens home with friends or bots. No stakes, no wallet, just a 2–4 player board and a code you share.',
+    image: '/home-offline.png',
+    imageAlt: 'Host a Ludo side quest with no stakes',
   },
   signIn: {
     title: 'Sign in',

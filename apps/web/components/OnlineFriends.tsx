@@ -153,23 +153,23 @@ export function OnlineFriendsSidebar({
       aria-label="Online friends"
     >
       <div className="mb-2 flex items-baseline justify-between gap-2 px-0.5">
-        <p className="font-display text-[0.65rem] font-bold uppercase tracking-[0.16em] text-mushroom/45">
+        <p className="font-display text-[0.65rem] font-bold uppercase tracking-[0.16em] text-on-chrome/80">
           Online
         </p>
-        <span className="text-[11px] tabular-nums text-mushroom/40">
+        <span className="text-[11px] tabular-nums text-on-chrome/80">
           {loaded ? online.length : '…'}
         </span>
       </div>
 
       {!loaded ? (
-        <p className="px-0.5 text-[11px] text-mushroom/35">Loading…</p>
+        <p className="px-0.5 text-[11px] text-on-chrome/80">Loading…</p>
       ) : online.length === 0 ? (
-        <p className="px-0.5 text-[11px] leading-snug text-mushroom/40">
+        <p className="px-0.5 text-[11px] leading-snug text-on-chrome/80">
           No friends online.{' '}
           <Link
             href="/profile?tab=friends"
             onClick={onNavigate}
-            className="font-medium text-mushroom/70 underline-offset-2 hover:text-mushroom hover:underline"
+            className="font-medium text-on-chrome/90 underline-offset-2 hover:text-on-chrome hover:underline"
           >
             Find friends
           </Link>
@@ -228,7 +228,7 @@ export function OnlineFriendsStrip({
       className={`flex items-center gap-2 overflow-x-auto overscroll-contain py-1 ${className}`.trim()}
       aria-label={`${online.length} online friend${online.length === 1 ? '' : 's'}`}
     >
-      <span className="shrink-0 text-[10px] font-display font-bold uppercase tracking-[0.14em] text-mushroom/45">
+      <span className="shrink-0 text-[10px] font-display font-bold uppercase tracking-[0.14em] text-on-chrome/80">
         Online
       </span>
       <ul className="flex items-center gap-1.5">
@@ -284,7 +284,7 @@ export function OnlineFriendsOverlay({ signedIn }: { signedIn: boolean }) {
     <div className={`pointer-events-auto absolute z-40 ${positionClass}`}>
       {open ? (
         <div className="mb-1.5 w-44 overflow-hidden rounded-xl border border-mushroom/20 bg-sidebar/95 p-2 shadow-raised backdrop-blur-sm">
-          <p className="mb-1.5 px-1 font-display text-[0.6rem] font-bold uppercase tracking-[0.16em] text-mushroom/45">
+          <p className="mb-1.5 px-1 font-display text-[0.6rem] font-bold uppercase tracking-[0.16em] text-on-chrome/80">
             Online friends
           </p>
           {pendingCount > 0 ? (

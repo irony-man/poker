@@ -18,6 +18,8 @@ import com.pokr.android.feature.lobby.LobbyScreen
 import com.pokr.android.feature.lobby.ProfileRoute
 import com.pokr.android.feature.lobby.ProfileScreen
 import com.pokr.android.feature.lobby.SocialInviteBanner
+import com.pokr.android.feature.ludo.LudoBoardRoute
+import com.pokr.android.feature.ludo.LudoBoardScreen
 import com.pokr.android.feature.offline.OfflineTableRoute
 import com.pokr.android.feature.offline.OfflineTableScreen
 import com.pokr.android.feature.progress.HandsRoute
@@ -29,7 +31,9 @@ import com.pokr.android.feature.table.TableScreen
 fun PokrNavHost(modifier: Modifier = Modifier) {
     val navController = rememberNavController()
     val entry by navController.currentBackStackEntryAsState()
-    val compact = entry?.destination?.route?.contains("OnlineTable", ignoreCase = true) == true
+    val dest = entry?.destination?.route.orEmpty()
+    val compact = dest.contains("OnlineTable", ignoreCase = true) ||
+        dest.contains("LudoBoard", ignoreCase = true)
 
     Box(modifier = modifier.fillMaxSize()) {
     NavHost(
@@ -53,6 +57,11 @@ fun PokrNavHost(modifier: Modifier = Modifier) {
                 onContest = { contestId ->
                     navController.navigate(ContestRoute(contestId = contestId))
                 },
+                onLudo = { ludoId, invite, spectate ->
+                    navController.navigate(
+                        LudoBoardRoute(id = ludoId, invite = invite, spectate = spectate),
+                    )
+                },
                 onProfile = {
                     navController.navigate(ProfileRoute)
                 },
@@ -74,6 +83,9 @@ fun PokrNavHost(modifier: Modifier = Modifier) {
                 },
                 onOpenTable = { tableId, invite ->
                     navController.navigate(OnlineTableRoute(tableId = tableId, invite = invite))
+                },
+                onOpenLudo = { ludoId, invite ->
+                    navController.navigate(LudoBoardRoute(id = ludoId, invite = invite))
                 },
             )
         }
@@ -112,6 +124,14 @@ fun PokrNavHost(modifier: Modifier = Modifier) {
                 },
             )
         }
+        composable<LudoBoardRoute> {
+            LudoBoardScreen(
+                webBaseUrl = BuildConfig.POKR_WEB_URL,
+                onBack = {
+                    navController.popBackStack(LobbyRoute, inclusive = false)
+                },
+            )
+        }
     }
 
         SocialInviteBanner(
@@ -121,6 +141,9 @@ fun PokrNavHost(modifier: Modifier = Modifier) {
             },
             onOpenContest = { contestId ->
                 navController.navigate(ContestRoute(contestId = contestId))
+            },
+            onOpenLudo = { ludoId, invite ->
+                navController.navigate(LudoBoardRoute(id = ludoId, invite = invite))
             },
             onOpenFriends = {
                 navController.popBackStack(LobbyRoute, inclusive = false)

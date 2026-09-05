@@ -17,7 +17,11 @@ import com.pokr.android.core.model.InviteFriendGroupBody
 import com.pokr.android.core.model.InviteFriendGroupResponse
 import com.pokr.android.core.model.InviteFriendsBody
 import com.pokr.android.core.model.InviteFriendsResponse
+import com.pokr.android.core.model.CreateLudoRequest
+import com.pokr.android.core.model.CreateLudoResponse
 import com.pokr.android.core.model.InviteResolveResponse
+import com.pokr.android.core.model.LudoChatListResponse
+import com.pokr.android.core.model.LudoInviteResolveResponse
 import com.pokr.android.core.model.LoginRequest
 import com.pokr.android.core.model.MeProfile
 import com.pokr.android.core.model.MyHandsResponse
@@ -171,4 +175,16 @@ interface PokrApi {
 
     @GET("api/site")
     suspend fun getSite(): SitePublicResponse
+
+    @POST("api/ludo")
+    suspend fun createLudo(@Body body: CreateLudoRequest): CreateLudoResponse
+
+    @GET("api/ludo/invite/{code}")
+    suspend fun resolveLudoInvite(@Path("code") code: String): LudoInviteResolveResponse
+
+    @GET("api/ludo/{id}/chat")
+    suspend fun getLudoChat(
+        @Path("id") id: String,
+        @Query("limit") limit: Int = 80,
+    ): LudoChatListResponse
 }

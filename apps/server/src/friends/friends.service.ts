@@ -140,7 +140,8 @@ export class FriendsService implements OnModuleInit {
     friendUserIds: string[],
     target:
       | { kind: 'table'; tableId: string; inviteCode: string }
-      | { kind: 'contest'; contestId: string; inviteCode: string },
+      | { kind: 'contest'; contestId: string; inviteCode: string }
+      | { kind: 'ludo'; ludoId: string; inviteCode: string },
   ) {
     const result = await this.store.createFriendInvites(hostUserId, friendUserIds, target);
     await this.notifyUsers(hostUserId, ...friendUserIds);

@@ -27,6 +27,8 @@
   --ink-strong: 29 4 50;
   /* ≥7:1 on mushroom — secondary/caption copy at 11–12px */
   --ink-strong-muted: 74 54 80;
+  /* Text/icons on purple sidebar + play chrome (same as mushroom in Classic). */
+  --on-chrome: 230 217 215;
 
   /* Table oval = sidebar purple family */
   --felt: 29 4 50;
@@ -1203,6 +1205,7 @@ html[data-ui-theme='v2'] {
   --mushroom: 253 233 61;
   --ink-strong: 26 16 40;
   --ink-strong-muted: 72 48 96;
+  --on-chrome: 255 255 255;
   --cream: 255 255 255;
   --cream-muted: 214 196 232;
   --radius-xs: 8px;
@@ -1390,6 +1393,7 @@ html[data-ui-theme='v3'] {
   --mushroom: 42 24 72;
   --ink-strong: 22 12 40;
   --ink-strong-muted: 88 72 110;
+  --on-chrome: 255 255 255;
   --cream: 255 255 255;
   --cream-muted: 196 184 214;
   --radius-xs: 6px;

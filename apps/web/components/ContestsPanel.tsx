@@ -361,7 +361,7 @@ export function ContestsPanel({
       {sessionToken ? (
         <Link
           href="/profile?tab=contests"
-          className="surface-row flex items-center justify-between gap-3 bg-mushroom/45 px-3.5 py-3 transition hover:border-sidebar/25 hover:bg-sidebar/[0.04] sm:px-4"
+          className="surface-row flex items-center justify-between gap-3 px-3.5 py-3 transition hover:border-sidebar/25 hover:bg-sidebar/[0.04] sm:px-4"
         >
           <span className="min-w-0">
             <span className="block font-display text-[0.68rem] font-bold uppercase tracking-[0.18em] text-ink-strong/45">

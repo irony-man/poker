@@ -1,4 +1,10 @@
 import { z } from 'zod';
+import {
+  LudoLegalMoveSchema,
+  LudoPublicViewSchema,
+  LudoSeatSchema,
+  LudoYouSchema,
+} from './ludo.js';
 
 export const ActionTypeSchema = z.enum(['fold', 'check', 'call', 'bet', 'raise', 'allin']);
 
@@ -134,6 +140,57 @@ export const ClientMessageSchema = z.discriminatedUnion('type', [
     type: z.literal('leave_contest'),
     contestId: z.string().min(1),
   }),
+  z.object({
+    type: z.literal('join_ludo'),
+    ludoId: z.string().min(1),
+    /** When true, join as spectator only (no auto-sit). Default: sit if a seat is free. */
+    spectate: z.boolean().nullish(),
+  }),
+  z.object({
+    type: z.literal('leave_ludo'),
+    ludoId: z.string().min(1),
+  }),
+  z.object({
+    type: z.literal('ludo_sit'),
+    ludoId: z.string().min(1),
+    seat: LudoSeatSchema,
+  }),
+  z.object({
+    type: z.literal('ludo_stand'),
+    ludoId: z.string().min(1),
+    seat: LudoSeatSchema,
+  }),
+  z.object({
+    type: z.literal('ludo_set_ready'),
+    ludoId: z.string().min(1),
+    ready: z.boolean(),
+  }),
+  z.object({
+    type: z.literal('ludo_roll'),
+    ludoId: z.string().min(1),
+    seq: z.number().int().nonnegative(),
+  }),
+  z.object({
+    type: z.literal('ludo_move'),
+    ludoId: z.string().min(1),
+    tokenIndex: z.number().int().min(0).max(3),
+    seq: z.number().int().nonnegative(),
+  }),
+  z.object({
+    type: z.literal('ludo_add_bot'),
+    ludoId: z.string().min(1),
+    seat: LudoSeatSchema.nullish(),
+  }),
+  z.object({
+    type: z.literal('ludo_remove_bot'),
+    ludoId: z.string().min(1),
+    seat: LudoSeatSchema,
+  }),
+  z.object({
+    type: z.literal('ludo_chat'),
+    ludoId: z.string().min(1),
+    text: z.string().min(1).max(280),
+  }),
 ]);
 
 export type ClientMessage = z.infer<typeof ClientMessageSchema>;
@@ -230,6 +287,21 @@ export const ServerMessageSchema = z.discriminatedUnion('type', [
     incoming: z.array(z.unknown()),
     pendingChallenges: z.array(z.unknown()),
     groups: z.array(z.unknown()),
+  }),
+  z.object({
+    type: z.literal('ludo_state_sync'),
+    ludo: LudoPublicViewSchema,
+    you: LudoYouSchema,
+    /** Present when it is your turn. */
+    legalMoves: z.array(LudoLegalMoveSchema).optional(),
+  }),
+  z.object({
+    type: z.literal('ludo_chat'),
+    ludoId: z.string(),
+    userId: z.string(),
+    name: z.string(),
+    text: z.string(),
+    at: z.number(),
   }),
 ]);
 

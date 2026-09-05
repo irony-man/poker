@@ -34,6 +34,7 @@ export function FriendsPanel({
   disabled,
   onNavigateTable,
   onNavigateContest,
+  onNavigateLudo,
   variant = 'page',
   onFriendCountChange,
   imageSrc,
@@ -42,6 +43,7 @@ export function FriendsPanel({
   disabled: boolean;
   onNavigateTable: (tableId: string, inviteCode: string) => void;
   onNavigateContest?: (contestId: string) => void;
+  onNavigateLudo?: (ludoId: string, inviteCode: string) => void;
   /** Page uses lobby split+art; embedded is a single column for profile tab. */
   variant?: 'page' | 'embedded';
   onFriendCountChange?: (count: number) => void;
@@ -216,6 +218,7 @@ export function FriendsPanel({
       await joinFriendChallenge(challenge.id, auth());
       void refreshSocial();
       const isContest = challenge.kind === 'contest' || Boolean(challenge.contestId);
+      const isLudo = challenge.kind === 'ludo' || Boolean(challenge.ludoId);
       if (isContest && challenge.contestId) {
         try {
           await registerContest(challenge.contestId, auth());
@@ -224,6 +227,9 @@ export function FriendsPanel({
         }
         if (onNavigateContest) onNavigateContest(challenge.contestId);
         else window.location.href = `/contest/${challenge.contestId}`;
+      } else if (isLudo && challenge.ludoId) {
+        if (onNavigateLudo) onNavigateLudo(challenge.ludoId, challenge.inviteCode);
+        else window.location.href = `/ludo/${challenge.ludoId}?invite=${challenge.inviteCode}`;
       } else if (challenge.tableId) {
         onNavigateTable(challenge.tableId, challenge.inviteCode);
       } else {

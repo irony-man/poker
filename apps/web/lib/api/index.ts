@@ -48,6 +48,14 @@ export {
   unregisterContest,
   startContest,
 } from './contests';
+export {
+  createLudo,
+  resolveLudoInvite,
+  fetchLudoChat,
+  type CreateLudoResult,
+  type LudoInviteResult,
+  type LudoChatLine,
+} from './ludo';
 export { uploadOfflineHand, fetchMyHands, type UploadHandPayload, type MyHandRow } from './history';
 export {
   fetchPublicSite,

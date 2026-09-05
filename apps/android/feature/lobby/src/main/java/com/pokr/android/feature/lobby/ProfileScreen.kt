@@ -56,6 +56,7 @@ fun ProfileScreen(
     onContest: (contestId: String) -> Unit,
     onPlay: () -> Unit,
     onOpenTable: (tableId: String, invite: String) -> Unit = { _, _ -> },
+    onOpenLudo: (ludoId: String, invite: String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = hiltViewModel(),
     friendsViewModel: FriendsViewModel = hiltViewModel(),
@@ -125,6 +126,7 @@ fun ProfileScreen(
                         viewModel = friendsViewModel,
                         onOpenTable = onOpenTable,
                         onOpenContest = onContest,
+                        onOpenLudo = onOpenLudo,
                     )
                 }
                 else -> {

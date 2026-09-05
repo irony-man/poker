@@ -89,6 +89,7 @@ export function TableShell({
   tableColorId = 0,
   dockActions = true,
   voice,
+  chatEmptyHint,
 }: {
   children: ReactNode;
   onSend: (text: string) => void;
@@ -105,6 +106,7 @@ export function TableShell({
   dockActions?: boolean;
   /** Compact voice controls for the phone comms strip (online tables). */
   voice?: ReactNode;
+  chatEmptyHint?: string;
 }) {
   const narrow = useIsNarrow();
   const sessionToken = useSession((s) => s.sessionToken);
@@ -309,6 +311,7 @@ export function TableShell({
               onEmoji={onEmoji}
               onClose={() => setChatVisible(false)}
               closeLabel="Hide"
+              emptyHint={chatEmptyHint}
             />
           </div>
           {showChatDock ? (
@@ -356,6 +359,7 @@ export function TableShell({
               onEmoji={onEmoji}
               onClose={() => setMobileOpen(false)}
               closeLabel="Close"
+              emptyHint={chatEmptyHint}
             />
           </aside>
         </div>

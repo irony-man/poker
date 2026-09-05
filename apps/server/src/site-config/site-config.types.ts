@@ -33,6 +33,7 @@ export type PageCopyKey =
   | 'contests'
   | 'friends'
   | 'solo'
+  | 'ludo'
   | 'signIn'
   | 'signUp'
   | 'homeAuthFooter';
@@ -291,6 +292,7 @@ export const PAGE_COPY_KEYS: PageCopyKey[] = [
   'contests',
   'friends',
   'solo',
+  'ludo',
   'signIn',
   'signUp',
   'homeAuthFooter',
@@ -307,7 +309,7 @@ export const DEFAULT_PAGES_COPY: PagesCopy = {
   join: {
     title: 'Join a Table',
     subtitle:
-      'Enter the invite code you were sent to take a seat or watch the hand, whether it is a private table or a contest.',
+      'Enter the invite code you were sent to take a seat or watch, whether it is a private table, a contest, or a Ludo board.',
     image: '/join-table.png',
     imageAlt: 'Enter a table with an invite code',
   },
@@ -339,6 +341,13 @@ export const DEFAULT_PAGES_COPY: PagesCopy = {
     image: '/home-offline.png',
     imageAlt: 'You versus a bot at a private practice table',
   },
+  ludo: {
+    title: 'Ludo',
+    subtitle:
+      'A side quest — race four tokens home with friends or bots. No stakes, no wallet, just a 2–4 player board and a code you share.',
+    image: '/home-offline.png',
+    imageAlt: 'Host a Ludo side quest with no stakes',
+  },
   signIn: {
     title: 'Sign in',
     subtitle: 'Sign in with your username',
@@ -364,6 +373,7 @@ export const PAGE_COPY_LABELS: Record<PageCopyKey, string> = {
   contests: 'Contests (/contests)',
   friends: 'Friends (/friends)',
   solo: 'Offline setup (/solo)',
+  ludo: 'Ludo (/ludo)',
   signIn: 'Sign in',
   signUp: 'Sign up',
   homeAuthFooter: 'Home auth footer',

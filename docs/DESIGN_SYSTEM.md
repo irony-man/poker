@@ -27,6 +27,7 @@ Change a Classic value in both places or not at all.
 | Ink strong | `#1D0432` | `--ink-strong` | `PokrColors.InkStrong` | Text on light pages |
 | Ink strong muted | `#4A3650` | `--ink-strong-muted` | `PokrColors.InkStrongMuted` | Secondary text on light (≥7:1 on mushroom) |
 | Mushroom | `#E6D9D7` | `--mushroom` | `PokrColors.Mushroom` | Page / lobby ground |
+| On chrome | `#E6D9D7` | `--on-chrome` / `text-on-chrome` | `PokrColors.OnChrome` | Text/icons on purple chrome |
 | Lobby panel | `#FFFCFA` | lobby `hud-panel` fill | `PokrColors.LobbyPanel` | Light cards |
 | Felt / Felt deep | `#1D0432` / `#120220` | `--felt` / `--felt-deep` | `PokrColors.FeltGreen*` | Table surface |
 | Felt mid / edge | `#341252` / `#0A0414` | table felt mid/edge | `PokrColors.FeltMid` / `.FeltEdge` | Table radial + primary start |

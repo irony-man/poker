@@ -70,6 +70,7 @@ export function FriendInvites({
           <ul className="mt-2 grid gap-2 sm:grid-cols-2">
             {challenges.map((c) => {
               const isContest = c.kind === 'contest' || Boolean(c.contestId);
+              const isLudo = c.kind === 'ludo' || Boolean(c.ludoId);
               const actionBusy = busy === `join-${c.id}` || busy === `decline-${c.id}`;
               return (
                 <li
@@ -89,13 +90,15 @@ export function FriendInvites({
                       <span className="text-ink-strong-muted"> · {c.groupName}</span>
                     ) : isContest ? (
                       <span className="text-ink-strong-muted"> invited you to a contest</span>
+                    ) : isLudo ? (
+                      <span className="text-ink-strong-muted"> invited you to Ludo</span>
                     ) : (
                       <span className="text-ink-strong-muted"> wants to play</span>
                     )}
                   </span>
                   <div className="flex shrink-0 items-center gap-1.5">
                     <IconAction
-                      label={isContest ? 'Join contest' : 'Join table'}
+                      label={isContest ? 'Join contest' : isLudo ? 'Join Ludo' : 'Join table'}
                       disabled={disabled || actionBusy}
                       tone="primary"
                       onClick={() => onJoinChallenge(c)}

@@ -1163,6 +1163,10 @@ function ProfilePageInner() {
                   enterMobileFullscreen();
                   router.push(`/contest/${contestId}`);
                 }}
+                onNavigateLudo={(ludoId, inviteCode) => {
+                  enterMobileFullscreen();
+                  router.push(`/ludo/${ludoId}?invite=${inviteCode}`);
+                }}
               />
             </section>
           )}

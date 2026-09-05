@@ -26,6 +26,7 @@ import kotlinx.coroutines.withTimeout
 sealed class SocialJoinTarget {
     data class Table(val tableId: String, val invite: String) : SocialJoinTarget()
     data class Contest(val contestId: String) : SocialJoinTarget()
+    data class Ludo(val ludoId: String, val invite: String) : SocialJoinTarget()
 }
 
 @Singleton
@@ -135,13 +136,19 @@ class SocialRepository @Inject constructor(
     suspend fun joinChallenge(challenge: PendingChallenge): SocialJoinTarget {
         api.joinFriendChallenge(challenge.id)
         val contestId = challenge.contestId
+        val ludoId = challenge.ludoId
+        val isLudo = challenge.kind == "ludo" || !ludoId.isNullOrBlank()
         val isContest = challenge.kind == "contest" || !contestId.isNullOrBlank()
-        val target = if (isContest && !contestId.isNullOrBlank()) {
-            runCatching { api.registerContest(contestId) }
-            SocialJoinTarget.Contest(contestId)
-        } else {
-            val tableId = challenge.tableId ?: error("Invite is no longer valid")
-            SocialJoinTarget.Table(tableId, challenge.inviteCode)
+        val target = when {
+            isLudo && !ludoId.isNullOrBlank() -> SocialJoinTarget.Ludo(ludoId, challenge.inviteCode)
+            isContest && !contestId.isNullOrBlank() -> {
+                runCatching { api.registerContest(contestId) }
+                SocialJoinTarget.Contest(contestId)
+            }
+            else -> {
+                val tableId = challenge.tableId ?: error("Invite is no longer valid")
+                SocialJoinTarget.Table(tableId, challenge.inviteCode)
+            }
         }
         refresh()
         return target

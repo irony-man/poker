@@ -8,6 +8,11 @@ import type {
 } from '@poker/engine';
 import { create } from 'zustand';
 import type {
+  LudoLegalMove,
+  LudoPublicView,
+  LudoYou,
+} from '@poker/protocol';
+import type {
   ContestView,
   FriendGroup,
   FriendProfile,
@@ -81,7 +86,12 @@ interface SessionState {
   connection: 'idle' | 'connecting' | 'open' | 'closed';
   /** Table the active socket is bound to (guards against stale state_sync). */
   boundTableId: string | null;
+  /** Ludo board the active socket is bound to (guards against stale ludo_state_sync). */
+  boundLudoId: string | null;
   table: PublicTable | null;
+  ludo: LudoPublicView | null;
+  ludoYou: LudoYou | null;
+  ludoLegalMoves: LudoLegalMove[];
   private: PrivateView | null;
   chat: ChatMessage[];
   lastError: string | null;
@@ -124,8 +134,15 @@ interface SessionState {
   clearSession: () => void;
   setConnection: (c: SessionState['connection']) => void;
   bindTable: (tableId: string | null) => void;
+  bindLudo: (ludoId: string | null) => void;
   applyStateSync: (table: PublicTable, priv: PrivateView | null) => void;
+  applyLudoStateSync: (
+    ludo: LudoPublicView,
+    you: LudoYou,
+    legalMoves?: LudoLegalMove[],
+  ) => void;
   clearTable: () => void;
+  clearLudo: () => void;
   pushChat: (m: ChatMessage) => void;
   setError: (e: string | null, code?: string | null) => void;
   setEmoji: (e: { emoji: string; name: string; at: number } | null) => void;
@@ -155,7 +172,11 @@ export const useSession = create<SessionState>((set) => ({
   sessionToken: null,
   connection: 'idle',
   boundTableId: null,
+  boundLudoId: null,
   table: null,
+  ludo: null,
+  ludoYou: null,
+  ludoLegalMoves: [],
   private: null,
   chat: [],
   lastError: null,
@@ -192,7 +213,11 @@ export const useSession = create<SessionState>((set) => ({
       whuffieBalance: null,
       connection: 'idle',
       boundTableId: null,
+      boundLudoId: null,
       table: null,
+      ludo: null,
+      ludoYou: null,
+      ludoLegalMoves: [],
       private: null,
       chat: [],
       lastError: null,
@@ -206,9 +231,38 @@ export const useSession = create<SessionState>((set) => ({
       contestEvent: null,
     }),
   setConnection: (connection) => set({ connection }),
-  bindTable: (boundTableId) => set({ boundTableId }),
+  bindTable: (boundTableId) =>
+    set(
+      boundTableId
+        ? {
+            boundTableId,
+            boundLudoId: null,
+            ludo: null,
+            ludoYou: null,
+            ludoLegalMoves: [],
+          }
+        : { boundTableId },
+    ),
+  bindLudo: (boundLudoId) =>
+    set(
+      boundLudoId
+        ? {
+            boundLudoId,
+            boundTableId: null,
+            table: null,
+            private: null,
+            ludo: null,
+            ludoYou: null,
+            ludoLegalMoves: [],
+            chat: [],
+            lastError: null,
+            lastErrorCode: null,
+          }
+        : { boundLudoId },
+    ),
   applyStateSync: (table, priv) =>
     set((prev) => {
+      if (prev.boundLudoId) return prev;
       // Never apply state for a table the socket isn't currently bound to.
       if (prev.boundTableId && table.tableId !== prev.boundTableId) {
         return prev;
@@ -223,6 +277,18 @@ export const useSession = create<SessionState>((set) => ({
       }
       return { table, private: priv };
     }),
+  applyLudoStateSync: (ludo, you, legalMoves) =>
+    set((prev) => {
+      if (prev.boundTableId) return prev;
+      if (prev.boundLudoId && ludo.id !== prev.boundLudoId) return prev;
+      if (prev.ludo && prev.ludo.id !== ludo.id) return prev;
+      if (prev.ludo && ludo.seq < prev.ludo.seq) return prev;
+      return {
+        ludo,
+        ludoYou: you,
+        ludoLegalMoves: legalMoves ?? [],
+      };
+    }),
   clearTable: () =>
     set({
       table: null,
@@ -232,6 +298,16 @@ export const useSession = create<SessionState>((set) => ({
       lastErrorCode: null,
       actionBurst: null,
       boundTableId: null,
+    }),
+  clearLudo: () =>
+    set({
+      ludo: null,
+      ludoYou: null,
+      ludoLegalMoves: [],
+      chat: [],
+      lastError: null,
+      lastErrorCode: null,
+      boundLudoId: null,
     }),
   pushChat: (m) => set((s) => ({ chat: [...s.chat.slice(-80), m] })),
   setError: (lastError, code = null) => set({ lastError, lastErrorCode: lastError ? code : null }),

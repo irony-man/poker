@@ -153,8 +153,8 @@ export function MobileQuickReactions({ onEmoji }: { onEmoji: (emoji: string) => 
           aria-controls={panelId}
           className={`shrink-0 rounded-full px-2.5 py-1.5 text-[11px] font-display font-bold uppercase tracking-wider transition ${
             moreOpen
-              ? 'bg-sidebar text-mushroom'
-              : 'bg-sidebar/8 text-sidebar hover:bg-sidebar/12'
+              ? 'bg-sidebar text-on-chrome'
+              : 'bg-sidebar/8 text-ink-strong hover:bg-sidebar/12'
           }`}
         >
           {moreOpen ? 'Done' : 'More'}

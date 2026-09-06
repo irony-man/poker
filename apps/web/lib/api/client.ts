@@ -1,4 +1,20 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+function stripTrailingSlash(url: string): string {
+  return url.replace(/\/$/, '');
+}
+
+/**
+ * HTTP API base URL.
+ * Browser: same-origin (`''`) so `/api/*` is rewritten by Next.js to the game
+ * server — avoids cross-origin CORS failures on pokr.site.
+ * Server (RSC/SSR): call the API host directly via NEXT_PUBLIC_API_URL.
+ */
+export function apiBase(): string {
+  if (typeof window !== 'undefined') return '';
+  return stripTrailingSlash(process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000');
+}
+
+/** Absolute API host (SSR / tooling). Prefer `apiBase()` for fetch calls. */
+export const API_URL = stripTrailingSlash(process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000');
 export const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? 'ws://localhost:4000/ws';
 
 export type AuthOptions = { sessionToken: string };
@@ -66,7 +82,7 @@ export async function authedFetch(
   path: string,
   options: AuthOptions & { method?: string; body?: unknown },
 ) {
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(`${apiBase()}${path}`, {
     method: options.method ?? 'GET',
     headers: sessionHeaders(options.sessionToken),
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,

@@ -66,12 +66,13 @@ For a public URL (Vercel/Railway/Fly), you’ll need accounts + `NEXT_PUBLIC_API
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `PORT` | `4000` | Game server port |
-| `WEB_ORIGIN` | `http://localhost:3000` | CORS origin |
+| `WEB_ORIGIN` | `http://localhost:3000` | Extra CORS origins (comma-separated; `pokr.site` always allowed) |
 | `DATABASE_URL` | unset → file stores | **Postgres** for users, sessions, social, hand history |
 | `REDIS_URL` | unset | Optional Redis for table snapshots/pubsub |
 | `DATA_DIR` | `./data` | File fallback when Postgres is unset; also schema.sql dump |
 | `NEXT_PUBLIC_SITE_URL` | `https://pokr.site` | Canonical site URL (metadata, sitemap, OG) |
-| `NEXT_PUBLIC_API_URL` | `http://localhost:4000` | Browser → API |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:4000` | Absolute API host (SSR + rewrite target fallback) |
+| `API_REWRITE_TARGET` | same as `NEXT_PUBLIC_API_URL` | Next.js `/api` proxy upstream (Docker: `http://server:4000`) |
 | `NEXT_PUBLIC_WS_URL` | `ws://localhost:4000/ws` | Browser → WebSocket |
 | `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` | unset | Google Search Console HTML tag content |
 | `NEXT_PUBLIC_BING_SITE_VERIFICATION` | unset | Bing Webmaster `msvalidate.01` content |
@@ -83,7 +84,7 @@ For a public URL (Vercel/Railway/Fly), you’ll need accounts + `NEXT_PUBLIC_API
 2. Submit sitemap: `https://pokr.site/sitemap.xml`
 3. Spot-check structured data: [Rich Results Test](https://search.google.com/test/rich-results) on `/`
 4. Spot-check social cards: paste `/` into an Open Graph debugger after deploy
-5. Point `WEB_ORIGIN` (server CORS) at `https://pokr.site` in production
+5. `WEB_ORIGIN` may list extra CORS origins; `https://pokr.site` is always allowed. Browser HTTP uses same-origin `/api` (Next rewrite) so JOIN/POST is not blocked by CORS.
 
 ### Local Postgres
 

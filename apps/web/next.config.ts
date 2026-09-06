@@ -17,6 +17,13 @@ const securityHeaders = [
   { key: 'X-DNS-Prefetch-Control', value: 'on' },
 ];
 
+/** Upstream game server for `/api/*` rewrites (Docker: http://server:4000). */
+const apiRewriteTarget = (
+  process.env.API_REWRITE_TARGET ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  'http://localhost:4000'
+).replace(/\/$/, '');
+
 const nextConfig: NextConfig = {
   transpilePackages: ['@poker/protocol', '@poker/engine', '@letele/playing-cards'],
   poweredByHeader: false,
@@ -45,6 +52,15 @@ const nextConfig: NextConfig = {
         has: [{ type: 'host', value: 'www.pokr.site' }],
         destination: 'https://pokr.site/:path*',
         permanent: true,
+      },
+    ];
+  },
+  // Browser calls same-origin `/api/*`; Next proxies to the Nest server (no CORS).
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${apiRewriteTarget}/api/:path*`,
       },
     ];
   },

@@ -58,6 +58,8 @@ services:
       - "3000:3000"
     environment:
       PORT: "3000"
+      # Next rewrites /api → Nest (in-compose hostname, not localhost)
+      API_REWRITE_TARGET: http://server:4000
     depends_on:
       server:
         condition: service_healthy

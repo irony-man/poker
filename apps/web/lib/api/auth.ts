@@ -3,7 +3,7 @@ import { coerceMoney } from '@/lib/currency';
 import { clampTableColorId } from '@/lib/tableColors';
 import { clampTableLayout, type TableLayout } from '@/lib/tableLayoutPref';
 import { clampUiTheme, type UiTheme } from '@/lib/uiTheme';
-import { API_URL, parseError, sessionHeaders } from './client';
+import { apiBase, parseError, sessionHeaders } from './client';
 
 export interface MeProfile {
   id: string;
@@ -57,7 +57,7 @@ export async function signup(
   password: string,
   avatarId?: number,
 ): Promise<AuthSession> {
-  const res = await fetch(`${API_URL}/api/signup`, {
+  const res = await fetch(`${apiBase()}/api/signup`, {
     method: 'POST',
     headers: sessionHeaders(),
     body: JSON.stringify({ username, password, avatarId }),
@@ -67,7 +67,7 @@ export async function signup(
 }
 
 export async function login(username: string, password: string): Promise<AuthSession> {
-  const res = await fetch(`${API_URL}/api/login`, {
+  const res = await fetch(`${apiBase()}/api/login`, {
     method: 'POST',
     headers: sessionHeaders(),
     body: JSON.stringify({ username, password }),
@@ -77,7 +77,7 @@ export async function login(username: string, password: string): Promise<AuthSes
 }
 
 export async function logout(sessionToken: string): Promise<void> {
-  await fetch(`${API_URL}/api/logout`, {
+  await fetch(`${apiBase()}/api/logout`, {
     method: 'POST',
     headers: sessionHeaders(sessionToken),
   });
@@ -92,7 +92,7 @@ export async function refreshTicket(sessionToken: string): Promise<{
   chipBalance?: number;
   whuffieBalance?: number;
 }> {
-  const res = await fetch(`${API_URL}/api/ticket`, {
+  const res = await fetch(`${apiBase()}/api/ticket`, {
     method: 'POST',
     headers: sessionHeaders(sessionToken),
     body: JSON.stringify({}),
@@ -102,7 +102,7 @@ export async function refreshTicket(sessionToken: string): Promise<{
 }
 
 export async function fetchMe(sessionToken: string): Promise<MeProfile> {
-  const res = await fetch(`${API_URL}/api/me`, {
+  const res = await fetch(`${apiBase()}/api/me`, {
     method: 'GET',
     headers: sessionHeaders(sessionToken),
   });
@@ -121,7 +121,7 @@ export async function updateMe(
     sfxMuted?: boolean;
   },
 ): Promise<MeProfile> {
-  const res = await fetch(`${API_URL}/api/me`, {
+  const res = await fetch(`${apiBase()}/api/me`, {
     method: 'PATCH',
     headers: sessionHeaders(sessionToken),
     body: JSON.stringify(body),
@@ -134,7 +134,7 @@ export async function requestAvatarUploadUrl(
   sessionToken: string,
   body: { contentType: 'image/jpeg' | 'image/png' | 'image/webp'; contentLength: number },
 ): Promise<{ uploadUrl: string; publicUrl: string; expiresIn: number }> {
-  const res = await fetch(`${API_URL}/api/me/avatar/upload-url`, {
+  const res = await fetch(`${apiBase()}/api/me/avatar/upload-url`, {
     method: 'POST',
     headers: sessionHeaders(sessionToken),
     body: JSON.stringify(body),

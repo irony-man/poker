@@ -1,5 +1,5 @@
 import type { ContestMode, ContestView } from '@poker/protocol';
-import { API_URL, authedFetch, parseError, sessionHeaders, type AuthOptions } from './client';
+import { apiBase, authedFetch, parseError, sessionHeaders, type AuthOptions } from './client';
 
 export async function createContest(
   input: {
@@ -19,7 +19,7 @@ export async function createContest(
   },
   sessionToken: string,
 ) {
-  const res = await fetch(`${API_URL}/api/contests`, {
+  const res = await fetch(`${apiBase()}/api/contests`, {
     method: 'POST',
     headers: sessionHeaders(sessionToken),
     body: JSON.stringify(input),
@@ -43,7 +43,7 @@ export async function inviteContestFriends(
 }
 
 export async function listPublicContests() {
-  const res = await fetch(`${API_URL}/api/contests`);
+  const res = await fetch(`${apiBase()}/api/contests`);
   if (!res.ok) throw new Error('Failed to load contests');
   return res.json() as Promise<{ contests: ContestView[] }>;
 }
@@ -53,13 +53,13 @@ export async function listMyContests(options: AuthOptions) {
 }
 
 export async function resolveContestInvite(code: string) {
-  const res = await fetch(`${API_URL}/api/contests/invite/${code}`);
+  const res = await fetch(`${apiBase()}/api/contests/invite/${code}`);
   if (!res.ok) throw new Error('Contest not found');
   return res.json() as Promise<{ contest: ContestView }>;
 }
 
 export async function getContest(contestId: string) {
-  const res = await fetch(`${API_URL}/api/contests/${contestId}`);
+  const res = await fetch(`${apiBase()}/api/contests/${contestId}`);
   if (!res.ok) throw new Error('Contest not found');
   return res.json() as Promise<{ contest: ContestView }>;
 }

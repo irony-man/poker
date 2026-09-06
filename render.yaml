@@ -25,7 +25,7 @@ services:
       - key: DATA_DIR
         value: /opt/render/project/src/data
       - key: WEB_ORIGIN
-        value: https://pokr.site
+        value: https://pokr.site,https://www.pokr.site
       # Required. Prefer Supabase Session pooler URI (IPv4) if using Supabase —
       # direct db.<ref>.supabase.co is IPv6-only and fails on Render free.
       - key: DATABASE_URL

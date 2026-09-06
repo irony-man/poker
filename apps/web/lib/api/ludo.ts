@@ -1,5 +1,5 @@
 import type { CreateLudoBody } from '@poker/protocol';
-import { API_URL, parseError, sessionHeaders, type AuthOptions, authedFetch } from './client';
+import { apiBase, parseError, sessionHeaders, type AuthOptions, authedFetch } from './client';
 
 export interface CreateLudoResult {
   ludoId: string;
@@ -46,7 +46,7 @@ function pickMaxSeats(raw: Record<string, unknown>): number {
 }
 
 export async function createLudo(input: CreateLudoBody, sessionToken: string) {
-  const res = await fetch(`${API_URL}/api/ludo`, {
+  const res = await fetch(`${apiBase()}/api/ludo`, {
     method: 'POST',
     headers: sessionHeaders(sessionToken),
     body: JSON.stringify(input),
@@ -67,7 +67,7 @@ export async function createLudo(input: CreateLudoBody, sessionToken: string) {
 }
 
 export async function resolveLudoInvite(code: string) {
-  const res = await fetch(`${API_URL}/api/ludo/invite/${encodeURIComponent(code)}`);
+  const res = await fetch(`${apiBase()}/api/ludo/invite/${encodeURIComponent(code)}`);
   if (!res.ok) throw new Error('Invite not found');
   const raw = asRecord(await res.json()) ?? {};
   const ludoId = pickLudoId(raw);
@@ -84,7 +84,7 @@ export async function fetchLudoChat(ludoId: string, options?: AuthOptions) {
   if (options?.sessionToken) {
     return authedFetch(`/api/ludo/${ludoId}/chat`, options) as Promise<{ messages: LudoChatLine[] }>;
   }
-  const res = await fetch(`${API_URL}/api/ludo/${encodeURIComponent(ludoId)}/chat`);
+  const res = await fetch(`${apiBase()}/api/ludo/${encodeURIComponent(ludoId)}/chat`);
   if (!res.ok) throw new Error(await parseError(res, 'Failed to load chat'));
   return res.json() as Promise<{ messages: LudoChatLine[] }>;
 }

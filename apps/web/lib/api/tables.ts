@@ -1,8 +1,8 @@
 import type { CreateTableBody } from '@poker/protocol';
-import { API_URL, authedFetch, parseError, sessionHeaders, type AuthOptions } from './client';
+import { apiBase, authedFetch, parseError, sessionHeaders, type AuthOptions } from './client';
 
 export async function createTable(input: CreateTableBody, sessionToken: string) {
-  const res = await fetch(`${API_URL}/api/tables`, {
+  const res = await fetch(`${apiBase()}/api/tables`, {
     method: 'POST',
     headers: sessionHeaders(sessionToken),
     body: JSON.stringify(input),
@@ -54,13 +54,13 @@ export interface PublicTableSummary {
 }
 
 export async function listPublicTables() {
-  const res = await fetch(`${API_URL}/api/tables`);
+  const res = await fetch(`${apiBase()}/api/tables`);
   if (!res.ok) throw new Error('Failed to load tables');
   return res.json() as Promise<{ tables: PublicTableSummary[] }>;
 }
 
 export async function resolveInvite(code: string) {
-  const res = await fetch(`${API_URL}/api/tables/invite/${code}`);
+  const res = await fetch(`${apiBase()}/api/tables/invite/${code}`);
   if (!res.ok) throw new Error('Invite not found');
   return res.json() as Promise<{
     tableId: string;

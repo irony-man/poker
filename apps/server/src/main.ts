@@ -25,10 +25,13 @@ async function bootstrap() {
 
   app.enableCors({
     origin(origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+      // Reject with `false` (not Error) so preflight still gets a clean CORS response.
       if (isAllowedOrigin(origin, extraOrigins)) callback(null, true);
-      else callback(new Error(`CORS blocked: ${origin}`));
+      else callback(null, false);
     },
     credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
   app.useWebSocketAdapter(new WsAdapter(app));

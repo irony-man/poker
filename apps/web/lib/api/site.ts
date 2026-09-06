@@ -1,5 +1,5 @@
 import type { PagesCopy } from '@/lib/pageCopy';
-import { API_URL, parseError } from './client';
+import { apiBase, parseError } from './client';
 import type { PublicBotGroup } from './admin';
 import type { TableSoundsConfig } from './sounds';
 
@@ -62,7 +62,7 @@ export async function fetchPublicSite(): Promise<PublicSitePayload> {
   if (siteInflight) return siteInflight;
 
   siteInflight = (async () => {
-    const res = await fetch(`${API_URL}/api/site`);
+    const res = await fetch(`${apiBase()}/api/site`);
     if (!res.ok) throw new Error(await parseError(res, 'Could not load site'));
     const data = (await res.json()) as PublicSitePayload;
     siteCache = { at: Date.now(), data };

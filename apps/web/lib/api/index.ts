@@ -1,6 +1,6 @@
 export type { AuthSession, ContestMode, ContestView } from '@poker/protocol';
 
-export { API_URL, WS_URL } from './client';
+export { API_URL, apiBase, WS_URL } from './client';
 export {
   signup,
   login,

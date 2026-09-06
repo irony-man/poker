@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import {
   applyAction,
   applyTimeout,
@@ -52,6 +53,11 @@ import {
   newOfflineTableId,
   submitOfflineHand,
 } from '@/lib/offlineHandHistory';
+import {
+  clearOfflineSession,
+  loadOfflineSession,
+  saveOfflineSession,
+} from '@/lib/offlineSession';
 import { readStoredSession } from '@/lib/session';
 import type { ActionType } from '@poker/engine';
 
@@ -179,6 +185,8 @@ export function OfflineTableView({
   playerName,
   botNames,
   botStyles,
+  resume = false,
+  botGroupId = null,
 }: {
   config: TableConfig;
   playerName: string;
@@ -186,7 +194,11 @@ export function OfflineTableView({
   botNames?: readonly string[];
   /** Admin bot group styles (group default + per-name). */
   botStyles?: BotStyleOptions | null;
+  /** Restore the last localStorage snapshot instead of a fresh table. */
+  resume?: boolean;
+  botGroupId?: string | null;
 }) {
+  const router = useRouter();
   const pushChat = useSession((s) => s.pushChat);
   const setEmoji = useSession((s) => s.setEmoji);
   const setActionBurst = useSession((s) => s.setActionBurst);
@@ -209,6 +221,7 @@ export function OfflineTableView({
   const botReadyTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const botReadyIdsRef = useRef<Set<string>>(new Set());
   const [botReadyVersion, setBotReadyVersion] = useState(0);
+  const persistSessionRef = useRef(true);
   const tableIdRef = useRef(newOfflineTableId(readStoredSession()?.userId));
   const handStartedAtRef = useRef(0);
   const handActionsRef = useRef<Array<EngineEvent & { at: number }>>([]);
@@ -296,7 +309,7 @@ export function OfflineTableView({
     [recordChat, setActionBurst, persistCompletedHand],
   );
 
-  // Seed human + bots once.
+  // Seed human + bots once (or restore a saved session).
   // Do not touch ticket/sessionToken — a fake "offline" ticket makes the
   // app-level WebSocket re-auth and the server answers "Invalid or expired ticket".
   useEffect(() => {
@@ -316,31 +329,62 @@ export function OfflineTableView({
       userId: HUMAN_ID,
       name: playerName,
     });
-    let s = createEmptyTable(config);
-    const seated = sitDown(s, 0, HUMAN_ID, playerName, config.buyIn);
-    if (!seated.ok) return;
-    s = seated.state;
-    const taken = new Set([playerName]);
-    const namePool = botNames && botNames.length > 0 ? botNames : undefined;
-    const bots = Math.max(1, config.maxSeats - 1);
-    for (let i = 0; i < bots; i++) {
-      const empty = s.players.find((p) => p.status === 'empty');
-      if (!empty) break;
-      const botName = pickBotName(taken, namePool);
-      taken.add(botName);
-      const bareId = `off-${i}`;
-      const personality = resolveBotPersonalityId(botName, bareId, botStyles);
-      const r = sitDown(s, empty.seat, makeBotUserId(bareId, personality), botName, config.buyIn);
-      if (r.ok) s = r.state;
+
+    // Restore on refresh / Resume even if the URL omitted resume=1.
+    const saved = loadOfflineSession();
+    const canResume =
+      saved != null &&
+      saved.state.players.some((p) => p.userId === HUMAN_ID) &&
+      (resume || saved.config.maxSeats === config.maxSeats);
+
+    if (canResume && saved) {
+      tableIdRef.current = saved.tableId;
+      let s = saved.state;
+      if (s.players[0]?.userId === HUMAN_ID && s.players[0].name !== playerName) {
+        s = {
+          ...s,
+          players: s.players.map((p, i) =>
+            i === 0 && p.userId === HUMAN_ID ? { ...p, name: playerName } : p,
+          ),
+        };
+      }
+      setState(s);
+      const bots = s.players.filter((p) => p.userId && p.userId !== HUMAN_ID).length;
+      pushChat({
+        userId: 'system',
+        name: 'Dealer',
+        text: `Resumed offline table — you vs ${bots} bot${bots === 1 ? '' : 's'}`,
+        at: Date.now(),
+      });
+      setBootstrapped(true);
+    } else {
+      let s = createEmptyTable(config);
+      const seated = sitDown(s, 0, HUMAN_ID, playerName, config.buyIn);
+      if (!seated.ok) return;
+      s = seated.state;
+      const taken = new Set([playerName]);
+      const namePool = botNames && botNames.length > 0 ? botNames : undefined;
+      const bots = Math.max(1, config.maxSeats - 1);
+      for (let i = 0; i < bots; i++) {
+        const empty = s.players.find((p) => p.status === 'empty');
+        if (!empty) break;
+        const botName = pickBotName(taken, namePool);
+        taken.add(botName);
+        const bareId = `off-${i}`;
+        const personality = resolveBotPersonalityId(botName, bareId, botStyles);
+        const r = sitDown(s, empty.seat, makeBotUserId(bareId, personality), botName, config.buyIn);
+        if (r.ok) s = r.state;
+      }
+      setState(s);
+      pushChat({
+        userId: 'system',
+        name: 'Dealer',
+        text: `Offline table ready — you vs ${bots} bot${bots === 1 ? '' : 's'}`,
+        at: Date.now(),
+      });
+      setBootstrapped(true);
     }
-    setState(s);
-    pushChat({
-      userId: 'system',
-      name: 'Dealer',
-      text: `Offline table ready — you vs ${bots} bot${bots === 1 ? '' : 's'}`,
-      at: Date.now(),
-    });
-    setBootstrapped(true);
+
     return () => {
       clearBotReadyTimers();
       botReadyIdsRef.current.clear();
@@ -356,7 +400,27 @@ export function OfflineTableView({
         lastErrorCode: null,
       });
     };
-  }, [config, playerName, botNames, pushChat, clearBotReadyTimers]);
+  }, [config, playerName, botNames, botStyles, resume, pushChat, clearBotReadyTimers]);
+
+  useEffect(() => {
+    if (!bootstrapped) return;
+    const write = () => {
+      if (!persistSessionRef.current) return;
+      saveOfflineSession({
+        playerName,
+        seats: config.maxSeats,
+        botGroupId,
+        config,
+        tableId: tableIdRef.current,
+        state,
+      });
+    };
+    const timer = window.setTimeout(write, 300);
+    return () => {
+      window.clearTimeout(timer);
+      write();
+    };
+  }, [bootstrapped, state, config, playerName, botGroupId]);
 
   useEffect(() => {
     void flushOfflineHandQueue();
@@ -585,6 +649,12 @@ export function OfflineTableView({
     isSelf: p.userId === HUMAN_ID,
     sittingOut: p.status === 'sittingOut',
   }));
+  const startNewGame = () => {
+    persistSessionRef.current = false;
+    clearOfflineSession();
+    router.push('/solo');
+  };
+
   const showDockReadyRoster = betweenHands && readyRosterPlayers.length > 0;
   const dockReadyHeading =
     publicTable.street === 'waiting' && readyCount === 0
@@ -624,6 +694,11 @@ export function OfflineTableView({
         tone: 'gold',
       });
     }
+    offlineOverflow.push({
+      id: 'new-game',
+      label: 'New game',
+      onClick: startNewGame,
+    });
     offlineOverflow.push({
       id: 'lobby',
       label: 'Back to lobby',
@@ -705,6 +780,9 @@ export function OfflineTableView({
             <div className="play-chrome-rail">
               <TableSoundMuteButton />
               <HowToPlayHelp />
+              <Button type="button" variant="chrome" onClick={startNewGame}>
+                New game
+              </Button>
               <Button href="/" variant="chrome" className="no-underline">
                 Lobby
               </Button>

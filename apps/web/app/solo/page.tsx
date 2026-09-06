@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  clearOfflineSession,
+  loadOfflineSession,
+  type OfflineSessionSnapshot,
+} from '@/lib/offlineSession';
 import { ChoiceRow } from '@/components/ChoiceRow';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
 import { LoadingScreen } from '@/components/LoadingScreen';
@@ -23,6 +28,11 @@ export default function SoloPage() {
   const [offlineSeats, setOfflineSeats] = useState(6);
   const [botGroups, setBotGroups] = useState<PublicBotGroup[]>([]);
   const [botGroupId, setBotGroupId] = useState<string | null>(null);
+  const [savedSession, setSavedSession] = useState<OfflineSessionSnapshot | null>(null);
+
+  useEffect(() => {
+    setSavedSession(loadOfflineSession());
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,15 +56,33 @@ export default function SoloPage() {
   const bots = offlineSeats - 1;
   const displayName = name.trim() || 'Player';
 
-  function onOffline(e: React.FormEvent) {
-    e.preventDefault();
+  function goOffline(opts: { resume?: boolean; seats?: number; botGroup?: string | null; name?: string }) {
     enterMobileFullscreen();
     const params = new URLSearchParams({
-      name: displayName,
-      seats: String(offlineSeats),
+      name: opts.name ?? displayName,
+      seats: String(opts.seats ?? offlineSeats),
     });
-    if (botGroupId) params.set('botGroup', botGroupId);
+    const group = opts.botGroup !== undefined ? opts.botGroup : botGroupId;
+    if (group) params.set('botGroup', group);
+    if (opts.resume) params.set('resume', '1');
     router.push(`/offline?${params.toString()}`);
+  }
+
+  function onOffline(e: React.FormEvent) {
+    e.preventDefault();
+    clearOfflineSession();
+    setSavedSession(null);
+    goOffline({});
+  }
+
+  function onResume() {
+    if (!savedSession) return;
+    goOffline({
+      resume: true,
+      seats: savedSession.seats,
+      botGroup: savedSession.botGroupId,
+      name: displayName || savedSession.playerName,
+    });
   }
 
   return (
@@ -106,11 +134,32 @@ export default function SoloPage() {
           </div>
 
           <div className="pt-0.5">
-            <Button type="submit" className="min-h-11 w-full sm:w-auto sm:min-w-[14rem]">
-              {offlineSeats === 2 ? 'Start heads-up' : `Start ${offlineSeats}-handed`}
-            </Button>
+            {savedSession ? (
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Button
+                  type="button"
+                  className="min-h-11 w-full sm:w-auto sm:min-w-[14rem]"
+                  onClick={onResume}
+                >
+                  Resume {savedSession.seats === 2 ? 'heads-up' : `${savedSession.seats}-handed`}
+                </Button>
+                <Button
+                  type="submit"
+                  variant="ghost"
+                  className="min-h-11 w-full sm:w-auto"
+                >
+                  {offlineSeats === 2 ? 'New heads-up' : `New ${offlineSeats}-handed`}
+                </Button>
+              </div>
+            ) : (
+              <Button type="submit" className="min-h-11 w-full sm:w-auto sm:min-w-[14rem]">
+                {offlineSeats === 2 ? 'Start heads-up' : `Start ${offlineSeats}-handed`}
+              </Button>
+            )}
             <p className="field-help mt-2.5">
-              Opens instantly · progress stays on this device
+              {savedSession
+                ? 'Resume anytime on this device'
+                : 'Opens instantly · progress stays on this device'}
             </p>
           </div>
         </LobbySplitCard>

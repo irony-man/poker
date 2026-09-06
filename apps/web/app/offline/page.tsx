@@ -12,6 +12,7 @@ function OfflineInner() {
   const name = (search.get('name') || 'Player').slice(0, 32);
   const seats = Math.min(9, Math.max(2, Number(search.get('seats')) || 6));
   const botGroup = search.get('botGroup');
+  const resume = search.get('resume') === '1';
   const [botNames, setBotNames] = useState<string[] | undefined>(undefined);
   const [botStyles, setBotStyles] = useState<{
     defaultPersonality: import('@/lib/api').BotPersonalityId | null;
@@ -68,6 +69,8 @@ function OfflineInner() {
       playerName={name}
       botNames={botNames}
       botStyles={botStyles}
+      resume={resume}
+      botGroupId={botGroup}
     />
   );
 }

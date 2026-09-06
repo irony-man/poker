@@ -15,7 +15,7 @@
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose stop postgres",
     "db:logs": "docker compose logs -f postgres",
-    "test": "npm run test -w @poker/engine -w @poker/ludo-engine -w @poker/server",
+    "test": "npm run test -w @poker/engine -w @poker/ludo-engine -w @poker/server -w @poker/web",
     "test:engine": "npm run test -w @poker/engine",
     "smoke": "npm run smoke -w @poker/server",
     "sync:assets": "npm run sync:assets -w @poker/server",

@@ -1672,7 +1672,9 @@ export class RoomManager {
     );
     this.rooms.set(id, room);
     this.byInvite.set(inviteCode, id);
-    void this.history.recordTable(meta);
+    void this.history.recordTable(meta).catch((err) => {
+      console.error('[history] recordTable failed', err);
+    });
     if (!meta.isPrivate && meta.stakeId) {
       this.firePublicLobbyChange();
     }

@@ -108,7 +108,8 @@ export class TableEntity {
   @PrimaryColumn({ type: 'text' })
   id!: string;
 
-  @Column({ name: 'invite_code', type: 'text', unique: true })
+  /** Recycled among live rooms; not unique in history (codes are 6-digit). */
+  @Column({ name: 'invite_code', type: 'text' })
   inviteCode!: string;
 
   @Column({ type: 'text' })

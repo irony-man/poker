@@ -2,7 +2,11 @@ import { mkdir, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { FileHistoryStore, playerUserIdsFromResult } from './history.store.js';
+import {
+  FileHistoryStore,
+  PostgresHistoryStore,
+  playerUserIdsFromResult,
+} from './history.store.js';
 import { redactUnrevealedHoleCards } from './history.service.js';
 
 describe('playerUserIdsFromResult', () => {
@@ -133,5 +137,44 @@ describe('FileHistoryStore hand counts', () => {
     });
     const chat = await store.listChat({ tableId: 't1' });
     expect(chat.map((c) => c.text)).toEqual(['hi', 'flop']);
+  });
+});
+
+describe('PostgresHistoryStore.recordTable', () => {
+  const meta = {
+    id: 'ZihnkqRbdi',
+    inviteCode: '373533',
+    name: 'Mid stakes',
+    hostUserId: 'felt-house',
+    isPrivate: false,
+    config: {
+      maxSeats: 6,
+      smallBlind: 10,
+      bigBlind: 25,
+      buyIn: 2500,
+      turnTimeMs: 20_000,
+    },
+    createdAt: 1,
+  };
+
+  it('retries with a disambiguated invite code when the unique constraint fires', async () => {
+    const inserts: unknown[][] = [];
+    const pool = {
+      async query(_sql: string, params?: unknown[]) {
+        if (_sql.includes('INSERT INTO tables')) {
+          inserts.push(params ?? []);
+          if (inserts.length === 1) {
+            const err = Object.assign(new Error('duplicate key'), { code: '23505' });
+            throw err;
+          }
+        }
+        return { rows: [] };
+      },
+    };
+    const store = new PostgresHistoryStore(pool);
+    await store.recordTable(meta);
+    expect(inserts).toHaveLength(2);
+    expect(inserts[0]?.[1]).toBe('373533');
+    expect(inserts[1]?.[1]).toBe('373533:ZihnkqRbdi');
   });
 });

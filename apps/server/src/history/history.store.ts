@@ -354,6 +354,12 @@ function pgChatSelect(): string {
           user_id as "userId", name, text, at, kind, COALESCE(source, 'online') as "source"`;
 }
 
+function isPgUniqueViolation(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const rec = err as { code?: unknown; driverError?: { code?: unknown } };
+  return rec.code === '23505' || rec.driverError?.code === '23505';
+}
+
 /** Postgres-backed store when DATABASE_URL is set (uses shared pool). */
 export class PostgresHistoryStore implements HandHistoryStore {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -371,13 +377,23 @@ export class PostgresHistoryStore implements HandHistoryStore {
        ON CONFLICT (id) DO NOTHING`,
       [meta.hostUserId, meta.hostUserId],
     );
+    try {
+      await this.insertTableRow(meta, meta.inviteCode);
+    } catch (err) {
+      // Live rooms recycle 6-digit codes; ON CONFLICT (id) does not cover invite_code.
+      if (!isPgUniqueViolation(err)) throw err;
+      await this.insertTableRow(meta, `${meta.inviteCode}:${meta.id}`);
+    }
+  }
+
+  private async insertTableRow(meta: TableMeta, inviteCode: string): Promise<void> {
     await this.pool.query(
       `INSERT INTO tables (id, invite_code, name, small_blind, big_blind, min_buy_in, max_buy_in, turn_time_ms, max_seats, is_private, host_user_id)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
        ON CONFLICT (id) DO NOTHING`,
       [
         meta.id,
-        meta.inviteCode,
+        inviteCode,
         meta.name,
         meta.config.smallBlind,
         meta.config.bigBlind,

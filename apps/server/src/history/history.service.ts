@@ -235,6 +235,10 @@ export class HistoryService implements HandHistoryStore, OnModuleInit {
     await this.dataSource.query(
       `CREATE INDEX IF NOT EXISTS hand_history_contest_idx ON hand_history (contest_id)`,
     );
+    // Invite codes are unique only among live rooms; history must allow reuse.
+    await this.dataSource.query(
+      `ALTER TABLE tables DROP CONSTRAINT IF EXISTS tables_invite_code_key`,
+    );
   }
 
   private async backfillHandsPlayed(): Promise<void> {

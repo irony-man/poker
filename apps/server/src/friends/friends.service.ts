@@ -65,6 +65,10 @@ export class FriendsService implements OnModuleInit {
     return this.store.countFriends(userId);
   }
 
+  getRelationship(viewerId: string, targetId: string) {
+    return this.store.getRelationship(viewerId, targetId);
+  }
+
   async listFriends(userId: string) {
     const list = await this.store.listFriends(this.authStore(), userId);
     return list.map((p) => ({

@@ -12,6 +12,11 @@ export {
   type MeProfile,
 } from './auth';
 export {
+  fetchPublicProfile,
+  type PublicProfile,
+  type PublicProfileRelationship,
+} from './users';
+export {
   createTable,
   inviteTableFriends,
   listPublicTables,

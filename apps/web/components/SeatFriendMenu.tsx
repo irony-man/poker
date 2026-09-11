@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import {
   useCallback,
   useEffect,
@@ -9,6 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import { respondFriendRequest, sendFriendRequest } from '@/lib/api';
+import { publicProfileHref } from '@/lib/publicProfile';
 import { useModalFocus } from '@/lib/useModalFocus';
 import { useSession } from '@/lib/store';
 
@@ -176,9 +178,17 @@ export function SeatFriendMenu({
       aria-label={`Friend actions for ${name}`}
       tabIndex={-1}
       onClick={(e) => e.stopPropagation()}
-      className="absolute left-1/2 top-full z-50 mt-1 w-[7.5rem] -translate-x-1/2 rounded-lg border border-white/15 bg-sidebar/95 p-1.5 shadow-[0_8px_20px_rgba(0,0,0,0.55)] backdrop-blur-sm"
+      className="absolute left-1/2 top-full z-50 mt-1 w-[8.25rem] -translate-x-1/2 rounded-lg border border-white/15 bg-sidebar/95 p-1.5 shadow-[0_8px_20px_rgba(0,0,0,0.55)] backdrop-blur-sm"
     >
       <p className="truncate px-1 pb-1 text-[11px] font-bold text-mushroom">{name}</p>
+
+      <Link
+        href={publicProfileHref(name)}
+        onClick={onClose}
+        className="mb-1 block rounded-md bg-mushroom/10 px-1.5 py-1 text-center text-[11px] font-semibold uppercase tracking-wide text-mushroom/90 hover:bg-mushroom/20"
+      >
+        View profile
+      </Link>
 
       {isFriend ? (
         <p className="rounded-md bg-mushroom/15 px-1.5 py-1 text-center text-[11px] font-semibold uppercase tracking-wide text-mushroom/85">

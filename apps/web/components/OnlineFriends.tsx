@@ -13,6 +13,7 @@ import {
 import { listFriends, type FriendProfile } from '@/lib/api';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 import { SocialNotificationHost } from '@/components/SocialNotificationHost';
+import { publicProfileHref } from '@/lib/publicProfile';
 import { useSession } from '@/lib/store';
 import { useIsNarrow } from '@/lib/tableLayout';
 
@@ -189,7 +190,7 @@ export function OnlineFriendsSidebar({
           {online.map((f) => (
             <li key={f.userId}>
               <Link
-                href="/profile?tab=friends"
+                href={publicProfileHref(f.username ?? f.name)}
                 onClick={onNavigate}
                 className="flex items-center gap-2 rounded-lg px-1 py-1 transition hover:bg-mushroom/10"
                 title={`${f.name} — online`}
@@ -245,7 +246,7 @@ export function OnlineFriendsStrip({
         {online.map((f) => (
           <li key={f.userId} className="shrink-0">
             <Link
-              href="/profile?tab=friends"
+              href={publicProfileHref(f.username ?? f.name)}
               className="relative block"
               title={`${f.name} — online`}
             >
@@ -311,7 +312,7 @@ export function OnlineFriendsOverlay({ signedIn }: { signedIn: boolean }) {
             {online.map((f) => (
               <li key={f.userId}>
                 <Link
-                  href="/profile?tab=friends"
+                  href={publicProfileHref(f.username ?? f.name)}
                   className="flex items-center gap-2 rounded-lg px-1 py-1 transition hover:bg-mushroom/10"
                   onClick={() => setOpen(false)}
                 >

@@ -3,6 +3,7 @@ import { AuthModule } from '../auth/auth.module.js';
 import { FriendsModule } from '../friends/friends.module.js';
 import { HistoryModule } from '../history/history.module.js';
 import { WalletModule } from '../wallet/wallet.module.js';
+import { PublicUsersController } from './public-users.controller.js';
 import { UsersController } from './users.controller.js';
 
 @Module({
@@ -12,6 +13,6 @@ import { UsersController } from './users.controller.js';
     forwardRef(() => FriendsModule),
     HistoryModule,
   ],
-  controllers: [UsersController],
+  controllers: [UsersController, PublicUsersController],
 })
 export class UsersModule {}

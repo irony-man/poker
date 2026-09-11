@@ -56,6 +56,8 @@ interface SocialSnapshot {
 export interface FriendProfile {
   userId: string;
   name: string;
+  /** Login handle (same as name today); used for public profile URLs. */
+  username?: string;
   avatarId: number;
   avatarUrl: string | null;
 }
@@ -187,7 +189,13 @@ export class FriendsStore {
   private profile(auth: AuthStore, userId: string): FriendProfile | null {
     const user = auth.getUser(userId);
     if (!user) return null;
-    return { userId: user.id, name: user.name, avatarId: user.avatarId, avatarUrl: user.avatarUrl };
+    return {
+      userId: user.id,
+      name: user.name,
+      username: user.username,
+      avatarId: user.avatarId,
+      avatarUrl: user.avatarUrl,
+    };
   }
 
   private areFriends(a: string, b: string): boolean {
@@ -319,6 +327,38 @@ export class FriendsStore {
       if (a === userId || b === userId) n += 1;
     }
     return n;
+  }
+
+  /**
+   * Relationship of `viewerId` toward `targetId` for public profile actions.
+   */
+  async getRelationship(
+    viewerId: string,
+    targetId: string,
+  ): Promise<{
+    relationship: 'self' | 'friends' | 'outgoing' | 'incoming' | 'none';
+    incomingRequestId?: string;
+  }> {
+    await this.ensureLoaded();
+    if (viewerId === targetId) {
+      return { relationship: 'self' };
+    }
+    if (this.areFriends(viewerId, targetId)) {
+      return { relationship: 'friends' };
+    }
+    const pending = this.requests.find(
+      (r) =>
+        r.status === 'pending' &&
+        ((r.fromUserId === viewerId && r.toUserId === targetId) ||
+          (r.fromUserId === targetId && r.toUserId === viewerId)),
+    );
+    if (pending) {
+      if (pending.fromUserId === viewerId) {
+        return { relationship: 'outgoing' };
+      }
+      return { relationship: 'incoming', incomingRequestId: pending.id };
+    }
+    return { relationship: 'none' };
   }
 
   async listFriends(auth: AuthStore, userId: string): Promise<FriendProfile[]> {

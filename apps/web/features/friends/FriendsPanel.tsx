@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
@@ -25,6 +26,7 @@ import {
 } from '@/lib/api';
 import { useFriendsSocial } from '@/hooks/useFriendsSocial';
 import { useConfirm } from '@/components/ConfirmPopover';
+import { publicProfileHref } from '@/lib/publicProfile';
 import { FriendGroups } from './FriendGroups';
 import { FriendInvites } from './FriendInvites';
 import { FriendList } from './FriendList';
@@ -335,16 +337,25 @@ export function FriendsPanel({
             const handle = u.username ?? u.name;
             return (
               <li key={u.userId} className="flex items-center gap-3 bg-mushroom/40 px-3 py-2.5">
-                <PlayerAvatar
-                  userId={u.userId}
-                  avatarId={u.avatarId}
-                  avatarUrl={u.avatarUrl}
-                  size={32}
-                  title={handle}
-                />
-                <span className="font-row-label">
+                <Link
+                  href={publicProfileHref(handle)}
+                  className="shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-sidebar/40"
+                  title={`View ${handle}`}
+                >
+                  <PlayerAvatar
+                    userId={u.userId}
+                    avatarId={u.avatarId}
+                    avatarUrl={u.avatarUrl}
+                    size={32}
+                    title={handle}
+                  />
+                </Link>
+                <Link
+                  href={publicProfileHref(handle)}
+                  className="font-row-label min-w-0 flex-1 truncate hover:underline"
+                >
                   {handle}
-                </span>
+                </Link>
                 <Button
                   variant="ghost"
                   disabled={disabled || busy === u.userId}

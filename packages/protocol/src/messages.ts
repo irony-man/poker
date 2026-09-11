@@ -494,6 +494,33 @@ export const UpdateMeBodySchema = z
     },
   );
 
+/** Viewer↔subject friendship for public profile pages (omit when anonymous). */
+export const PublicProfileRelationshipSchema = z.enum([
+  'self',
+  'friends',
+  'outgoing',
+  'incoming',
+  'none',
+]);
+export type PublicProfileRelationship = z.infer<typeof PublicProfileRelationshipSchema>;
+
+export const PublicProfileSchema = z.object({
+  id: z.string(),
+  username: z.string(),
+  name: z.string(),
+  avatarId: z.number().int().min(0).max(7),
+  avatarUrl: z.string().url().max(512).nullable(),
+  createdAt: z.number(),
+  handsPlayed: z.number().int().nonnegative(),
+  friendCount: z.number().int().nonnegative(),
+  chipBalance: z.number().int().nonnegative(),
+  whuffieBalance: z.number().int().nonnegative(),
+  relationship: PublicProfileRelationshipSchema.optional(),
+  /** Present when relationship is `incoming` (viewer can Accept). */
+  incomingRequestId: z.string().optional(),
+});
+export type PublicProfile = z.infer<typeof PublicProfileSchema>;
+
 export type SignupBody = z.infer<typeof SignupBodySchema>;
 export type LoginBody = z.infer<typeof LoginBodySchema>;
 export type AuthSession = z.infer<typeof AuthSessionSchema>;

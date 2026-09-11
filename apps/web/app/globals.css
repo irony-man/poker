@@ -25,8 +25,8 @@
   --sidebar: 29 4 50;
   --mushroom: 230 217 215;
   --ink-strong: 29 4 50;
-  /* ≥7:1 on mushroom — secondary/caption copy at 11–12px */
-  --ink-strong-muted: 74 54 80;
+  /* ≥7:1 on mushroom — secondary/caption copy at 11–12px (keep solid; avoid /50 stacking) */
+  --ink-strong-muted: 68 48 74;
   /* Text/icons on purple sidebar + play chrome (same as mushroom in Classic). */
   --on-chrome: 230 217 215;
 
@@ -43,8 +43,8 @@
 
   /* Text — mushroom-adjacent cream for play chrome */
   --cream: 242 234 232;
-  /* ≥8:1 on sidebar purple — muted labels on dark chrome */
-  --cream-muted: 188 170 186;
+  /* ≥8:1 on sidebar purple — muted labels on dark chrome (avoid stacking opacity) */
+  --cream-muted: 206 190 204;
 
   /* State */
   --danger: 192 57 43;
@@ -320,7 +320,7 @@ body > * {
 }
 
 .lobby-shell .hud-input::placeholder {
-  color: rgb(var(--ink-strong-muted) / 0.65);
+  color: rgb(var(--ink-strong-muted) / 0.85);
 }
 
 .lobby-shell .hud-input:focus {
@@ -337,9 +337,9 @@ body > * {
 }
 
 .lobby-shell .choice-chip {
-  border-color: rgb(var(--sidebar) / 0.14);
-  background-color: rgb(var(--mushroom) / 0.5);
-  color: rgb(var(--ink-strong) / 0.85);
+  border-color: rgb(var(--sidebar) / 0.18);
+  background-color: rgb(var(--mushroom) / 0.72);
+  color: rgb(var(--ink-strong));
 }
 
 .lobby-shell .choice-chip:hover {
@@ -448,7 +448,7 @@ body > * {
   }
 
   .hud-input::placeholder {
-    @apply text-cream-muted/60;
+    @apply text-cream-muted/85;
   }
 
   .hud-input:focus {
@@ -464,7 +464,7 @@ body > * {
   }
 
   .choice-chip {
-    @apply cursor-pointer select-none rounded-md border border-mushroom/15 bg-ink/45 px-3 py-2 text-[13px] font-display font-semibold text-cream/80 transition;
+    @apply cursor-pointer select-none rounded-md border border-mushroom/15 bg-ink/45 px-3 py-2 text-[13px] font-display font-semibold text-cream transition;
   }
 
   .choice-chip:hover {
@@ -669,7 +669,7 @@ body > * {
 
   .sidebar-footer-link {
     @apply block rounded-lg px-3 py-2 text-center text-xs font-display font-semibold uppercase tracking-[0.14em] transition hover:text-mushroom;
-    color: rgb(var(--mushroom) / 0.8);
+    color: rgb(var(--mushroom) / 0.92);
   }
 
   .sidebar-footer-link:hover {
@@ -681,7 +681,7 @@ body > * {
   }
 
   .sidebar-nav-kicker {
-    @apply px-3 pb-1.5 text-[11px] font-display font-semibold uppercase tracking-[0.16em] text-mushroom/80;
+    @apply px-3 pb-1.5 text-[11px] font-display font-semibold uppercase tracking-[0.16em] text-mushroom/90;
   }
 
   .menu-item-dark {
@@ -1392,10 +1392,14 @@ html[data-ui-theme='v3'] {
   --sidebar: 96 64 168;
   --mushroom: 42 24 72;
   --ink-strong: 22 12 40;
-  --ink-strong-muted: 88 72 110;
+  /*
+   * Page ground is dusk purple — muted body copy must stay light.
+   * Frost panels re-bind --ink-strong-muted / --mushroom to paper values below.
+   */
+  --ink-strong-muted: 214 204 232;
   --on-chrome: 255 255 255;
   --cream: 255 255 255;
-  --cream-muted: 196 184 214;
+  --cream-muted: 214 204 232;
   --radius-xs: 6px;
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -1440,8 +1444,17 @@ html[data-ui-theme='v3'] .lobby-page-intro > header .font-title-page {
 html[data-ui-theme='v3'] .lobby-page-intro > header .font-prose-muted,
 html[data-ui-theme='v3'] .lobby-page-intro > header .text-ink-strong-muted,
 html[data-ui-theme='v3'] .lobby-main > header .font-prose-muted,
-html[data-ui-theme='v3'] .lobby-main section.lobby-fade-up p.text-ink-strong-muted {
+html[data-ui-theme='v3'] .lobby-main section.lobby-fade-up p.text-ink-strong-muted,
+html[data-ui-theme='v3'] .lobby-main .hud-label,
+html[data-ui-theme='v3'] .lobby-main .field-help,
+html[data-ui-theme='v3'] .lobby-main .font-kicker,
+html[data-ui-theme='v3'] .lobby-main .font-kicker-xs,
+html[data-ui-theme='v3'] .lobby-main .font-prose-muted {
   color: rgb(var(--cream-muted));
+}
+
+html[data-ui-theme='v3'] .lobby-main .font-heading-section {
+  color: rgb(var(--cream));
 }
 
 html[data-ui-theme='v3'] .lobby-page-intro > header .link-sidebar {
@@ -1470,6 +1483,9 @@ html[data-ui-theme='v3'] .text-mushroom {
 html[data-ui-theme='v3'] .text-mushroom\/30 {
   color: rgb(var(--cream) / 0.3);
 }
+html[data-ui-theme='v3'] .text-mushroom\/45 {
+  color: rgb(var(--cream) / 0.45);
+}
 html[data-ui-theme='v3'] .text-mushroom\/55 {
   color: rgb(var(--cream) / 0.55);
 }
@@ -1484,6 +1500,9 @@ html[data-ui-theme='v3'] .text-mushroom\/85 {
 }
 html[data-ui-theme='v3'] .text-mushroom\/90 {
   color: rgb(var(--cream) / 0.9);
+}
+html[data-ui-theme='v3'] .text-mushroom\/92 {
+  color: rgb(var(--cream) / 0.92);
 }
 
 html[data-ui-theme='v3'] .lobby-sidebar {
@@ -1507,11 +1526,11 @@ html[data-ui-theme='v3'] .lobby-main > header {
 }
 
 html[data-ui-theme='v3'] .lobby-sidebar .sidebar-nav-kicker {
-  color: rgb(var(--cream) / 0.72);
+  color: rgb(var(--cream) / 0.88);
 }
 
 html[data-ui-theme='v3'] .lobby-sidebar .nav-sidebar-item {
-  color: rgb(255 255 255 / 0.88);
+  color: rgb(255 255 255 / 0.92);
 }
 
 html[data-ui-theme='v3'] .lobby-sidebar .nav-sidebar-item:hover {
@@ -1545,17 +1564,61 @@ html[data-ui-theme='v3'] .hud-panel::before {
   );
 }
 
+/*
+ * Frost paper surfaces: nested bg-mushroom/* and text-ink-* assume light ground.
+ * Re-bind tokens so Classic utility classes stay readable on Glass.
+ */
+html[data-ui-theme='v3'] .lobby-shell .hud-panel,
+html[data-ui-theme='v3'] .surface-card,
+html[data-ui-theme='v3'] .surface-card-lg,
+html[data-ui-theme='v3'] .surface-modal,
+html[data-ui-theme='v3'] .surface-row,
+html[data-ui-theme='v3'] .surface-empty,
+html[data-ui-theme='v3'] .surface-empty-lg,
+html[data-ui-theme='v3'] .surface-list,
+html[data-ui-theme='v3'] .glass-sheet,
+html[data-ui-theme='v3'] .chat-panel-shell,
+html[data-ui-theme='v3'] .recent-chat-ticker {
+  --mushroom: 255 252 250;
+  --ink-strong: 22 12 40;
+  --ink-strong-muted: 58 40 82;
+  --sidebar: 56 32 120;
+  color: rgb(22 12 40);
+}
+
 html[data-ui-theme='v3'] .lobby-shell .hud-panel {
-  background-color: rgb(var(--glass-fill) / 0.62);
-  color: rgb(var(--ink-strong));
+  background-color: rgb(var(--glass-fill) / 0.72);
   border-color: rgb(var(--glass-stroke) / 0.55);
+}
+
+html[data-ui-theme='v3'] .lobby-shell .hud-panel .hud-label,
+html[data-ui-theme='v3'] .lobby-shell .hud-panel .field-help,
+html[data-ui-theme='v3'] .lobby-shell .hud-panel .font-kicker,
+html[data-ui-theme='v3'] .lobby-shell .hud-panel .font-kicker-xs,
+html[data-ui-theme='v3'] .lobby-shell .hud-panel .font-prose-muted,
+html[data-ui-theme='v3'] .surface-card .hud-label,
+html[data-ui-theme='v3'] .surface-card .field-help,
+html[data-ui-theme='v3'] .surface-card .font-kicker,
+html[data-ui-theme='v3'] .surface-card .font-kicker-xs,
+html[data-ui-theme='v3'] .surface-card .font-prose-muted,
+html[data-ui-theme='v3'] .surface-card-lg .hud-label,
+html[data-ui-theme='v3'] .surface-card-lg .field-help,
+html[data-ui-theme='v3'] .surface-card-lg .font-kicker,
+html[data-ui-theme='v3'] .surface-card-lg .font-kicker-xs,
+html[data-ui-theme='v3'] .surface-card-lg .font-prose-muted {
+  color: rgb(var(--ink-strong-muted));
+}
+
+html[data-ui-theme='v3'] .surface-card .font-heading-section,
+html[data-ui-theme='v3'] .surface-card-lg .font-heading-section {
+  color: rgb(var(--sidebar));
 }
 
 html[data-ui-theme='v3'] .surface-card,
 html[data-ui-theme='v3'] .surface-card-lg,
 html[data-ui-theme='v3'] .surface-modal {
   border: 1px solid rgb(var(--glass-stroke) / 0.5);
-  background-color: rgb(var(--glass-fill) / 0.62);
+  background-color: rgb(var(--glass-fill) / 0.72);
   box-shadow: var(--shadow-panel);
   backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
@@ -1567,13 +1630,13 @@ html[data-ui-theme='v3'] .surface-empty,
 html[data-ui-theme='v3'] .surface-empty-lg,
 html[data-ui-theme='v3'] .surface-list {
   border-color: rgb(var(--glass-stroke) / 0.4);
-  background-color: rgb(var(--glass-fill) / 0.55);
+  background-color: rgb(var(--glass-fill) / 0.62);
   backdrop-filter: blur(20px) saturate(1.3);
   -webkit-backdrop-filter: blur(20px) saturate(1.3);
 }
 
 html[data-ui-theme='v3'] .glass-sheet {
-  background-color: rgb(var(--glass-fill) / 0.58);
+  background-color: rgb(var(--glass-fill) / 0.66);
   backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
   border-color: rgb(var(--glass-stroke) / 0.45);
@@ -1582,8 +1645,7 @@ html[data-ui-theme='v3'] .glass-sheet {
 
 html[data-ui-theme='v3'] .chat-panel-shell {
   background-image: none;
-  background-color: rgb(var(--glass-fill) / 0.9);
-  color: rgb(22 12 40);
+  background-color: rgb(var(--glass-fill) / 0.92);
   backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
   border-color: rgb(var(--sidebar) / 0.22);
@@ -1610,9 +1672,17 @@ html[data-ui-theme='v3'] .chat-panel-shell .text-sidebar {
 }
 
 html[data-ui-theme='v3'] .recent-chat-ticker {
-  background-color: rgb(var(--glass-fill) / 0.9);
-  color: rgb(22 12 40);
+  background-color: rgb(var(--glass-fill) / 0.92);
   border-color: rgb(var(--sidebar) / 0.18);
+}
+
+/* Page-ground HUD fields (e.g. friends search) sit on dusk — keep labels light. */
+html[data-ui-theme='v3'] .lobby-main .hud-input {
+  color: rgb(22 12 40);
+}
+
+html[data-ui-theme='v3'] .lobby-main .hud-input::placeholder {
+  color: rgb(58 40 82 / 0.75);
 }
 
 html[data-ui-theme='v3'] .btn-primary,
@@ -1682,6 +1752,13 @@ html[data-ui-theme='v3'] .lobby-shell .choice-chip-selected {
   background-color: rgb(var(--sidebar) / 0.55);
   color: #fff;
   border-color: rgb(var(--glass-highlight) / 0.5);
+}
+
+/* Nested stake captions on solid selected chips */
+html[data-ui-theme='v3'] .choice-chip-selected .text-ink-strong-muted,
+html[data-ui-theme='v3'] .lobby-shell .choice-chip-selected .text-ink-strong-muted,
+.play-shell .choice-chip-selected .text-ink-strong-muted {
+  color: rgb(255 255 255 / 0.88);
 }
 
 html[data-ui-theme='v3'] .status-chip,

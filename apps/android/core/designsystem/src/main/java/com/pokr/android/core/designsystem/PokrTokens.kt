@@ -63,7 +63,7 @@ data class PokrPalette(
             inkRaised = Color(0xFF2E1048),
             inkOverlay = Color(0xFF08030E),
             inkStrong = Color(0xFF1D0432),
-            inkStrongMuted = Color(0xFF4A3650),
+            inkStrongMuted = Color(0xFF44304A),
             mushroom = Color(0xFFE6D9D7),
             sidebar = Color(0xFF1D0432),
             lobbyPanel = Color(0xFFFFFFFF),
@@ -74,7 +74,7 @@ data class PokrPalette(
             feltRim = Color(0xFF120220),
             feltRimEdge = Color(0xFFA88CA2),
             cream = Color(0xFFF2EAE8),
-            creamMuted = Color(0xFFBCAABA),
+            creamMuted = Color(0xFFCEBECC),
             stackRed = Color(0xFF1D0432),
             onChrome = Color(0xFFE6D9D7),
         )
@@ -109,7 +109,8 @@ data class PokrPalette(
             inkRaised = Color(0xFF342460),
             inkOverlay = Color(0xFF060410),
             inkStrong = Color(0xFF160C28),
-            inkStrongMuted = Color(0xFF58486E),
+            /* Light muted for dusk page ground; frost panels re-bind darker ink. */
+            inkStrongMuted = Color(0xFFD6CCE8),
             mushroom = Color(0xFF2A1848),
             sidebar = Color(0xFF6040A8),
             lobbyPanel = Color(0xFFFFFFFF),
@@ -120,7 +121,7 @@ data class PokrPalette(
             feltRim = Color(0xFF120C20),
             feltRimEdge = Color(0xFFC4B8D6),
             cream = Color(0xFFFFFFFF),
-            creamMuted = Color(0xFFC4B8D6),
+            creamMuted = Color(0xFFD6CCE8),
             stackRed = Color(0xFF6040A8),
             onChrome = Color(0xFFFFFFFF),
         )

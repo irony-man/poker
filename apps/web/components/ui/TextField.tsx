@@ -11,7 +11,7 @@ import {
 import { cn } from '@/lib/cn';
 
 export const FORM_FIELD_CLASS =
-  'w-full rounded-lg border border-sidebar/15 bg-cream px-3 py-2.5 text-sm text-ink-strong shadow-sm outline-none transition placeholder:text-ink-strong-muted/50 focus:border-sidebar/40 focus:ring-2 focus:ring-sidebar/10';
+  'w-full rounded-lg border border-sidebar/15 bg-cream px-3 py-2.5 text-sm text-ink-strong shadow-sm outline-none transition placeholder:text-ink-strong-muted/80 focus:border-sidebar/40 focus:ring-2 focus:ring-sidebar/10';
 
 export const FORM_LABEL_CLASS =
   'block text-xs font-display font-semibold uppercase tracking-[0.12em] text-ink-strong-muted';

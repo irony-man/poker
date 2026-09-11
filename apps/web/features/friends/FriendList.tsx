@@ -66,7 +66,7 @@ export function FriendList({
                 {f.name}
               </span>
               {f.online ? (
-                <span className="mt-0.5 block text-[10px] font-semibold uppercase tracking-wider text-positive">
+                <span className="mt-0.5 block text-[11px] font-semibold uppercase tracking-wider text-positive">
                   Online
                 </span>
               ) : null}

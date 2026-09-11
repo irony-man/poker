@@ -25,7 +25,7 @@ Change a Classic value in both places or not at all.
 | Ink raised | `#2E1048` | `--ink-raised` | `PokrColors.InkRaised` | Raised play fills |
 | Ink overlay | `#08030E` | `--ink-overlay` | `PokrColors.InkOverlay` | Modal scrims |
 | Ink strong | `#1D0432` | `--ink-strong` | `PokrColors.InkStrong` | Text on light pages |
-| Ink strong muted | `#4A3650` | `--ink-strong-muted` | `PokrColors.InkStrongMuted` | Secondary text on light (≥7:1 on mushroom) |
+| Ink strong muted | `#44304A` | `--ink-strong-muted` | `PokrColors.InkStrongMuted` | Secondary text on light (≥7:1 on mushroom) |
 | Mushroom | `#E6D9D7` | `--mushroom` | `PokrColors.Mushroom` | Page / lobby ground |
 | On chrome | `#E6D9D7` | `--on-chrome` / `text-on-chrome` | `PokrColors.OnChrome` | Text/icons on purple chrome |
 | Lobby panel | `#FFFCFA` | lobby `hud-panel` fill | `PokrColors.LobbyPanel` | Light cards |
@@ -35,7 +35,7 @@ Change a Classic value in both places or not at all.
 | Brass | `#D6BA80` | `--brass` | `PokrColors.Brass` | Money / rare accent |
 | Brass light / dim | `#ECDAB0` / `#765C30` | `--brass-light` / `--brass-dim` | `PokrColors.BrassLight` / `.BrassDim` | Accent hover / shadow |
 | Cream | `#F2EAE8` | `--cream` | `PokrColors.Cream` | Light text on dark chrome |
-| Cream muted | `#BCAABA` | `--cream-muted` | `PokrColors.CreamMuted` | Muted text on dark (≥8:1 on sidebar) |
+| Cream muted | `#CEBECC` | `--cream-muted` | `PokrColors.CreamMuted` | Muted text on dark (≥8:1 on sidebar) |
 | Danger | `#C0392B` | `--danger` | `PokrColors.Danger` | Fold / errors |
 | Positive | `#48A87A` | `--positive` | `PokrColors.Positive` | Live / win |
 | Patina | `#BAA2C6` | `--patina` | `PokrColors.Patina` | Informational |
@@ -55,6 +55,10 @@ Selected on Profile → Theme. Does **not** change felt presets, playing cards, 
 | Display font | RF Tone | Clash Display (web); system extra-bold (Android) |
 
 Web applies `data-ui-theme="v2"` on `<html>` (localStorage `pokr-ui-theme`, hydrated from `GET /api/me`). Android provides `PokrTheme(uiTheme)` from DataStore `ui_theme`.
+
+### Glass (v3) remap
+
+Dusk aurora page ground. `--ink-strong-muted` / `--cream-muted` are **light** (`#D6CCE8`) for copy on dusk. Frost panels (`.hud-panel`, `.surface-card*`, etc.) re-bind `--mushroom` to paper and `--ink-strong-muted` to dark ink so nested Classic utilities stay readable.
 
 ### Chrome contexts
 

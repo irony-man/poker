@@ -252,7 +252,7 @@ export function ContestsPanel({
             return (
               <div
                 key={tab.id}
-                className="mt-3 rounded-xl border border-sidebar/10 bg-gradient-to-b from-mushroom/70 to-mushroom/35 px-3.5 py-3.5 sm:px-4"
+                className="mt-3 rounded-xl border border-sidebar/12 bg-sidebar/[0.05] px-3.5 py-3.5 sm:px-4"
               >
                 <p className="font-display text-sm font-semibold tracking-tight text-ink-strong">
                   {tab.title}
@@ -331,7 +331,7 @@ export function ContestsPanel({
       {open.length > 0 && (
         <div className="border-t border-sidebar/10 pt-5">
           <div className="mb-3 flex items-baseline justify-between gap-2">
-            <p className="font-display text-[0.68rem] font-bold uppercase tracking-[0.18em] text-ink-strong/45">
+            <p className="font-display text-[0.7rem] font-bold uppercase tracking-[0.16em] text-ink-strong-muted">
               Open now
             </p>
             <span className="text-xs tabular-nums text-ink-strong-muted">{open.length}</span>
@@ -364,7 +364,7 @@ export function ContestsPanel({
           className="surface-row flex items-center justify-between gap-3 px-3.5 py-3 transition hover:border-sidebar/25 hover:bg-sidebar/[0.04] sm:px-4"
         >
           <span className="min-w-0">
-            <span className="block font-display text-[0.68rem] font-bold uppercase tracking-[0.18em] text-ink-strong/45">
+            <span className="block font-display text-[0.7rem] font-bold uppercase tracking-[0.16em] text-ink-strong-muted">
               Your contests
             </span>
             <span className="mt-1 block text-sm font-medium text-ink-strong">

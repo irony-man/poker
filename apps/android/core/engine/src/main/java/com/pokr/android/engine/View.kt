@@ -6,6 +6,8 @@ data class PublicPlayerView(
     val name: String?,
     val stack: Int,
     val bet: Int,
+    /** Total chips put into the pot this hand (still set during payout). */
+    val committed: Int,
     val status: PlayerStatus,
     val hasCards: Boolean,
     /** Only present when revealed at showdown. */
@@ -53,6 +55,7 @@ fun toPublicView(tableId: String, state: HandState, config: TableConfig): Public
                 name = p.name,
                 stack = p.stack,
                 bet = p.bet,
+                committed = p.committed,
                 status = p.status,
                 hasCards = p.holeCards != null &&
                     p.status != PlayerStatus.Folded &&

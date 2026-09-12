@@ -497,6 +497,7 @@ class OfflineViewModel @Inject constructor(
                     name = p.name,
                     stack = p.stack,
                     bet = p.bet,
+                    committed = p.committed,
                     status = when (p.status) {
                         PlayerStatus.SittingOut -> "sittingOut"
                         PlayerStatus.AllIn -> "allin"

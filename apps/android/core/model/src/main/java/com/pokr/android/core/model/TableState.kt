@@ -9,6 +9,8 @@ data class PublicPlayer(
     val name: String? = null,
     val stack: Int,
     val bet: Int,
+    /** Total chips put into the pot this hand (still set during payout). */
+    val committed: Int = 0,
     val status: String,
     val hasCards: Boolean,
     val holeCards: List<String>? = null,

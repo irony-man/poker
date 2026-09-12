@@ -676,6 +676,7 @@ export function OfflineTableView({
   );
   const {
     winBySeat,
+    winLines,
     handNameBySeat,
     winningCards,
     highlightMode,
@@ -950,34 +951,7 @@ export function OfflineTableView({
           readyCount={readyCount}
           readyTotal={eligiblePlayers.length}
           readyPlayers={readyRosterPlayers}
-          winners={(() => {
-            const bySeat = new Map<
-              number,
-              {
-                seat: number;
-                name: string;
-                amount: number;
-                handName?: string;
-                cards?: string[];
-                isSelf?: boolean;
-              }
-            >();
-            for (const w of publicTable.winners) {
-              const prev = bySeat.get(w.seat);
-              const cards =
-                publicTable.showdownHands?.find((h) => h.seat === w.seat)?.cards ??
-                prev?.cards;
-              bySeat.set(w.seat, {
-                seat: w.seat,
-                name: publicTable.players[w.seat]?.name ?? `Seat ${w.seat}`,
-                amount: (prev?.amount ?? 0) + w.amount,
-                handName: w.handName ?? prev?.handName,
-                cards,
-                isSelf: publicTable.players[w.seat]?.userId === HUMAN_ID,
-              });
-            }
-            return [...bySeat.values()];
-          })()}
+          winners={winLines}
           onNextHand={() => {
             setDismissedWinHandId(publicTable.handId);
             start();

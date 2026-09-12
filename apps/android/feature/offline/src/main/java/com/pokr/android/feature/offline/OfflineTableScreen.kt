@@ -267,7 +267,7 @@ fun OfflineTableScreen(
                         WinLineUi(
                             seat = seat,
                             name = player?.name ?: "Seat $seat",
-                            amount = awards.sumOf { it.amount },
+                            amount = (awards.sumOf { it.amount } - (player?.committed ?: 0)).coerceAtLeast(0),
                             handName = awards.firstNotNullOfOrNull { it.handName },
                             cards = cards,
                             isSelf = player?.userId == HUMAN_USER_ID,

@@ -336,12 +336,14 @@ export function WinHandModal({
                       {w.name}
                       {w.isSelf ? ' · you' : ''}
                     </span>
-                    <MoneyAmount
-                      amount={w.amount}
-                      prefix="+"
-                      compact
-                      className="shrink-0 font-mono text-sm font-semibold text-brass-dim sm:text-base"
-                    />
+                    <span title="Chips won from others">
+                      <MoneyAmount
+                        amount={w.amount}
+                        prefix="+"
+                        compact
+                        className="shrink-0 font-mono text-sm font-semibold text-brass-dim sm:text-base"
+                      />
+                    </span>
                   </div>
 
                   {type && (

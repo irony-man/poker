@@ -38,7 +38,10 @@ internal fun PublicTable.toOfflineTableUi(): TableUiState {
             emptyMap()
         },
         winAmountBySeat = if (street == "payout" || street == "showdown") {
-            winners.groupBy { it.seat }.mapValues { (_, list) -> list.sumOf { it.amount } }
+            val committedBySeat = players.associate { it.seat to it.committed }
+            winners.groupBy { it.seat }.mapValues { (seat, list) ->
+                (list.sumOf { it.amount } - (committedBySeat[seat] ?: 0)).coerceAtLeast(0)
+            }
         } else {
             emptyMap()
         },

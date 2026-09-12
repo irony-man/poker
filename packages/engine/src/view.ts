@@ -9,6 +9,8 @@ export interface PublicPlayerView {
   name: string | null;
   stack: number;
   bet: number;
+  /** Total chips put into the pot this hand (still set during payout). */
+  committed: number;
   status: PlayerState['status'];
   hasCards: boolean;
   /** Only present when revealed at showdown. */
@@ -58,6 +60,7 @@ export function toPublicView(tableId: string, state: HandState, config: TableCon
       name: p.name,
       stack: p.stack,
       bet: p.bet,
+      committed: p.committed,
       status: p.status,
       hasCards: p.holeCards !== null && p.status !== 'folded' && p.status !== 'empty',
       holeCards:

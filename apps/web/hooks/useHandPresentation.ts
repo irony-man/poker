@@ -1,6 +1,8 @@
 'use client';
 
 import { useMemo } from 'react';
+import type { WinLine } from '@/components/WinHandModal';
+import { chipsFromOthers } from '@/lib/chipsFromOthers';
 import type { PublicTable } from '@/lib/store';
 
 export type WinBySeat = Map<number, { amount: number; handName?: string }>;
@@ -22,8 +24,39 @@ export function useHandPresentation(
         handName,
       });
     }
+    // Display chips won from others (exclude the winner's own contribution).
+    if (table) {
+      for (const [seat, w] of map) {
+        map.set(seat, {
+          ...w,
+          amount: chipsFromOthers(w.amount, table.players[seat]?.committed),
+        });
+      }
+    }
     return map;
-  }, [table?.winners]);
+  }, [table]);
+
+  const winLines = useMemo((): WinLine[] => {
+    if (!table) return [];
+    const bySeat = new Map<number, WinLine>();
+    for (const w of table.winners) {
+      const prev = bySeat.get(w.seat);
+      const cards =
+        table.showdownHands?.find((h) => h.seat === w.seat)?.cards ?? prev?.cards;
+      bySeat.set(w.seat, {
+        seat: w.seat,
+        name: table.players[w.seat]?.name ?? `Seat ${w.seat}`,
+        amount: (prev?.amount ?? 0) + w.amount,
+        handName: w.handName ?? prev?.handName,
+        cards,
+        isSelf: table.players[w.seat]?.userId === userId,
+      });
+    }
+    return [...bySeat.values()].map((line) => ({
+      ...line,
+      amount: chipsFromOthers(line.amount, table.players[line.seat]?.committed),
+    }));
+  }, [table, userId]);
 
   const handNameBySeat = useMemo(() => {
     const map = new Map<number, string>();
@@ -54,6 +87,7 @@ export function useHandPresentation(
 
   return {
     winBySeat,
+    winLines,
     handNameBySeat,
     winningCards,
     highlightMode,

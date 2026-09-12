@@ -183,6 +183,7 @@ export function TableView({
 
   const {
     winBySeat,
+    winLines,
     handNameBySeat,
     winningCards,
     highlightMode,
@@ -899,33 +900,7 @@ export function TableView({
               canSitIn={canSitIn}
               isTournament={isTournament}
               needChips={needChips}
-              winners={(() => {
-                const bySeat = new Map<
-                  number,
-                  {
-                    seat: number;
-                    name: string;
-                    amount: number;
-                    handName?: string;
-                    cards?: string[];
-                    isSelf?: boolean;
-                  }
-                >();
-                for (const w of table.winners) {
-                  const prev = bySeat.get(w.seat);
-                  const cards =
-                    table.showdownHands?.find((h) => h.seat === w.seat)?.cards ?? prev?.cards;
-                  bySeat.set(w.seat, {
-                    seat: w.seat,
-                    name: table.players[w.seat]?.name ?? `Seat ${w.seat}`,
-                    amount: (prev?.amount ?? 0) + w.amount,
-                    handName: w.handName ?? prev?.handName,
-                    cards,
-                    isSelf: table.players[w.seat]?.userId === userId,
-                  });
-                }
-                return [...bySeat.values()];
-              })()}
+              winners={winLines}
               onNextHand={() => {
                 send({ type: 'set_ready', tableId, ready: !myReady });
               }}

@@ -1284,8 +1284,19 @@ html[data-ui-theme='v2'] .lobby-shell .btn-primary {
 
 html[data-ui-theme='v2'] .btn-primary:hover,
 html[data-ui-theme='v2'] .lobby-shell .btn-primary:hover {
+  /* Lobby remaps --bg-raised to yellow; keep purple CTA + white label on hover. */
   filter: none;
-  background-color: rgb(var(--bg-raised));
+  background-color: rgb(var(--ink-raised));
+  color: #fff;
+}
+
+html[data-ui-theme='v2'] .btn-primary:disabled,
+html[data-ui-theme='v2'] .lobby-shell .btn-primary:disabled,
+html[data-ui-theme='v2'] .btn-primary:disabled:hover,
+html[data-ui-theme='v2'] .lobby-shell .btn-primary:disabled:hover {
+  background-color: rgb(var(--sidebar));
+  color: #fff;
+  opacity: 0.5;
 }
 
 html[data-ui-theme='v2'] .btn-ghost,

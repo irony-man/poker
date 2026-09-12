@@ -1,11 +1,10 @@
 name: Deploy
 
+# Manual: Actions → Deploy → Run workflow
+# Automatic: called by CI after a successful push build on main
 on:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
-    branches: [main]
   workflow_dispatch:
+  workflow_call:
 
 concurrency:
   group: deploy-production
@@ -17,10 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: production
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.event == 'push')
     steps:
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.0

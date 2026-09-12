@@ -119,7 +119,7 @@ See [apps/android/README.md](apps/android/README.md).
 
 ## Deploy
 
-GitHub Actions CI/CD deploys to the Oracle VM on green `main` builds. See [docs/DEPLOY.md](docs/DEPLOY.md).
+GitHub Actions CI/CD deploys to the Oracle VM after green `main` builds (or via **Actions → Deploy → Run workflow**). See [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Architecture notes
 

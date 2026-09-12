@@ -2,7 +2,12 @@
 
 CI runs on every PR/push to `main` (install → build → test).
 
-CD deploys to the Oracle Ubuntu VM on every push to `main` (and manual **Actions → Deploy → Run workflow**): SSH in, `git reset --hard origin/main`, then [`scripts/deploy-vm.sh`](../scripts/deploy-vm.sh) (`docker compose up -d --build` + health checks).
+CD deploys to the Oracle Ubuntu VM after a **green CI run on `main`**, and any time you manually run **Actions → Deploy → Run workflow**: SSH in, `git reset --hard origin/main`, then [`scripts/deploy-vm.sh`](../scripts/deploy-vm.sh) (`docker compose up -d --build` + health checks).
+
+| Trigger | How |
+| --- | --- |
+| Automatic | Push to `main` → CI `Build & test` succeeds → `Deploy` job |
+| Manual | GitHub → **Actions** → **Deploy** → **Run workflow** |
 
 ## One-time GitHub secrets
 

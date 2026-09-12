@@ -89,10 +89,12 @@ For a public URL (Vercel/Railway/Fly), you’ll need accounts + `NEXT_PUBLIC_API
 ### Local Postgres
 
 ```bash
-# Start Postgres 16 (docker)
+# Start Postgres 16 (optional Compose profile — not used by default `docker compose up`)
 npm run db:up
 
-# Copy env if needed (DATABASE_URL already points at local docker)
+# Copy env; for local docker DB use:
+# DATABASE_URL=postgres://poker:poker@127.0.0.1:5432/poker
+# Production / Oracle: Supabase Session pooler URI in `.env`
 cp .env.example .env
 
 # Server + web
@@ -100,7 +102,7 @@ npm run dev:server
 npm run dev:web
 ```
 
-Default URL: `postgres://poker:poker@127.0.0.1:5432/poker`
+Default local URL: `postgres://poker:poker@127.0.0.1:5432/poker`
 
 With `DATABASE_URL` set the server uses Postgres for accounts, sessions/tickets, friends/groups, and hand history. Without it, those fall back to JSON files under `DATA_DIR`.
 

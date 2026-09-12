@@ -1,5 +1,9 @@
+# Production Compose: Nest + Next. DB is external (Supabase) via DATABASE_URL in `.env`.
+# Optional local Postgres: docker compose --profile local-db up -d postgres
+
 services:
   postgres:
+    profiles: ["local-db"]
     image: postgres:16-alpine
     ports:
       - "5432:5432"
@@ -26,11 +30,11 @@ services:
     env_file:
       - .env
     environment:
-      # Compose overrides — wins over env_file
       PORT: ${PORT:-4000}
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3000}
       DATA_DIR: /app/data
-      DATABASE_URL: ${DATABASE_URL:-postgres://poker:poker@postgres:5432/poker}
+      # Required: Supabase Session pooler URI (IPv4). Do not use docker `postgres` hostname in prod.
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env to your Supabase pooler URL}
       ADMIN_USERNAMES: ${ADMIN_USERNAMES:-}
       AWS_REGION: ${AWS_REGION:-}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
@@ -41,9 +45,6 @@ services:
       REDIS_URL: ${REDIS_URL:-}
     volumes:
       - poker-data:/app/data
-    depends_on:
-      postgres:
-        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test:
@@ -56,7 +57,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 8
-      start_period: 10s
+      start_period: 15s
 
   web:
     build:
@@ -70,13 +71,14 @@ services:
         NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ${NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION:-}
         NEXT_PUBLIC_BING_SITE_VERIFICATION: ${NEXT_PUBLIC_BING_SITE_VERIFICATION:-}
         NEXT_PUBLIC_YANDEX_VERIFICATION: ${NEXT_PUBLIC_YANDEX_VERIFICATION:-}
+        # Must be Compose service URL at build time (not https://pokr.site) or /api rewrites loop.
+        API_REWRITE_TARGET: ${API_REWRITE_TARGET:-http://server:4000}
     ports:
       - "3000:3000"
     env_file:
       - .env
     environment:
       PORT: "3000"
-      # Next rewrites /api → Nest (in-compose hostname, not localhost)
       API_REWRITE_TARGET: ${API_REWRITE_TARGET:-http://server:4000}
     depends_on:
       server:

@@ -377,7 +377,9 @@ body > * {
     @apply mt-1 w-full rounded-md border px-3 py-2 font-body outline-none transition;
     border-color: rgb(var(--border-subtle) / 0.15);
     background-color: rgb(var(--bg-chrome) / 0.7);
-    color: rgb(var(--on-chrome));
+    /* Follow context --text-primary (light in .hud-panel, dark in lobby paper). */
+    color: rgb(var(--text-primary));
+    caret-color: rgb(var(--text-primary));
   }
 
   .hud-input::placeholder {
@@ -1528,6 +1530,41 @@ html[data-ui-theme='v3'] .play-action-dock select {
   background-color: rgb(var(--ink-raised) / 0.7);
   border-color: rgb(var(--glass-highlight) / 0.3);
   color: rgb(var(--text-primary));
+}
+
+/*
+ * Paper fields inside play docks (bet amount, chat composer).
+ * Classic/Arcade: dark ink on white fill (docks remapped light text-primary).
+ * Glass: match select — light glyphs on dusk fill.
+ */
+.play-action-dock input[type='number'],
+.play-action-dock input[type='text'],
+.chat-panel-shell input:not([type='range']):not([type='checkbox']):not([type='radio']),
+.chat-panel-shell textarea {
+  color: rgb(29 4 50);
+  caret-color: rgb(29 4 50);
+  color-scheme: light;
+}
+
+.chat-panel-shell input::placeholder,
+.chat-panel-shell textarea::placeholder {
+  color: rgb(68 48 74 / 0.75);
+}
+
+html[data-ui-theme='v3'] .play-action-dock input[type='number'],
+html[data-ui-theme='v3'] .play-action-dock input[type='text'],
+html[data-ui-theme='v3'] .chat-panel-shell input:not([type='range']):not([type='checkbox']):not([type='radio']),
+html[data-ui-theme='v3'] .chat-panel-shell textarea {
+  background-color: rgb(var(--ink-raised) / 0.7);
+  border-color: rgb(var(--glass-highlight) / 0.3);
+  color: rgb(var(--text-primary));
+  caret-color: rgb(var(--text-primary));
+  color-scheme: dark;
+}
+
+html[data-ui-theme='v3'] .chat-panel-shell input::placeholder,
+html[data-ui-theme='v3'] .chat-panel-shell textarea::placeholder {
+  color: rgb(var(--text-muted) / 0.75);
 }
 
 html[data-ui-theme='v3'] .play-action-dock .bg-white\/70 {

@@ -218,7 +218,7 @@ function TableToolsPanel({
               <select
                 value={tools.botGroupId ?? tools.botGroups[0]!.id}
                 onChange={(e) => tools.onBotGroupChange?.(e.target.value)}
-                className="max-w-[10rem] rounded border border-sidebar/20 bg-white px-1.5 py-1 text-[10px] font-semibold normal-case tracking-normal text-primary outline-none focus:border-sidebar/40"
+                className="max-w-[10rem] rounded border border-sidebar/20 bg-white px-1.5 py-1 text-[10px] font-semibold normal-case tracking-normal text-[rgb(29_4_50)] outline-none focus:border-sidebar/40 [color-scheme:light]"
                 aria-label="Bot name pack"
               >
                 {tools.botGroups.map((g) => (
@@ -765,7 +765,7 @@ export function ActionControls({
                       submitBet(amount);
                     }
                   }}
-                  className="w-full rounded-md border border-sidebar/18 bg-white px-2 py-1.5 font-mono text-sm font-bold tabular-nums text-primary outline-none focus:border-sidebar/45 focus:shadow-[0_0_0_2px_rgb(29_4_50/0.08)]"
+                  className="w-full rounded-md border border-sidebar/18 bg-white px-2 py-1.5 font-mono text-sm font-bold tabular-nums text-[rgb(29_4_50)] outline-none focus:border-sidebar/45 focus:shadow-[0_0_0_2px_rgb(29_4_50/0.08)] [color-scheme:light]"
                 />
               </label>
               {(

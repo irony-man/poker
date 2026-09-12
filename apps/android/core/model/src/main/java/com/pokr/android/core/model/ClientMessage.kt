@@ -195,4 +195,125 @@ sealed interface ClientMessage {
         val ludoId: String,
         val text: String,
     ) : ClientMessage
+
+    @Serializable
+    @SerialName("join_snakes")
+    data class JoinSnakes(
+        val snakesId: String,
+        val spectate: Boolean? = null,
+    ) : ClientMessage
+
+    @Serializable
+    @SerialName("leave_snakes")
+    data class LeaveSnakes(val snakesId: String) : ClientMessage
+
+    @Serializable
+    @SerialName("snakes_sit")
+    data class SnakesSit(
+        val snakesId: String,
+        val seat: Int,
+    ) : ClientMessage
+
+    @Serializable
+    @SerialName("snakes_stand")
+    data class SnakesStand(
+        val snakesId: String,
+        val seat: Int,
+    ) : ClientMessage
+
+    @Serializable
+    @SerialName("snakes_set_ready")
+    data class SnakesSetReady(
+        val snakesId: String,
+        val ready: Boolean,
+    ) : ClientMessage
+
+    @Serializable
+    @SerialName("snakes_roll")
+    data class SnakesRoll(
+        val snakesId: String,
+        val seq: Int,
+    ) : ClientMessage
+
+    @Serializable
+    @SerialName("snakes_add_bot")
+    data class SnakesAddBot(
+        val snakesId: String,
+        val seat: Int? = null,
+    ) : ClientMessage
+
+    @Serializable
+    @SerialName("snakes_remove_bot")
+    data class SnakesRemoveBot(
+        val snakesId: String,
+        val seat: Int,
+    ) : ClientMessage
+
+    @Serializable
+    @SerialName("snakes_chat")
+    data class SnakesChat(
+        val snakesId: String,
+        val text: String,
+    ) : ClientMessage
+
+    @Serializable
+    @SerialName("join_memory")
+    data class JoinMemory(
+        val memoryId: String,
+        val spectate: Boolean? = null,
+    ) : ClientMessage
+
+    @Serializable
+    @SerialName("leave_memory")
+    data class LeaveMemory(val memoryId: String) : ClientMessage
+
+    @Serializable
+    @SerialName("memory_sit")
+    data class MemorySit(
+        val memoryId: String,
+        val seat: Int,
+    ) : ClientMessage
+
+    @Serializable
+    @SerialName("memory_stand")
+    data class MemoryStand(
+        val memoryId: String,
+        val seat: Int,
+    ) : ClientMessage
+
+    @Serializable
+    @SerialName("memory_set_ready")
+    data class MemorySetReady(
+        val memoryId: String,
+        val ready: Boolean,
+    ) : ClientMessage
+
+    @Serializable
+    @SerialName("memory_flip")
+    data class MemoryFlip(
+        val memoryId: String,
+        val index: Int,
+        val seq: Int,
+    ) : ClientMessage
+
+    @Serializable
+    @SerialName("memory_add_bot")
+    data class MemoryAddBot(
+        val memoryId: String,
+        val seat: Int? = null,
+    ) : ClientMessage
+
+    @Serializable
+    @SerialName("memory_remove_bot")
+    data class MemoryRemoveBot(
+        val memoryId: String,
+        val seat: Int,
+    ) : ClientMessage
+
+    @Serializable
+    @SerialName("memory_chat")
+    data class MemoryChat(
+        val memoryId: String,
+        val text: String,
+    ) : ClientMessage
 }

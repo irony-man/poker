@@ -8,7 +8,7 @@ export type LobbyHref =
   | '/contests'
   | '/solo'
   | '/friends'
-  | '/ludo';
+  | '/arcade';
 
 export const LOBBY_NAV: { href: LobbyHref; label: string }[] = [
   { href: '/play', label: 'Host' },
@@ -17,7 +17,7 @@ export const LOBBY_NAV: { href: LobbyHref; label: string }[] = [
   { href: '/contests', label: 'Contests' },
   { href: '/friends', label: 'Friends' },
   { href: '/solo', label: 'Offline' },
-  { href: '/ludo', label: 'Ludo' },
+  { href: '/arcade', label: 'Arcade' },
 ];
 
 export type MobileBottomIcon = 'home' | 'play' | 'public' | 'contests' | 'friends' | 'offline';
@@ -66,6 +66,18 @@ export function isLobbyNavActive(
   if (href === '/') return pathname === '/';
   if (href === '/friends') {
     return pathname === '/friends' || pathname.startsWith('/friends/');
+  }
+  if (href === '/arcade') {
+    return (
+      pathname === '/arcade' ||
+      pathname.startsWith('/arcade/') ||
+      pathname === '/ludo' ||
+      pathname.startsWith('/ludo/') ||
+      pathname === '/snakes' ||
+      pathname.startsWith('/snakes/') ||
+      pathname === '/memory' ||
+      pathname.startsWith('/memory/')
+    );
   }
   if (href === '/play' || href === '/play?mode=join') {
     if (!isPlayPath(pathname)) return false;

@@ -34,6 +34,8 @@ fun FriendsTab(
     onOpenTable: (tableId: String, invite: String) -> Unit,
     onOpenContest: (contestId: String) -> Unit = {},
     onOpenLudo: (ludoId: String, invite: String) -> Unit = { _, _ -> },
+    onOpenSnakes: (snakesId: String, invite: String) -> Unit = { _, _ -> },
+    onOpenMemory: (memoryId: String, invite: String) -> Unit = { _, _ -> },
     viewModel: FriendsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -43,6 +45,8 @@ fun FriendsTab(
         onOpenTable = onOpenTable,
         onOpenContest = onOpenContest,
         onOpenLudo = onOpenLudo,
+        onOpenSnakes = onOpenSnakes,
+        onOpenMemory = onOpenMemory,
     )
 }
 
@@ -53,6 +57,8 @@ fun FriendsContent(
     onOpenTable: (tableId: String, invite: String) -> Unit,
     onOpenContest: (contestId: String) -> Unit = {},
     onOpenLudo: (ludoId: String, invite: String) -> Unit = { _, _ -> },
+    onOpenSnakes: (snakesId: String, invite: String) -> Unit = { _, _ -> },
+    onOpenMemory: (memoryId: String, invite: String) -> Unit = { _, _ -> },
 ) {
     LobbyScrollColumn {
         LobbyPageHeader(
@@ -106,6 +112,8 @@ fun FriendsContent(
                                         onTable = onOpenTable,
                                         onContest = onOpenContest,
                                         onLudo = onOpenLudo,
+                                        onSnakes = onOpenSnakes,
+                                        onMemory = onOpenMemory,
                                     )
                                 },
                                 onDecline = { viewModel.declineChallenge(challenge.id) },
@@ -199,6 +207,8 @@ private fun ChallengeRow(
 ) {
     val isContest = challenge.kind == "contest" || !challenge.contestId.isNullOrBlank()
     val isLudo = challenge.kind == "ludo" || !challenge.ludoId.isNullOrBlank()
+    val isSnakes = challenge.kind == "snakes" || !challenge.snakesId.isNullOrBlank()
+    val isMemory = challenge.kind == "memory" || !challenge.memoryId.isNullOrBlank()
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -219,6 +229,8 @@ private fun ChallengeRow(
             )
             Text(
                 when {
+                    isSnakes -> "Snakes & Ladders challenge"
+                    isMemory -> "Memory Match challenge"
                     isLudo -> "Ludo challenge"
                     isContest -> "Contest challenge"
                     else -> "Heads-up challenge"

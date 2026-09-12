@@ -37,6 +37,8 @@ export function FriendsPanel({
   onNavigateTable,
   onNavigateContest,
   onNavigateLudo,
+  onNavigateSnakes,
+  onNavigateMemory,
   variant = 'page',
   onFriendCountChange,
   imageSrc,
@@ -46,6 +48,8 @@ export function FriendsPanel({
   onNavigateTable: (tableId: string, inviteCode: string) => void;
   onNavigateContest?: (contestId: string) => void;
   onNavigateLudo?: (ludoId: string, inviteCode: string) => void;
+  onNavigateSnakes?: (snakesId: string, inviteCode: string) => void;
+  onNavigateMemory?: (memoryId: string, inviteCode: string) => void;
   /** Page uses lobby split+art; embedded is a single column for profile tab. */
   variant?: 'page' | 'embedded';
   onFriendCountChange?: (count: number) => void;
@@ -219,6 +223,8 @@ export function FriendsPanel({
       void refreshSocial();
       const isContest = challenge.kind === 'contest' || Boolean(challenge.contestId);
       const isLudo = challenge.kind === 'ludo' || Boolean(challenge.ludoId);
+      const isSnakes = challenge.kind === 'snakes' || Boolean(challenge.snakesId);
+      const isMemory = challenge.kind === 'memory' || Boolean(challenge.memoryId);
       if (isContest && challenge.contestId) {
         try {
           await registerContest(challenge.contestId, auth());
@@ -230,6 +236,12 @@ export function FriendsPanel({
       } else if (isLudo && challenge.ludoId) {
         if (onNavigateLudo) onNavigateLudo(challenge.ludoId, challenge.inviteCode);
         else window.location.href = `/ludo/${challenge.ludoId}?invite=${challenge.inviteCode}`;
+      } else if (isSnakes && challenge.snakesId) {
+        if (onNavigateSnakes) onNavigateSnakes(challenge.snakesId, challenge.inviteCode);
+        else window.location.href = `/snakes/${challenge.snakesId}?invite=${challenge.inviteCode}`;
+      } else if (isMemory && challenge.memoryId) {
+        if (onNavigateMemory) onNavigateMemory(challenge.memoryId, challenge.inviteCode);
+        else window.location.href = `/memory/${challenge.memoryId}?invite=${challenge.inviteCode}`;
       } else if (challenge.tableId) {
         onNavigateTable(challenge.tableId, challenge.inviteCode);
       } else {

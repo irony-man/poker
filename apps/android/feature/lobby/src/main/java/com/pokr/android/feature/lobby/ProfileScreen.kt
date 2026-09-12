@@ -57,6 +57,8 @@ fun ProfileScreen(
     onPlay: () -> Unit,
     onOpenTable: (tableId: String, invite: String) -> Unit = { _, _ -> },
     onOpenLudo: (ludoId: String, invite: String) -> Unit = { _, _ -> },
+    onOpenSnakes: (snakesId: String, invite: String) -> Unit = { _, _ -> },
+    onOpenMemory: (memoryId: String, invite: String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = hiltViewModel(),
     friendsViewModel: FriendsViewModel = hiltViewModel(),
@@ -127,6 +129,8 @@ fun ProfileScreen(
                         onOpenTable = onOpenTable,
                         onOpenContest = onContest,
                         onOpenLudo = onOpenLudo,
+                        onOpenSnakes = onOpenSnakes,
+                        onOpenMemory = onOpenMemory,
                     )
                 }
                 else -> {

@@ -5,6 +5,8 @@ import {
   LudoSeatSchema,
   LudoYouSchema,
 } from './ludo.js';
+import { MemoryPublicViewSchema, MemorySeatSchema, MemoryYouSchema } from './memory.js';
+import { SnakesPublicViewSchema, SnakesSeatSchema, SnakesYouSchema } from './snakes.js';
 
 export const ActionTypeSchema = z.enum(['fold', 'check', 'call', 'bet', 'raise', 'allin']);
 
@@ -191,6 +193,95 @@ export const ClientMessageSchema = z.discriminatedUnion('type', [
     ludoId: z.string().min(1),
     text: z.string().min(1).max(280),
   }),
+  z.object({
+    type: z.literal('join_snakes'),
+    snakesId: z.string().min(1),
+    spectate: z.boolean().nullish(),
+  }),
+  z.object({
+    type: z.literal('leave_snakes'),
+    snakesId: z.string().min(1),
+  }),
+  z.object({
+    type: z.literal('snakes_sit'),
+    snakesId: z.string().min(1),
+    seat: SnakesSeatSchema,
+  }),
+  z.object({
+    type: z.literal('snakes_stand'),
+    snakesId: z.string().min(1),
+    seat: SnakesSeatSchema,
+  }),
+  z.object({
+    type: z.literal('snakes_set_ready'),
+    snakesId: z.string().min(1),
+    ready: z.boolean(),
+  }),
+  z.object({
+    type: z.literal('snakes_roll'),
+    snakesId: z.string().min(1),
+    seq: z.number().int().nonnegative(),
+  }),
+  z.object({
+    type: z.literal('snakes_add_bot'),
+    snakesId: z.string().min(1),
+    seat: SnakesSeatSchema.nullish(),
+  }),
+  z.object({
+    type: z.literal('snakes_remove_bot'),
+    snakesId: z.string().min(1),
+    seat: SnakesSeatSchema,
+  }),
+  z.object({
+    type: z.literal('snakes_chat'),
+    snakesId: z.string().min(1),
+    text: z.string().min(1).max(280),
+  }),
+  z.object({
+    type: z.literal('join_memory'),
+    memoryId: z.string().min(1),
+    spectate: z.boolean().nullish(),
+  }),
+  z.object({
+    type: z.literal('leave_memory'),
+    memoryId: z.string().min(1),
+  }),
+  z.object({
+    type: z.literal('memory_sit'),
+    memoryId: z.string().min(1),
+    seat: MemorySeatSchema,
+  }),
+  z.object({
+    type: z.literal('memory_stand'),
+    memoryId: z.string().min(1),
+    seat: MemorySeatSchema,
+  }),
+  z.object({
+    type: z.literal('memory_set_ready'),
+    memoryId: z.string().min(1),
+    ready: z.boolean(),
+  }),
+  z.object({
+    type: z.literal('memory_flip'),
+    memoryId: z.string().min(1),
+    index: z.number().int().nonnegative(),
+    seq: z.number().int().nonnegative(),
+  }),
+  z.object({
+    type: z.literal('memory_add_bot'),
+    memoryId: z.string().min(1),
+    seat: MemorySeatSchema.nullish(),
+  }),
+  z.object({
+    type: z.literal('memory_remove_bot'),
+    memoryId: z.string().min(1),
+    seat: MemorySeatSchema,
+  }),
+  z.object({
+    type: z.literal('memory_chat'),
+    memoryId: z.string().min(1),
+    text: z.string().min(1).max(280),
+  }),
 ]);
 
 export type ClientMessage = z.infer<typeof ClientMessageSchema>;
@@ -298,6 +389,32 @@ export const ServerMessageSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('ludo_chat'),
     ludoId: z.string(),
+    userId: z.string(),
+    name: z.string(),
+    text: z.string(),
+    at: z.number(),
+  }),
+  z.object({
+    type: z.literal('snakes_state_sync'),
+    snakes: SnakesPublicViewSchema,
+    you: SnakesYouSchema,
+  }),
+  z.object({
+    type: z.literal('snakes_chat'),
+    snakesId: z.string(),
+    userId: z.string(),
+    name: z.string(),
+    text: z.string(),
+    at: z.number(),
+  }),
+  z.object({
+    type: z.literal('memory_state_sync'),
+    memory: MemoryPublicViewSchema,
+    you: MemoryYouSchema,
+  }),
+  z.object({
+    type: z.literal('memory_chat'),
+    memoryId: z.string(),
     userId: z.string(),
     name: z.string(),
     text: z.string(),

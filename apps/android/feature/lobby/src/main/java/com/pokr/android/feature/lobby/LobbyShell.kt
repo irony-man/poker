@@ -32,6 +32,8 @@ fun LobbyShell(
     onOffline: (seats: Int, bots: Int, name: String) -> Unit,
     onContest: (contestId: String) -> Unit,
     onLudo: (ludoId: String, invite: String, spectate: Boolean) -> Unit,
+    onSnakes: (snakesId: String, invite: String, spectate: Boolean) -> Unit,
+    onMemory: (memoryId: String, invite: String, spectate: Boolean) -> Unit,
     onProfile: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LobbyViewModel = hiltViewModel(),
@@ -47,6 +49,7 @@ fun LobbyShell(
     }
     var playMode by remember { mutableStateOf("host") }
     var playMenuOpen by remember { mutableStateOf(false) }
+    var arcadeGame by remember { mutableStateOf<String?>(null) }
 
     fun goHome() {
         playMenuOpen = false
@@ -89,6 +92,8 @@ fun LobbyShell(
                             onJoined = onJoined,
                             onContest = onContest,
                             onLudo = onLudo,
+                            onSnakes = onSnakes,
+                            onMemory = onMemory,
                         )
                     } else {
                         HostTab(
@@ -121,15 +126,21 @@ fun LobbyShell(
                             onOpenTable = { tableId, invite -> onJoined(tableId, invite, false) },
                             onOpenContest = onContest,
                             onOpenLudo = { ludoId, invite -> onLudo(ludoId, invite, false) },
+                            onOpenSnakes = { snakesId, invite -> onSnakes(snakesId, invite, false) },
+                            onOpenMemory = { memoryId, invite -> onMemory(memoryId, invite, false) },
                         )
                     }
-                    LobbyTab.Ludo -> if (!state.signedIn) {
+                    LobbyTab.Arcade -> if (!state.signedIn) {
                         LobbyScrollColumn { SignInGate(onGoHome = ::goHome) }
                     } else {
-                        LudoTab(
+                        ArcadeTab(
                             state = state,
                             viewModel = viewModel,
+                            selectedGame = arcadeGame,
+                            onSelectGame = { arcadeGame = it },
                             onLudo = { id, invite -> onLudo(id, invite, false) },
+                            onSnakes = { id, invite -> onSnakes(id, invite, false) },
+                            onMemory = { id, invite -> onMemory(id, invite, false) },
                         )
                     }
                     LobbyTab.Offline -> OfflineTab(
@@ -152,6 +163,7 @@ fun LobbyShell(
                 friendsBadge = friendsBadge,
                 onSelect = { next ->
                     playMenuOpen = false
+                    if (next != LobbyTab.Arcade) arcadeGame = null
                     tab = next
                 },
                 onPlayClick = {

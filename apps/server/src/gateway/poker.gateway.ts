@@ -11,6 +11,8 @@ import { AuthService } from '../auth/auth.service.js';
 import { ContestsService } from '../contests/contests.service.js';
 import { FriendsService } from '../friends/friends.service.js';
 import { LudoRoomsService } from '../ludo/ludo.service.js';
+import { MemoryRoomsService } from '../memory/memory.service.js';
+import { SnakesRoomsService } from '../snakes/snakes.service.js';
 import { PresenceService } from '../presence/presence.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 import { RoomsService } from '../rooms/rooms.service.js';
@@ -23,6 +25,8 @@ type SocketState = {
   tableId: string | null;
   contestId: string | null;
   ludoId: string | null;
+  snakesId: string | null;
+  memoryId: string | null;
   send: (msg: unknown) => void;
 };
 
@@ -41,6 +45,34 @@ type LudoPlayMessage = Extract<
   }
 >;
 
+type SnakesPlayMessage = Extract<
+  ClientMessage,
+  {
+    type:
+      | 'snakes_sit'
+      | 'snakes_stand'
+      | 'snakes_set_ready'
+      | 'snakes_roll'
+      | 'snakes_add_bot'
+      | 'snakes_remove_bot'
+      | 'snakes_chat';
+  }
+>;
+
+type MemoryPlayMessage = Extract<
+  ClientMessage,
+  {
+    type:
+      | 'memory_sit'
+      | 'memory_stand'
+      | 'memory_set_ready'
+      | 'memory_flip'
+      | 'memory_add_bot'
+      | 'memory_remove_bot'
+      | 'memory_chat';
+  }
+>;
+
 @WebSocketGateway({ path: '/ws' })
 export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(PokerGateway.name);
@@ -51,6 +83,8 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly wallet: WalletService,
     private readonly rooms: RoomsService,
     private readonly ludo: LudoRoomsService,
+    private readonly snakes: SnakesRoomsService,
+    private readonly memory: MemoryRoomsService,
     private readonly contests: ContestsService,
     private readonly friends: FriendsService,
     private readonly presence: PresenceService,
@@ -70,6 +104,8 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
       tableId: null,
       contestId: null,
       ludoId: null,
+      snakesId: null,
+      memoryId: null,
       send,
     });
     this.realtime.registerSocket(send);
@@ -85,7 +121,7 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
   handleDisconnect(@ConnectedSocket() client: WebSocket): void {
     const st = this.states.get(client);
     if (!st) return;
-    const { userId, tableId, contestId, ludoId, send } = st;
+    const { userId, tableId, contestId, ludoId, snakesId, memoryId, send } = st;
     if (userId && tableId) {
       const room = this.rooms.get(tableId);
       if (room?.detachIfActive(userId, send)) {
@@ -94,6 +130,18 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
     if (userId && ludoId) {
       const board = this.ludo.get(ludoId);
+      if (board?.detachIfActive(userId, send)) {
+        board.scheduleDisconnect(userId);
+      }
+    }
+    if (userId && snakesId) {
+      const board = this.snakes.get(snakesId);
+      if (board?.detachIfActive(userId, send)) {
+        board.scheduleDisconnect(userId);
+      }
+    }
+    if (userId && memoryId) {
+      const board = this.memory.get(memoryId);
       if (board?.detachIfActive(userId, send)) {
         board.scheduleDisconnect(userId);
       }
@@ -208,6 +256,14 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
         this.rooms.get(st.tableId)?.leave(userId);
         st.tableId = null;
       }
+      if (st.snakesId) {
+        this.snakes.get(st.snakesId)?.leave(userId);
+        st.snakesId = null;
+      }
+      if (st.memoryId) {
+        this.memory.get(st.memoryId)?.leave(userId);
+        st.memoryId = null;
+      }
       if (st.ludoId && st.ludoId !== msg.ludoId) {
         this.ludo.get(st.ludoId)?.leave(userId);
       }
@@ -245,10 +301,142 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
+    if (msg.type === 'join_snakes') {
+      const board = this.snakes.get(msg.snakesId);
+      if (!board) {
+        send({
+          type: 'error',
+          message: 'Board not found — server may have restarted. Create a new board from the lobby.',
+          code: 'not_found',
+        });
+        return;
+      }
+      if (st.tableId) {
+        this.rooms.get(st.tableId)?.leave(userId);
+        st.tableId = null;
+      }
+      if (st.ludoId) {
+        this.ludo.get(st.ludoId)?.leave(userId);
+        st.ludoId = null;
+      }
+      if (st.memoryId) {
+        this.memory.get(st.memoryId)?.leave(userId);
+        st.memoryId = null;
+      }
+      if (st.snakesId && st.snakesId !== msg.snakesId) {
+        this.snakes.get(st.snakesId)?.leave(userId);
+      }
+      st.snakesId = msg.snakesId;
+      const authUser = this.auth.getUser(userId);
+      board.attach({
+        userId,
+        name,
+        avatarId: authUser?.avatarId ?? 0,
+        avatarUrl: authUser?.avatarUrl ?? null,
+        send,
+      });
+      if (!msg.spectate) {
+        const seated = board.autoSit(userId, name);
+        if (!seated.ok && seated.error && seated.error !== 'Board full') {
+          send({ type: 'error', message: seated.error, code: 'sit_failed' });
+        }
+      }
+      return;
+    }
+
+    if (msg.type === 'leave_snakes') {
+      this.snakes.get(msg.snakesId)?.leave(userId);
+      if (st.snakesId === msg.snakesId) st.snakesId = null;
+      return;
+    }
+
+    if (
+      msg.type === 'snakes_sit' ||
+      msg.type === 'snakes_stand' ||
+      msg.type === 'snakes_set_ready' ||
+      msg.type === 'snakes_roll' ||
+      msg.type === 'snakes_add_bot' ||
+      msg.type === 'snakes_remove_bot' ||
+      msg.type === 'snakes_chat'
+    ) {
+      this.dispatchSnakes(userId, name, msg, send);
+      return;
+    }
+
+    if (msg.type === 'join_memory') {
+      const board = this.memory.get(msg.memoryId);
+      if (!board) {
+        send({
+          type: 'error',
+          message: 'Board not found — server may have restarted. Create a new board from the lobby.',
+          code: 'not_found',
+        });
+        return;
+      }
+      if (st.tableId) {
+        this.rooms.get(st.tableId)?.leave(userId);
+        st.tableId = null;
+      }
+      if (st.ludoId) {
+        this.ludo.get(st.ludoId)?.leave(userId);
+        st.ludoId = null;
+      }
+      if (st.snakesId) {
+        this.snakes.get(st.snakesId)?.leave(userId);
+        st.snakesId = null;
+      }
+      if (st.memoryId && st.memoryId !== msg.memoryId) {
+        this.memory.get(st.memoryId)?.leave(userId);
+      }
+      st.memoryId = msg.memoryId;
+      const authUser = this.auth.getUser(userId);
+      board.attach({
+        userId,
+        name,
+        avatarId: authUser?.avatarId ?? 0,
+        avatarUrl: authUser?.avatarUrl ?? null,
+        send,
+      });
+      if (!msg.spectate) {
+        const seated = board.autoSit(userId, name);
+        if (!seated.ok && seated.error && seated.error !== 'Board full') {
+          send({ type: 'error', message: seated.error, code: 'sit_failed' });
+        }
+      }
+      return;
+    }
+
+    if (msg.type === 'leave_memory') {
+      this.memory.get(msg.memoryId)?.leave(userId);
+      if (st.memoryId === msg.memoryId) st.memoryId = null;
+      return;
+    }
+
+    if (
+      msg.type === 'memory_sit' ||
+      msg.type === 'memory_stand' ||
+      msg.type === 'memory_set_ready' ||
+      msg.type === 'memory_flip' ||
+      msg.type === 'memory_add_bot' ||
+      msg.type === 'memory_remove_bot' ||
+      msg.type === 'memory_chat'
+    ) {
+      this.dispatchMemory(userId, name, msg, send);
+      return;
+    }
+
     if (msg.type === 'join_table') {
       if (st.ludoId) {
         this.ludo.get(st.ludoId)?.leave(userId);
         st.ludoId = null;
+      }
+      if (st.snakesId) {
+        this.snakes.get(st.snakesId)?.leave(userId);
+        st.snakesId = null;
+      }
+      if (st.memoryId) {
+        this.memory.get(st.memoryId)?.leave(userId);
+        st.memoryId = null;
       }
       const room = this.rooms.get(msg.tableId);
       if (!room) {
@@ -472,4 +660,107 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
         break;
     }
   }
+
+  private dispatchSnakes(
+    userId: string,
+    name: string,
+    msg: SnakesPlayMessage,
+    send: (msg: unknown) => void,
+  ): void {
+    const board = this.snakes.get(msg.snakesId);
+    if (!board) {
+      send({ type: 'error', message: 'Board not found', code: 'not_found' });
+      return;
+    }
+    switch (msg.type) {
+      case 'snakes_sit': {
+        const result = board.sit(userId, name, msg.seat);
+        if (!result.ok) send({ type: 'error', message: result.error ?? 'Sit failed' });
+        break;
+      }
+      case 'snakes_stand': {
+        const result = board.stand(userId, msg.seat);
+        if (!result.ok) send({ type: 'error', message: result.error ?? 'Stand failed' });
+        break;
+      }
+      case 'snakes_set_ready': {
+        const result = board.setReady(userId, msg.ready);
+        if (!result.ok) send({ type: 'error', message: result.error ?? 'Ready failed' });
+        break;
+      }
+      case 'snakes_roll': {
+        const result = board.roll(userId, msg.seq);
+        if (!result.ok) send({ type: 'error', message: result.error ?? 'Roll failed' });
+        break;
+      }
+      case 'snakes_add_bot': {
+        const seating = this.site.getBotSeatingConfig();
+        const result = board.addBot(userId, msg.seat ?? undefined, 1, seating.names, seating);
+        if (!result.ok) send({ type: 'error', message: result.error ?? 'Add bot failed' });
+        break;
+      }
+      case 'snakes_remove_bot': {
+        const result = board.removeBot(msg.seat);
+        if (!result.ok) send({ type: 'error', message: result.error ?? 'Remove bot failed' });
+        break;
+      }
+      case 'snakes_chat':
+        board.chat(userId, name, msg.text);
+        break;
+      default:
+        break;
+    }
+  }
+
+  private dispatchMemory(
+    userId: string,
+    name: string,
+    msg: MemoryPlayMessage,
+    send: (msg: unknown) => void,
+  ): void {
+    const board = this.memory.get(msg.memoryId);
+    if (!board) {
+      send({ type: 'error', message: 'Board not found', code: 'not_found' });
+      return;
+    }
+    switch (msg.type) {
+      case 'memory_sit': {
+        const result = board.sit(userId, name, msg.seat);
+        if (!result.ok) send({ type: 'error', message: result.error ?? 'Sit failed' });
+        break;
+      }
+      case 'memory_stand': {
+        const result = board.stand(userId, msg.seat);
+        if (!result.ok) send({ type: 'error', message: result.error ?? 'Stand failed' });
+        break;
+      }
+      case 'memory_set_ready': {
+        const result = board.setReady(userId, msg.ready);
+        if (!result.ok) send({ type: 'error', message: result.error ?? 'Ready failed' });
+        break;
+      }
+      case 'memory_flip': {
+        const result = board.flip(userId, msg.index, msg.seq);
+        if (!result.ok) send({ type: 'error', message: result.error ?? 'Flip failed' });
+        break;
+      }
+      case 'memory_add_bot': {
+        const seating = this.site.getBotSeatingConfig();
+        const result = board.addBot(userId, msg.seat ?? undefined, 1, seating.names, seating);
+        if (!result.ok) send({ type: 'error', message: result.error ?? 'Add bot failed' });
+        break;
+      }
+      case 'memory_remove_bot': {
+        const result = board.removeBot(msg.seat);
+        if (!result.ok) send({ type: 'error', message: result.error ?? 'Remove bot failed' });
+        break;
+      }
+      case 'memory_chat':
+        board.chat(userId, name, msg.text);
+        break;
+      default:
+        break;
+    }
+  }
+
 }

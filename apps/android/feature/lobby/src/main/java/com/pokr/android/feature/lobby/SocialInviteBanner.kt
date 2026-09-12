@@ -35,6 +35,8 @@ fun SocialInviteBanner(
     onOpenTable: (tableId: String, invite: String) -> Unit,
     onOpenContest: (contestId: String) -> Unit,
     onOpenLudo: (ludoId: String, invite: String) -> Unit = { _, _ -> },
+    onOpenSnakes: (snakesId: String, invite: String) -> Unit = { _, _ -> },
+    onOpenMemory: (memoryId: String, invite: String) -> Unit = { _, _ -> },
     onOpenFriends: () -> Unit,
     compact: Boolean = false,
     modifier: Modifier = Modifier,
@@ -70,7 +72,14 @@ fun SocialInviteBanner(
                 compact = compact,
                 pad = pad,
                 onPrimary = {
-                    viewModel.joinChallenge(challenge, onOpenTable, onOpenContest, onOpenLudo)
+                    viewModel.joinChallenge(
+                        challenge,
+                        onOpenTable,
+                        onOpenContest,
+                        onOpenLudo,
+                        onOpenSnakes,
+                        onOpenMemory,
+                    )
                 },
                 onSecondary = { viewModel.declineChallenge(challenge.id) },
             )
@@ -193,6 +202,8 @@ private fun challengeTitle(c: PendingChallenge): String {
     return when {
         group != null -> group
         c.kind == "contest" || !c.contestId.isNullOrBlank() -> "Contest invite"
+        c.kind == "snakes" || !c.snakesId.isNullOrBlank() -> "Snakes & Ladders invite"
+        c.kind == "memory" || !c.memoryId.isNullOrBlank() -> "Memory Match invite"
         c.kind == "ludo" || !c.ludoId.isNullOrBlank() -> "Ludo invite"
         else -> "Table invite"
     }
@@ -202,6 +213,10 @@ private fun challengeSubtitle(c: PendingChallenge): String =
     when {
         c.kind == "contest" || !c.contestId.isNullOrBlank() ->
             "${c.challenger.name} invited you to a contest"
+        c.kind == "snakes" || !c.snakesId.isNullOrBlank() ->
+            "${c.challenger.name} invited you to Snakes & Ladders"
+        c.kind == "memory" || !c.memoryId.isNullOrBlank() ->
+            "${c.challenger.name} invited you to Memory Match"
         c.kind == "ludo" || !c.ludoId.isNullOrBlank() ->
             "${c.challenger.name} invited you to Ludo"
         else -> "${c.challenger.name} wants to play"

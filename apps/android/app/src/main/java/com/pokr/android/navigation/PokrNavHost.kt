@@ -20,10 +20,14 @@ import com.pokr.android.feature.lobby.ProfileScreen
 import com.pokr.android.feature.lobby.SocialInviteBanner
 import com.pokr.android.feature.ludo.LudoBoardRoute
 import com.pokr.android.feature.ludo.LudoBoardScreen
+import com.pokr.android.feature.memory.MemoryBoardRoute
+import com.pokr.android.feature.memory.MemoryBoardScreen
 import com.pokr.android.feature.offline.OfflineTableRoute
 import com.pokr.android.feature.offline.OfflineTableScreen
 import com.pokr.android.feature.progress.HandsRoute
 import com.pokr.android.feature.progress.HandsScreen
+import com.pokr.android.feature.snakes.SnakesBoardRoute
+import com.pokr.android.feature.snakes.SnakesBoardScreen
 import com.pokr.android.feature.table.OnlineTableRoute
 import com.pokr.android.feature.table.TableScreen
 
@@ -33,7 +37,9 @@ fun PokrNavHost(modifier: Modifier = Modifier) {
     val entry by navController.currentBackStackEntryAsState()
     val dest = entry?.destination?.route.orEmpty()
     val compact = dest.contains("OnlineTable", ignoreCase = true) ||
-        dest.contains("LudoBoard", ignoreCase = true)
+        dest.contains("LudoBoard", ignoreCase = true) ||
+        dest.contains("SnakesBoard", ignoreCase = true) ||
+        dest.contains("MemoryBoard", ignoreCase = true)
 
     Box(modifier = modifier.fillMaxSize()) {
     NavHost(
@@ -62,6 +68,16 @@ fun PokrNavHost(modifier: Modifier = Modifier) {
                         LudoBoardRoute(id = ludoId, invite = invite, spectate = spectate),
                     )
                 },
+                onSnakes = { snakesId, invite, spectate ->
+                    navController.navigate(
+                        SnakesBoardRoute(id = snakesId, invite = invite, spectate = spectate),
+                    )
+                },
+                onMemory = { memoryId, invite, spectate ->
+                    navController.navigate(
+                        MemoryBoardRoute(id = memoryId, invite = invite, spectate = spectate),
+                    )
+                },
                 onProfile = {
                     navController.navigate(ProfileRoute)
                 },
@@ -86,6 +102,12 @@ fun PokrNavHost(modifier: Modifier = Modifier) {
                 },
                 onOpenLudo = { ludoId, invite ->
                     navController.navigate(LudoBoardRoute(id = ludoId, invite = invite))
+                },
+                onOpenSnakes = { snakesId, invite ->
+                    navController.navigate(SnakesBoardRoute(id = snakesId, invite = invite))
+                },
+                onOpenMemory = { memoryId, invite ->
+                    navController.navigate(MemoryBoardRoute(id = memoryId, invite = invite))
                 },
             )
         }
@@ -132,6 +154,22 @@ fun PokrNavHost(modifier: Modifier = Modifier) {
                 },
             )
         }
+        composable<SnakesBoardRoute> {
+            SnakesBoardScreen(
+                webBaseUrl = BuildConfig.POKR_WEB_URL,
+                onBack = {
+                    navController.popBackStack(LobbyRoute, inclusive = false)
+                },
+            )
+        }
+        composable<MemoryBoardRoute> {
+            MemoryBoardScreen(
+                webBaseUrl = BuildConfig.POKR_WEB_URL,
+                onBack = {
+                    navController.popBackStack(LobbyRoute, inclusive = false)
+                },
+            )
+        }
     }
 
         SocialInviteBanner(
@@ -144,6 +182,12 @@ fun PokrNavHost(modifier: Modifier = Modifier) {
             },
             onOpenLudo = { ludoId, invite ->
                 navController.navigate(LudoBoardRoute(id = ludoId, invite = invite))
+            },
+            onOpenSnakes = { snakesId, invite ->
+                navController.navigate(SnakesBoardRoute(id = snakesId, invite = invite))
+            },
+            onOpenMemory = { memoryId, invite ->
+                navController.navigate(MemoryBoardRoute(id = memoryId, invite = invite))
             },
             onOpenFriends = {
                 navController.popBackStack(LobbyRoute, inclusive = false)

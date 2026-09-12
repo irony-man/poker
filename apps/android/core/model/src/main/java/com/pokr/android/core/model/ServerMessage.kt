@@ -116,4 +116,38 @@ sealed interface ServerMessage {
         val text: String,
         val at: Long,
     ) : ServerMessage
+
+    @Serializable
+    @SerialName("snakes_state_sync")
+    data class SnakesStateSync(
+        val snakes: SnakesPublicView,
+        val you: SnakesYou,
+    ) : ServerMessage
+
+    @Serializable
+    @SerialName("snakes_chat")
+    data class SnakesChat(
+        val snakesId: String,
+        val userId: String,
+        val name: String,
+        val text: String,
+        val at: Long,
+    ) : ServerMessage
+
+    @Serializable
+    @SerialName("memory_state_sync")
+    data class MemoryStateSync(
+        val memory: MemoryPublicView,
+        val you: MemoryYou,
+    ) : ServerMessage
+
+    @Serializable
+    @SerialName("memory_chat")
+    data class MemoryChat(
+        val memoryId: String,
+        val userId: String,
+        val name: String,
+        val text: String,
+        val at: Long,
+    ) : ServerMessage
 }

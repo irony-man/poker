@@ -1167,6 +1167,14 @@ function ProfilePageInner() {
                   enterMobileFullscreen();
                   router.push(`/ludo/${ludoId}?invite=${inviteCode}`);
                 }}
+                onNavigateSnakes={(snakesId, inviteCode) => {
+                  enterMobileFullscreen();
+                  router.push(`/snakes/${snakesId}?invite=${inviteCode}`);
+                }}
+                onNavigateMemory={(memoryId, inviteCode) => {
+                  enterMobileFullscreen();
+                  router.push(`/memory/${memoryId}?invite=${inviteCode}`);
+                }}
               />
             </section>
           )}

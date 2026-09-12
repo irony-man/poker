@@ -27,6 +27,8 @@ sealed class SocialJoinTarget {
     data class Table(val tableId: String, val invite: String) : SocialJoinTarget()
     data class Contest(val contestId: String) : SocialJoinTarget()
     data class Ludo(val ludoId: String, val invite: String) : SocialJoinTarget()
+    data class Snakes(val snakesId: String, val invite: String) : SocialJoinTarget()
+    data class Memory(val memoryId: String, val invite: String) : SocialJoinTarget()
 }
 
 @Singleton
@@ -137,9 +139,17 @@ class SocialRepository @Inject constructor(
         api.joinFriendChallenge(challenge.id)
         val contestId = challenge.contestId
         val ludoId = challenge.ludoId
+        val snakesId = challenge.snakesId
+        val memoryId = challenge.memoryId
         val isLudo = challenge.kind == "ludo" || !ludoId.isNullOrBlank()
+        val isSnakes = challenge.kind == "snakes" || !snakesId.isNullOrBlank()
+        val isMemory = challenge.kind == "memory" || !memoryId.isNullOrBlank()
         val isContest = challenge.kind == "contest" || !contestId.isNullOrBlank()
         val target = when {
+            isSnakes && !snakesId.isNullOrBlank() ->
+                SocialJoinTarget.Snakes(snakesId, challenge.inviteCode)
+            isMemory && !memoryId.isNullOrBlank() ->
+                SocialJoinTarget.Memory(memoryId, challenge.inviteCode)
             isLudo && !ludoId.isNullOrBlank() -> SocialJoinTarget.Ludo(ludoId, challenge.inviteCode)
             isContest && !contestId.isNullOrBlank() -> {
                 runCatching { api.registerContest(contestId) }

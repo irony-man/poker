@@ -64,6 +64,8 @@ export function SocialNotificationHost() {
       void refreshSocial();
       const isContest = challenge.kind === 'contest' || Boolean(challenge.contestId);
       const isLudo = challenge.kind === 'ludo' || Boolean(challenge.ludoId);
+      const isSnakes = challenge.kind === 'snakes' || Boolean(challenge.snakesId);
+      const isMemory = challenge.kind === 'memory' || Boolean(challenge.memoryId);
       if (isContest && challenge.contestId) {
         try {
           await registerContest(challenge.contestId, { sessionToken });
@@ -76,6 +78,16 @@ export function SocialNotificationHost() {
           ? `?invite=${encodeURIComponent(challenge.inviteCode)}`
           : '';
         router.push(`/ludo/${challenge.ludoId}${q}`);
+      } else if (isSnakes && challenge.snakesId) {
+        const q = challenge.inviteCode
+          ? `?invite=${encodeURIComponent(challenge.inviteCode)}`
+          : '';
+        router.push(`/snakes/${challenge.snakesId}${q}`);
+      } else if (isMemory && challenge.memoryId) {
+        const q = challenge.inviteCode
+          ? `?invite=${encodeURIComponent(challenge.inviteCode)}`
+          : '';
+        router.push(`/memory/${challenge.memoryId}${q}`);
       } else if (challenge.tableId) {
         const q = challenge.inviteCode
           ? `?invite=${encodeURIComponent(challenge.inviteCode)}`
@@ -164,6 +176,8 @@ function challengeTitle(c: PendingChallenge): string {
   if (c.groupName) return c.groupName;
   if (c.kind === 'contest' || c.contestId) return 'Contest invite';
   if (c.kind === 'ludo' || c.ludoId) return 'Ludo invite';
+  if (c.kind === 'snakes' || c.snakesId) return 'Snakes invite';
+  if (c.kind === 'memory' || c.memoryId) return 'Memory invite';
   return 'Table invite';
 }
 
@@ -173,6 +187,12 @@ function challengeSubtitle(c: PendingChallenge): string {
   }
   if (c.kind === 'ludo' || c.ludoId) {
     return `${c.challenger.name} invited you to Ludo`;
+  }
+  if (c.kind === 'snakes' || c.snakesId) {
+    return `${c.challenger.name} invited you to Snakes & Ladders`;
+  }
+  if (c.kind === 'memory' || c.memoryId) {
+    return `${c.challenger.name} invited you to Memory Match`;
   }
   return `${c.challenger.name} wants to play`;
 }

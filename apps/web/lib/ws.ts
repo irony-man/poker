@@ -1,7 +1,15 @@
 'use client';
 
 import { useCallback, useEffect, useRef } from 'react';
-import type { LudoLegalMove, LudoPublicView, LudoYou } from '@poker/protocol';
+import type {
+  LudoLegalMove,
+  LudoPublicView,
+  LudoYou,
+  MemoryPublicView,
+  MemoryYou,
+  SnakesPublicView,
+  SnakesYou,
+} from '@poker/protocol';
 import type {
   ContestView,
   FriendGroup,
@@ -165,6 +173,46 @@ function dispatchMessage(msg: { type?: string; [key: string]: unknown }): void {
     }
     case 'ludo_chat': {
       if (s.boundLudoId && msg.ludoId && String(msg.ludoId) !== s.boundLudoId) break;
+      s.pushChat({
+        userId: String(msg.userId ?? ''),
+        name: String(msg.name ?? ''),
+        text: String(msg.text ?? ''),
+        at: typeof msg.at === 'number' ? msg.at : Date.now(),
+      });
+      break;
+    }
+    case 'snakes_state_sync': {
+      if (msg.snakes && typeof msg.snakes === 'object') {
+        const you =
+          msg.you && typeof msg.you === 'object'
+            ? (msg.you as SnakesYou)
+            : { seat: null };
+        s.applySnakesStateSync(msg.snakes as SnakesPublicView, you);
+      }
+      break;
+    }
+    case 'snakes_chat': {
+      if (s.boundSnakesId && msg.snakesId && String(msg.snakesId) !== s.boundSnakesId) break;
+      s.pushChat({
+        userId: String(msg.userId ?? ''),
+        name: String(msg.name ?? ''),
+        text: String(msg.text ?? ''),
+        at: typeof msg.at === 'number' ? msg.at : Date.now(),
+      });
+      break;
+    }
+    case 'memory_state_sync': {
+      if (msg.memory && typeof msg.memory === 'object') {
+        const you =
+          msg.you && typeof msg.you === 'object'
+            ? (msg.you as MemoryYou)
+            : { seat: null };
+        s.applyMemoryStateSync(msg.memory as MemoryPublicView, you);
+      }
+      break;
+    }
+    case 'memory_chat': {
+      if (s.boundMemoryId && msg.memoryId && String(msg.memoryId) !== s.boundMemoryId) break;
       s.pushChat({
         userId: String(msg.userId ?? ''),
         name: String(msg.name ?? ''),
@@ -581,4 +629,154 @@ export function useLudoSocket(ludoId: string | null, opts?: { spectate?: boolean
   }, [ludoId, bindLudo, setError]);
 
   return { send, leaveLudo };
+}
+
+/**
+ * Join a Snakes board on the shared session socket.
+ * Does not own the connection lifecycle.
+ */
+export function useSnakesSocket(snakesId: string | null, opts?: { spectate?: boolean }) {
+  const spectate = opts?.spectate ?? false;
+  const bindSnakes = useSession((s) => s.bindSnakes);
+  const setError = useSession((s) => s.setError);
+  const connection = useSession((s) => s.connection);
+  const lastErrorCode = useSession((s) => s.lastErrorCode);
+  const spectateRef = useRef(spectate);
+  const joinedRef = useRef<string | null>(null);
+  spectateRef.current = spectate;
+
+  const sendJoin = useCallback(
+    (id: string, force = false) => {
+      if (useSession.getState().connection !== 'open') return;
+      if (!force && joinedRef.current === id) return;
+      if (
+        sessionSocketSend({
+          type: 'join_snakes',
+          snakesId: id,
+          ...(spectateRef.current ? { spectate: true } : {}),
+        })
+      ) {
+        joinedRef.current = id;
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!snakesId) return;
+    bindSnakes(snakesId);
+    joinedRef.current = null;
+    sendJoin(snakesId, true);
+    const id = window.setInterval(() => sendJoin(snakesId), 500);
+    return () => {
+      window.clearInterval(id);
+      if (joinedRef.current === snakesId) {
+        sessionSocketSend({ type: 'leave_snakes', snakesId });
+        joinedRef.current = null;
+      }
+    };
+  }, [snakesId, bindSnakes, sendJoin]);
+
+  useEffect(() => {
+    if (connection !== 'open' || !snakesId) return;
+    sendJoin(snakesId, true);
+  }, [connection, snakesId, sendJoin]);
+
+  useEffect(() => {
+    if (
+      lastErrorCode === 'not_found' ||
+      lastErrorCode === 'kicked' ||
+      lastErrorCode === 'bad_auth' ||
+      lastErrorCode === 'account_deleted'
+    ) {
+      joinedRef.current = snakesId;
+    }
+  }, [lastErrorCode, snakesId]);
+
+  const send = useCallback((payload: unknown): boolean => sessionSocketSend(payload), []);
+
+  const leaveSnakes = useCallback(() => {
+    if (!snakesId) return;
+    joinedRef.current = null;
+    sessionSocketSend({ type: 'leave_snakes', snakesId });
+    bindSnakes(null);
+    setError(null);
+  }, [snakesId, bindSnakes, setError]);
+
+  return { send, leaveSnakes };
+}
+
+/**
+ * Join a Memory board on the shared session socket.
+ * Does not own the connection lifecycle.
+ */
+export function useMemorySocket(memoryId: string | null, opts?: { spectate?: boolean }) {
+  const spectate = opts?.spectate ?? false;
+  const bindMemory = useSession((s) => s.bindMemory);
+  const setError = useSession((s) => s.setError);
+  const connection = useSession((s) => s.connection);
+  const lastErrorCode = useSession((s) => s.lastErrorCode);
+  const spectateRef = useRef(spectate);
+  const joinedRef = useRef<string | null>(null);
+  spectateRef.current = spectate;
+
+  const sendJoin = useCallback(
+    (id: string, force = false) => {
+      if (useSession.getState().connection !== 'open') return;
+      if (!force && joinedRef.current === id) return;
+      if (
+        sessionSocketSend({
+          type: 'join_memory',
+          memoryId: id,
+          ...(spectateRef.current ? { spectate: true } : {}),
+        })
+      ) {
+        joinedRef.current = id;
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!memoryId) return;
+    bindMemory(memoryId);
+    joinedRef.current = null;
+    sendJoin(memoryId, true);
+    const id = window.setInterval(() => sendJoin(memoryId), 500);
+    return () => {
+      window.clearInterval(id);
+      if (joinedRef.current === memoryId) {
+        sessionSocketSend({ type: 'leave_memory', memoryId });
+        joinedRef.current = null;
+      }
+    };
+  }, [memoryId, bindMemory, sendJoin]);
+
+  useEffect(() => {
+    if (connection !== 'open' || !memoryId) return;
+    sendJoin(memoryId, true);
+  }, [connection, memoryId, sendJoin]);
+
+  useEffect(() => {
+    if (
+      lastErrorCode === 'not_found' ||
+      lastErrorCode === 'kicked' ||
+      lastErrorCode === 'bad_auth' ||
+      lastErrorCode === 'account_deleted'
+    ) {
+      joinedRef.current = memoryId;
+    }
+  }, [lastErrorCode, memoryId]);
+
+  const send = useCallback((payload: unknown): boolean => sessionSocketSend(payload), []);
+
+  const leaveMemory = useCallback(() => {
+    if (!memoryId) return;
+    joinedRef.current = null;
+    sessionSocketSend({ type: 'leave_memory', memoryId });
+    bindMemory(null);
+    setError(null);
+  }, [memoryId, bindMemory, setError]);
+
+  return { send, leaveMemory };
 }

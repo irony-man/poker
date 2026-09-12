@@ -234,7 +234,11 @@ class TableViewModel @Inject constructor(
                         is ServerMessage.MyContestsSync,
                         is ServerMessage.SocialSync,
                         is ServerMessage.LudoStateSync,
-                        is ServerMessage.LudoChat -> Unit // SocialRepository / LudoViewModel apply these
+                        is ServerMessage.LudoChat,
+                        is ServerMessage.SnakesStateSync,
+                        is ServerMessage.SnakesChat,
+                        is ServerMessage.MemoryStateSync,
+                        is ServerMessage.MemoryChat -> Unit // Social / arcade VMs apply these
                     }
                 }
             }

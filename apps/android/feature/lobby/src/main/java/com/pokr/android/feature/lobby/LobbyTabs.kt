@@ -215,12 +215,14 @@ fun JoinTab(
     onJoined: (tableId: String, invite: String, spectate: Boolean) -> Unit,
     onContest: (contestId: String) -> Unit,
     onLudo: (ludoId: String, invite: String, spectate: Boolean) -> Unit,
+    onSnakes: (snakesId: String, invite: String, spectate: Boolean) -> Unit,
+    onMemory: (memoryId: String, invite: String, spectate: Boolean) -> Unit,
 ) {
     LobbyScrollColumn {
         PlayModeSelect(playMode = playMode, onPlayMode = onPlayMode)
         LobbyPageHeader(
             title = "Join a Table",
-            subtitle = "Enter the invite code you were sent to take a seat or watch — a private table, a contest, or a Ludo board.",
+            subtitle = "Enter the invite code you were sent to take a seat or watch — a private table, a contest, or an Arcade board.",
         )
         LobbySplitCard(imageRes = LobbyIllustrations.join, imageAlt = "Enter a table with an invite code") {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -243,6 +245,8 @@ fun JoinTab(
                             onTable = { id, invite -> onJoined(id, invite, false) },
                             onContest = onContest,
                             onLudo = { id, invite -> onLudo(id, invite, false) },
+                            onSnakes = { id, invite -> onSnakes(id, invite, false) },
+                            onMemory = { id, invite -> onMemory(id, invite, false) },
                         )
                     },
                     enabled = !state.busy && state.inviteCode.isNotBlank(),
@@ -254,6 +258,8 @@ fun JoinTab(
                         viewModel.join(
                             onTable = { id, invite -> onJoined(id, invite, true) },
                             onLudo = { id, invite -> onLudo(id, invite, true) },
+                            onSnakes = { id, invite -> onSnakes(id, invite, true) },
+                            onMemory = { id, invite -> onMemory(id, invite, true) },
                         )
                     },
                     enabled = !state.busy && state.inviteCode.isNotBlank(),
@@ -265,16 +271,96 @@ fun JoinTab(
 }
 
 @Composable
-fun LudoTab(
+fun ArcadeTab(
     state: LobbyUiState,
     viewModel: LobbyViewModel,
+    selectedGame: String?,
+    onSelectGame: (String?) -> Unit,
+    onLudo: (ludoId: String, invite: String) -> Unit,
+    onSnakes: (snakesId: String, invite: String) -> Unit,
+    onMemory: (memoryId: String, invite: String) -> Unit,
+) {
+    when (selectedGame) {
+        "ludo" -> LudoHostForm(
+            state = state,
+            viewModel = viewModel,
+            onBack = { onSelectGame(null) },
+            onLudo = onLudo,
+        )
+        "snakes" -> SnakesHostForm(
+            state = state,
+            viewModel = viewModel,
+            onBack = { onSelectGame(null) },
+            onSnakes = onSnakes,
+        )
+        "memory" -> MemoryHostForm(
+            state = state,
+            viewModel = viewModel,
+            onBack = { onSelectGame(null) },
+            onMemory = onMemory,
+        )
+        else -> LobbyScrollColumn {
+            LobbyPageHeader(
+                title = "Arcade",
+                subtitle = "Side quests with no stakes. Pick a board game, add bots, invite friends, and share a 4–8 digit code.",
+            )
+            ArcadeGameCard(
+                title = "Ludo",
+                blurb = "2–4 players · race four tokens home",
+                onClick = { onSelectGame("ludo") },
+            )
+            ArcadeGameCard(
+                title = "Snakes & Ladders",
+                blurb = "2–4 players · first to 100 wins",
+                onClick = { onSelectGame("snakes") },
+            )
+            ArcadeGameCard(
+                title = "Memory Match",
+                blurb = "2–4 players · 16 or 36 card grids",
+                onClick = { onSelectGame("memory") },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ArcadeGameCard(
+    title: String,
+    blurb: String,
+    onClick: () -> Unit,
+) {
+    HudPanel(modifier = Modifier.fillMaxWidth(), chrome = PokrChrome.Lobby) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(
+                title,
+                color = PokrColors.Sidebar,
+                fontFamily = PokrFonts.Display,
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+            )
+            Text(blurb, color = PokrColors.InkStrongMuted, fontSize = 14.sp, lineHeight = 20.sp)
+            PokrPrimaryButton(
+                text = "Host $title",
+                onClick = onClick,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun LudoHostForm(
+    state: LobbyUiState,
+    viewModel: LobbyViewModel,
+    onBack: () -> Unit,
     onLudo: (ludoId: String, invite: String) -> Unit,
 ) {
     val maxBots = (state.ludoMaxSeats - 1).coerceAtLeast(0)
     LobbyScrollColumn {
+        PokrGhostButton(text = "← Arcade", onClick = onBack)
         LobbyPageHeader(
             title = "Ludo",
-            subtitle = "A side quest with no stakes. Host a 2–4 player board, add bots, and share a 4–8 digit code.",
+            subtitle = "Host a 2–4 player board, add bots, and share a 4–8 digit code.",
         )
         LobbySplitCard(imageRes = LobbyIllustrations.contests, imageAlt = "Host a Ludo board") {
             ChoiceRow(
@@ -314,6 +400,124 @@ fun LudoTab(
                 modifier = Modifier.fillMaxWidth(),
             )
             FieldHelp("No wallet, no buy-in — just the race home.")
+        }
+    }
+}
+
+@Composable
+private fun SnakesHostForm(
+    state: LobbyUiState,
+    viewModel: LobbyViewModel,
+    onBack: () -> Unit,
+    onSnakes: (snakesId: String, invite: String) -> Unit,
+) {
+    val maxBots = (state.snakesMaxSeats - 1).coerceAtLeast(0)
+    LobbyScrollColumn {
+        PokrGhostButton(text = "← Arcade", onClick = onBack)
+        LobbyPageHeader(
+            title = "Snakes & Ladders",
+            subtitle = "Climb ladders, slide down snakes. First to square 100 wins.",
+        )
+        LobbySplitCard(imageRes = LobbyIllustrations.contests, imageAlt = "Host Snakes & Ladders") {
+            ChoiceRow(
+                label = "Seats",
+                selected = state.snakesMaxSeats,
+                options = (2..4).toList(),
+                onSelect = viewModel::onSnakesMaxSeatsChange,
+            )
+            ChoiceRow(
+                label = "Starting bots",
+                selected = state.snakesBotCount.coerceAtMost(maxBots),
+                options = (0..maxBots).toList(),
+                onSelect = viewModel::onSnakesBotCountChange,
+            ) { if (it == 0) "None" else "$it" }
+            if (state.signedIn) {
+                FriendInvitePicker(
+                    friends = state.friends,
+                    groups = state.groups,
+                    selectedIds = state.inviteFriendIds,
+                    onChange = viewModel::onInviteFriendsChange,
+                    disabled = state.busy,
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                PokrLabel("Room code (optional)")
+                LobbyTextField(
+                    value = state.snakesRoomCode,
+                    onValueChange = viewModel::onSnakesRoomCodeChange,
+                    placeholder = "Auto · or 4–8 digits",
+                    numeric = true,
+                )
+            }
+            PokrPrimaryButton(
+                text = "Create Snakes board",
+                onClick = { viewModel.hostSnakes(onSnakes) },
+                enabled = !state.busy,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            FieldHelp("No wallet, no buy-in — just the climb.")
+        }
+    }
+}
+
+@Composable
+private fun MemoryHostForm(
+    state: LobbyUiState,
+    viewModel: LobbyViewModel,
+    onBack: () -> Unit,
+    onMemory: (memoryId: String, invite: String) -> Unit,
+) {
+    val maxBots = (state.memoryMaxSeats - 1).coerceAtLeast(0)
+    LobbyScrollColumn {
+        PokrGhostButton(text = "← Arcade", onClick = onBack)
+        LobbyPageHeader(
+            title = "Memory Match",
+            subtitle = "Flip cards, find pairs. Most matches when the grid clears wins.",
+        )
+        LobbySplitCard(imageRes = LobbyIllustrations.contests, imageAlt = "Host Memory Match") {
+            ChoiceRow(
+                label = "Seats",
+                selected = state.memoryMaxSeats,
+                options = (2..4).toList(),
+                onSelect = viewModel::onMemoryMaxSeatsChange,
+            )
+            ChoiceRow(
+                label = "Grid",
+                selected = state.memoryGridSize,
+                options = listOf(16, 36),
+                onSelect = viewModel::onMemoryGridSizeChange,
+            ) { if (it == 16) "4×4 · 16" else "6×6 · 36" }
+            ChoiceRow(
+                label = "Starting bots",
+                selected = state.memoryBotCount.coerceAtMost(maxBots),
+                options = (0..maxBots).toList(),
+                onSelect = viewModel::onMemoryBotCountChange,
+            ) { if (it == 0) "None" else "$it" }
+            if (state.signedIn) {
+                FriendInvitePicker(
+                    friends = state.friends,
+                    groups = state.groups,
+                    selectedIds = state.inviteFriendIds,
+                    onChange = viewModel::onInviteFriendsChange,
+                    disabled = state.busy,
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                PokrLabel("Room code (optional)")
+                LobbyTextField(
+                    value = state.memoryRoomCode,
+                    onValueChange = viewModel::onMemoryRoomCodeChange,
+                    placeholder = "Auto · or 4–8 digits",
+                    numeric = true,
+                )
+            }
+            PokrPrimaryButton(
+                text = "Create Memory board",
+                onClick = { viewModel.hostMemory(onMemory) },
+                enabled = !state.busy,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            FieldHelp("No wallet, no buy-in — just the matches.")
         }
     }
 }

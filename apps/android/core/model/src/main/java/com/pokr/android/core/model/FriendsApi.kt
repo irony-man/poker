@@ -27,6 +27,8 @@ data class PendingChallenge(
     val tableId: String? = null,
     val contestId: String? = null,
     val ludoId: String? = null,
+    val snakesId: String? = null,
+    val memoryId: String? = null,
     val inviteCode: String = "",
     val createdAt: Long = 0,
     val groupId: String? = null,

@@ -12,6 +12,9 @@ const routes: {
   { path: '/contests', changeFrequency: 'weekly', priority: 0.8 },
   { path: '/public', changeFrequency: 'weekly', priority: 0.7 },
   { path: '/ludo', changeFrequency: 'monthly', priority: 0.6 },
+  { path: '/arcade', changeFrequency: 'monthly', priority: 0.6 },
+  { path: '/snakes', changeFrequency: 'monthly', priority: 0.55 },
+  { path: '/memory', changeFrequency: 'monthly', priority: 0.55 },
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

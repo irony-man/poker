@@ -33,7 +33,10 @@ export type PageCopyKey =
   | 'contests'
   | 'friends'
   | 'solo'
+  | 'arcade'
   | 'ludo'
+  | 'snakes'
+  | 'memory'
   | 'signIn'
   | 'signUp'
   | 'homeAuthFooter';
@@ -292,7 +295,10 @@ export const PAGE_COPY_KEYS: PageCopyKey[] = [
   'contests',
   'friends',
   'solo',
+  'arcade',
   'ludo',
+  'snakes',
+  'memory',
   'signIn',
   'signUp',
   'homeAuthFooter',
@@ -309,7 +315,7 @@ export const DEFAULT_PAGES_COPY: PagesCopy = {
   join: {
     title: 'Join a Table',
     subtitle:
-      'Enter the invite code you were sent to take a seat or watch, whether it is a private table, a contest, or a Ludo board.',
+      'Enter the invite code you were sent to take a seat or watch — private table, contest, or an arcade game.',
     image: '/join-table.png',
     imageAlt: 'Enter a table with an invite code',
   },
@@ -341,12 +347,33 @@ export const DEFAULT_PAGES_COPY: PagesCopy = {
     image: '/home-offline.png',
     imageAlt: 'You versus a bot at a private practice table',
   },
+  arcade: {
+    title: 'Arcade',
+    subtitle:
+      'Side quests with no stakes — Ludo, Snakes & Ladders, and Memory Match. Pick a board and share a code.',
+    image: '/home-ludo.png',
+    imageAlt: 'Arcade side quests on POKR',
+  },
   ludo: {
     title: 'Ludo',
     subtitle:
       'A side quest — race four tokens home with friends or bots. No stakes, no wallet, just a 2–4 player board and a code you share.',
     image: '/home-ludo.png',
     imageAlt: 'Host a Ludo side quest with no stakes',
+  },
+  snakes: {
+    title: 'Snakes & Ladders',
+    subtitle:
+      'Climb ladders, dodge snakes, and race to 100. Dice luck, optional bots, and a code you share — no stakes.',
+    image: '/home-offline.png',
+    imageAlt: 'Host Snakes & Ladders with no stakes',
+  },
+  memory: {
+    title: 'Memory Match',
+    subtitle:
+      'Flip cards, find pairs, and outscore the table on a 4×4 or 6×6 grid. Friends or bots, no stakes.',
+    image: '/home-offline.png',
+    imageAlt: 'Host Memory Match with no stakes',
   },
   signIn: {
     title: 'Sign in',
@@ -373,7 +400,10 @@ export const PAGE_COPY_LABELS: Record<PageCopyKey, string> = {
   contests: 'Contests (/contests)',
   friends: 'Friends (/friends)',
   solo: 'Offline setup (/solo)',
+  arcade: 'Arcade (/arcade)',
   ludo: 'Ludo (/ludo)',
+  snakes: 'Snakes & Ladders (/snakes)',
+  memory: 'Memory Match (/memory)',
   signIn: 'Sign in',
   signUp: 'Sign up',
   homeAuthFooter: 'Home auth footer',

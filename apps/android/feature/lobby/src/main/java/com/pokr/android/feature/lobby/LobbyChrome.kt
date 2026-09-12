@@ -88,7 +88,7 @@ enum class LobbyTab {
     Public,
     Contests,
     Friends,
-    Ludo,
+    Arcade,
     Offline,
 }
 
@@ -135,7 +135,7 @@ fun LobbyBottomNav(
         LobbyTab.Public to "Public",
         LobbyTab.Contests to "Contests",
         LobbyTab.Friends to "Friends",
-        LobbyTab.Ludo to "Ludo",
+        LobbyTab.Arcade to "Arcade",
         LobbyTab.Offline to "Offline",
     )
     val navInset = maxOf(
@@ -305,7 +305,7 @@ private fun LobbyNavIcon(tab: LobbyTab, active: Boolean, color: Color) {
                 }
                 drawPath(body, color, style = stroke)
             }
-            LobbyTab.Ludo -> {
+            LobbyTab.Arcade -> {
                 drawRoundRect(
                     color = color,
                     topLeft = androidx.compose.ui.geometry.Offset(size.width * 0.18f, size.height * 0.18f),

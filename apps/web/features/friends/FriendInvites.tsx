@@ -85,8 +85,28 @@ export function FriendInvites({
             {challenges.map((c) => {
               const isContest = c.kind === 'contest' || Boolean(c.contestId);
               const isLudo = c.kind === 'ludo' || Boolean(c.ludoId);
+              const isSnakes = c.kind === 'snakes' || Boolean(c.snakesId);
+              const isMemory = c.kind === 'memory' || Boolean(c.memoryId);
               const actionBusy = busy === `join-${c.id}` || busy === `decline-${c.id}`;
               const handle = c.challenger.username ?? c.challenger.name;
+              const inviteLabel = isContest
+                ? 'invited you to a contest'
+                : isLudo
+                  ? 'invited you to Ludo'
+                  : isSnakes
+                    ? 'invited you to Snakes & Ladders'
+                    : isMemory
+                      ? 'invited you to Memory Match'
+                      : 'wants to play';
+              const joinLabel = isContest
+                ? 'Join contest'
+                : isLudo
+                  ? 'Join Ludo'
+                  : isSnakes
+                    ? 'Join Snakes'
+                    : isMemory
+                      ? 'Join Memory'
+                      : 'Join table';
               return (
                 <li
                   key={c.id}
@@ -114,17 +134,13 @@ export function FriendInvites({
                     </Link>
                     {c.groupName ? (
                       <span className="text-ink-strong-muted"> · {c.groupName}</span>
-                    ) : isContest ? (
-                      <span className="text-ink-strong-muted"> invited you to a contest</span>
-                    ) : isLudo ? (
-                      <span className="text-ink-strong-muted"> invited you to Ludo</span>
                     ) : (
-                      <span className="text-ink-strong-muted"> wants to play</span>
+                      <span className="text-ink-strong-muted"> {inviteLabel}</span>
                     )}
                   </span>
                   <div className="flex shrink-0 items-center gap-1.5">
                     <IconAction
-                      label={isContest ? 'Join contest' : isLudo ? 'Join Ludo' : 'Join table'}
+                      label={joinLabel}
                       disabled={disabled || actionBusy}
                       tone="primary"
                       onClick={() => onJoinChallenge(c)}

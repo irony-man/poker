@@ -11,6 +11,10 @@ import type {
   LudoLegalMove,
   LudoPublicView,
   LudoYou,
+  MemoryPublicView,
+  MemoryYou,
+  SnakesPublicView,
+  SnakesYou,
 } from '@poker/protocol';
 import type {
   ContestView,
@@ -88,10 +92,18 @@ interface SessionState {
   boundTableId: string | null;
   /** Ludo board the active socket is bound to (guards against stale ludo_state_sync). */
   boundLudoId: string | null;
+  /** Snakes board the active socket is bound to. */
+  boundSnakesId: string | null;
+  /** Memory board the active socket is bound to. */
+  boundMemoryId: string | null;
   table: PublicTable | null;
   ludo: LudoPublicView | null;
   ludoYou: LudoYou | null;
   ludoLegalMoves: LudoLegalMove[];
+  snakes: SnakesPublicView | null;
+  snakesYou: SnakesYou | null;
+  memory: MemoryPublicView | null;
+  memoryYou: MemoryYou | null;
   private: PrivateView | null;
   chat: ChatMessage[];
   lastError: string | null;
@@ -135,14 +147,20 @@ interface SessionState {
   setConnection: (c: SessionState['connection']) => void;
   bindTable: (tableId: string | null) => void;
   bindLudo: (ludoId: string | null) => void;
+  bindSnakes: (snakesId: string | null) => void;
+  bindMemory: (memoryId: string | null) => void;
   applyStateSync: (table: PublicTable, priv: PrivateView | null) => void;
   applyLudoStateSync: (
     ludo: LudoPublicView,
     you: LudoYou,
     legalMoves?: LudoLegalMove[],
   ) => void;
+  applySnakesStateSync: (snakes: SnakesPublicView, you: SnakesYou) => void;
+  applyMemoryStateSync: (memory: MemoryPublicView, you: MemoryYou) => void;
   clearTable: () => void;
   clearLudo: () => void;
+  clearSnakes: () => void;
+  clearMemory: () => void;
   pushChat: (m: ChatMessage) => void;
   setError: (e: string | null, code?: string | null) => void;
   setEmoji: (e: { emoji: string; name: string; at: number } | null) => void;
@@ -164,6 +182,25 @@ interface SessionState {
   clearContestWatch: (contestId: string) => void;
 }
 
+const clearedArcade = {
+  boundLudoId: null as string | null,
+  boundSnakesId: null as string | null,
+  boundMemoryId: null as string | null,
+  ludo: null as LudoPublicView | null,
+  ludoYou: null as LudoYou | null,
+  ludoLegalMoves: [] as LudoLegalMove[],
+  snakes: null as SnakesPublicView | null,
+  snakesYou: null as SnakesYou | null,
+  memory: null as MemoryPublicView | null,
+  memoryYou: null as MemoryYou | null,
+};
+
+const clearedTable = {
+  boundTableId: null as string | null,
+  table: null as PublicTable | null,
+  private: null as PrivateView | null,
+};
+
 export const useSession = create<SessionState>((set) => ({
   userId: null,
   username: null,
@@ -173,10 +210,16 @@ export const useSession = create<SessionState>((set) => ({
   connection: 'idle',
   boundTableId: null,
   boundLudoId: null,
+  boundSnakesId: null,
+  boundMemoryId: null,
   table: null,
   ludo: null,
   ludoYou: null,
   ludoLegalMoves: [],
+  snakes: null,
+  snakesYou: null,
+  memory: null,
+  memoryYou: null,
   private: null,
   chat: [],
   lastError: null,
@@ -212,13 +255,8 @@ export const useSession = create<SessionState>((set) => ({
       chipBalance: null,
       whuffieBalance: null,
       connection: 'idle',
-      boundTableId: null,
-      boundLudoId: null,
-      table: null,
-      ludo: null,
-      ludoYou: null,
-      ludoLegalMoves: [],
-      private: null,
+      ...clearedTable,
+      ...clearedArcade,
       chat: [],
       lastError: null,
       lastErrorCode: null,
@@ -236,10 +274,7 @@ export const useSession = create<SessionState>((set) => ({
       boundTableId
         ? {
             boundTableId,
-            boundLudoId: null,
-            ludo: null,
-            ludoYou: null,
-            ludoLegalMoves: [],
+            ...clearedArcade,
           }
         : { boundTableId },
     ),
@@ -248,9 +283,13 @@ export const useSession = create<SessionState>((set) => ({
       boundLudoId
         ? {
             boundLudoId,
-            boundTableId: null,
-            table: null,
-            private: null,
+            boundSnakesId: null,
+            boundMemoryId: null,
+            ...clearedTable,
+            snakes: null,
+            snakesYou: null,
+            memory: null,
+            memoryYou: null,
             ludo: null,
             ludoYou: null,
             ludoLegalMoves: [],
@@ -260,18 +299,57 @@ export const useSession = create<SessionState>((set) => ({
           }
         : { boundLudoId },
     ),
+  bindSnakes: (boundSnakesId) =>
+    set(
+      boundSnakesId
+        ? {
+            boundSnakesId,
+            boundLudoId: null,
+            boundMemoryId: null,
+            ...clearedTable,
+            ludo: null,
+            ludoYou: null,
+            ludoLegalMoves: [],
+            memory: null,
+            memoryYou: null,
+            snakes: null,
+            snakesYou: null,
+            chat: [],
+            lastError: null,
+            lastErrorCode: null,
+          }
+        : { boundSnakesId },
+    ),
+  bindMemory: (boundMemoryId) =>
+    set(
+      boundMemoryId
+        ? {
+            boundMemoryId,
+            boundLudoId: null,
+            boundSnakesId: null,
+            ...clearedTable,
+            ludo: null,
+            ludoYou: null,
+            ludoLegalMoves: [],
+            snakes: null,
+            snakesYou: null,
+            memory: null,
+            memoryYou: null,
+            chat: [],
+            lastError: null,
+            lastErrorCode: null,
+          }
+        : { boundMemoryId },
+    ),
   applyStateSync: (table, priv) =>
     set((prev) => {
-      if (prev.boundLudoId) return prev;
-      // Never apply state for a table the socket isn't currently bound to.
+      if (prev.boundLudoId || prev.boundSnakesId || prev.boundMemoryId) return prev;
       if (prev.boundTableId && table.tableId !== prev.boundTableId) {
         return prev;
       }
-      // If we already show a different table, ignore cross-table packets (stale reconnect).
       if (prev.table && prev.table.tableId !== table.tableId) {
         return prev;
       }
-      // Ignore out-of-order / older versions for the same table.
       if (prev.table && table.version < prev.table.version) {
         return prev;
       }
@@ -279,7 +357,7 @@ export const useSession = create<SessionState>((set) => ({
     }),
   applyLudoStateSync: (ludo, you, legalMoves) =>
     set((prev) => {
-      if (prev.boundTableId) return prev;
+      if (prev.boundTableId || prev.boundSnakesId || prev.boundMemoryId) return prev;
       if (prev.boundLudoId && ludo.id !== prev.boundLudoId) return prev;
       if (prev.ludo && prev.ludo.id !== ludo.id) return prev;
       if (prev.ludo && ludo.seq < prev.ludo.seq) return prev;
@@ -288,6 +366,22 @@ export const useSession = create<SessionState>((set) => ({
         ludoYou: you,
         ludoLegalMoves: legalMoves ?? [],
       };
+    }),
+  applySnakesStateSync: (snakes, you) =>
+    set((prev) => {
+      if (prev.boundTableId || prev.boundLudoId || prev.boundMemoryId) return prev;
+      if (prev.boundSnakesId && snakes.id !== prev.boundSnakesId) return prev;
+      if (prev.snakes && prev.snakes.id !== snakes.id) return prev;
+      if (prev.snakes && snakes.seq < prev.snakes.seq) return prev;
+      return { snakes, snakesYou: you };
+    }),
+  applyMemoryStateSync: (memory, you) =>
+    set((prev) => {
+      if (prev.boundTableId || prev.boundLudoId || prev.boundSnakesId) return prev;
+      if (prev.boundMemoryId && memory.id !== prev.boundMemoryId) return prev;
+      if (prev.memory && prev.memory.id !== memory.id) return prev;
+      if (prev.memory && memory.seq < prev.memory.seq) return prev;
+      return { memory, memoryYou: you };
     }),
   clearTable: () =>
     set({
@@ -308,6 +402,24 @@ export const useSession = create<SessionState>((set) => ({
       lastError: null,
       lastErrorCode: null,
       boundLudoId: null,
+    }),
+  clearSnakes: () =>
+    set({
+      snakes: null,
+      snakesYou: null,
+      chat: [],
+      lastError: null,
+      lastErrorCode: null,
+      boundSnakesId: null,
+    }),
+  clearMemory: () =>
+    set({
+      memory: null,
+      memoryYou: null,
+      chat: [],
+      lastError: null,
+      lastErrorCode: null,
+      boundMemoryId: null,
     }),
   pushChat: (m) => set((s) => ({ chat: [...s.chat.slice(-80), m] })),
   setError: (lastError, code = null) => set({ lastError, lastErrorCode: lastError ? code : null }),

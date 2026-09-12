@@ -79,6 +79,8 @@ dependencies {
     implementation(project(":feature:table"))
     implementation(project(":feature:offline"))
     implementation(project(":feature:ludo"))
+    implementation(project(":feature:snakes"))
+    implementation(project(":feature:memory"))
     implementation(project(":feature:progress"))
 
     implementation(libs.androidx.core.ktx)

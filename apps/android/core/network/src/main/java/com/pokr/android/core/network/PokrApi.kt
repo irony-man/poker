@@ -19,17 +19,25 @@ import com.pokr.android.core.model.InviteFriendsBody
 import com.pokr.android.core.model.InviteFriendsResponse
 import com.pokr.android.core.model.CreateLudoRequest
 import com.pokr.android.core.model.CreateLudoResponse
+import com.pokr.android.core.model.CreateMemoryRequest
+import com.pokr.android.core.model.CreateMemoryResponse
+import com.pokr.android.core.model.CreateSnakesRequest
+import com.pokr.android.core.model.CreateSnakesResponse
 import com.pokr.android.core.model.InviteResolveResponse
 import com.pokr.android.core.model.LudoChatListResponse
 import com.pokr.android.core.model.LudoInviteResolveResponse
 import com.pokr.android.core.model.LoginRequest
 import com.pokr.android.core.model.MeProfile
+import com.pokr.android.core.model.MemoryChatListResponse
+import com.pokr.android.core.model.MemoryInviteResolveResponse
 import com.pokr.android.core.model.MyHandsResponse
 import com.pokr.android.core.model.OkResponse
 import com.pokr.android.core.model.PublicTablesResponse
 import com.pokr.android.core.model.SessionDto
 import com.pokr.android.core.model.SignupRequest
 import com.pokr.android.core.model.SitePublicResponse
+import com.pokr.android.core.model.SnakesChatListResponse
+import com.pokr.android.core.model.SnakesInviteResolveResponse
 import com.pokr.android.core.model.UpdateFriendGroupBody
 import com.pokr.android.core.model.UpdateMeBody
 import com.pokr.android.core.model.UploadHandRequest
@@ -187,4 +195,28 @@ interface PokrApi {
         @Path("id") id: String,
         @Query("limit") limit: Int = 80,
     ): LudoChatListResponse
+
+    @POST("api/snakes")
+    suspend fun createSnakes(@Body body: CreateSnakesRequest): CreateSnakesResponse
+
+    @GET("api/snakes/invite/{code}")
+    suspend fun resolveSnakesInvite(@Path("code") code: String): SnakesInviteResolveResponse
+
+    @GET("api/snakes/{id}/chat")
+    suspend fun getSnakesChat(
+        @Path("id") id: String,
+        @Query("limit") limit: Int = 80,
+    ): SnakesChatListResponse
+
+    @POST("api/memory")
+    suspend fun createMemory(@Body body: CreateMemoryRequest): CreateMemoryResponse
+
+    @GET("api/memory/invite/{code}")
+    suspend fun resolveMemoryInvite(@Path("code") code: String): MemoryInviteResolveResponse
+
+    @GET("api/memory/{id}/chat")
+    suspend fun getMemoryChat(
+        @Path("id") id: String,
+        @Query("limit") limit: Int = 80,
+    ): MemoryChatListResponse
 }

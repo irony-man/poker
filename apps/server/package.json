@@ -26,6 +26,8 @@
     "@poker/db": "*",
     "@poker/engine": "*",
     "@poker/ludo-engine": "*",
+    "@poker/snakes-engine": "*",
+    "@poker/memory-engine": "*",
     "@poker/protocol": "*",
     "argon2": "^0.45.1",
     "dotenv": "^17.4.2",

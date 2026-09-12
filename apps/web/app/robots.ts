@@ -9,6 +9,8 @@ export default function robots(): MetadataRoute.Robots {
       disallow: [
         '/table/',
         '/ludo/',
+        '/snakes/',
+        '/memory/',
         '/contest/',
         '/offline',
         '/sign-in',

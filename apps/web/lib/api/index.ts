@@ -62,6 +62,22 @@ export {
   type LudoInviteResult,
   type LudoChatLine,
 } from './ludo';
+export {
+  createSnakes,
+  resolveSnakesInvite,
+  fetchSnakesChat,
+  type CreateSnakesResult,
+  type SnakesInviteResult,
+  type SnakesChatLine,
+} from './snakes';
+export {
+  createMemory,
+  resolveMemoryInvite,
+  fetchMemoryChat,
+  type CreateMemoryResult,
+  type MemoryInviteResult,
+  type MemoryChatLine,
+} from './memory';
 export { uploadOfflineHand, fetchMyHands, type UploadHandPayload, type MyHandRow } from './history';
 export {
   fetchPublicSite,

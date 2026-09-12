@@ -16,6 +16,9 @@ export function LudoWinModal({
   readyTotal,
   onReady,
   onDismiss,
+  subtitle = 'All four tokens home',
+  detail = 'First to finish the board takes the match. Ready up for a rematch.',
+  titleId = 'ludo-win-title',
 }: {
   winnerName: string;
   winnerSeat: number;
@@ -27,6 +30,9 @@ export function LudoWinModal({
   readyTotal: number;
   onReady: () => void;
   onDismiss: () => void;
+  subtitle?: string;
+  detail?: string;
+  titleId?: string;
 }) {
   const color = ludoColorForSeat(winnerSeat);
   const hex = ludoHexForSeat(winnerSeat);
@@ -37,7 +43,7 @@ export function LudoWinModal({
         <div
           role="dialog"
           aria-modal="true"
-          aria-labelledby="ludo-win-title"
+          aria-labelledby={titleId}
           className="surface-modal flex max-h-[min(78dvh,36rem)] w-full flex-col"
         >
           <div className="shrink-0 border-b border-sidebar/10 bg-white px-4 py-3 text-center sm:px-5 sm:py-5">
@@ -45,7 +51,7 @@ export function LudoWinModal({
               Match complete
             </p>
             <h2
-              id="ludo-win-title"
+              id={titleId}
               className="mt-0.5 font-display text-2xl font-extrabold uppercase tracking-wider text-ink-strong sm:mt-1 sm:text-3xl"
             >
               {youWon ? 'You won' : 'Winner'}
@@ -73,11 +79,9 @@ export function LudoWinModal({
                 </span>
               </div>
               <p className="mt-1 text-[11px] font-display font-semibold uppercase tracking-wider text-ink-strong-muted sm:mt-1.5 sm:text-sm">
-                All four tokens home
+                {subtitle}
               </p>
-              <p className="mt-2 text-center text-xs text-ink-strong-muted">
-                First to finish the board takes the match. Ready up for a rematch.
-              </p>
+              <p className="mt-2 text-center text-xs text-ink-strong-muted">{detail}</p>
             </div>
           </div>
 

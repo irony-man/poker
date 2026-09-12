@@ -161,6 +161,8 @@ class FriendsViewModel @Inject constructor(
         onTable: (tableId: String, invite: String) -> Unit,
         onContest: (contestId: String) -> Unit,
         onLudo: (ludoId: String, invite: String) -> Unit = { _, _ -> },
+        onSnakes: (snakesId: String, invite: String) -> Unit = { _, _ -> },
+        onMemory: (memoryId: String, invite: String) -> Unit = { _, _ -> },
     ) {
         viewModelScope.launch {
             _uiState.update { it.copy(busyKey = "join-${challenge.id}", error = null) }
@@ -171,6 +173,8 @@ class FriendsViewModel @Inject constructor(
                     is SocialJoinTarget.Table -> onTable(nav.tableId, nav.invite)
                     is SocialJoinTarget.Contest -> onContest(nav.contestId)
                     is SocialJoinTarget.Ludo -> onLudo(nav.ludoId, nav.invite)
+                    is SocialJoinTarget.Snakes -> onSnakes(nav.snakesId, nav.invite)
+                    is SocialJoinTarget.Memory -> onMemory(nav.memoryId, nav.invite)
                 }
             }.onFailure { err ->
                 _uiState.update {

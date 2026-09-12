@@ -6,6 +6,8 @@ import com.pokr.android.core.datastore.SessionPreferences
 import com.pokr.android.core.model.ContestView
 import com.pokr.android.core.model.CreateContestRequest
 import com.pokr.android.core.model.CreateLudoRequest
+import com.pokr.android.core.model.CreateMemoryRequest
+import com.pokr.android.core.model.CreateSnakesRequest
 import com.pokr.android.core.model.CreateTableRequest
 import com.pokr.android.core.model.DEFAULT_STAKE_ID
 import com.pokr.android.core.model.FriendGroupView
@@ -51,6 +53,13 @@ data class LobbyUiState(
     val ludoMaxSeats: Int = 4,
     val ludoBotCount: Int = 0,
     val ludoRoomCode: String = "",
+    val snakesMaxSeats: Int = 4,
+    val snakesBotCount: Int = 0,
+    val snakesRoomCode: String = "",
+    val memoryMaxSeats: Int = 2,
+    val memoryBotCount: Int = 0,
+    val memoryGridSize: Int = 16,
+    val memoryRoomCode: String = "",
     val inviteFriendIds: List<String> = emptyList(),
     val friends: List<FriendProfile> = emptyList(),
     val groups: List<FriendGroupView> = emptyList(),
@@ -148,6 +157,22 @@ class LobbyViewModel @Inject constructor(
     fun onLudoBotCountChange(value: Int) = _uiState.update { it.copy(ludoBotCount = value) }
     fun onLudoRoomCodeChange(value: String) =
         _uiState.update { it.copy(ludoRoomCode = value.filter { ch -> ch.isDigit() }.take(8)) }
+    fun onSnakesMaxSeatsChange(value: Int) =
+        _uiState.update {
+            it.copy(snakesMaxSeats = value.coerceIn(2, 4), snakesBotCount = it.snakesBotCount.coerceAtMost(value - 1))
+        }
+    fun onSnakesBotCountChange(value: Int) = _uiState.update { it.copy(snakesBotCount = value) }
+    fun onSnakesRoomCodeChange(value: String) =
+        _uiState.update { it.copy(snakesRoomCode = value.filter { ch -> ch.isDigit() }.take(8)) }
+    fun onMemoryMaxSeatsChange(value: Int) =
+        _uiState.update {
+            it.copy(memoryMaxSeats = value.coerceIn(2, 4), memoryBotCount = it.memoryBotCount.coerceAtMost(value - 1))
+        }
+    fun onMemoryBotCountChange(value: Int) = _uiState.update { it.copy(memoryBotCount = value) }
+    fun onMemoryGridSizeChange(value: Int) =
+        _uiState.update { it.copy(memoryGridSize = if (value == 36) 36 else 16) }
+    fun onMemoryRoomCodeChange(value: String) =
+        _uiState.update { it.copy(memoryRoomCode = value.filter { ch -> ch.isDigit() }.take(8)) }
     fun onHostBotGroupChange(id: String) = _uiState.update { it.copy(hostBotGroupId = id) }
     fun clearError() = _uiState.update { it.copy(error = null) }
 
@@ -285,6 +310,8 @@ class LobbyViewModel @Inject constructor(
         onTable: (tableId: String, invite: String) -> Unit,
         onContest: ((contestId: String) -> Unit)? = null,
         onLudo: ((ludoId: String, invite: String) -> Unit)? = null,
+        onSnakes: ((snakesId: String, invite: String) -> Unit)? = null,
+        onMemory: ((memoryId: String, invite: String) -> Unit)? = null,
     ) {
         viewModelScope.launch {
             _uiState.update { it.copy(busy = true, error = null) }
@@ -304,17 +331,36 @@ class LobbyViewModel @Inject constructor(
                         return@runCatching JoinTarget.Contest(contest.id)
                     }
                 }
-                if (onLudo == null) error("Table not found")
-                val ludo = api.resolveLudoInvite(code)
-                val id = ludo.resolvedId()
-                if (id.isBlank()) error("Ludo board not found")
-                JoinTarget.Ludo(id, ludo.resolvedInvite().ifBlank { code })
+                if (onLudo != null) {
+                    val ludo = runCatching { api.resolveLudoInvite(code) }.getOrNull()
+                    val ludoId = ludo?.resolvedId().orEmpty()
+                    if (ludoId.isNotBlank()) {
+                        return@runCatching JoinTarget.Ludo(ludoId, ludo!!.resolvedInvite().ifBlank { code })
+                    }
+                }
+                if (onSnakes != null) {
+                    val snakes = runCatching { api.resolveSnakesInvite(code) }.getOrNull()
+                    val snakesId = snakes?.resolvedId().orEmpty()
+                    if (snakesId.isNotBlank()) {
+                        return@runCatching JoinTarget.Snakes(snakesId, snakes!!.resolvedInvite().ifBlank { code })
+                    }
+                }
+                if (onMemory != null) {
+                    val memory = runCatching { api.resolveMemoryInvite(code) }.getOrNull()
+                    val memoryId = memory?.resolvedId().orEmpty()
+                    if (memoryId.isNotBlank()) {
+                        return@runCatching JoinTarget.Memory(memoryId, memory!!.resolvedInvite().ifBlank { code })
+                    }
+                }
+                error("Invite not found")
             }.onSuccess { target ->
                 _uiState.update { it.copy(busy = false) }
                 when (target) {
                     is JoinTarget.Table -> onTable(target.tableId, target.invite)
                     is JoinTarget.Contest -> onContest?.invoke(target.contestId)
                     is JoinTarget.Ludo -> onLudo?.invoke(target.ludoId, target.invite)
+                    is JoinTarget.Snakes -> onSnakes?.invoke(target.snakesId, target.invite)
+                    is JoinTarget.Memory -> onMemory?.invoke(target.memoryId, target.invite)
                 }
             }.onFailure { err ->
                 _uiState.update { it.copy(busy = false, error = err.message ?: "Join failed") }
@@ -354,10 +400,75 @@ class LobbyViewModel @Inject constructor(
         }
     }
 
+    fun hostSnakes(onSuccess: (snakesId: String, invite: String) -> Unit) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(busy = true, error = null) }
+            runCatching {
+                val state = _uiState.value
+                val code = state.snakesRoomCode.trim()
+                if (code.isNotEmpty() && !code.matches(Regex("^\\d{4,8}$"))) {
+                    error("Room code must be 4–8 digits")
+                }
+                val session = requireSession()
+                val created = api.createSnakes(
+                    CreateSnakesRequest(
+                        name = "${session.name}'s Snakes",
+                        maxSeats = state.snakesMaxSeats.coerceIn(2, 4),
+                        botCount = state.snakesBotCount.coerceAtMost(state.snakesMaxSeats - 1),
+                        inviteCode = code.ifBlank { null },
+                        inviteFriendIds = state.inviteFriendIds,
+                    ),
+                )
+                val id = created.resolvedId()
+                if (id.isBlank()) error("Could not create Snakes board")
+                id to created.resolvedInvite()
+            }.onSuccess { (snakesId, invite) ->
+                _uiState.update { it.copy(busy = false) }
+                onSuccess(snakesId, invite)
+            }.onFailure { err ->
+                _uiState.update { it.copy(busy = false, error = err.message ?: "Host failed") }
+            }
+        }
+    }
+
+    fun hostMemory(onSuccess: (memoryId: String, invite: String) -> Unit) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(busy = true, error = null) }
+            runCatching {
+                val state = _uiState.value
+                val code = state.memoryRoomCode.trim()
+                if (code.isNotEmpty() && !code.matches(Regex("^\\d{4,8}$"))) {
+                    error("Room code must be 4–8 digits")
+                }
+                val session = requireSession()
+                val created = api.createMemory(
+                    CreateMemoryRequest(
+                        name = "${session.name}'s Memory",
+                        maxSeats = state.memoryMaxSeats.coerceIn(2, 4),
+                        gridSize = if (state.memoryGridSize == 36) 36 else 16,
+                        botCount = state.memoryBotCount.coerceAtMost(state.memoryMaxSeats - 1),
+                        inviteCode = code.ifBlank { null },
+                        inviteFriendIds = state.inviteFriendIds,
+                    ),
+                )
+                val id = created.resolvedId()
+                if (id.isBlank()) error("Could not create Memory board")
+                id to created.resolvedInvite()
+            }.onSuccess { (memoryId, invite) ->
+                _uiState.update { it.copy(busy = false) }
+                onSuccess(memoryId, invite)
+            }.onFailure { err ->
+                _uiState.update { it.copy(busy = false, error = err.message ?: "Host failed") }
+            }
+        }
+    }
+
     private sealed class JoinTarget {
         data class Table(val tableId: String, val invite: String) : JoinTarget()
         data class Contest(val contestId: String) : JoinTarget()
         data class Ludo(val ludoId: String, val invite: String) : JoinTarget()
+        data class Snakes(val snakesId: String, val invite: String) : JoinTarget()
+        data class Memory(val memoryId: String, val invite: String) : JoinTarget()
     }
 
     fun offline(onNavigate: (seats: Int, bots: Int, name: String) -> Unit) {

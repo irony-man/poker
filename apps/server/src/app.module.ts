@@ -12,9 +12,11 @@ import { GatewayModule } from './gateway/gateway.module.js';
 import { HealthModule } from './health/health.module.js';
 import { HistoryModule } from './history/history.module.js';
 import { LudoModule } from './ludo/ludo.module.js';
+import { MemoryModule } from './memory/memory.module.js';
 import { PresenceModule } from './presence/presence.module.js';
 import { RealtimeModule } from './realtime/realtime.module.js';
 import { SiteConfigModule } from './site-config/site-config.module.js';
+import { SnakesModule } from './snakes/snakes.module.js';
 import { StorageModule } from './storage/storage.module.js';
 import { TablesModule } from './tables/tables.module.js';
 import { UsersModule } from './users/users.module.js';
@@ -46,6 +48,8 @@ import { WalletModule } from './wallet/wallet.module.js';
     WalletModule,
     TablesModule,
     LudoModule,
+    SnakesModule,
+    MemoryModule,
     FriendsModule,
     ContestsModule,
     AdminModule,

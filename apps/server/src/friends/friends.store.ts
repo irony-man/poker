@@ -15,18 +15,22 @@ export interface FriendRequest {
   createdAt: number;
 }
 
-export type ChallengeKind = 'table' | 'contest' | 'ludo';
+export type ChallengeKind = 'table' | 'contest' | 'ludo' | 'snakes' | 'memory';
 
 export interface Challenge {
   id: string;
   challengerId: string;
   challengedId: string;
-  /** Cash/private table id (empty string for contest / ludo invites). */
+  /** Cash/private table id (empty string for contest / arcade invites). */
   tableId: string;
   /** Contest registration invite target. */
   contestId?: string;
   /** Ludo board id — clients deep-link to `/ludo/{id}?invite=`. */
   ludoId?: string;
+  /** Snakes & Ladders board id. */
+  snakesId?: string;
+  /** Memory Match board id. */
+  memoryId?: string;
   inviteCode: string;
   /** Defaults to table when omitted (legacy snapshots). */
   kind?: ChallengeKind;
@@ -75,6 +79,8 @@ export interface PendingChallengeView {
   tableId: string | null;
   contestId: string | null;
   ludoId: string | null;
+  snakesId: string | null;
+  memoryId: string | null;
   inviteCode: string;
   createdAt: number;
   groupId?: string;
@@ -431,7 +437,9 @@ export class FriendsStore {
     target:
       | { kind: 'table'; tableId: string; inviteCode: string }
       | { kind: 'contest'; contestId: string; inviteCode: string }
-      | { kind: 'ludo'; ludoId: string; inviteCode: string },
+      | { kind: 'ludo'; ludoId: string; inviteCode: string }
+      | { kind: 'snakes'; snakesId: string; inviteCode: string }
+      | { kind: 'memory'; memoryId: string; inviteCode: string },
   ): Promise<Challenge[]> {
     await this.ensureLoaded();
     const unique = [...new Set(friendUserIds)].filter((id) => id !== hostUserId);
@@ -445,12 +453,24 @@ export class FriendsStore {
           return true;
         }
         if (target.kind === 'table') {
-          return !(c.kind !== 'contest' && c.kind !== 'ludo' && c.tableId === target.tableId);
+          return !(
+            c.kind !== 'contest' &&
+            c.kind !== 'ludo' &&
+            c.kind !== 'snakes' &&
+            c.kind !== 'memory' &&
+            c.tableId === target.tableId
+          );
         }
         if (target.kind === 'contest') {
           return c.contestId !== target.contestId;
         }
-        return c.ludoId !== target.ludoId;
+        if (target.kind === 'ludo') {
+          return c.ludoId !== target.ludoId;
+        }
+        if (target.kind === 'snakes') {
+          return c.snakesId !== target.snakesId;
+        }
+        return c.memoryId !== target.memoryId;
       });
 
       const challenge: Challenge =
@@ -477,17 +497,41 @@ export class FriendsStore {
                 status: 'pending',
                 createdAt: Date.now(),
               }
-            : {
-                id: nanoid(10),
-                challengerId: hostUserId,
-                challengedId: targetId,
-                tableId: '',
-                ludoId: target.ludoId,
-                inviteCode: target.inviteCode,
-                kind: 'ludo',
-                status: 'pending',
-                createdAt: Date.now(),
-              };
+            : target.kind === 'ludo'
+              ? {
+                  id: nanoid(10),
+                  challengerId: hostUserId,
+                  challengedId: targetId,
+                  tableId: '',
+                  ludoId: target.ludoId,
+                  inviteCode: target.inviteCode,
+                  kind: 'ludo',
+                  status: 'pending',
+                  createdAt: Date.now(),
+                }
+              : target.kind === 'snakes'
+                ? {
+                    id: nanoid(10),
+                    challengerId: hostUserId,
+                    challengedId: targetId,
+                    tableId: '',
+                    snakesId: target.snakesId,
+                    inviteCode: target.inviteCode,
+                    kind: 'snakes',
+                    status: 'pending',
+                    createdAt: Date.now(),
+                  }
+                : {
+                    id: nanoid(10),
+                    challengerId: hostUserId,
+                    challengedId: targetId,
+                    tableId: '',
+                    memoryId: target.memoryId,
+                    inviteCode: target.inviteCode,
+                    kind: 'memory',
+                    status: 'pending',
+                    createdAt: Date.now(),
+                  };
       this.challenges.push(challenge);
       created.push(challenge);
     }
@@ -507,7 +551,16 @@ export class FriendsStore {
       const challenger = this.profile(auth, c.challengerId);
       if (!challenger) continue;
       const kind: ChallengeKind =
-        c.kind ?? (c.contestId ? 'contest' : c.ludoId ? 'ludo' : 'table');
+        c.kind ??
+        (c.contestId
+          ? 'contest'
+          : c.ludoId
+            ? 'ludo'
+            : c.snakesId
+              ? 'snakes'
+              : c.memoryId
+                ? 'memory'
+                : 'table');
       out.push({
         id: c.id,
         challenger,
@@ -515,6 +568,8 @@ export class FriendsStore {
         tableId: c.tableId || null,
         contestId: c.contestId ?? null,
         ludoId: c.ludoId ?? null,
+        snakesId: c.snakesId ?? null,
+        memoryId: c.memoryId ?? null,
         inviteCode: c.inviteCode,
         createdAt: c.createdAt,
         ...(c.groupId ? { groupId: c.groupId } : {}),

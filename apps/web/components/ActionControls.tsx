@@ -213,12 +213,12 @@ function TableToolsPanel({
       {hostRow ? (
         <div className="flex flex-col items-center gap-1.5">
           {tools.canAddBot && tools.botGroups && tools.botGroups.length > 0 && tools.onBotGroupChange ? (
-            <label className="flex items-center gap-1.5 text-[10px] font-display font-semibold uppercase tracking-wide text-ink-strong-muted">
+            <label className="flex items-center gap-1.5 text-[10px] font-display font-semibold uppercase tracking-wide text-muted">
               <span className="sr-only sm:not-sr-only">Bots</span>
               <select
                 value={tools.botGroupId ?? tools.botGroups[0]!.id}
                 onChange={(e) => tools.onBotGroupChange?.(e.target.value)}
-                className="max-w-[10rem] rounded border border-sidebar/20 bg-white px-1.5 py-1 text-[10px] font-semibold normal-case tracking-normal text-ink-strong outline-none focus:border-sidebar/40"
+                className="max-w-[10rem] rounded border border-sidebar/20 bg-white px-1.5 py-1 text-[10px] font-semibold normal-case tracking-normal text-primary outline-none focus:border-sidebar/40"
                 aria-label="Bot name pack"
               >
                 {tools.botGroups.map((g) => (
@@ -240,7 +240,7 @@ function TableToolsPanel({
               type="button"
               variant="soft"
               onClick={tools.onFillBots}
-              className="px-2 py-1 text-[10px] text-ink-strong-muted"
+              className="px-2 py-1 text-[10px] text-muted"
             >
               Fill
             </Button>
@@ -250,7 +250,7 @@ function TableToolsPanel({
               type="button"
               variant="ghost"
               onClick={tools.onRemoveBots}
-              className="rounded px-2 py-1 text-[10px] font-display font-semibold uppercase tracking-wide text-ink-strong-muted hover:text-danger"
+              className="rounded px-2 py-1 text-[10px] font-display font-semibold uppercase tracking-wide text-muted hover:text-danger"
             >
               − Bots
             </Button>
@@ -353,7 +353,7 @@ export function ActionControls({
   }, [min, table?.actionSeq]);
 
   const shell = bare
-    ? 'flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden text-ink-strong'
+    ? 'flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden text-primary'
     : 'hud-panel mx-auto w-full max-w-xl overflow-hidden p-0';
 
   if (contestOver) {
@@ -370,7 +370,7 @@ export function ActionControls({
         <p className="font-display text-xs font-bold uppercase tracking-[0.16em] text-sidebar">
           Contest complete
         </p>
-        <p className="max-w-[16rem] text-[11px] leading-snug text-ink-strong-muted sm:text-xs">
+        <p className="max-w-[16rem] text-[11px] leading-snug text-muted sm:text-xs">
           Results and placements are on the contest page.
         </p>
         {onViewContest ? (
@@ -419,7 +419,7 @@ export function ActionControls({
           aria-hidden
           decoding="async"
         />
-        <p className="max-w-[16rem] text-xs font-medium leading-snug tracking-wide text-ink-strong-muted sm:text-sm">
+        <p className="max-w-[16rem] text-xs font-medium leading-snug tracking-wide text-muted sm:text-sm">
           {copy}
         </p>
       </div>
@@ -483,7 +483,7 @@ export function ActionControls({
         tabIndex={-1}
       >
         <div className="flex h-full min-h-0 flex-1 flex-col justify-center space-y-3 p-3 sm:p-4">
-          <p id="action-confirm-title" className="text-center text-sm font-medium text-ink-strong">
+          <p id="action-confirm-title" className="text-center text-sm font-medium text-primary">
             Confirm <span className="font-bold text-sidebar">{confirm.label}</span>?
           </p>
           <div className="grid grid-cols-2 gap-2">
@@ -553,7 +553,7 @@ export function ActionControls({
 
     return (
       <div
-        className="flex h-full min-h-0 flex-col text-ink-strong"
+        className="flex h-full min-h-0 flex-col text-primary"
         role="group"
         aria-label="Table actions"
       >
@@ -652,12 +652,12 @@ export function ActionControls({
           {canBet && (
             <div className="space-y-1">
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-strong-muted">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">
                   {betLabel} to
                 </span>
                 <span className="font-mono text-sm font-bold tabular-nums text-sidebar">
                   {formatMoneyAmount(amount)}
-                  <span className="ml-1.5 text-[11px] font-medium text-ink-strong-muted">
+                  <span className="ml-1.5 text-[11px] font-medium text-muted">
                     {formatMoneyAmount(min)}–{formatMoneyAmount(max)}
                   </span>
                 </span>
@@ -726,12 +726,12 @@ export function ActionControls({
         {canBet && (
           <div className="space-y-1">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-strong-muted">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">
                 {betLabel} to
               </span>
               <span className="font-mono text-sm font-bold tabular-nums text-sidebar">
                 {formatMoneyAmount(amount)}
-                <span className="ml-1.5 text-[11px] font-medium text-ink-strong-muted">
+                <span className="ml-1.5 text-[11px] font-medium text-muted">
                   {formatMoneyAmount(min)}–{formatMoneyAmount(max)}
                 </span>
               </span>
@@ -765,7 +765,7 @@ export function ActionControls({
                       submitBet(amount);
                     }
                   }}
-                  className="w-full rounded-md border border-sidebar/18 bg-white px-2 py-1.5 font-mono text-sm font-bold tabular-nums text-ink-strong outline-none focus:border-sidebar/45 focus:shadow-[0_0_0_2px_rgb(29_4_50/0.08)]"
+                  className="w-full rounded-md border border-sidebar/18 bg-white px-2 py-1.5 font-mono text-sm font-bold tabular-nums text-primary outline-none focus:border-sidebar/45 focus:shadow-[0_0_0_2px_rgb(29_4_50/0.08)]"
                 />
               </label>
               {(

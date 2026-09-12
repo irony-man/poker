@@ -49,14 +49,14 @@ export function AdminImageField({
         maxLength={200}
       />
       {preview ? (
-        <div className="relative aspect-[5/4] max-w-xs overflow-hidden rounded-xl border border-sidebar/10 bg-mushroom/30">
+        <div className="relative aspect-[5/4] max-w-xs overflow-hidden rounded-xl border border-sidebar/10 bg-page/30">
           {/* Admin preview of arbitrary local/S3 URLs. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={preview} alt="" className="h-full w-full object-contain object-center" />
         </div>
       ) : null}
       {uploadDisabled ? (
-        <p className="text-xs text-ink-strong-muted">
+        <p className="text-xs text-muted">
           File uploads require AWS env vars on the server (S3_BUCKET, AWS_ACCESS_KEY_ID, etc.).
         </p>
       ) : null}

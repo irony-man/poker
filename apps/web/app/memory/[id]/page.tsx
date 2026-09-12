@@ -82,10 +82,10 @@ function MemoryPlayInner() {
     }`;
     return (
       <div className="hud-panel mx-auto max-w-md space-y-4 p-6">
-        <h2 className="font-display text-xl uppercase tracking-wider text-mushroom">
+        <h2 className="font-display text-xl uppercase tracking-wider text-on-chrome">
           Sign in to join
         </h2>
-        <p className="text-sm text-cream/70">You need an account to enter this Memory board.</p>
+        <p className="text-sm text-on-chrome/70">You need an account to enter this Memory board.</p>
         {error ? (
           <StatusChip tone="danger" role="alert" className="text-xs">
             {error}

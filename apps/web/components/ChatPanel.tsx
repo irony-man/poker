@@ -48,17 +48,17 @@ export function ChatPanel({
   };
 
   return (
-    <div className="chat-panel-shell relative flex h-full min-h-0 flex-col bg-gradient-to-b from-[#f4eeec] via-mushroom to-[#e8ddd9] text-ink-strong">
+    <div className="chat-panel-shell relative flex h-full min-h-0 flex-col bg-gradient-to-b from-[#f4eeec] via-mushroom to-[#e8ddd9] text-primary">
       {/* Header */}
       <header className="glass-sheet flex shrink-0 items-center justify-between gap-3 border-b border-sidebar/10 px-4 py-3.5 backdrop-blur-sm">
-        <h2 className="font-display text-sm font-bold uppercase tracking-[0.16em] text-ink-strong">
+        <h2 className="font-display text-sm font-bold uppercase tracking-[0.16em] text-primary">
           Chat
         </h2>
         {onClose && (
           <button
             type="button"
             onClick={onClose}
-            className="glass-sheet shrink-0 rounded-full border border-sidebar/15 px-3 py-1.5 text-[10px] font-display font-semibold uppercase tracking-wider text-ink-strong-muted shadow-[0_2px_8px_rgb(29_4_50/0.06)] transition hover:border-sidebar/30 hover:text-sidebar"
+            className="glass-sheet shrink-0 rounded-full border border-sidebar/15 px-3 py-1.5 text-[10px] font-display font-semibold uppercase tracking-wider text-muted shadow-[0_2px_8px_rgb(29_4_50/0.06)] transition hover:border-sidebar/30 hover:text-sidebar"
           >
             {closeLabel}
           </button>
@@ -79,7 +79,7 @@ export function ChatPanel({
             <p className="font-heading-sub">
               Quiet so far
             </p>
-            <p className="mt-1 max-w-[14rem] text-xs leading-relaxed text-ink-strong-muted">
+            <p className="mt-1 max-w-[14rem] text-xs leading-relaxed text-muted">
               {emptyHint}
             </p>
           </li>
@@ -109,7 +109,7 @@ export function ChatPanel({
               return (
                 <li
                   key={`${m.at}-${i}`}
-                  className="glass-sheet mx-auto max-w-[95%] list-none rounded-full border border-sidebar/10 px-3.5 py-1.5 text-center text-[12px] text-ink-strong-muted"
+                  className="glass-sheet mx-auto max-w-[95%] list-none rounded-full border border-sidebar/10 px-3.5 py-1.5 text-center text-[12px] text-muted"
                 >
                   {isDealer ? (
                     <span className="italic">{m.text}</span>
@@ -132,7 +132,7 @@ export function ChatPanel({
                 <p className="font-display text-[11px] font-bold uppercase tracking-[0.12em] text-sidebar">
                   {m.name}
                 </p>
-                <p className="mt-1 break-words text-sm leading-snug text-ink-strong">
+                <p className="mt-1 break-words text-sm leading-snug text-primary">
                   <AppleEmojiText text={m.text} emojiSize={20} />
                 </p>
               </li>
@@ -157,7 +157,7 @@ export function ChatPanel({
             <button
               type="button"
               onClick={() => setPickerOpen(false)}
-              className="rounded-full px-2 py-0.5 text-[10px] font-display font-semibold uppercase tracking-wider text-ink-strong-muted hover:bg-sidebar/8 hover:text-sidebar"
+              className="rounded-full px-2 py-0.5 text-[10px] font-display font-semibold uppercase tracking-wider text-muted hover:bg-sidebar/8 hover:text-sidebar"
             >
               Close
             </button>
@@ -165,7 +165,7 @@ export function ChatPanel({
           <div className="max-h-[min(40vh,18rem)] overflow-y-auto">
             {ALL_EMOJIS.map((group) => (
               <div key={group.label} className="border-b border-sidebar/8 last:border-b-0">
-                <div className="sticky top-0 bg-mushroom/95 px-3 py-1.5 text-[10px] font-display font-semibold uppercase tracking-[0.14em] text-sidebar/65 backdrop-blur">
+                <div className="sticky top-0 bg-page/95 px-3 py-1.5 text-[10px] font-display font-semibold uppercase tracking-[0.14em] text-sidebar/65 backdrop-blur">
                   {group.label}
                 </div>
                 <div className="flex flex-wrap gap-0.5 px-2 pb-2 pt-0.5">
@@ -206,7 +206,7 @@ export function ChatPanel({
             onClick={() => setPickerOpen((open) => !open)}
             className={`ml-0.5 rounded-full border px-3 py-1.5 text-[10px] font-display font-bold uppercase tracking-wider transition ${
               pickerOpen
-                ? 'border-sidebar bg-sidebar text-mushroom'
+                ? 'border-sidebar bg-sidebar text-on-chrome'
                 : 'glass-sheet border-sidebar/15 text-sidebar hover:border-sidebar/30'
             }`}
             aria-expanded={pickerOpen}
@@ -229,7 +229,7 @@ export function ChatPanel({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             aria-label="Message the table"
-            className="min-w-0 flex-1 bg-transparent py-2 text-sm font-body text-ink-strong outline-none"
+            className="min-w-0 flex-1 bg-transparent py-2 text-sm font-body text-primary outline-none"
           />
           <Button
             type="submit"

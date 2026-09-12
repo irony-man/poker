@@ -36,7 +36,7 @@ export function SiteAnnouncementBanner() {
   return (
     <div
       role="status"
-      className="mb-4 border border-brass/25 bg-brass/10 px-3 py-2 text-center text-sm text-ink-strong sm:mb-5"
+      className="mb-4 border border-brass/25 bg-brass/10 px-3 py-2 text-center text-sm text-primary sm:mb-5"
     >
       <p className="mx-auto max-w-3xl whitespace-pre-wrap leading-snug">{text}</p>
     </div>

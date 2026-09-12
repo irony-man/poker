@@ -271,12 +271,12 @@ export function MemoryView({
         </p>
       ) : null}
       {playing && isMyTurn ? (
-        <p className="text-center text-[11px] font-display font-semibold uppercase tracking-wider text-ink-strong">
+        <p className="text-center text-[11px] font-display font-semibold uppercase tracking-wider text-primary">
           Flip a card
         </p>
       ) : null}
       {playing && !isMyTurn ? (
-        <p className="text-center text-[11px] text-ink-strong-muted">
+        <p className="text-center text-[11px] text-muted">
           {memory.toAct != null
             ? `${seats.find((s) => s.seat === memory.toAct)?.name ?? ludoColorForSeat(memory.toAct)} to act`
             : 'Waiting…'}
@@ -345,7 +345,7 @@ export function MemoryView({
       actions={actions}
       chatEmptyHint="Call out a match or tease a miss."
     >
-      <div className="flex min-h-0 flex-1 flex-col bg-ink text-on-chrome">
+      <div className="flex min-h-0 flex-1 flex-col bg-chrome text-on-chrome">
         <header className="play-chrome-bar">
           <div className="play-table-logo-row">
             <PlayTableLogo />
@@ -417,7 +417,7 @@ export function MemoryView({
                       type="button"
                       disabled={mySeat !== null && !isSpectating}
                       onClick={() => sitAt(p.seat)}
-                      className="flex items-center gap-1.5 rounded-full border border-on-chrome/20 bg-ink-raised px-2.5 py-1 text-[11px] text-on-chrome/80 hover:border-on-chrome/40 disabled:opacity-50"
+                      className="flex items-center gap-1.5 rounded-full border border-on-chrome/20 bg-raised px-2.5 py-1 text-[11px] text-on-chrome/80 hover:border-on-chrome/40 disabled:opacity-50"
                     >
                       <span
                         className="h-2.5 w-2.5 rounded-full"

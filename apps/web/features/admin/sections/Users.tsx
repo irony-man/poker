@@ -77,7 +77,7 @@ function CurrencyAdjust({
           showChips={showChips}
           showWhuffies={showWhuffies}
           chipsClassName="!h-[18px] sm:!h-5"
-          className="font-display text-lg font-semibold text-ink-strong"
+          className="font-display text-lg font-semibold text-primary"
         />
       </div>
       <form
@@ -106,7 +106,7 @@ function CurrencyAdjust({
         type="button"
         disabled={disabled}
         onClick={onReset}
-        className="mt-2.5 text-xs font-medium text-ink-strong-muted underline-offset-2 transition hover:text-ink-strong hover:underline disabled:opacity-50"
+        className="mt-2.5 text-xs font-medium text-muted underline-offset-2 transition hover:text-primary hover:underline disabled:opacity-50"
       >
         {resetBusy ? 'Resetting…' : resetLabel}
       </button>
@@ -172,10 +172,10 @@ export function UsersSection({
           <Button type="submit" variant="ghost" disabled={busy} className="min-h-11 px-5">
             {busyKey === 'users-search' ? 'Searching…' : 'Search'}
           </Button>
-          <p className="hidden text-xs tabular-nums text-ink-strong-muted sm:block">{resultLabel}</p>
+          <p className="hidden text-xs tabular-nums text-muted sm:block">{resultLabel}</p>
         </div>
       </form>
-      <p className="text-xs tabular-nums text-ink-strong-muted sm:hidden">{resultLabel}</p>
+      <p className="text-xs tabular-nums text-muted sm:hidden">{resultLabel}</p>
 
       <div className="overflow-hidden rounded-xl border border-sidebar/10">
         {users.length > 0 ? (
@@ -206,7 +206,7 @@ export function UsersSection({
               <li key={u.id} className="border-b border-sidebar/6 last:border-0">
                 <div
                   className={`${ROW_GRID} px-3.5 py-2.5 ${
-                    open ? 'bg-mushroom/[0.06]' : 'bg-transparent hover:bg-mushroom/[0.04]'
+                    open ? 'bg-page/[0.06]' : 'bg-transparent hover:bg-page/[0.04]'
                   }`}
                 >
                   <div className="flex min-w-0 items-center gap-2.5">
@@ -218,7 +218,7 @@ export function UsersSection({
                     />
                     <div className="min-w-0">
                       <div className="flex min-w-0 items-center gap-1.5">
-                        <p className="truncate font-display text-sm font-semibold text-ink-strong">
+                        <p className="truncate font-display text-sm font-semibold text-primary">
                           {u.username}
                         </p>
                         {isSelf ? (
@@ -227,7 +227,7 @@ export function UsersSection({
                           </span>
                         ) : null}
                       </div>
-                      <p className="mt-0.5 truncate text-xs text-ink-strong-muted sm:hidden">
+                      <p className="mt-0.5 truncate text-xs text-muted sm:hidden">
                         {formatMoneyLabel(u.chipBalance)} chips · {formatMoneyLabel(u.whuffieBalance)}{' '}
                         Whuffies · {joined}
                       </p>
@@ -239,17 +239,17 @@ export function UsersSection({
                       amount={u.chipBalance}
                       showChips
                       chipsClassName="!h-4 sm:!h-4"
-                      className="text-sm font-medium text-ink-strong"
+                      className="text-sm font-medium text-primary"
                     />
                   </div>
                   <div className="hidden sm:block">
                     <MoneyAmount
                       amount={u.whuffieBalance}
                       showWhuffies
-                      className="text-sm font-medium text-ink-strong"
+                      className="text-sm font-medium text-primary"
                     />
                   </div>
-                  <p className="hidden text-sm tabular-nums text-ink-strong-muted sm:block">{joined}</p>
+                  <p className="hidden text-sm tabular-nums text-muted sm:block">{joined}</p>
 
                   <Button
                     variant="ghost"
@@ -265,7 +265,7 @@ export function UsersSection({
                 </div>
 
                 {open ? (
-                  <div id={panelId} className="border-t border-sidebar/8 bg-mushroom/[0.04] px-3.5 py-3.5">
+                  <div id={panelId} className="border-t border-sidebar/8 bg-page/[0.04] px-3.5 py-3.5">
                     <div className="grid gap-3 sm:grid-cols-2">
                       <CurrencyAdjust
                         label="Chips"

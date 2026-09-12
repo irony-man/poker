@@ -37,7 +37,7 @@ export function PotBanner({
         </span>
       </div>
       {sidePotCount > 1 && (
-        <span className="rounded bg-black/45 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-cream/85">
+        <span className="rounded bg-black/45 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-on-chrome/85">
           {sidePotCount} pots
         </span>
       )}

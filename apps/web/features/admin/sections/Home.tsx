@@ -79,7 +79,7 @@ export function HomeSection({
           return (
             <div
               key={index}
-              className="overflow-hidden rounded-xl border border-sidebar/12 bg-mushroom/[0.03]"
+              className="overflow-hidden rounded-xl border border-sidebar/12 bg-page/[0.03]"
             >
               <div className="flex flex-wrap items-center gap-2 border-b border-sidebar/8 px-3 py-2.5 sm:px-4">
                 <button
@@ -88,10 +88,10 @@ export function HomeSection({
                   onClick={() => onToggleBlock(index)}
                   aria-expanded={open}
                 >
-                  <span className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong">
+                  <span className="font-display text-sm font-semibold uppercase tracking-wider text-primary">
                     Block {index + 1}
                   </span>
-                  <span className="ml-2 truncate text-sm text-ink-strong-muted">
+                  <span className="ml-2 truncate text-sm text-muted">
                     {feature.title || 'Untitled'}
                   </span>
                 </button>
@@ -173,7 +173,7 @@ export function HomeSection({
                     onImageAlt={(value) => onUpdate(index, { imageAlt: value })}
                     onUpload={() => onUploadImage(index)}
                   />
-                  <label className="flex cursor-pointer items-center gap-2.5 text-sm text-ink-strong">
+                  <label className="flex cursor-pointer items-center gap-2.5 text-sm text-primary">
                     <input
                       type="checkbox"
                       className="h-4 w-4 accent-sidebar"

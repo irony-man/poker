@@ -437,7 +437,7 @@ function ProfilePageInner() {
       requireAuth
     >
       {loading && !profile ? (
-        <p className="text-sm text-ink-strong-muted">Loading profile…</p>
+        <p className="text-sm text-muted">Loading profile…</p>
       ) : null}
 
       {error ? (
@@ -469,7 +469,7 @@ function ProfilePageInner() {
                     className="pointer-events-none absolute inset-1 flex items-center justify-center rounded-full bg-sidebar/70 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
                     aria-hidden
                   >
-                    <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-mushroom">
+                    <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-on-chrome">
                       <svg
                         className="h-4 w-4 shrink-0"
                         viewBox="0 0 16 16"
@@ -527,7 +527,7 @@ function ProfilePageInner() {
                 </div>
 
                 {editingAvatar ? (
-                  <div className="mt-5 rounded-xl border border-sidebar/12 bg-mushroom/40 p-4">
+                  <div className="mt-5 rounded-xl border border-sidebar/12 bg-page/40 p-4">
                     <AvatarPicker
                       value={draftAvatarId}
                       onChange={setDraftAvatarId}
@@ -654,7 +654,7 @@ function ProfilePageInner() {
                   </p>
                 </div>
                 {savingUiTheme ? (
-                  <p className="text-xs font-medium text-ink-strong-muted" role="status">
+                  <p className="text-xs font-medium text-muted" role="status">
                     Saving…
                   </p>
                 ) : null}
@@ -709,7 +709,7 @@ function ProfilePageInner() {
                       className={`flex flex-col overflow-hidden rounded-2xl border-2 text-left transition disabled:opacity-60 ${
                         selected
                           ? 'border-sidebar bg-sidebar/[0.06] shadow-[0_0_0_1px_rgb(29_4_50_/_0.1)]'
-                          : 'border-sidebar/10 bg-mushroom/30 hover:border-sidebar/22'
+                          : 'border-sidebar/10 bg-page/30 hover:border-sidebar/22'
                       }`}
                     >
                       <span
@@ -746,7 +746,7 @@ function ProfilePageInner() {
                           <span className="block text-sm font-semibold text-sidebar">
                             {look.label}
                           </span>
-                          <span className="block text-xs text-ink-strong-muted">
+                          <span className="block text-xs text-muted">
                             {look.hint}
                           </span>
                         </span>
@@ -767,7 +767,7 @@ function ProfilePageInner() {
                   </p>
                 </div>
                 {savingTableLayout ? (
-                  <p className="text-xs font-medium text-ink-strong-muted" role="status">
+                  <p className="text-xs font-medium text-muted" role="status">
                     Saving…
                   </p>
                 ) : null}
@@ -811,7 +811,7 @@ function ProfilePageInner() {
                       className={`flex flex-col overflow-hidden rounded-2xl border-2 text-left transition disabled:opacity-60 ${
                         selected
                           ? 'border-sidebar bg-sidebar/[0.06] shadow-[0_0_0_1px_rgb(29_4_50_/_0.1)]'
-                          : 'border-sidebar/10 bg-mushroom/30 hover:border-sidebar/22'
+                          : 'border-sidebar/10 bg-page/30 hover:border-sidebar/22'
                       }`}
                     >
                       <span
@@ -839,7 +839,7 @@ function ProfilePageInner() {
                           <span className="block text-sm font-semibold text-sidebar">
                             {layout.label}
                           </span>
-                          <span className="block text-xs text-ink-strong-muted">
+                          <span className="block text-xs text-muted">
                             {layout.hint}
                           </span>
                         </span>
@@ -859,14 +859,14 @@ function ProfilePageInner() {
                   </p>
                 </div>
                 {savingTableColor ? (
-                  <p className="text-xs font-medium text-ink-strong-muted" role="status">
+                  <p className="text-xs font-medium text-muted" role="status">
                     Saving…
                   </p>
                 ) : null}
               </div>
 
               <div
-                className="table-theme relative mt-5 overflow-hidden rounded-2xl border border-sidebar/10 bg-mushroom/50 px-5 py-6 sm:px-8 sm:py-8"
+                className="table-theme relative mt-5 overflow-hidden rounded-2xl border border-sidebar/10 bg-page/50 px-5 py-6 sm:px-8 sm:py-8"
                 data-table-color={draftTableColorId}
               >
                 <div
@@ -892,8 +892,8 @@ function ProfilePageInner() {
                         <span className="h-7 w-5 rounded-sm bg-white" />
                         <span className="h-7 w-5 rounded-sm bg-white" />
                         <span className="h-7 w-5 rounded-sm bg-white" />
-                        <span className="h-7 w-5 rounded-sm bg-mushroom" />
-                        <span className="h-7 w-5 rounded-sm bg-mushroom" />
+                        <span className="h-7 w-5 rounded-sm bg-page" />
+                        <span className="h-7 w-5 rounded-sm bg-page" />
                       </div>
                       <span className="font-display text-lg font-extrabold tabular-nums text-white">
                         72
@@ -971,7 +971,7 @@ function ProfilePageInner() {
                       className={`group relative flex flex-col items-center gap-2 rounded-xl border px-2 py-3 transition disabled:opacity-60 sm:px-3 sm:py-3.5 ${
                         selected
                           ? 'border-sidebar bg-sidebar/[0.06] shadow-[0_0_0_1px_rgb(29_4_50_/_0.1)]'
-                          : 'border-sidebar/10 bg-mushroom/30 hover:border-sidebar/22 hover:bg-mushroom/55'
+                          : 'border-sidebar/10 bg-page/30 hover:border-sidebar/22 hover:bg-page/55'
                       }`}
                     >
                       <span
@@ -1007,7 +1007,7 @@ function ProfilePageInner() {
                   </p>
                 </div>
                 {savingSfxMuted ? (
-                  <p className="text-xs font-medium text-ink-strong-muted" role="status">
+                  <p className="text-xs font-medium text-muted" role="status">
                     Saving…
                   </p>
                 ) : null}
@@ -1051,14 +1051,14 @@ function ProfilePageInner() {
                       className={`flex items-center justify-between gap-2 rounded-2xl border-2 px-3 py-3 text-left transition disabled:opacity-60 ${
                         selected
                           ? 'border-sidebar bg-sidebar/[0.06] shadow-[0_0_0_1px_rgb(29_4_50_/_0.1)]'
-                          : 'border-sidebar/10 bg-mushroom/30 hover:border-sidebar/22'
+                          : 'border-sidebar/10 bg-page/30 hover:border-sidebar/22'
                       }`}
                     >
                       <span>
                         <span className="block text-sm font-semibold text-sidebar">
                           {option.label}
                         </span>
-                        <span className="block text-xs text-ink-strong-muted">
+                        <span className="block text-xs text-muted">
                           {option.hint}
                         </span>
                       </span>
@@ -1088,7 +1088,7 @@ function ProfilePageInner() {
               </div>
 
               {contestHistory.length === 0 ? (
-                <p className="mt-5 text-sm text-ink-strong-muted">
+                <p className="mt-5 text-sm text-muted">
                   No completed contests yet.{' '}
                   <Link
                     href="/contests"
@@ -1111,13 +1111,13 @@ function ProfilePageInner() {
                         <Link
                           href={`/contest/${row.contest.id}`}
                           onClick={() => enterMobileFullscreen()}
-                          className="flex items-center justify-between gap-3 px-3.5 py-3 transition hover:bg-mushroom/50 sm:px-4"
+                          className="flex items-center justify-between gap-3 px-3.5 py-3 transition hover:bg-page/50 sm:px-4"
                         >
                           <span className="min-w-0">
-                            <span className="block truncate font-medium text-ink-strong">
+                            <span className="block truncate font-medium text-primary">
                               {row.contest.name}
                             </span>
-                            <span className="mt-0.5 block text-[11px] text-ink-strong-muted">
+                            <span className="mt-0.5 block text-[11px] text-muted">
                               {when} · {contestModeLabel(row.contest.mode)} ·{' '}
                               {row.contest.entrants.length} players
                             </span>
@@ -1134,7 +1134,7 @@ function ProfilePageInner() {
                                 className="text-xs font-semibold text-brass-dim"
                               />
                             ) : (
-                              <span className="text-[11px] text-ink-strong-muted">No prize</span>
+                              <span className="text-[11px] text-muted">No prize</span>
                             )}
                           </span>
                         </Link>

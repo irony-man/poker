@@ -56,7 +56,7 @@ export function PublicTablesPanel({
       imageSrc={resolvePublicImage(imageSrc || '/public-tables.png')}
       imageAlt={imageAlt || 'Open public ring games ready to join'}
     >
-      <p className="text-sm font-medium text-ink-strong-muted">
+      <p className="text-sm font-medium text-muted">
         Select the table size and sit down to play
       </p>
 
@@ -83,20 +83,20 @@ export function PublicTablesPanel({
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="font-display text-lg font-bold uppercase tracking-wider text-ink-strong">
+                  <p className="font-display text-lg font-bold uppercase tracking-wider text-primary">
                     {stake.label}
                   </p>
-                  <p className="text-xs font-medium text-ink-strong-muted">
+                  <p className="text-xs font-medium text-muted">
                     Blinds {stake.smallBlind}/{stake.bigBlind}
                   </p>
                 </div>
-                <span className="text-[10px] font-display uppercase tracking-widest text-ink-strong-muted">
+                <span className="text-[10px] font-display uppercase tracking-widest text-muted">
                   {loading ? '…' : `${seated}/${max}`}
                 </span>
               </div>
-              <p className="text-sm text-ink-strong-muted">
+              <p className="text-sm text-muted">
                 Buy-in{' '}
-                <span className="font-medium text-ink-strong">{formatMoneyLabel(stake.buyIn)}</span>
+                <span className="font-medium text-primary">{formatMoneyLabel(stake.buyIn)}</span>
               </p>
               <Button
                 type="button"

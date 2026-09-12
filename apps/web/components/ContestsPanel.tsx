@@ -106,10 +106,10 @@ function ContestListItem({
         type="button"
         disabled={disabled}
         onClick={onOpen}
-        className="flex w-full items-center justify-between gap-3 rounded-lg border border-sidebar/10 bg-mushroom/60 px-3 py-2.5 text-left transition hover:border-sidebar/25 hover:bg-sidebar/[0.04] disabled:opacity-50"
+        className="flex w-full items-center justify-between gap-3 rounded-lg border border-sidebar/10 bg-page/60 px-3 py-2.5 text-left transition hover:border-sidebar/25 hover:bg-sidebar/[0.04] disabled:opacity-50"
       >
         <span className="min-w-0">
-          <span className="block truncate font-medium text-ink-strong">{contest.name}</span>
+          <span className="block truncate font-medium text-primary">{contest.name}</span>
           <span className="mt-1 flex flex-wrap items-center gap-1.5">
             <StatusChip
               tone={statusChipTone(contest.status)}
@@ -118,11 +118,11 @@ function ContestListItem({
               {statusLabel(contest.status)}
             </StatusChip>
             {meta ? (
-              <span className="text-[11px] text-ink-strong-muted">{meta}</span>
+              <span className="text-[11px] text-muted">{meta}</span>
             ) : null}
           </span>
         </span>
-        <span className="shrink-0 text-xs tabular-nums text-ink-strong-muted">
+        <span className="shrink-0 text-xs tabular-nums text-muted">
           {contestModeLabel(contest.mode)} · {contest.entrants.length}/{contest.fieldSize}
           {contest.mode === 'rounds' && contest.handLimit ? ` · ${contest.handLimit}h` : ''}
         </span>
@@ -254,7 +254,7 @@ export function ContestsPanel({
                 key={tab.id}
                 className="mt-3 rounded-xl border border-sidebar/12 bg-sidebar/[0.05] px-3.5 py-3.5 sm:px-4"
               >
-                <p className="font-display text-sm font-semibold tracking-tight text-ink-strong">
+                <p className="font-display text-sm font-semibold tracking-tight text-primary">
                   {tab.title}
                 </p>
                 <p className="font-prose-muted mt-1">{tab.body}</p>
@@ -262,7 +262,7 @@ export function ContestsPanel({
                   {tab.points.map((point) => (
                     <li
                       key={point}
-                      className="flex gap-2 text-xs leading-snug text-ink-strong-muted"
+                      className="flex gap-2 text-xs leading-snug text-muted"
                     >
                       <span
                         className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-sidebar/55"
@@ -331,10 +331,10 @@ export function ContestsPanel({
       {open.length > 0 && (
         <div className="border-t border-sidebar/10 pt-5">
           <div className="mb-3 flex items-baseline justify-between gap-2">
-            <p className="font-display text-[0.7rem] font-bold uppercase tracking-[0.16em] text-ink-strong-muted">
+            <p className="font-display text-[0.7rem] font-bold uppercase tracking-[0.16em] text-muted">
               Open now
             </p>
-            <span className="text-xs tabular-nums text-ink-strong-muted">{open.length}</span>
+            <span className="text-xs tabular-nums text-muted">{open.length}</span>
           </div>
           <ul className="max-h-44 space-y-1.5 overflow-y-auto pr-0.5">
             {open.map((c) => (
@@ -364,10 +364,10 @@ export function ContestsPanel({
           className="surface-row flex items-center justify-between gap-3 px-3.5 py-3 transition hover:border-sidebar/25 hover:bg-sidebar/[0.04] sm:px-4"
         >
           <span className="min-w-0">
-            <span className="block font-display text-[0.7rem] font-bold uppercase tracking-[0.16em] text-ink-strong-muted">
+            <span className="block font-display text-[0.7rem] font-bold uppercase tracking-[0.16em] text-muted">
               Your contests
             </span>
-            <span className="mt-1 block text-sm font-medium text-ink-strong">
+            <span className="mt-1 block text-sm font-medium text-primary">
               View contest history on your profile
             </span>
           </span>

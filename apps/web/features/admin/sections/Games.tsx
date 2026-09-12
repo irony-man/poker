@@ -52,14 +52,14 @@ export function GamesSection({
           <tbody>
             {tables.map((t) => (
               <Tr key={t.tableId}>
-                <Td className="font-medium text-ink-strong">{t.name}</Td>
-                <Td className="tabular-nums text-ink-strong-muted">
+                <Td className="font-medium text-primary">{t.name}</Td>
+                <Td className="tabular-nums text-muted">
                   {t.seatedCount}/{t.maxSeats}
                 </Td>
-                <Td className="text-ink-strong-muted">
+                <Td className="text-muted">
                   {t.contestId ? 'Contest table' : t.playMoney ? 'Private (play)' : 'Private'}
                 </Td>
-                <Td className="text-ink-strong-muted">
+                <Td className="text-muted">
                   {t.handInProgress ? (t.street ? t.street : 'In hand') : t.idle ? 'Idle' : 'Waiting'}
                 </Td>
                 <Td>
@@ -91,16 +91,16 @@ export function GamesSection({
               const active = c.activePlayers ?? null;
               return (
                 <Tr key={c.id}>
-                  <Td className="font-medium text-ink-strong">
+                  <Td className="font-medium text-primary">
                     {c.name}
                     {c.isPrivate ? (
-                      <span className="ml-1.5 text-xs font-normal text-ink-strong-muted">private</span>
+                      <span className="ml-1.5 text-xs font-normal text-muted">private</span>
                     ) : null}
                   </Td>
-                  <Td className="capitalize text-ink-strong-muted">
+                  <Td className="capitalize text-muted">
                     {c.status} · {c.mode}
                   </Td>
-                  <Td className="text-ink-strong-muted">
+                  <Td className="text-muted">
                     {c.entrants.length}/{c.fieldSize} registered
                     {active != null ? ` · ${active} still in` : ''}
                     {atTable != null && c.status === 'running' ? ` · ${atTable} at table` : ''}

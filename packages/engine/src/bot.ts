@@ -19,7 +19,8 @@ export type BotPersonalityId =
   | 'maniac'
   | 'caller'
   | 'nit'
-  | 'lag';
+  | 'lag'
+  | 'humanoid';
 
 export const BOT_PERSONALITY_IDS: readonly BotPersonalityId[] = [
   'balanced',
@@ -31,6 +32,7 @@ export const BOT_PERSONALITY_IDS: readonly BotPersonalityId[] = [
   'caller',
   'nit',
   'lag',
+  'humanoid',
 ] as const;
 
 export function isBotPersonalityId(value: string | null | undefined): value is BotPersonalityId {
@@ -81,6 +83,7 @@ export const DEFAULT_BOT_NAMES = [
   'NutsNova',
   'CallCart',
   'RaiseRex',
+  'Humanoid',
 ] as const;
 
 export function pickBotName(
@@ -181,6 +184,14 @@ export const BOT_PERSONALITIES: Record<BotPersonalityId, BotPersonality> = {
     callBias: 0.01,
     jamBias: 0.05,
   },
+  humanoid: {
+    id: 'humanoid',
+    rangeOffset: 0.8,
+    aggression: 1.15,
+    bluffRate: 1.4,
+    callBias: 0.01,
+    jamBias: 0.03,
+  },
 };
 
 /** Default roster → distinct styles (names alone used to be pure fluff). */
@@ -195,6 +206,7 @@ export const BOT_NAME_PERSONALITIES: Readonly<Record<string, BotPersonalityId>> 
   NutsNova: 'tight',
   CallCart: 'caller',
   RaiseRex: 'aggro',
+  Humanoid: 'humanoid',
 };
 
 /** Admin / seating overrides for how names resolve to styles. */
@@ -392,6 +404,119 @@ function lateFactor(seat: number, button: number, nSeats: number): number {
   return 1 - fromBtn / (nSeats - 1);
 }
 
+export type BoardWetness = 'dry' | 'semi' | 'wet';
+
+/**
+ * Classify flop/turn/river texture for humanoid bluff / pot-control lines.
+ * Dry = few draws; wet = flush/straight pressure or paired chaos.
+ */
+export function boardTexture(community: readonly Card[]): BoardWetness {
+  if (community.length < 3) return 'semi';
+
+  const suits = new Map<string, number>();
+  const ranks = community.map((c) => c.rank);
+  for (const c of community) {
+    suits.set(c.suit, (suits.get(c.suit) ?? 0) + 1);
+  }
+  const maxSuit = Math.max(...suits.values());
+  const uniqueRanks = new Set(ranks);
+  const paired = uniqueRanks.size < ranks.length;
+
+  const sorted = [...uniqueRanks].sort((a, b) => a - b);
+  let connected = 0;
+  for (let i = 1; i < sorted.length; i++) {
+    const gap = sorted[i]! - sorted[i - 1]!;
+    if (gap === 1) connected += 2;
+    else if (gap === 2) connected += 1;
+  }
+  // Wheel-ish A-2-3 connectivity
+  if (uniqueRanks.has(14) && (uniqueRanks.has(2) || uniqueRanks.has(3))) {
+    connected += 1;
+  }
+
+  let score = 0;
+  if (maxSuit >= 3) score += 3;
+  else if (maxSuit === 2) score += 1;
+  score += Math.min(3, connected);
+  if (paired) score += 1;
+
+  if (score <= 1) return 'dry';
+  if (score <= 3) return 'semi';
+  return 'wet';
+}
+
+/**
+ * Open / c-bet pot fraction from position + board texture.
+ * Late = larger steals; wet boards = smaller stabs.
+ */
+export function positionOpenSizeBb(
+  late: number,
+  texture: BoardWetness,
+  aggression: number,
+  kind: 'open' | 'cbet' | 'bluff',
+): number {
+  const agg = Math.max(0.35, aggression);
+  if (kind === 'open') {
+    return (2.15 + late * 0.55) * Math.min(1.55, 0.88 + agg * 0.14);
+  }
+  const texMul = texture === 'dry' ? 1.05 : texture === 'semi' ? 0.85 : 0.65;
+  const base = kind === 'bluff' ? 0.38 : 0.52;
+  return base * texMul * Math.min(1.45, 0.9 + agg * 0.12) * (0.92 + late * 0.12);
+}
+
+/**
+ * Human-like think time: short for free checks / clear folds, longer near
+ * pot-odds thresholds, big commits, and river spots. Soft boost for humanoid.
+ */
+export function botThinkDelayMs(
+  state: HandState,
+  seat: number,
+  config: TableConfig,
+  personality?: BotPersonality,
+): number {
+  const player = state.players[seat];
+  if (!player) return 700;
+
+  const style = personality ?? personalityForBot(player.userId, player.name);
+  const legal = legalActions(state, seat, config);
+  const callAmt = legal.callAmount;
+  const pot = Math.max(1, state.pot);
+  const potOdds = callAmt > 0 ? callAmt / (pot + callAmt) : 0;
+  const commitFrac = callAmt / Math.max(1, player.stack);
+  const facingBet = callAmt > 0;
+  const street = state.street;
+  const freeCheck = !facingBet && legal.types.includes('check');
+  const canOnlyFoldOrCall =
+    facingBet &&
+    !legal.types.includes('raise') &&
+    !legal.types.includes('bet') &&
+    legal.types.includes('fold');
+
+  let base = 620;
+  if (freeCheck) {
+    base = 480 + Math.floor(Math.random() * 280);
+  } else if (facingBet) {
+    base = 900 + Math.floor(Math.random() * 500);
+    // Harder when pot odds are middling (not a snap call/fold)
+    if (potOdds >= 0.18 && potOdds <= 0.42) base += 350;
+    if (commitFrac >= 0.25) base += 400;
+    if (commitFrac >= 0.45) base += 350;
+    if (street === 'river') base += 450;
+    else if (street === 'turn') base += 200;
+    if (canOnlyFoldOrCall && potOdds < 0.15) base = Math.min(base, 750);
+  } else {
+    base = 700 + Math.floor(Math.random() * 400);
+    if (street === 'river') base += 250;
+  }
+
+  if (style.id === 'humanoid') {
+    base = Math.floor(base * 1.12) + Math.floor(Math.random() * 180);
+  }
+
+  const jitter = Math.floor(Math.random() * 220) - 80;
+  return Math.max(420, Math.min(3200, base + jitter));
+}
+
 function sizeTo(
   legal: { minRaiseTo: number; maxRaiseTo: number },
   pot: number,
@@ -443,6 +568,7 @@ function raiseOrBet(
 /**
  * Chen preflop + Monte-Carlo postflop equity, pot-odds calling, and selective
  * bluffs — scaled per seat by {@link BotPersonality} (name map or userId hash).
+ * The `humanoid` style adds board-texture bluffs, slowplays, and river stabs.
  */
 export function chooseBotAction(
   state: HandState,
@@ -457,6 +583,7 @@ export function chooseBotAction(
   const seq = state.actionSeq;
   const player = state.players[seat]!;
   const style = personality ?? personalityForBot(player.userId, player.name);
+  const humanoid = style.id === 'humanoid';
   const bb = config.bigBlind;
   const pot = Math.max(1, state.pot);
   const hole = player.holeCards;
@@ -469,6 +596,7 @@ export function chooseBotAction(
   const preflop = street === 'preflop';
   const agg = Math.max(0.35, style.aggression);
   const bluff = Math.max(0, style.bluffRate);
+  const texture = boardTexture(state.community);
 
   if (!hole) {
     if (types.has('check')) return { type: 'check', seq };
@@ -513,10 +641,28 @@ export function chooseBotAction(
   // —— Free action ——
   if (types.has('check')) {
     const valueThr = (preflop ? 0.7 : 0.6) - (agg - 1) * 0.06;
+
+    // Humanoid slowplay: trap strong hands on dry flops heads-up
+    if (
+      humanoid &&
+      !preflop &&
+      street === 'flop' &&
+      texture === 'dry' &&
+      opponents <= 2 &&
+      equity >= 0.78 &&
+      r < 0.42
+    ) {
+      return { type: 'check', seq };
+    }
+
     if (equity >= valueThr) {
       const jam =
         equity >= 0.9 - style.jamBias && effectiveStackBb <= 18 + style.jamBias * 20;
-      const potFrac = (equity >= 0.85 ? 0.75 : 0.55) * agg;
+      let potFrac = (equity >= 0.85 ? 0.75 : 0.55) * agg;
+      if (humanoid && !preflop) {
+        potFrac = positionOpenSizeBb(late, texture, agg, 'cbet');
+        if (equity >= 0.85) potFrac = Math.max(potFrac, 0.65 * agg);
+      }
       const bet = raiseOrBet(
         types,
         'bet',
@@ -535,16 +681,33 @@ export function chooseBotAction(
 
     if (preflop && types.has('bet')) {
       const openChen = 10 - late * 4 - style.rangeOffset;
-      const stealOdds = clamp01(0.22 * bluff);
+      const stealOdds = clamp01(0.22 * bluff * (humanoid ? 1.15 : 1));
       if (chen >= openChen || (chen >= openChen - 1.5 && r < stealOdds)) {
-        const openBb = (2.2 + late * 0.35) * Math.min(1.6, 0.85 + agg * 0.15);
+        const openBb = humanoid
+          ? positionOpenSizeBb(late, 'semi', agg, 'open')
+          : (2.2 + late * 0.35) * Math.min(1.6, 0.85 + agg * 0.15);
         const openTo = snapToBb(bb * openBb, bb, legal.minRaiseTo, legal.maxRaiseTo);
         return { type: 'bet', amount: openTo, seq };
       }
     }
 
-    if (!preflop && opponents <= 2 && equity >= 0.28 - style.rangeOffset * 0.02 && equity < 0.55) {
-      if (r < clamp01((0.4 + late * 0.12) * bluff * Math.min(1.4, agg))) {
+    // Humanoid: texture-aware c-bet / river bluffs when checked to
+    if (humanoid && !preflop && types.has('bet') && opponents <= 2) {
+      const dryOk = texture === 'dry' || (texture === 'semi' && street !== 'river');
+      const bluffEqLo = street === 'river' ? 0.12 : 0.22;
+      const bluffEqHi = street === 'river' ? 0.38 : 0.52;
+      const freq =
+        street === 'river'
+          ? clamp01(0.28 * bluff * (texture === 'dry' ? 1.25 : 0.55))
+          : clamp01((0.48 + late * 0.14) * bluff * (texture === 'dry' ? 1.2 : texture === 'semi' ? 0.85 : 0.4));
+
+      if (dryOk && equity >= bluffEqLo && equity < bluffEqHi && r < freq) {
+        const potFrac = positionOpenSizeBb(
+          late,
+          texture,
+          agg,
+          street === 'river' ? 'bluff' : 'cbet',
+        );
         const bet = raiseOrBet(
           types,
           'bet',
@@ -553,7 +716,27 @@ export function chooseBotAction(
           state.currentBet,
           player.bet,
           bb,
-          0.4 * agg,
+          potFrac,
+          player.stack,
+          seq,
+          false,
+        );
+        if (bet) return bet;
+      }
+    }
+
+    if (!preflop && opponents <= 2 && equity >= 0.28 - style.rangeOffset * 0.02 && equity < 0.55) {
+      if (r < clamp01((0.4 + late * 0.12) * bluff * Math.min(1.4, agg))) {
+        const potFrac = humanoid ? positionOpenSizeBb(late, texture, agg, 'bluff') : 0.4 * agg;
+        const bet = raiseOrBet(
+          types,
+          'bet',
+          legal,
+          pot,
+          state.currentBet,
+          player.bet,
+          bb,
+          potFrac,
           player.stack,
           seq,
           false,
@@ -574,7 +757,13 @@ export function chooseBotAction(
   }
 
   // —— Facing aggression ——
-  const multiwayPenalty = opponents >= 3 ? 0.08 : opponents === 2 ? 0.03 : 0;
+  let multiwayPenalty = opponents >= 3 ? 0.08 : opponents === 2 ? 0.03 : 0;
+  // Humanoid pot-control: tighter calls multiway on wet boards
+  if (humanoid && !preflop && opponents >= 3 && texture === 'wet') {
+    multiwayPenalty += 0.05;
+  } else if (humanoid && !preflop && texture === 'wet') {
+    multiwayPenalty += 0.02;
+  }
   const streetBuffer =
     street === 'river' ? 0.04 : street === 'turn' ? 0.02 : preflop ? 0.03 : 0.01;
   const required = potOdds + multiwayPenalty + streetBuffer - style.callBias * 0.5;
@@ -587,6 +776,10 @@ export function chooseBotAction(
     equity >= thrRaise &&
     (preflop ? chen >= raiseChen : true)
   ) {
+    let potFrac = (equity >= 0.82 ? 0.9 : 0.65) * agg;
+    if (humanoid && !preflop) {
+      potFrac = positionOpenSizeBb(late, texture, agg, 'cbet') * (equity >= 0.82 ? 1.25 : 1);
+    }
     const action = raiseOrBet(
       types,
       preferRaise,
@@ -595,7 +788,7 @@ export function chooseBotAction(
       state.currentBet,
       player.bet,
       bb,
-      (equity >= 0.82 ? 0.9 : 0.65) * agg,
+      potFrac,
       player.stack,
       seq,
       equity >= 0.88 - style.jamBias && commitFrac > 0.2 - style.jamBias,
@@ -611,7 +804,7 @@ export function chooseBotAction(
     chen < 10 + style.rangeOffset * 0.3 &&
     late > 0.55 - (bluff > 1 ? 0.12 : 0) &&
     opponents <= 2 &&
-    r < clamp01(0.12 * bluff) &&
+    r < clamp01(0.12 * bluff * (humanoid ? 1.2 : 1)) &&
     commitFrac < 0.18 + style.jamBias * 0.1
   ) {
     const threeBet = raiseOrBet(
@@ -630,16 +823,20 @@ export function chooseBotAction(
     if (threeBet) return threeBet;
   }
 
-  // Postflop semi-bluff raise
+  // Postflop semi-bluff raise (humanoid prefers dry/semi boards)
+  const semiBluffOk =
+    !humanoid || texture !== 'wet' || (texture === 'wet' && equity >= 0.45);
   if (
     !preflop &&
     types.has('raise') &&
+    semiBluffOk &&
     equity >= 0.38 - style.rangeOffset * 0.015 &&
     equity < 0.62 &&
     potOdds < 0.35 + style.callBias * 0.2 &&
     opponents <= 2 &&
-    r < clamp01(0.18 * bluff)
+    r < clamp01(0.18 * bluff * (humanoid && texture === 'dry' ? 1.25 : 1))
   ) {
+    const potFrac = humanoid ? positionOpenSizeBb(late, texture, agg, 'bluff') * 1.4 : 0.7 * agg;
     const raise = raiseOrBet(
       types,
       'raise',
@@ -648,7 +845,7 @@ export function chooseBotAction(
       state.currentBet,
       player.bet,
       bb,
-      0.7 * agg,
+      potFrac,
       player.stack,
       seq,
       false,
@@ -661,7 +858,10 @@ export function chooseBotAction(
     const implied =
       !preflop && deep && callEq > potOdds - 0.04 && callEq < required ? 0.06 : 0;
     const callThr = required - implied;
-    const commitCap = 0.55 + style.callBias * 0.8 + (style.id === 'caller' ? 0.12 : 0);
+    let commitCap = 0.55 + style.callBias * 0.8 + (style.id === 'caller' ? 0.12 : 0);
+    if (humanoid && !preflop && texture === 'wet' && opponents >= 3) {
+      commitCap -= 0.08;
+    }
 
     if (callEq + 0.02 >= callThr && commitFrac < commitCap) return { type: 'call', seq };
     if (preflop && chen >= 14 - style.rangeOffset * 0.4 && commitFrac < 0.45 + style.callBias) {

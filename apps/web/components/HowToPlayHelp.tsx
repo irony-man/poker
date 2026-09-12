@@ -252,7 +252,7 @@ export function HowToPlayHelp({ className = '' }: { className?: string }) {
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="rounded px-1.5 py-0.5 text-xs text-ink-strong-muted hover:text-sidebar"
+              className="rounded px-1.5 py-0.5 text-xs text-muted hover:text-sidebar"
               aria-label="Close help"
             >
               Close
@@ -273,8 +273,8 @@ export function HowToPlayHelp({ className = '' }: { className?: string }) {
                 aria-pressed={tab === id}
                 className={`rounded px-2.5 py-1 text-[11px] font-display font-semibold uppercase tracking-wider transition ${
                   tab === id
-                    ? 'bg-sidebar text-mushroom'
-                    : 'text-ink-strong-muted hover:bg-sidebar/8 hover:text-sidebar'
+                    ? 'bg-sidebar text-on-chrome'
+                    : 'text-muted hover:bg-sidebar/8 hover:text-sidebar'
                 }`}
               >
                 {label}
@@ -291,37 +291,37 @@ export function HowToPlayHelp({ className = '' }: { className?: string }) {
                       <p className="text-[11px] font-display font-semibold uppercase tracking-wider text-sidebar/70">
                         {tip.title}
                       </p>
-                      <p className="mt-0.5 text-xs leading-relaxed text-ink-strong-muted">
+                      <p className="mt-0.5 text-xs leading-relaxed text-muted">
                         {tip.body}
                       </p>
                     </li>
                   ))}
                 </ul>
-                <p className="mt-3 border-t border-sidebar/10 pt-2 text-[11px] leading-snug text-ink-strong-muted">
+                <p className="mt-3 border-t border-sidebar/10 pt-2 text-[11px] leading-snug text-muted">
                   Texas Hold&apos;em · highest hand wins · use your two cards + five community
                   cards
                 </p>
               </div>
             ) : (
               <>
-                <p className="px-3 pb-2 pt-3 text-[11px] leading-relaxed text-ink-strong-muted sm:px-4">
+                <p className="px-3 pb-2 pt-3 text-[11px] leading-relaxed text-muted sm:px-4">
                   Strongest at the top. Dimmed cards are kickers (not part of the core hand).
                 </p>
                 <ol className="divide-y divide-sidebar/10 border-y border-sidebar/10">
                   {HAND_RANKINGS.map((hand, i) => (
                     <li
                       key={hand.name}
-                      className="w-full bg-mushroom/40 px-3 py-2.5 sm:px-4"
+                      className="w-full bg-page/40 px-3 py-2.5 sm:px-4"
                     >
                       <div className="flex w-full items-start gap-2.5">
-                        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sidebar text-[11px] font-display font-bold text-mushroom">
+                        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sidebar text-[11px] font-display font-bold text-on-chrome">
                           {i + 1}
                         </span>
                         <div className="min-w-0 flex-1">
                           <p className="text-[11px] font-display font-bold uppercase tracking-wider text-sidebar">
                             {hand.name}
                           </p>
-                          <p className="mt-0.5 text-[11px] leading-snug text-ink-strong-muted">
+                          <p className="mt-0.5 text-[11px] leading-snug text-muted">
                             {hand.desc}
                           </p>
                           <div className="mt-2 w-full">
@@ -332,7 +332,7 @@ export function HowToPlayHelp({ className = '' }: { className?: string }) {
                     </li>
                   ))}
                 </ol>
-                <p className="px-3 py-3 text-[11px] leading-snug text-ink-strong-muted sm:px-4">
+                <p className="px-3 py-3 text-[11px] leading-snug text-muted sm:px-4">
                   Texas Hold&apos;em · best 5-card hand from 2 hole cards + board
                 </p>
               </>

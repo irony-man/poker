@@ -348,7 +348,7 @@ export function SeatView({
                 >
                   <div
                     className={`truncate px-1 py-0.5 text-center text-[11px] font-bold leading-none ${
-                      isSelf ? 'bg-mushroom text-sidebar' : 'bg-[#efe6e4] text-sidebar'
+                      isSelf ? 'bg-page text-sidebar' : 'bg-[#efe6e4] text-sidebar'
                     } ${canFriend ? 'hover:brightness-95' : ''}`}
                   >
                     {displayName}

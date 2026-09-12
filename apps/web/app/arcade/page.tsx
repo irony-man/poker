@@ -26,10 +26,10 @@ export default function ArcadePage() {
         {ARCADE_GAMES.map((game) => (
           <div key={game.id} className="surface-card flex flex-col gap-3 p-4">
             <div>
-              <p className="font-display text-lg font-bold uppercase tracking-wider text-ink-strong">
+              <p className="font-display text-lg font-bold uppercase tracking-wider text-primary">
                 {game.title}
               </p>
-              <p className="mt-1 text-sm text-ink-strong-muted">{game.blurb}</p>
+              <p className="mt-1 text-sm text-muted">{game.blurb}</p>
             </div>
             <Button href={game.href} className="mt-auto min-h-11 w-full">
               Play
@@ -37,17 +37,17 @@ export default function ArcadePage() {
           </div>
         ))}
       </div>
-      <p className="mt-4 text-center text-xs text-ink-strong-muted">
+      <p className="mt-4 text-center text-xs text-muted">
         Prefer a direct link?{' '}
-        <Link href="/ludo" className="underline hover:text-ink-strong">
+        <Link href="/ludo" className="underline hover:text-primary">
           Ludo
         </Link>
         {' · '}
-        <Link href="/snakes" className="underline hover:text-ink-strong">
+        <Link href="/snakes" className="underline hover:text-primary">
           Snakes
         </Link>
         {' · '}
-        <Link href="/memory" className="underline hover:text-ink-strong">
+        <Link href="/memory" className="underline hover:text-primary">
           Memory
         </Link>
       </p>

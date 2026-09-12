@@ -55,7 +55,7 @@ function SignUpForm() {
         <h1 className="font-title-page">
           {pageCopy.title}
         </h1>
-        <p className="mt-2 text-sm text-ink-strong-muted">{pageCopy.subtitle}</p>
+        <p className="mt-2 text-sm text-muted">{pageCopy.subtitle}</p>
       </div>
       <form onSubmit={onSubmit}>
         <LobbySplitCard
@@ -101,7 +101,7 @@ function SignUpForm() {
           <Button disabled={busy} type="submit" className="min-h-11 w-full">
             {busy ? 'Creating…' : 'Create account'}
           </Button>
-          <p className="text-sm text-ink-strong-muted">
+          <p className="text-sm text-muted">
             Already have an account?{' '}
             <Link
               href={authHref('sign-in', returnTo)}

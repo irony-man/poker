@@ -224,7 +224,7 @@ export default function ContestPage() {
     <div className="lobby-fade-up mx-auto w-full max-w-3xl">
       <Link
         href="/contests"
-        className="inline-flex items-center gap-1.5 text-xs font-display font-semibold uppercase tracking-[0.14em] text-ink-strong-muted transition hover:text-sidebar"
+        className="inline-flex items-center gap-1.5 text-xs font-display font-semibold uppercase tracking-[0.14em] text-muted transition hover:text-sidebar"
       >
         <span aria-hidden>←</span> Contests
       </Link>
@@ -247,7 +247,7 @@ export default function ContestPage() {
         </h1>
         <p className="font-prose-muted mt-2 sm:text-base">
           Code{' '}
-          <span className="font-mono font-semibold tracking-widest text-ink-strong">
+          <span className="font-mono font-semibold tracking-widest text-primary">
             {contest.inviteCode}
           </span>
           {' · '}
@@ -317,10 +317,10 @@ export default function ContestPage() {
       <section className="hud-panel mt-6 p-5 sm:p-6">
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="hud-label">Entrants</h2>
-          <span className="text-xs font-medium tabular text-ink-strong-muted">{seatsLabel}</span>
+          <span className="text-xs font-medium tabular text-muted">{seatsLabel}</span>
         </div>
         {contest.entrants.length === 0 && (contest.pendingInvites?.length ?? 0) === 0 ? (
-          <p className="mt-3 text-sm text-ink-strong-muted">No one registered yet.</p>
+          <p className="mt-3 text-sm text-muted">No one registered yet.</p>
         ) : (
           <ul className="mt-3 grid gap-2 sm:grid-cols-2">
             {contest.entrants.map((e) => {
@@ -330,10 +330,10 @@ export default function ContestPage() {
                   key={e.userId}
                   className="surface-row flex items-center justify-between gap-2"
                 >
-                  <span className="min-w-0 truncate text-sm font-medium text-ink-strong">
+                  <span className="min-w-0 truncate text-sm font-medium text-primary">
                     {e.name}
                     {e.isBot ? (
-                      <span className="ml-1.5 text-[10px] font-display font-semibold uppercase tracking-wide text-ink-strong-muted">
+                      <span className="ml-1.5 text-[10px] font-display font-semibold uppercase tracking-wide text-muted">
                         bot
                       </span>
                     ) : null}
@@ -356,7 +356,7 @@ export default function ContestPage() {
                 key={`invite-${inv.userId}`}
                 className="surface-empty flex items-center justify-between gap-2 border-sidebar/18"
               >
-                <span className="min-w-0 truncate text-sm font-medium text-ink-strong-muted">
+                <span className="min-w-0 truncate text-sm font-medium text-muted">
                   {inv.name}
                 </span>
                 <span className="shrink-0 text-[10px] font-display font-semibold uppercase tracking-wide text-sidebar/65">
@@ -414,7 +414,7 @@ export default function ContestPage() {
       {contest.status === 'running' && contest.mode === 'rounds' && contest.handLimit && (
         <section className="hud-panel mt-6 p-5 sm:p-6">
           <h2 className="hud-label">Progress</h2>
-          <p className="mt-2 text-sm font-medium text-ink-strong">
+          <p className="mt-2 text-sm font-medium text-primary">
             Hand {Math.min(contest.handsPlayed, contest.handLimit)} of {contest.handLimit}
           </p>
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-sidebar/10">
@@ -439,7 +439,7 @@ export default function ContestPage() {
                   key={p.userId}
                   className="surface-row flex items-center justify-between gap-2 py-2 text-sm"
                 >
-                  <span className="min-w-0 truncate font-medium text-ink-strong">{p.name}</span>
+                  <span className="min-w-0 truncate font-medium text-primary">{p.name}</span>
                   <span className="flex shrink-0 items-center gap-2 font-mono text-xs font-semibold text-sidebar">
                     {(p.prizeWhuffies ?? 0) > 0 ? (
                       <MoneyAmount

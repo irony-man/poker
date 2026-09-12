@@ -6,6 +6,7 @@ import {
   applyAction,
   applyTimeout,
   cardToString,
+  botThinkDelayMs,
   chooseBotAction,
   createEmptyTable,
   isBotUserId,
@@ -497,7 +498,7 @@ export function OfflineTableView({
       if (!actor) return;
 
       if (isBotUserId(actor.userId)) {
-        const delay = 650 + Math.floor(Math.random() * 1100);
+        const delay = botThinkDelayMs(s, s.toAct, config);
         setTurnEndsAt(Date.now() + delay);
         timerRef.current = setTimeout(() => {
           setState((curr) => {
@@ -624,7 +625,7 @@ export function OfflineTableView({
   } = useHandPresentation(publicTable, HUMAN_ID, dismissedWinHandId);
 
   if (!publicTable || !bootstrapped) {
-    return <p className="text-ink-strong-muted">Dealing offline table…</p>;
+    return <p className="text-muted">Dealing offline table…</p>;
   }
 
   const isMyTurn = publicTable.toAct === mySeat && !!(priv?.legal?.types.length);

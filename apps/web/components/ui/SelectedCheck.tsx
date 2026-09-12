@@ -2,7 +2,7 @@
 export function SelectedCheck({ className = '' }: { className?: string }) {
   return (
     <span
-      className={`flex h-6 w-6 items-center justify-center rounded-full bg-sidebar text-mushroom shadow-sm ${className}`.trim()}
+      className={`flex h-6 w-6 items-center justify-center rounded-full bg-sidebar text-on-chrome shadow-sm ${className}`.trim()}
     >
       <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden>
         <path

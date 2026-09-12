@@ -156,7 +156,7 @@ function actionLines(actions: HandAction[], players: HandPlayer[]): ActionLine[]
 function ActionLog({ actions, players }: { actions: HandAction[]; players: HandPlayer[] }) {
   const lines = actionLines(actions, players);
   if (lines.length === 0) {
-    return <p className="text-xs text-ink-strong-muted">No action log</p>;
+    return <p className="text-xs text-muted">No action log</p>;
   }
   const groups: { street: string; lines: ActionLine[] }[] = [];
   for (const line of lines) {
@@ -165,10 +165,10 @@ function ActionLog({ actions, players }: { actions: HandAction[]; players: HandP
     else groups.push({ street: line.street, lines: [line] });
   }
   return (
-    <ul className="max-h-64 space-y-1 overflow-y-auto text-xs text-ink-strong">
+    <ul className="max-h-64 space-y-1 overflow-y-auto text-xs text-primary">
       {groups.map((group) => (
         <Fragment key={group.street}>
-          <li className="pt-1.5 text-[10px] font-display font-semibold uppercase tracking-[0.14em] text-ink-strong-muted first:pt-0">
+          <li className="pt-1.5 text-[10px] font-display font-semibold uppercase tracking-[0.14em] text-muted first:pt-0">
             {group.street}
           </li>
           {group.lines.map((line, i) => (
@@ -184,7 +184,7 @@ function ActionLog({ actions, players }: { actions: HandAction[]; players: HandP
 
 function CardRow({ codes, highlight }: { codes: string[]; highlight?: boolean }) {
   if (codes.length === 0) {
-    return <span className="text-xs text-ink-strong-muted">—</span>;
+    return <span className="text-xs text-muted">—</span>;
   }
   return (
     <div className="flex items-center gap-1">
@@ -319,24 +319,24 @@ export function HandsSection({ token }: { token: string }) {
           {items.map((hand) => (
             <Fragment key={hand.id}>
               <Tr onClick={() => void toggleExpand(hand)}>
-                <Td className="tabular-nums text-ink-strong-muted">{formatWhen(hand.startedAt)}</Td>
-                <Td className="capitalize text-ink-strong-muted">{hand.source}</Td>
-                <Td className="font-mono text-xs text-ink-strong">
+                <Td className="tabular-nums text-muted">{formatWhen(hand.startedAt)}</Td>
+                <Td className="capitalize text-muted">{hand.source}</Td>
+                <Td className="font-mono text-xs text-primary">
                   {hand.tableId}
                   {hand.contestId ? (
-                    <span className="mt-0.5 block text-[10px] text-ink-strong-muted">
+                    <span className="mt-0.5 block text-[10px] text-muted">
                       Contest {hand.contestId}
                     </span>
                   ) : null}
                 </Td>
-                <Td className="text-ink-strong-muted">{hand.playerNames.join(', ') || '—'}</Td>
-                <Td className="text-ink-strong">{winnerLine(hand)}</Td>
+                <Td className="text-muted">{hand.playerNames.join(', ') || '—'}</Td>
+                <Td className="text-primary">{winnerLine(hand)}</Td>
               </Tr>
               {expandedId === hand.id ? (
-                <tr className="border-b border-sidebar/6 bg-mushroom/20">
+                <tr className="border-b border-sidebar/6 bg-page/20">
                   <Td colSpan={5} className="px-3 py-3">
                     {detailLoading ? (
-                      <p className="text-sm text-ink-strong-muted">Loading…</p>
+                      <p className="text-sm text-muted">Loading…</p>
                     ) : detail ? (
                       <div className="space-y-4">
                         <div>
@@ -347,7 +347,7 @@ export function HandsSection({ token }: { token: string }) {
                           <Subhead>Hands</Subhead>
                           <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                             {detail.players.length === 0 ? (
-                              <li className="text-xs text-ink-strong-muted">No player cards saved</li>
+                              <li className="text-xs text-muted">No player cards saved</li>
                             ) : (
                               detail.players.map((p) => {
                                 const won = detail.winnerSeats.includes(p.seat);
@@ -357,7 +357,7 @@ export function HandsSection({ token }: { token: string }) {
                                     className="flex items-center gap-3 rounded-lg border border-sidebar/10 bg-cream/80 px-3 py-2"
                                   >
                                     <div className="min-w-0 flex-1">
-                                      <p className="truncate text-sm font-medium text-ink-strong">
+                                      <p className="truncate text-sm font-medium text-primary">
                                         {p.name}
                                         {won ? (
                                           <span className="ml-1.5 text-[10px] font-display font-semibold uppercase tracking-[0.12em] text-sidebar">
@@ -365,7 +365,7 @@ export function HandsSection({ token }: { token: string }) {
                                           </span>
                                         ) : null}
                                       </p>
-                                      <p className="text-[10px] text-ink-strong-muted">Seat {p.seat}</p>
+                                      <p className="text-[10px] text-muted">Seat {p.seat}</p>
                                     </div>
                                     <CardRow codes={p.holeCards} highlight={won} />
                                   </li>
@@ -380,7 +380,7 @@ export function HandsSection({ token }: { token: string }) {
                         </div>
                       </div>
                     ) : (
-                      <p className="text-sm text-ink-strong-muted">No detail</p>
+                      <p className="text-sm text-muted">No detail</p>
                     )}
                   </Td>
                 </tr>

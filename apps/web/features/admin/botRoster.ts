@@ -4,7 +4,7 @@ import type { BotGroup } from '@/lib/api';
 export const MAX_BOT_GROUPS = 20;
 
 export const DEFAULT_BOT_NAMES =
-  'AceBot, aggro\nRiverRat, caller\nBluffByte, lag\nPotOdds, balanced\nChipShark, aggro\nFoldBot, nit\nAllInAnnie, maniac\nNutsNova, tight\nCallCart, caller\nRaiseRex, aggro';
+  'AceBot, aggro\nRiverRat, caller\nBluffByte, lag\nPotOdds, balanced\nChipShark, aggro\nFoldBot, nit\nAllInAnnie, maniac\nNutsNova, tight\nCallCart, caller\nRaiseRex, aggro\nHumanoid, humanoid';
 
 export const DEFAULT_BOT_NAME_LIST = DEFAULT_BOT_NAMES.split('\n').map(
   (line) => line.split(',')[0]!.trim(),
@@ -20,6 +20,7 @@ export const PERSONALITY_LABELS: Record<BotPersonalityId, string> = {
   caller: 'Caller',
   nit: 'Nit',
   lag: 'LAG',
+  humanoid: 'Humanoid',
 };
 
 const PERSONALITY_TOKEN_TO_ID: Record<string, BotPersonalityId> = (() => {

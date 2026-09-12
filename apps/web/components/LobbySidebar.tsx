@@ -132,8 +132,8 @@ export function LobbySidebar({
               className={cn(
                 'nav-sidebar-item flex items-center justify-between gap-2',
                 active
-                  ? 'nav-sidebar-item-active bg-mushroom/15 text-mushroom'
-                  : 'text-mushroom/90 hover:bg-mushroom/12 hover:text-mushroom',
+                  ? 'nav-sidebar-item-active bg-on-chrome/15 text-on-chrome'
+                  : 'text-on-chrome/90 hover:bg-on-chrome/12 hover:text-on-chrome',
               )}
             >
               <span>{t.label}</span>
@@ -165,8 +165,8 @@ export function LobbySidebar({
             <div
               className={`rounded-xl border transition ${
                 profileActive
-                  ? 'border-mushroom/30 bg-mushroom/12'
-                  : 'border-mushroom/12 bg-mushroom/[0.06] hover:border-mushroom/25 hover:bg-mushroom/10'
+                  ? 'border-subtle/30 bg-on-chrome/12'
+                  : 'border-subtle/12 bg-on-chrome/[0.06] hover:border-subtle/25 hover:bg-on-chrome/10'
               }`}
             >
               <div className="flex items-stretch gap-0.5 p-1.5">
@@ -192,7 +192,7 @@ export function LobbySidebar({
                     />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-display text-sm font-semibold leading-tight text-mushroom">
+                    <span className="block truncate font-display text-sm font-semibold leading-tight text-on-chrome">
                       {handle || 'Player'}
                     </span>
                     {chipBalance != null ? (
@@ -200,7 +200,7 @@ export function LobbySidebar({
                         <MoneyAmount
                           amount={chipBalance}
                           showChips
-                          className="text-xs font-medium text-mushroom/90"
+                          className="text-xs font-medium text-on-chrome/90"
                           iconClassName="opacity-80"
                           chipsClassName="!h-3.5 sm:!h-3.5"
                         />
@@ -208,21 +208,21 @@ export function LobbySidebar({
                           <MoneyAmount
                             amount={whuffieBalance}
                             showWhuffies
-                            className="text-[11px] font-medium text-mushroom/85"
+                            className="text-[11px] font-medium text-on-chrome/85"
                           />
                         ) : null}
                       </span>
                     ) : (
-                      <span className="mt-1 block text-[11px] text-mushroom/85">Bankroll…</span>
+                      <span className="mt-1 block text-[11px] text-on-chrome/85">Bankroll…</span>
                     )}
                   </span>
-                  <ChevronIcon className="h-4 w-4 shrink-0 text-mushroom/45 transition group-hover:translate-x-0.5 group-hover:text-mushroom/70" />
+                  <ChevronIcon className="h-4 w-4 shrink-0 text-on-chrome/45 transition group-hover:translate-x-0.5 group-hover:text-on-chrome/70" />
                 </Link>
                 {handle ? (
                   <button
                     type="button"
                     onClick={() => void onCopyUsername()}
-                    className="inline-flex w-7 shrink-0 items-center justify-center self-stretch rounded-lg text-mushroom/90 transition hover:bg-mushroom/12 hover:text-mushroom"
+                    className="inline-flex w-7 shrink-0 items-center justify-center self-stretch rounded-lg text-on-chrome/90 transition hover:bg-on-chrome/12 hover:text-on-chrome"
                     aria-label={copied ? 'Username copied' : 'Copy username'}
                     title={copied ? 'Copied' : 'Copy username'}
                   >
@@ -238,7 +238,7 @@ export function LobbySidebar({
             <button
               type="button"
               onClick={onLogout}
-              className="w-full rounded-lg px-2 py-1.5 text-center text-xs font-display font-semibold uppercase tracking-[0.14em] text-mushroom/90 transition hover:bg-mushroom/8 hover:text-mushroom"
+              className="w-full rounded-lg px-2 py-1.5 text-center text-xs font-display font-semibold uppercase tracking-[0.14em] text-on-chrome/90 transition hover:bg-on-chrome/8 hover:text-on-chrome"
             >
               Sign out
             </button>
@@ -247,7 +247,7 @@ export function LobbySidebar({
           <div className="space-y-2">
             <Link
               href={authHref('sign-in', pathname)}
-              className="block rounded-xl border border-mushroom/20 bg-mushroom/10 px-3 py-2.5 text-center text-xs font-display font-bold uppercase tracking-wider text-mushroom transition hover:border-mushroom/35 hover:bg-mushroom/18"
+              className="block rounded-xl border border-subtle/20 bg-on-chrome/10 px-3 py-2.5 text-center text-xs font-display font-bold uppercase tracking-wider text-on-chrome transition hover:border-subtle/35 hover:bg-on-chrome/18"
             >
               Sign in
             </Link>

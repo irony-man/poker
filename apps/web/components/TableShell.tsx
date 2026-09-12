@@ -69,7 +69,7 @@ function EmojiOverlay() {
         <span className="drop-shadow-[0_8px_24px_rgba(0,0,0,0.65)]">
           <AppleEmoji emoji={burst.emoji} size={72} decorative />
         </span>
-        <span className="rounded-full border border-mushroom/40 bg-sidebar/90 px-3 py-1 text-xs font-display font-semibold uppercase tracking-wider text-mushroom backdrop-blur">
+        <span className="rounded-full border border-subtle/40 bg-sidebar/90 px-3 py-1 text-xs font-display font-semibold uppercase tracking-wider text-on-chrome backdrop-blur">
           {burst.name}
         </span>
       </div>
@@ -251,7 +251,7 @@ export function TableShell({
 
       {!narrow && desktopOpen ? (
         <aside
-          className="play-chat-column relative flex shrink-0 flex-col overflow-hidden border-l border-sidebar/12 bg-mushroom shadow-[-8px_0_28px_rgb(29_4_50/0.06)]"
+          className="play-chat-column relative flex shrink-0 flex-col overflow-hidden border-l border-sidebar/12 bg-page shadow-[-8px_0_28px_rgb(29_4_50/0.06)]"
           style={{ width: chatWidth }}
         >
           {/* Drag handle on the left edge — laptop resize */}
@@ -326,7 +326,7 @@ export function TableShell({
         <button
           type="button"
           onClick={() => setChatVisible(true)}
-          className="play-chat-toggle fixed right-4 top-1/2 z-40 flex -translate-y-1/2 flex-col items-center gap-2 rounded-full border border-sidebar/20 bg-white px-3 py-5 text-[10px] font-display font-bold uppercase tracking-[0.18em] text-sidebar shadow-[0_10px_28px_rgb(29_4_50/0.12)] transition hover:border-sidebar/35 hover:bg-mushroom"
+          className="play-chat-toggle fixed right-4 top-1/2 z-40 flex -translate-y-1/2 flex-col items-center gap-2 rounded-full border border-sidebar/20 bg-white px-3 py-5 text-[10px] font-display font-bold uppercase tracking-[0.18em] text-sidebar shadow-[0_10px_28px_rgb(29_4_50/0.12)] transition hover:border-sidebar/35 hover:bg-page"
           style={{ writingMode: 'vertical-rl' }}
           title="Show chat"
         >
@@ -353,7 +353,7 @@ export function TableShell({
             className="absolute inset-0 bg-sidebar/35 backdrop-blur-[2px]"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="play-chat-column relative z-10 flex h-full w-[min(100%,22rem)] flex-col overflow-hidden border-l border-sidebar/12 bg-mushroom shadow-[-12px_0_40px_rgb(29_4_50/0.18)] pb-[env(safe-area-inset-bottom)]">
+          <aside className="play-chat-column relative z-10 flex h-full w-[min(100%,22rem)] flex-col overflow-hidden border-l border-sidebar/12 bg-page shadow-[-12px_0_40px_rgb(29_4_50/0.18)] pb-[env(safe-area-inset-bottom)]">
             <ChatPanel
               onSend={onSend}
               onEmoji={onEmoji}

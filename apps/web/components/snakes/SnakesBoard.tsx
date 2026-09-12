@@ -35,7 +35,7 @@ export function SnakesBoard({
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col gap-3">
       <div
-        className="grid aspect-square w-full gap-0.5 rounded-xl border border-on-chrome/15 bg-ink-raised p-1.5 sm:gap-1 sm:p-2"
+        className="grid aspect-square w-full gap-0.5 rounded-xl border border-on-chrome/15 bg-raised p-1.5 sm:gap-1 sm:p-2"
         style={{ gridTemplateColumns: 'repeat(10, minmax(0, 1fr))' }}
         role="img"
         aria-label="Snakes and ladders board"
@@ -92,7 +92,7 @@ export function SnakesBoard({
       <div className="flex items-center justify-center gap-3">
         <div
           className={cn(
-            'flex h-14 w-14 items-center justify-center rounded-xl border border-on-chrome/25 bg-ink-raised font-display text-2xl font-bold tabular-nums text-on-chrome',
+            'flex h-14 w-14 items-center justify-center rounded-xl border border-on-chrome/25 bg-raised font-display text-2xl font-bold tabular-nums text-on-chrome',
             rolling && 'animate-pulse',
           )}
           aria-live="polite"

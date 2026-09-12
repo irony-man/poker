@@ -58,7 +58,8 @@ export type BotPersonalityId =
   | 'maniac'
   | 'caller'
   | 'nit'
-  | 'lag';
+  | 'lag'
+  | 'humanoid';
 
 export interface BotGroup {
   id: string;

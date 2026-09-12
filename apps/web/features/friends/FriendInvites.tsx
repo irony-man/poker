@@ -32,7 +32,7 @@ export function FriendInvites({
               return (
                 <li
                   key={req.id}
-                  className="surface-row flex flex-wrap items-center gap-2 bg-mushroom/50"
+                  className="surface-row flex flex-wrap items-center gap-2 bg-page/50"
                 >
                   <Link
                     href={publicProfileHref(handle)}
@@ -125,7 +125,7 @@ export function FriendInvites({
                       title={c.challenger.name}
                     />
                   </Link>
-                  <span className="min-w-0 flex-1 text-sm leading-snug text-ink-strong">
+                  <span className="min-w-0 flex-1 text-sm leading-snug text-primary">
                     <Link
                       href={publicProfileHref(handle)}
                       className="font-medium hover:underline"
@@ -133,9 +133,9 @@ export function FriendInvites({
                       {c.challenger.name}
                     </Link>
                     {c.groupName ? (
-                      <span className="text-ink-strong-muted"> · {c.groupName}</span>
+                      <span className="text-muted"> · {c.groupName}</span>
                     ) : (
-                      <span className="text-ink-strong-muted"> {inviteLabel}</span>
+                      <span className="text-muted"> {inviteLabel}</span>
                     )}
                   </span>
                   <div className="flex shrink-0 items-center gap-1.5">

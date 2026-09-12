@@ -107,7 +107,7 @@ export function MobileQuickReactions({ onEmoji }: { onEmoji: (emoji: string) => 
               type="button"
               onClick={() => setMoreOpen(false)}
               aria-label="Close reactions"
-              className="rounded px-1.5 py-0.5 text-[11px] font-display font-semibold uppercase tracking-wider text-ink-strong-muted hover:text-sidebar"
+              className="rounded px-1.5 py-0.5 text-[11px] font-display font-semibold uppercase tracking-wider text-muted hover:text-sidebar"
             >
               Close
             </button>
@@ -154,7 +154,7 @@ export function MobileQuickReactions({ onEmoji }: { onEmoji: (emoji: string) => 
           className={`shrink-0 rounded-full px-2.5 py-1.5 text-[11px] font-display font-bold uppercase tracking-wider transition ${
             moreOpen
               ? 'bg-sidebar text-on-chrome'
-              : 'bg-sidebar/8 text-ink-strong hover:bg-sidebar/12'
+              : 'bg-sidebar/8 text-primary hover:bg-sidebar/12'
           }`}
         >
           {moreOpen ? 'Done' : 'More'}

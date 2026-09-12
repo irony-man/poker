@@ -38,7 +38,7 @@ export function PlayerAvatar({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-full bg-ink-raised ${
+      className={`relative overflow-hidden rounded-full bg-raised ${
         fill ? 'h-full w-full' : 'shrink-0'
       } ${className}`}
       style={fill ? undefined : { width: size, height: size }}

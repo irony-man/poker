@@ -57,6 +57,14 @@ data class PokrPalette(
     val stackRed: Color,
     /** Text/icons on purple sidebar chrome. */
     val onChrome: Color,
+    /** Semantic page ground — mirrors web `--bg-page`. */
+    val bgPage: Color = mushroom,
+    /** Semantic body text — mirrors web `--text-primary` (page / lobby default). */
+    val textPrimary: Color = inkStrong,
+    /** Semantic muted text — mirrors web `--text-muted`. */
+    val textMuted: Color = inkStrongMuted,
+    /** Semantic chrome fill — mirrors web `--bg-chrome`. */
+    val bgChrome: Color = sidebar,
 ) {
     companion object {
         val Classic = PokrPalette(
@@ -80,6 +88,10 @@ data class PokrPalette(
             creamMuted = Color(0xFFCEBECC),
             stackRed = Color(0xFF1D0432),
             onChrome = Color(0xFFE6D9D7),
+            bgPage = Color(0xFFE6D9D7),
+            textPrimary = Color(0xFF1D0432),
+            textMuted = Color(0xFF44304A),
+            bgChrome = Color(0xFF1D0432),
         )
 
         /** Matches web `html[data-ui-theme='v2']` token remap. */
@@ -104,6 +116,10 @@ data class PokrPalette(
             creamMuted = Color(0xFFD6C4E8),
             stackRed = Color(0xFF5B21B6),
             onChrome = Color(0xFFFFFFFF),
+            bgPage = Color(0xFFFDE93D),
+            textPrimary = Color(0xFF1A1028),
+            textMuted = Color(0xFF483060),
+            bgChrome = Color(0xFF5B21B6),
         )
 
         /** Matches web `html[data-ui-theme='v3']` dusk-aurora token remap. */
@@ -129,6 +145,10 @@ data class PokrPalette(
             creamMuted = Color(0xFFD6CCE8),
             stackRed = Color(0xFF6040A8),
             onChrome = Color(0xFFFFFFFF),
+            bgPage = Color(0xFF2A1848),
+            textPrimary = Color(0xFFFFFFFF),
+            textMuted = Color(0xFFD6CCE8),
+            bgChrome = Color(0xFF6040A8),
         )
     }
 }
@@ -159,6 +179,15 @@ object PokrColors {
     val LobbyPanel get() = active.lobbyPanel
     val LobbyCard get() = active.lobbyCard
     val White = Color(0xFFFFFFFF)
+
+    /** Semantic aliases — prefer these for new Compose screens. */
+    val BgPage get() = active.bgPage
+    val BgPanel get() = active.lobbyPanel
+    val BgRaised get() = active.lobbyCard
+    val BgOverlay get() = active.inkOverlay
+    val BgChrome get() = active.bgChrome
+    val TextPrimary get() = active.textPrimary
+    val TextMuted get() = active.textMuted
 
     val FeltGreen get() = active.feltGreen
     val FeltGreenDark get() = active.feltGreenDark

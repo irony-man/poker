@@ -53,7 +53,7 @@ export function SoundsSection({
           onChange={onFileSelected}
         />
         {soundUploadDisabled ? (
-          <p className="text-xs text-ink-strong-muted">
+          <p className="text-xs text-muted">
             File uploads require AWS env vars on the server (S3_BUCKET, AWS_ACCESS_KEY_ID, etc.).
           </p>
         ) : null}
@@ -70,7 +70,7 @@ export function SoundsSection({
             >
               <div>
                 <span className={FORM_LABEL_CLASS}>{TABLE_SOUND_LABELS[kind]}</span>
-                <span className="mt-1 block font-mono text-[11px] text-ink-strong-muted">{kind}</span>
+                <span className="mt-1 block font-mono text-[11px] text-muted">{kind}</span>
               </div>
               <TextField
                 type="text"

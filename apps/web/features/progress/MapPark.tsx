@@ -32,7 +32,7 @@ export function MapPark({
         </defs>
         <rect width="100%" height="100%" fill={`url(#${feltId})`} />
       </svg>
-      <div className="absolute inset-0 text-[2.4rem] leading-none text-mushroom/15">
+      <div className="absolute inset-0 text-[2.4rem] leading-none text-on-chrome/15">
         {Array.from({ length: 18 }, (_, i) => (
           <span
             key={i}

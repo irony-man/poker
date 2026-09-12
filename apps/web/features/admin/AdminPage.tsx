@@ -916,7 +916,7 @@ function AdminPageInner() {
     return (
       <AdminShell tab={tab} onSelectTab={selectTab} stats={null} economy={null}>
         <Section title="Sign in required" description="Admin is limited to allowlisted operators.">
-          <p className="text-sm text-ink-strong-muted">
+          <p className="text-sm text-muted">
             <Link href={authHref('sign-in', '/admin')} className="font-semibold text-sidebar underline-offset-2 hover:underline">
               Sign in
             </Link>{' '}
@@ -931,7 +931,7 @@ function AdminPageInner() {
     return (
       <AdminShell tab={tab} onSelectTab={selectTab} stats={null} economy={null}>
         <Section title="No access" description="This account is not on the admin allowlist.">
-          <p className="text-sm text-ink-strong-muted">
+          <p className="text-sm text-muted">
             Ask an operator to add your username to{' '}
             <code className="rounded bg-sidebar/5 px-1.5 py-0.5 text-xs">ADMIN_USERNAMES</code>.
           </p>

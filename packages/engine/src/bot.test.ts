@@ -3,6 +3,8 @@ import { parseCard } from './cards.js';
 import {
   BOT_NAME_PERSONALITIES,
   BOT_PERSONALITIES,
+  boardTexture,
+  botThinkDelayMs,
   chooseBotAction,
   chenScore,
   estimateEquity,
@@ -203,5 +205,146 @@ describe('pro bot', () => {
     // Maniac should apply pressure (raise / jam); nit should give it up with A9o ~9bb.
     expect(['allin', 'raise', 'bet', 'call']).toContain(maniac!.type);
     expect(nit!.type).toBe('fold');
+  });
+
+  it('maps Humanoid roster name and encodes humanoid user ids', () => {
+    expect(personalityForBot('bot:x', 'Humanoid').id).toBe('humanoid');
+    expect(personalityForBot(makeBotUserId('h1', 'humanoid'), 'Whatever').id).toBe('humanoid');
+    expect(BOT_PERSONALITIES.humanoid.bluffRate).toBeGreaterThan(1);
+    expect(BOT_NAME_PERSONALITIES.Humanoid).toBe('humanoid');
+  });
+
+  it('classifies dry vs wet board textures', () => {
+    expect(
+      boardTexture([parseCard('As'), parseCard('7d'), parseCard('2c')]),
+    ).toBe('dry');
+    expect(
+      boardTexture([parseCard('9h'), parseCard('8h'), parseCard('7h')]),
+    ).toBe('wet');
+    expect(
+      boardTexture([parseCard('Kh'), parseCard('Qd'), parseCard('Jc')]),
+    ).not.toBe('dry');
+  });
+
+  it('thinks longer on hard river spots than free checks', () => {
+    let free = createEmptyTable(config);
+    free = sitDown(free, 0, makeBotUserId('a', 'humanoid'), 'Humanoid', 1000).state;
+    free = sitDown(free, 1, 'u1', 'Hero', 1000).state;
+    free = startHand(free, config, 'think-free', () => Buffer.alloc(32, 3)).state;
+    const botSeat = free.players.findIndex((p) => isBotUserId(p.userId));
+    free = {
+      ...free,
+      street: 'flop',
+      community: [parseCard('As'), parseCard('7d'), parseCard('2c')],
+      currentBet: 0,
+      pot: 30,
+      toAct: botSeat,
+      players: free.players.map((pl, i) =>
+        i === botSeat
+          ? {
+              ...pl,
+              bet: 0,
+              status: 'active' as const,
+              holeCards: [parseCard('3h'), parseCard('3d')] as [
+                import('./cards.js').Card,
+                import('./cards.js').Card,
+              ],
+            }
+          : { ...pl, bet: 0, status: 'active' as const },
+      ),
+    };
+    const freeMs = botThinkDelayMs(free, botSeat, config, BOT_PERSONALITIES.humanoid);
+
+    let hard = createEmptyTable(config);
+    hard = sitDown(hard, 0, makeBotUserId('b', 'humanoid'), 'Humanoid', 1000).state;
+    hard = sitDown(hard, 1, 'u1', 'Hero', 1000).state;
+    hard = startHand(hard, config, 'think-hard', () => Buffer.alloc(32, 5)).state;
+    const hardSeat = hard.players.findIndex((p) => isBotUserId(p.userId));
+    hard = {
+      ...hard,
+      street: 'river',
+      community: [
+        parseCard('As'),
+        parseCard('7d'),
+        parseCard('2c'),
+        parseCard('9h'),
+        parseCard('4s'),
+      ],
+      currentBet: 200,
+      pot: 280,
+      toAct: hardSeat,
+      players: hard.players.map((pl, i) => {
+        if (i === hardSeat) {
+          return {
+            ...pl,
+            stack: 800,
+            bet: 0,
+            status: 'active' as const,
+            holeCards: [parseCard('3h'), parseCard('3d')] as [
+              import('./cards.js').Card,
+              import('./cards.js').Card,
+            ],
+          };
+        }
+        return { ...pl, stack: 800, bet: 200, status: 'active' as const };
+      }),
+    };
+    const hardMs = botThinkDelayMs(hard, hardSeat, config, BOT_PERSONALITIES.humanoid);
+
+    expect(freeMs).toBeGreaterThanOrEqual(420);
+    expect(freeMs).toBeLessThanOrEqual(3200);
+    expect(hardMs).toBeGreaterThan(freeMs);
+    expect(hardMs).toBeLessThanOrEqual(3200);
+  });
+
+  it('humanoid stabs dry flops in a bluff band more often than a nit', () => {
+    function setupBluffSpot(): { state: HandState; seat: number } {
+      let state = createEmptyTable(config);
+      state = sitDown(state, 0, makeBotUserId('bluff'), 'Bluffer', 1000).state;
+      state = sitDown(state, 1, 'u1', 'Hero', 1000).state;
+      state = startHand(state, config, 'dry-bluff', () => Buffer.alloc(32, 9)).state;
+      const botSeat = state.players.findIndex((p) => isBotUserId(p.userId));
+      const players = state.players.map((pl, i) => {
+        if (i !== botSeat) {
+          return { ...pl, bet: 0, status: 'active' as const };
+        }
+        return {
+          ...pl,
+          bet: 0,
+          status: 'active' as const,
+          // Weak unpaired holdings on a dry board → bluff equity band
+          holeCards: [parseCard('8h'), parseCard('3d')] as [
+            import('./cards.js').Card,
+            import('./cards.js').Card,
+          ],
+        };
+      });
+      return {
+        state: {
+          ...state,
+          players,
+          toAct: botSeat,
+          street: 'flop',
+          community: [parseCard('As'), parseCard('7d'), parseCard('2c')],
+          currentBet: 0,
+          pot: 60,
+          dealerButton: botSeat,
+        },
+        seat: botSeat,
+      };
+    }
+
+    const { state, seat } = setupBluffSpot();
+    let humanoidBets = 0;
+    let nitBets = 0;
+    const trials = 40;
+    for (let i = 0; i < trials; i++) {
+      const h = chooseBotAction(state, seat, config, BOT_PERSONALITIES.humanoid);
+      const n = chooseBotAction(state, seat, config, BOT_PERSONALITIES.nit);
+      if (h && (h.type === 'bet' || h.type === 'raise' || h.type === 'allin')) humanoidBets += 1;
+      if (n && (n.type === 'bet' || n.type === 'raise' || n.type === 'allin')) nitBets += 1;
+    }
+    expect(humanoidBets).toBeGreaterThan(nitBets);
+    expect(humanoidBets).toBeGreaterThan(0);
   });
 });

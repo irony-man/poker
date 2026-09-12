@@ -64,8 +64,8 @@ export function MemoryBoard({
               showFace
                 ? card.matched
                   ? 'border-emerald-400/40 bg-emerald-500/20 text-emerald-200'
-                  : 'border-brass/50 bg-brass/25 text-cream'
-                : 'border-on-chrome/20 bg-ink-raised text-on-chrome/40 hover:border-on-chrome/40',
+                  : 'border-brass/50 bg-brass/25 text-on-chrome'
+                : 'border-on-chrome/20 bg-raised text-on-chrome/40 hover:border-on-chrome/40',
               clickable && 'cursor-pointer active:scale-[0.97]',
               !clickable && !showFace && 'cursor-default opacity-80',
             )}

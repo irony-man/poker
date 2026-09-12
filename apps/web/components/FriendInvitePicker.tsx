@@ -116,7 +116,7 @@ export function FriendInvitePicker({
     return (
       <div className="surface-empty py-3">
         <p className="hud-label">{title}</p>
-        <p className="mt-1 text-xs text-ink-strong-muted">Sign in to invite friends.</p>
+        <p className="mt-1 text-xs text-muted">Sign in to invite friends.</p>
       </div>
     );
   }
@@ -179,7 +179,7 @@ export function FriendInvitePicker({
       {loading && friends.length === 0 ? (
         <LoadingScreen compact label="Loading friends…" className="!py-3" />
       ) : loadTimedOut && !socialLoaded && friends.length === 0 ? (
-        <div className="surface-empty mt-2.5 space-y-2 text-xs text-ink-strong-muted">
+        <div className="surface-empty mt-2.5 space-y-2 text-xs text-muted">
           <p>Couldn’t load friends. Check your connection and try again.</p>
           <button
             type="button"
@@ -195,7 +195,7 @@ export function FriendInvitePicker({
           </button>
         </div>
       ) : visibleFriends.length === 0 ? (
-        <p className="surface-empty mt-2.5 text-xs text-ink-strong-muted">
+        <p className="surface-empty mt-2.5 text-xs text-muted">
           {friends.length === 0
             ? 'No friends yet. Add people from Friends, then invite them here.'
             : onlineOnly

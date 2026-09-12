@@ -92,12 +92,12 @@ export function TableActionToast() {
             <p className="text-[10px] font-display font-bold uppercase tracking-[0.14em] text-danger">
               Notice
             </p>
-            <p className="mt-0.5 text-sm font-semibold leading-snug text-ink-strong">{message}</p>
+            <p className="mt-0.5 text-sm font-semibold leading-snug text-primary">{message}</p>
           </div>
           <button
             type="button"
             onClick={dismiss}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-base leading-none text-ink-strong-muted transition hover:bg-white/70 hover:text-sidebar"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-base leading-none text-muted transition hover:bg-white/70 hover:text-sidebar"
             aria-label="Dismiss notification"
           >
             ×

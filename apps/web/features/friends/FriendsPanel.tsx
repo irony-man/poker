@@ -348,7 +348,7 @@ export function FriendsPanel({
           {searchResults.map((u) => {
             const handle = u.username ?? u.name;
             return (
-              <li key={u.userId} className="flex items-center gap-3 bg-mushroom/40 px-3 py-2.5">
+              <li key={u.userId} className="flex items-center gap-3 bg-raised/60 px-3 py-2.5">
                 <Link
                   href={publicProfileHref(handle)}
                   className="shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-sidebar/40"
@@ -383,8 +383,8 @@ export function FriendsPanel({
       )}
 
       {searchLookedUp && searchQuery.trim() && searchResults.length === 0 && (
-        <p className="surface-empty text-sm text-ink-strong-muted">
-          No user named <span className="font-medium text-ink-strong">{searchQuery.trim()}</span>
+        <p className="surface-empty text-sm text-muted">
+          No user named <span className="font-medium text-primary">{searchQuery.trim()}</span>
         </p>
       )}
     </div>
@@ -495,7 +495,7 @@ export function FriendsPanel({
       </div>
 
       {!userId && (
-        <p className="text-sm text-ink-strong-muted">Sign in to use friends and groups.</p>
+        <p className="text-sm text-muted">Sign in to use friends and groups.</p>
       )}
     </>
   );

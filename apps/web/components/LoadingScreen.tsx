@@ -45,8 +45,8 @@ export function LoadingScreen({
         <p
           className={
             compact
-              ? 'text-xs font-medium text-ink-strong-muted'
-              : 'text-sm font-medium text-ink-strong-muted sm:text-base'
+              ? 'text-xs font-medium text-muted'
+              : 'text-sm font-medium text-muted sm:text-base'
           }
         >
           {label}

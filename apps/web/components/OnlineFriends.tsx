@@ -52,7 +52,7 @@ export function PendingCountBadge({
   const label = count > 9 ? '9+' : String(count);
   const toneClass =
     tone === 'light'
-      ? 'bg-danger text-cream'
+      ? 'bg-danger text-on-chrome'
       : 'bg-gold text-sidebar';
   return (
     <span
@@ -160,7 +160,7 @@ export function OnlineFriendsSidebar({
 
   return (
     <section
-      className="mx-3 mb-2 rounded-xl border border-mushroom/12 bg-mushroom/[0.06] px-2.5 py-2.5"
+      className="mx-3 mb-2 rounded-xl border border-subtle/12 bg-on-chrome/[0.06] px-2.5 py-2.5"
       aria-label="Online friends"
     >
       <div className="mb-2 flex items-baseline justify-between gap-2 px-0.5">
@@ -192,7 +192,7 @@ export function OnlineFriendsSidebar({
               <Link
                 href={publicProfileHref(f.username ?? f.name)}
                 onClick={onNavigate}
-                className="flex items-center gap-2 rounded-lg px-1 py-1 transition hover:bg-mushroom/10"
+                className="flex items-center gap-2 rounded-lg px-1 py-1 transition hover:bg-on-chrome/10"
                 title={`${f.name} — online`}
               >
                 <span className="relative shrink-0">
@@ -208,7 +208,7 @@ export function OnlineFriendsSidebar({
                     aria-hidden
                   />
                 </span>
-                <span className="min-w-0 flex-1 truncate text-xs font-medium text-mushroom/85">
+                <span className="min-w-0 flex-1 truncate text-xs font-medium text-on-chrome/85">
                   {f.name}
                 </span>
               </Link>
@@ -294,14 +294,14 @@ export function OnlineFriendsOverlay({ signedIn }: { signedIn: boolean }) {
   return (
     <div className={`pointer-events-auto absolute z-40 ${positionClass}`}>
       {open ? (
-        <div className="mb-1.5 w-44 overflow-hidden rounded-xl border border-mushroom/20 bg-sidebar/95 p-2 shadow-raised backdrop-blur-sm">
+        <div className="mb-1.5 w-44 overflow-hidden rounded-xl border border-subtle/20 bg-sidebar/95 p-2 shadow-raised backdrop-blur-sm">
           <p className="mb-1.5 px-1 font-display text-[0.6rem] font-bold uppercase tracking-[0.16em] text-on-chrome/80">
             Online friends
           </p>
           {pendingCount > 0 ? (
             <Link
               href="/friends"
-              className="mb-1.5 flex items-center justify-between gap-2 rounded-lg bg-gold/15 px-1.5 py-1 text-[11px] font-medium text-mushroom transition hover:bg-gold/25"
+              className="mb-1.5 flex items-center justify-between gap-2 rounded-lg bg-gold/15 px-1.5 py-1 text-[11px] font-medium text-on-chrome transition hover:bg-gold/25"
               onClick={() => setOpen(false)}
             >
               <span>Pending invites</span>
@@ -313,7 +313,7 @@ export function OnlineFriendsOverlay({ signedIn }: { signedIn: boolean }) {
               <li key={f.userId}>
                 <Link
                   href={publicProfileHref(f.username ?? f.name)}
-                  className="flex items-center gap-2 rounded-lg px-1 py-1 transition hover:bg-mushroom/10"
+                  className="flex items-center gap-2 rounded-lg px-1 py-1 transition hover:bg-on-chrome/10"
                   onClick={() => setOpen(false)}
                 >
                   <PlayerAvatar
@@ -323,7 +323,7 @@ export function OnlineFriendsOverlay({ signedIn }: { signedIn: boolean }) {
                     size={24}
                     title={f.name}
                   />
-                  <span className="min-w-0 flex-1 truncate text-xs text-mushroom/90">
+                  <span className="min-w-0 flex-1 truncate text-xs text-on-chrome/90">
                     {f.name}
                   </span>
                 </Link>
@@ -336,7 +336,7 @@ export function OnlineFriendsOverlay({ signedIn }: { signedIn: boolean }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="relative ml-auto flex items-center gap-1.5 rounded-full border border-mushroom/25 bg-sidebar/90 px-2.5 py-1.5 text-[10px] font-display font-bold uppercase tracking-[0.14em] text-mushroom shadow-raised backdrop-blur-sm transition hover:border-mushroom/40"
+        className="relative ml-auto flex items-center gap-1.5 rounded-full border border-subtle/25 bg-sidebar/90 px-2.5 py-1.5 text-[10px] font-display font-bold uppercase tracking-[0.14em] text-on-chrome shadow-raised backdrop-blur-sm transition hover:border-subtle/40"
         aria-expanded={open}
         aria-label={`${onlineLabel}${pendingLabel}`}
       >

@@ -53,7 +53,7 @@ function SharedPlayerColumn({
   return (
     <div className="flex min-w-[4.5rem] flex-col items-start gap-2 sm:min-w-[5.5rem]">
       <div className="flex max-w-full items-center gap-1.5">
-        <span className="truncate text-xs font-semibold text-ink-strong">{label}</span>
+        <span className="truncate text-xs font-semibold text-primary">{label}</span>
         {winner ? (
           <StatusChip tone="positive" className="!px-1.5 !py-0.5 text-[10px]">
             Won
@@ -76,13 +76,13 @@ function SharedHandRow({ hand }: { hand: PlayedHandLevel }) {
   return (
     <li className="overflow-hidden rounded-2xl border border-sidebar/12 bg-white p-4 shadow-[0_4px_16px_rgb(29_4_50_/_0.04)] sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-        <p className="min-w-0 text-sm font-semibold text-ink-strong">
+        <p className="min-w-0 text-sm font-semibold text-primary">
           <span className={hand.won ? 'text-positive' : 'text-sidebar'}>{winnerLabel}</span>
           {hand.handName && hand.handName !== 'Uncontested' ? (
-            <span className="font-medium text-ink-strong-muted"> · {hand.handName}</span>
+            <span className="font-medium text-muted"> · {hand.handName}</span>
           ) : null}
         </p>
-        <p className="shrink-0 text-xs text-ink-strong-muted">
+        <p className="shrink-0 text-xs text-muted">
           {when || 'Unknown time'}
           {hand.source === 'offline' ? ' · Solo' : ''}
         </p>
@@ -103,7 +103,7 @@ function SharedHandRow({ hand }: { hand: PlayedHandLevel }) {
 
         {hand.community.length > 0 ? (
           <div className="border-t border-sidebar/10 pt-3">
-            <p className="mb-2 text-[10px] font-display font-bold uppercase tracking-[0.14em] text-ink-strong-muted">
+            <p className="mb-2 text-[10px] font-display font-bold uppercase tracking-[0.14em] text-muted">
               Board
             </p>
             <div className="flex flex-wrap gap-1 sm:gap-1.5">
@@ -389,20 +389,20 @@ function PublicProfilePageInner() {
               <div className="relative z-10 mb-4 flex items-baseline justify-between gap-3">
                 <h3 className="font-heading-section">Hands together</h3>
                 {sharedCountLabel ? (
-                  <span className="text-xs font-medium text-ink-strong-muted">
+                  <span className="text-xs font-medium text-muted">
                     {sharedCountLabel}
                   </span>
                 ) : null}
               </div>
               {sharedLoading ? (
-                <p className="text-sm text-ink-strong-muted">Loading shared hands…</p>
+                <p className="text-sm text-muted">Loading shared hands…</p>
               ) : sharedError ? (
                 <StatusChip tone="danger" role="alert" className="text-xs">
                   {sharedError}
                 </StatusChip>
               ) : sharedHands.length === 0 ? (
                 <div className="surface-empty">
-                  <p className="text-sm text-ink-strong-muted">No shared hands yet</p>
+                  <p className="text-sm text-muted">No shared hands yet</p>
                 </div>
               ) : (
                 <ul className="relative z-0 space-y-3">
@@ -416,8 +416,8 @@ function PublicProfilePageInner() {
         </div>
       ) : !loading ? (
         <div className="surface-empty-lg">
-          <p className="text-sm font-medium text-ink-strong">Player not found</p>
-          <p className="mt-1 text-xs leading-relaxed text-ink-strong-muted">
+          <p className="text-sm font-medium text-primary">Player not found</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted">
             No account matches that username.
           </p>
           <Button href="/" variant="ghost" className="mt-4 text-xs">

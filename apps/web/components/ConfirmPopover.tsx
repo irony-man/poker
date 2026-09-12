@@ -98,7 +98,7 @@ export function ConfirmPopover({
         className="surface-modal w-full max-w-sm shadow-[0_18px_48px_rgb(29_4_50_/_0.2)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="border-b border-sidebar/10 bg-mushroom/40 px-4 py-3.5 sm:px-5 sm:py-4">
+        <div className="border-b border-sidebar/10 bg-page/40 px-4 py-3.5 sm:px-5 sm:py-4">
           <h2
             id={titleId}
             className="font-heading-section sm:text-xl"

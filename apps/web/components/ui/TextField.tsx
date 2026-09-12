@@ -11,10 +11,10 @@ import {
 import { cn } from '@/lib/cn';
 
 export const FORM_FIELD_CLASS =
-  'w-full rounded-lg border border-sidebar/15 bg-cream px-3 py-2.5 text-sm text-ink-strong shadow-sm outline-none transition placeholder:text-ink-strong-muted/80 focus:border-sidebar/40 focus:ring-2 focus:ring-sidebar/10';
+  'w-full rounded-lg border border-sidebar/15 bg-cream px-3 py-2.5 text-sm text-primary shadow-sm outline-none transition placeholder:text-muted/80 focus:border-sidebar/40 focus:ring-2 focus:ring-sidebar/10';
 
 export const FORM_LABEL_CLASS =
-  'block text-xs font-display font-semibold uppercase tracking-[0.12em] text-ink-strong-muted';
+  'block text-xs font-display font-semibold uppercase tracking-[0.12em] text-muted';
 
 type FieldVariant = 'hud' | 'form';
 
@@ -102,7 +102,7 @@ export function TextField({
           {input}
           <button
             type="button"
-            className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-md text-ink-strong-muted transition hover:text-ink-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar/25"
+            className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-md text-muted transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar/25"
             aria-label={passwordVisible ? 'Hide password' : 'Show password'}
             aria-pressed={passwordVisible}
             aria-controls={fieldId}

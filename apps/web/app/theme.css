@@ -1,0 +1,349 @@
+/*
+ * Semantic design tokens — POKR theme engine.
+ * RGB channel triplets for Tailwind: rgb(var(--token) / <alpha-value>).
+ * Brand primitives remain for gradual migration; prefer semantic utilities
+ * (bg-page, text-primary, border-subtle, …) in new code.
+ * Android mirrors values in PokrTokens.kt. See docs/DESIGN_SYSTEM.md.
+ */
+
+:root {
+  /* —— Semantic API —— */
+  --bg-page: 230 217 215;
+  --bg-panel: 29 4 50;
+  --bg-raised: 46 16 72;
+  --bg-overlay: 8 3 14;
+  --bg-chrome: 29 4 50;
+  /* Body copy on page / light panels (Classic lobby default). */
+  --text-primary: 29 4 50;
+  --text-muted: 68 48 74;
+  --on-chrome: 230 217 215;
+  /* Border pigment — use with opacity (border-subtle/18). */
+  --border-subtle: 29 4 50;
+  --border-strong: 29 4 50;
+  --focus-ring: 29 4 50;
+
+  /* —— Brand primitives (deprecated for chrome; keep until call sites migrate) —— */
+  --ink: 14 6 24;
+  --ink-panel: 29 4 50;
+  --ink-raised: 46 16 72;
+  --ink-overlay: 8 3 14;
+  --sidebar: 29 4 50;
+  --mushroom: 230 217 215;
+  --lobby-card: 237 228 226;
+  --ink-strong: 29 4 50;
+  --ink-strong-muted: 68 48 74;
+
+  /* Table oval = sidebar purple family */
+  --felt: 29 4 50;
+  --felt-deep: 18 2 32;
+  --felt-rim: 18 2 32;
+  --felt-rim-edge: 168 140 162;
+
+  /* Accent — soft champagne that reads on purple panels */
+  --brass: 214 186 128;
+  --brass-light: 236 218 176;
+  --brass-dim: 118 92 48;
+
+  /* Light text on dark chrome (alias target: prefer --on-chrome / text-on-chrome) */
+  --cream: 242 234 232;
+  --cream-muted: 206 190 204;
+
+  /* State */
+  --danger: 192 57 43;
+  --positive: 72 168 122;
+  --patina: 186 162 198;
+  --patina-dim: 88 62 112;
+
+  /* Cards — stable across UI themes */
+  --card-face: 250 247 240;
+  --card-back: 230 217 215;
+  --card-red: 200 16 46;
+  --card-ink: 26 26 26;
+
+  /* Radius */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  /* Elevation */
+  --shadow-panel: 0 1px 0 0 rgb(var(--on-chrome) / 0.06) inset, 0 16px 40px rgb(0 0 0 / 0.55);
+  --shadow-raised: 0 2px 8px rgb(0 0 0 / 0.45);
+  --shadow-glow: 0 0 22px rgb(var(--on-chrome) / 0.18);
+  --shadow-card: 0 2px 6px rgb(0 0 0 / 0.4);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --dur-slow: 240ms;
+
+  /* Fonts */
+  --font-heading: 'RF Tone', 'Segoe UI', system-ui, sans-serif;
+  --font-serif: 'RF Tone', 'Segoe UI', system-ui, sans-serif;
+  --font-display: 'RF Tone', 'Segoe UI', system-ui, sans-serif;
+
+  /* Scrollbars */
+  --scrollbar-size: 9px;
+  --scrollbar-track: rgb(var(--bg-chrome) / 0.07);
+  --scrollbar-thumb: rgb(var(--bg-chrome) / 0.38);
+  --scrollbar-thumb-hover: rgb(var(--bg-chrome) / 0.58);
+
+  /* Glass (v3) */
+  --glass-fill: 255 252 250;
+  --glass-fill-strong: 255 255 255;
+  --glass-stroke: 255 255 255;
+  --glass-highlight: 255 255 255;
+  --glass-blur: 20px;
+}
+
+/*
+ * Play HUD panels: light text on dark chrome.
+ * Lobby shell rebinds to paper surfaces below.
+ */
+.hud-panel,
+.play-chat-column,
+.chat-panel-shell,
+.play-action-dock {
+  --text-primary: 242 234 232;
+  --text-muted: 206 190 204;
+  --border-subtle: 230 217 215;
+  --border-strong: 230 217 215;
+  --focus-ring: 230 217 215;
+}
+
+/* Lobby: paper panels + dark body copy on page ground */
+.lobby-shell {
+  --bg-panel: 255 252 250;
+  --bg-raised: 237 228 226;
+  --text-primary: 29 4 50;
+  --text-muted: 68 48 74;
+  --border-subtle: 29 4 50;
+  --border-strong: 29 4 50;
+  --focus-ring: 29 4 50;
+}
+
+.lobby-shell .hud-panel {
+  --bg-panel: 255 252 250;
+  --bg-raised: 237 228 226;
+  --text-primary: 29 4 50;
+  --text-muted: 68 48 74;
+  --border-subtle: 29 4 50;
+  --border-strong: 29 4 50;
+  --ink-strong: 29 4 50;
+  --ink-strong-muted: 68 48 74;
+}
+
+/* Sidebar / purple chrome: light glyphs */
+.lobby-sidebar {
+  --text-primary: 230 217 215;
+  --text-muted: 206 190 204;
+  --on-chrome: 230 217 215;
+  --border-subtle: 230 217 215;
+}
+
+/*
+ * Arcade (v2) — remap semantic + brand tokens.
+ * Status, brass, and card faces stay put.
+ */
+html[data-ui-theme='v2'] {
+  --bg-page: 253 233 61;
+  --bg-panel: 76 29 149;
+  --bg-raised: 109 40 217;
+  --bg-overlay: 18 6 32;
+  --bg-chrome: 91 33 182;
+  --text-primary: 26 16 40;
+  --text-muted: 72 48 96;
+  --on-chrome: 255 255 255;
+  --border-subtle: 26 16 40;
+  --border-strong: 0 0 0;
+  --focus-ring: 91 33 182;
+
+  --ink: 26 10 46;
+  --ink-panel: 76 29 149;
+  --ink-raised: 109 40 217;
+  --ink-overlay: 18 6 32;
+  --sidebar: 91 33 182;
+  --mushroom: 253 233 61;
+  --lobby-card: 255 245 157;
+  --ink-strong: 26 16 40;
+  --ink-strong-muted: 72 48 96;
+  --cream: 255 255 255;
+  --cream-muted: 214 196 232;
+
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --shadow-panel: 4px 4px 0 0 #000;
+  --shadow-raised: 4px 4px 0 0 #000;
+  --shadow-glow: none;
+  --shadow-card: 4px 4px 0 0 #000;
+  --font-heading: 'Clash Display', 'RF Tone', 'Segoe UI', system-ui, sans-serif;
+  --font-serif: 'Clash Display', 'RF Tone', 'Segoe UI', system-ui, sans-serif;
+  --font-display: 'Clash Display', 'RF Tone', 'Segoe UI', system-ui, sans-serif;
+  --scrollbar-track: rgb(0 0 0 / 0.08);
+  --scrollbar-thumb: rgb(var(--bg-chrome) / 0.55);
+  --scrollbar-thumb-hover: rgb(var(--bg-chrome) / 0.75);
+}
+
+html[data-ui-theme='v2'] .lobby-shell {
+  --bg-panel: 255 255 255;
+  --bg-raised: 255 245 157;
+  --text-primary: 26 16 40;
+  --text-muted: 72 48 96;
+}
+
+html[data-ui-theme='v2'] .lobby-shell .hud-panel {
+  --bg-panel: 255 255 255;
+  --bg-raised: 255 245 157;
+  --text-primary: 26 16 40;
+  --text-muted: 72 48 96;
+  --ink-strong: 26 16 40;
+  --ink-strong-muted: 72 48 96;
+}
+
+html[data-ui-theme='v2'] .lobby-sidebar {
+  --mushroom: 255 255 255;
+  --cream: 255 255 255;
+  --on-chrome: 255 255 255;
+  --text-primary: 255 255 255;
+  --text-muted: 214 196 232;
+}
+
+html[data-ui-theme='v2'] .hud-panel,
+html[data-ui-theme='v2'] .play-chat-column,
+html[data-ui-theme='v2'] .chat-panel-shell,
+html[data-ui-theme='v2'] .play-action-dock {
+  --text-primary: 255 255 255;
+  --text-muted: 214 196 232;
+  --border-subtle: 255 255 255;
+  --on-chrome: 255 255 255;
+}
+
+/*
+ * Glass (v3) — dusk page ground; frost panels re-bind semantic text/surfaces.
+ */
+html[data-ui-theme='v3'] {
+  --bg-page: 42 24 72;
+  --bg-panel: 28 18 56;
+  --bg-raised: 52 36 96;
+  --bg-overlay: 6 4 16;
+  --bg-chrome: 96 64 168;
+  /* Page-ground copy is light on dusk */
+  --text-primary: 255 255 255;
+  --text-muted: 214 204 232;
+  --on-chrome: 255 255 255;
+  --border-subtle: 214 204 232;
+  --border-strong: 210 236 255;
+  --focus-ring: 210 236 255;
+
+  --ink: 10 6 22;
+  --ink-panel: 28 18 56;
+  --ink-raised: 52 36 96;
+  --ink-overlay: 6 4 16;
+  --sidebar: 96 64 168;
+  --mushroom: 42 24 72;
+  --lobby-card: 244 240 250;
+  --ink-strong: 22 12 40;
+  --ink-strong-muted: 214 204 232;
+  --cream: 255 255 255;
+  --cream-muted: 214 204 232;
+
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --shadow-panel:
+    0 1px 0 0 rgb(var(--glass-highlight) / 0.55) inset,
+    0 16px 48px rgb(8 4 20 / 0.28);
+  --shadow-raised:
+    0 1px 0 0 rgb(var(--glass-highlight) / 0.5) inset,
+    0 10px 28px rgb(8 4 20 / 0.22);
+  --shadow-glow: 0 0 32px rgb(80 200 220 / 0.2);
+  --shadow-card: 0 12px 36px rgb(8 4 20 / 0.24);
+  --scrollbar-track: rgb(var(--glass-fill) / 0.08);
+  --scrollbar-thumb: rgb(var(--glass-fill) / 0.28);
+  --scrollbar-thumb-hover: rgb(var(--glass-fill) / 0.44);
+  --glass-fill: 255 255 255;
+  --glass-fill-strong: 255 255 255;
+  --glass-stroke: 255 255 255;
+  --glass-highlight: 210 236 255;
+  --glass-blur: 28px;
+}
+
+/*
+ * Glass page ground is dusk — lobby shell must keep light copy.
+ * Base `.lobby-shell` assumes Classic/Arcade light pages (dark ink); override here.
+ * Frost panels below re-bind dark ink for paper surfaces.
+ */
+html[data-ui-theme='v3'] .lobby-shell {
+  --text-primary: 255 255 255;
+  /* Brighter muted for captions/help on dusk (≥4.5:1 on --bg-page). */
+  --text-muted: 226 218 242;
+  --border-subtle: 214 204 232;
+  --border-strong: 210 236 255;
+  --focus-ring: 210 236 255;
+  --bg-panel: 255 252 250;
+  --bg-raised: 244 240 250;
+}
+
+/* Frost paper: dark ink on light fill — semantic rebind, not class-name patches */
+html[data-ui-theme='v3'] .lobby-shell .hud-panel,
+html[data-ui-theme='v3'] .surface-card,
+html[data-ui-theme='v3'] .surface-card-lg,
+html[data-ui-theme='v3'] .surface-modal,
+html[data-ui-theme='v3'] .surface-row,
+html[data-ui-theme='v3'] .surface-empty,
+html[data-ui-theme='v3'] .surface-empty-lg,
+html[data-ui-theme='v3'] .surface-list,
+html[data-ui-theme='v3'] .glass-sheet {
+  /* Paper ground so bg-page/* washes stay light inside frost (tabs, member tags, rows). */
+  --bg-page: 255 252 250;
+  --bg-panel: 255 252 250;
+  --bg-raised: 244 240 250;
+  --text-primary: 22 12 40;
+  --text-muted: 58 40 82;
+  --border-subtle: 56 32 120;
+  --border-strong: 56 32 120;
+  --focus-ring: 56 32 120;
+  --mushroom: 255 252 250;
+  --lobby-card: 244 240 250;
+  --ink-strong: 22 12 40;
+  --ink-strong-muted: 58 40 82;
+  --sidebar: 56 32 120;
+  color: rgb(22 12 40);
+}
+
+html[data-ui-theme='v3'] .lobby-sidebar,
+html[data-ui-theme='v3'] .lobby-main > header {
+  --mushroom: 255 255 255;
+  --cream: 255 255 255;
+  --on-chrome: 255 255 255;
+  --text-primary: 255 255 255;
+  --text-muted: 214 204 232;
+}
+
+/* Play docks on dusk — light semantic text */
+html[data-ui-theme='v3'] .play-chat-column,
+html[data-ui-theme='v3'] .chat-panel-shell,
+html[data-ui-theme='v3'] .play-action-dock,
+html[data-ui-theme='v3'] .recent-chat-ticker,
+html[data-ui-theme='v3'] .play-chat-column .glass-sheet,
+html[data-ui-theme='v3'] .chat-panel-shell .glass-sheet,
+html[data-ui-theme='v3'] .play-action-dock.glass-sheet,
+html[data-ui-theme='v3'] .play-action-dock .glass-sheet {
+  --bg-panel: 28 18 56;
+  --bg-raised: 52 36 96;
+  --text-primary: 255 252 250;
+  --text-muted: 214 204 232;
+  --on-chrome: 255 255 255;
+  --border-subtle: 210 236 255;
+  --mushroom: 255 252 250;
+  --ink-strong: 255 252 250;
+  --ink-strong-muted: 214 204 232;
+  --sidebar: 196 168 255;
+}

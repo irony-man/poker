@@ -38,7 +38,7 @@ export function LobbyPageShell({
           </p>
         )}
         {requireAuth && !signedIn && (
-          <p className="mt-2 text-sm text-ink-strong-muted">
+          <p className="mt-2 text-sm text-muted">
             You&apos;ll need an account for this —{' '}
             <Link
               href={authHref('sign-in', pathname)}

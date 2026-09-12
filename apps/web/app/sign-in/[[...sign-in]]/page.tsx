@@ -52,7 +52,7 @@ function SignInForm() {
         <h1 className="font-title-page">
           {pageCopy.title}
         </h1>
-        <p className="mt-2 text-sm text-ink-strong-muted">{pageCopy.subtitle}</p>
+        <p className="mt-2 text-sm text-muted">{pageCopy.subtitle}</p>
       </div>
       <form onSubmit={onSubmit}>
         <LobbySplitCard
@@ -88,7 +88,7 @@ function SignInForm() {
           <Button disabled={busy} type="submit" className="min-h-11 w-full">
             {busy ? 'Signing in…' : 'Sign in'}
           </Button>
-          <p className="text-sm text-ink-strong-muted">
+          <p className="text-sm text-muted">
             No account?{' '}
             <Link
               href={authHref('sign-up', returnTo)}

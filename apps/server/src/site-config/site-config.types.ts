@@ -67,7 +67,8 @@ export type BotPersonalityId =
   | 'maniac'
   | 'caller'
   | 'nit'
-  | 'lag';
+  | 'lag'
+  | 'humanoid';
 
 export const BOT_PERSONALITY_IDS: readonly BotPersonalityId[] = [
   'balanced',
@@ -79,6 +80,7 @@ export const BOT_PERSONALITY_IDS: readonly BotPersonalityId[] = [
   'caller',
   'nit',
   'lag',
+  'humanoid',
 ] as const;
 
 export function isBotPersonalityId(value: string | null | undefined): value is BotPersonalityId {
@@ -131,6 +133,7 @@ export const DEFAULT_BOT_DISPLAY_NAMES: string[] = [
   'NutsNova',
   'CallCart',
   'RaiseRex',
+  'Humanoid',
 ];
 
 /** Seed styles for the default Classic pack (mirrors engine `BOT_NAME_PERSONALITIES`). */
@@ -145,6 +148,7 @@ export const DEFAULT_BOT_NAME_PERSONALITIES: Record<string, BotPersonalityId> = 
   NutsNova: 'tight',
   CallCart: 'caller',
   RaiseRex: 'aggro',
+  Humanoid: 'humanoid',
 };
 
 export const DEFAULT_BOT_GROUPS: BotGroup[] = [

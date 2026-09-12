@@ -34,7 +34,7 @@ function OpponentSeat({
         <span className="flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-white/40 text-[10px] font-semibold uppercase tracking-wide text-white/80">
           Sit
         </span>
-        <span className="text-[10px] font-medium text-cream/85">Open</span>
+        <span className="text-[10px] font-medium text-on-chrome/85">Open</span>
       </button>
     );
   }
@@ -63,14 +63,14 @@ function OpponentSeat({
       </div>
       <span
         className={`max-w-full truncate text-[11px] font-semibold ${
-          folded || sittingOut ? 'text-cream/80' : 'text-white'
+          folded || sittingOut ? 'text-on-chrome/80' : 'text-white'
         }`}
       >
         {player.name ?? 'Player'}
       </span>
       <span
         className={`text-[11px] font-medium tabular-nums ${
-          folded || sittingOut ? 'text-cream/80' : 'table-label-on-felt'
+          folded || sittingOut ? 'text-on-chrome/80' : 'table-label-on-felt'
         }`}
       >
         {formatMoneyAmount(player.stack)}
@@ -161,7 +161,7 @@ export function StackedTableLayout({
             ) : null}
           </div>
           {sidePotCount > 1 ? (
-            <span className="rounded bg-black/45 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-cream/85">
+            <span className="rounded bg-black/45 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-on-chrome/85">
               {sidePotCount} pots
             </span>
           ) : null}
@@ -171,11 +171,11 @@ export function StackedTableLayout({
       {showHeroHud ? (
         <div className="mt-2 flex shrink-0 flex-col items-center">
           {handName ? (
-            <p className="table-label-on-felt mb-1 text-xs font-medium uppercase tracking-wide text-cream/85">
+            <p className="table-label-on-felt mb-1 text-xs font-medium uppercase tracking-wide text-on-chrome/85">
               {handName}
             </p>
           ) : hero?.status === 'folded' ? (
-            <p className="mb-1 text-xs font-medium uppercase tracking-wide text-cream/85">
+            <p className="mb-1 text-xs font-medium uppercase tracking-wide text-on-chrome/85">
               Folded
             </p>
           ) : null}

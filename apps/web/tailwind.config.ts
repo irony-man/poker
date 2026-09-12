@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 
-/** Every color reads from the canonical CSS vars in app/globals.css so the two cannot drift. */
+/** Every color reads from the canonical CSS vars in app/theme.css so the two cannot drift. */
 const token = (name: string) => `rgb(var(--${name}) / <alpha-value>)`;
 
 export default {
@@ -14,6 +14,19 @@ export default {
   theme: {
     extend: {
       colors: {
+        /** Semantic roles — stable across Classic / Arcade / Glass */
+        page: token('bg-page'),
+        panel: token('bg-panel'),
+        raised: token('bg-raised'),
+        overlay: token('bg-overlay'),
+        chrome: token('bg-chrome'),
+        primary: token('text-primary'),
+        muted: token('text-muted'),
+        /** Border pigment — `border-subtle/15`, `border-strong`. */
+        subtle: token('border-subtle'),
+        strong: token('border-strong'),
+
+        /** Brand / domain (felt, money, status, cards) + migration aliases */
         ink: {
           DEFAULT: token('ink'),
           panel: token('ink-panel'),
@@ -80,12 +93,13 @@ export default {
         xl: 'var(--radius-xl)',
       },
       boxShadow: {
-        panel: 'var(--shadow-panel)',
-        raised: 'var(--shadow-raised)',
+        /** Prefixed to avoid clashing with semantic colors `panel` / `raised`. */
+        'elev-panel': 'var(--shadow-panel)',
+        'elev-raised': 'var(--shadow-raised)',
         glow: 'var(--shadow-glow)',
         card: 'var(--shadow-card)',
         felt: 'inset 0 0 120px rgb(8 2 16 / 0.5), 0 12px 36px rgb(29 4 50 / 0.2)',
-        /** Legacy aliases. */
+        /** Legacy aliases → elev-* (prefer elev-panel / elev-raised in new code). */
         hud: 'var(--shadow-panel)',
         'glow-neon': 'var(--shadow-glow)',
       },
@@ -99,8 +113,8 @@ export default {
       },
       keyframes: {
         'hud-pulse': {
-          '0%, 100%': { boxShadow: '0 0 0 0 rgb(var(--mushroom) / 0.45)' },
-          '50%': { boxShadow: '0 0 0 8px rgb(var(--mushroom) / 0)' },
+          '0%, 100%': { boxShadow: '0 0 0 0 rgb(var(--on-chrome) / 0.45)' },
+          '50%': { boxShadow: '0 0 0 8px rgb(var(--on-chrome) / 0)' },
         },
         'live-blink': {
           '0%, 100%': { opacity: '1' },

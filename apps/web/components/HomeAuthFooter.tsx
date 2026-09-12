@@ -14,7 +14,7 @@ export function HomeAuthFooter() {
   }
 
   return (
-    <p className="lobby-fade-up lobby-fade-up-delay-3 mt-16 text-center text-sm text-ink-strong-muted sm:mt-20">
+    <p className="lobby-fade-up lobby-fade-up-delay-3 mt-16 text-center text-sm text-muted sm:mt-20">
       {pageCopy.title}{' '}
       <Link
         href={authHref('sign-in', '/')}

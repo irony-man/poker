@@ -353,7 +353,7 @@ export function TableView({
   if (!table && lastErrorCode === 'not_found') {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-ink-strong-muted">
+        <p className="text-muted">
           {contestIdProp
             ? 'Table closed — opening contest results…'
             : 'Table not found — returning home…'}
@@ -365,8 +365,8 @@ export function TableView({
   if (!table && lastErrorCode === 'bad_auth') {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
-        <p className="text-ink-strong">Session expired</p>
-        <p className="max-w-sm text-sm text-ink-strong-muted">
+        <p className="text-primary">Session expired</p>
+        <p className="max-w-sm text-sm text-muted">
           {lastError ?? 'Sign in again, then reopen the table.'}
         </p>
         <div className="flex flex-wrap justify-center gap-2">
@@ -395,8 +395,8 @@ export function TableView({
   if (!table && connection === 'closed') {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
-        <p className="text-ink-strong">Can&apos;t reach the table</p>
-        <p className="max-w-sm text-sm text-ink-strong-muted">
+        <p className="text-primary">Can&apos;t reach the table</p>
+        <p className="max-w-sm text-sm text-muted">
           The connection closed before table data arrived. Check that the server is running, then
           try again.
         </p>
@@ -410,7 +410,7 @@ export function TableView({
   if (!table) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-ink-strong-muted">Syncing table…</p>
+        <p className="text-muted">Syncing table…</p>
       </div>
     );
   }
@@ -674,7 +674,7 @@ export function TableView({
                 })()}
               </StatusChip>
             ) : null}
-            <span className="text-xs text-ink-strong-muted">
+            <span className="text-xs text-muted">
               Blinds {table.config.smallBlind}/{table.config.bigBlind}
               {table.tournament.noTopUp ? ' · no rebuy' : ' · top-ups on'}
             </span>
@@ -698,7 +698,7 @@ export function TableView({
                 <p className="font-display text-sm font-bold uppercase tracking-wider text-sidebar">
                   Contest complete
                 </p>
-                <p className="mt-0.5 text-xs text-ink-strong-muted">
+                <p className="mt-0.5 text-xs text-muted">
                   See placements and prizes on the contest page.
                 </p>
               </div>

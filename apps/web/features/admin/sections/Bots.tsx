@@ -71,7 +71,7 @@ export function BotsSection({
       description="Name packs and playing styles hosts use when seating bots. Pick a group default style and optional per-name overrides."
       action={
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs tabular-nums text-ink-strong-muted">
+          <span className="text-xs tabular-nums text-muted">
             {botGroups.length}/{MAX_BOT_GROUPS}
           </span>
           <Button
@@ -202,9 +202,9 @@ function BotGroupEditor({
           </div>
         }
         meta={
-          <p className="mt-2 text-xs text-ink-strong-muted">
+          <p className="mt-2 text-xs text-muted">
             Key{' '}
-            <code className="rounded bg-sidebar/5 px-1.5 py-0.5 font-mono text-[11px] text-ink-strong">
+            <code className="rounded bg-sidebar/5 px-1.5 py-0.5 font-mono text-[11px] text-primary">
               {group.id}
             </code>
             <button
@@ -271,7 +271,7 @@ function BotGroupEditor({
         <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
           <div>
             <span className={FORM_LABEL_CLASS}>Display names & styles</span>
-            <p className="mt-0.5 text-xs text-ink-strong-muted">
+            <p className="mt-0.5 text-xs text-muted">
               {names.length}/40 · shown at the table when bots sit
             </p>
           </div>
@@ -299,7 +299,7 @@ function BotGroupEditor({
               aria-invalid={bulkErrors.length > 0}
               aria-label="Bot names and styles, one per line"
             />
-            <p className="text-xs text-ink-strong-muted">
+            <p className="text-xs text-muted">
               One bot per line: <code className="font-mono text-[11px]">Name</code> or{' '}
               <code className="font-mono text-[11px]">Name, style</code>. Styles:{' '}
               {BOT_PERSONALITY_IDS.join(', ')}.
@@ -329,7 +329,7 @@ function BotGroupEditor({
                   <select
                     value={displayPersonalities[n] ?? ''}
                     onChange={(e) => onNamePersonality(group.id, n, e.target.value)}
-                    className="min-h-8 max-w-[11rem] rounded-md border border-sidebar/15 bg-mushroom/[0.04] px-2 text-xs text-ink-strong"
+                    className="min-h-8 max-w-[11rem] rounded-md border border-sidebar/15 bg-page/[0.04] px-2 text-xs text-primary"
                     aria-label={`Style for ${n}`}
                     disabled={busy}
                   >
@@ -347,7 +347,7 @@ function BotGroupEditor({
                   <button
                     type="button"
                     onClick={() => onRemoveName(group.id, n)}
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink-strong-muted transition hover:bg-danger/10 hover:text-danger"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted transition hover:bg-danger/10 hover:text-danger"
                     aria-label={`Remove ${n}`}
                     title="Remove"
                   >
@@ -359,7 +359,7 @@ function BotGroupEditor({
                 <li className="admin-empty">No names yet.</li>
               ) : null}
             </ul>
-            <div className="flex flex-col gap-2 border-t border-sidebar/10 bg-mushroom/[0.04] px-3 py-2.5 sm:flex-row sm:items-center">
+            <div className="flex flex-col gap-2 border-t border-sidebar/10 bg-page/[0.04] px-3 py-2.5 sm:flex-row sm:items-center">
               <TextField
                 value={botNameInput}
                 onChange={(e) => onNameInput(e.target.value.slice(0, 24))}

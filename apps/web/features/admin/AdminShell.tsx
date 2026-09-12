@@ -15,9 +15,9 @@ import { cn } from '@/lib/cn';
 function MenuIcon() {
   return (
     <span className="flex flex-col gap-1" aria-hidden>
-      <span className="block h-0.5 w-4 bg-mushroom" />
-      <span className="block h-0.5 w-4 bg-mushroom" />
-      <span className="block h-0.5 w-4 bg-mushroom" />
+      <span className="block h-0.5 w-4 bg-on-chrome" />
+      <span className="block h-0.5 w-4 bg-on-chrome" />
+      <span className="block h-0.5 w-4 bg-on-chrome" />
     </span>
   );
 }
@@ -53,7 +53,7 @@ function AdminNav({
                     'nav-sidebar-item py-2',
                     active
                       ? 'nav-sidebar-item-active bg-brass/15 text-brass'
-                      : 'text-mushroom/80 hover:bg-mushroom/12 hover:text-mushroom',
+                      : 'text-on-chrome/80 hover:bg-on-chrome/12 hover:text-on-chrome',
                   )}
                 >
                   {item.label}
@@ -153,7 +153,7 @@ export function AdminShell({
             <button
               type="button"
               onClick={() => setMenuOpen(false)}
-              className="mr-2 mt-5 rounded-md px-2 py-1.5 text-mushroom/60 hover:text-mushroom"
+              className="mr-2 mt-5 rounded-md px-2 py-1.5 text-on-chrome/60 hover:text-on-chrome"
               aria-label="Close"
             >
               ✕
@@ -177,12 +177,12 @@ export function AdminShell({
           <button
             type="button"
             onClick={() => setMenuOpen(true)}
-            className="flex h-10 w-10 items-center justify-center rounded-md border border-mushroom/20 text-mushroom"
+            className="flex h-10 w-10 items-center justify-center rounded-md border border-subtle/20 text-on-chrome"
             aria-label="Open admin menu"
           >
             <MenuIcon />
           </button>
-          <p className="font-display text-sm font-semibold uppercase tracking-[0.14em] text-mushroom">
+          <p className="font-display text-sm font-semibold uppercase tracking-[0.14em] text-on-chrome">
             {current}
           </p>
         </header>
@@ -194,7 +194,7 @@ export function AdminShell({
         >
           <header className="mb-5 hidden md:block">
             <h1 className="font-title-page">Admin</h1>
-            <p className="mt-1.5 text-sm text-ink-strong-muted">Site, players, and live tables</p>
+            <p className="mt-1.5 text-sm text-muted">Site, players, and live tables</p>
           </header>
 
           {okMsg ? (

@@ -95,12 +95,12 @@ function HandPeek({
 }) {
   const when = formatHandWhen(hand.startedAt);
   return (
-    <div className="rounded-2xl border border-mushroom/20 bg-sidebar/92 p-3 text-mushroom shadow-[0_12px_32px_rgb(0_0_0_/_0.4)] backdrop-blur-md">
+    <div className="rounded-2xl border border-subtle/20 bg-sidebar/92 p-3 text-on-chrome shadow-[0_12px_32px_rgb(0_0_0_/_0.4)] backdrop-blur-md">
       <div className="flex items-start gap-3">
         <HoleThumb cards={hand.holeCards} />
         <div className="min-w-0 flex-1">
-          <p className="font-display text-sm font-bold text-mushroom">Hand {level}</p>
-          <p className="text-xs text-mushroom/70">
+          <p className="font-display text-sm font-bold text-on-chrome">Hand {level}</p>
+          <p className="text-xs text-on-chrome/70">
             {hand.won ? 'Won' : 'Played'}
             {hand.handName && hand.handName !== 'Uncontested' ? ` · ${hand.handName}` : ''}
             {when ? ` · ${when}` : ''}
@@ -117,7 +117,7 @@ function HandPeek({
         <button
           type="button"
           onClick={onClose}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-mushroom/60 hover:bg-white/10 hover:text-mushroom"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-on-chrome/60 hover:bg-white/10 hover:text-on-chrome"
           aria-label="Close hand"
         >
           ×
@@ -203,7 +203,7 @@ export function HandsMap({
         <button
           type="button"
           onClick={onSettings}
-          className="absolute left-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg border border-sidebar/12 bg-mushroom/50 text-ink-strong-muted transition hover:border-sidebar/25 hover:text-sidebar"
+          className="absolute left-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg border border-sidebar/12 bg-page/50 text-muted transition hover:border-sidebar/25 hover:text-sidebar"
           aria-label="Theme settings"
         >
           <GearIcon />
@@ -222,7 +222,7 @@ export function HandsMap({
                 <h3 className="font-display text-sm font-bold text-sidebar">Played hands</h3>
                 <button
                   type="button"
-                  className="text-xs font-semibold text-ink-strong-muted hover:text-sidebar"
+                  className="text-xs font-semibold text-muted hover:text-sidebar"
                   onClick={() => setListOpen(false)}
                 >
                   Back to map
@@ -236,13 +236,13 @@ export function HandsMap({
                   return (
                     <li
                       key={n}
-                      className="flex items-center gap-3 border-b border-sidebar/8 px-4 py-2.5 text-sm last:border-b-0 even:bg-mushroom/35"
+                      className="flex items-center gap-3 border-b border-sidebar/8 px-4 py-2.5 text-sm last:border-b-0 even:bg-page/35"
                     >
                       <HoleThumb cards={status === 'locked' ? null : hand?.holeCards ?? null} />
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium text-ink-strong">Hand {n}</p>
+                        <p className="font-medium text-primary">Hand {n}</p>
                         {hand && status !== 'locked' ? (
-                          <p className="truncate text-xs text-ink-strong-muted">
+                          <p className="truncate text-xs text-muted">
                             {hand.won ? 'Won' : 'Played'}
                             {hand.handName && hand.handName !== 'Uncontested'
                               ? ` · ${hand.handName}`
@@ -257,7 +257,7 @@ export function HandsMap({
                             ? 'text-positive'
                             : status === 'current'
                               ? 'text-sidebar'
-                              : 'text-ink-strong-muted'
+                              : 'text-muted'
                         }`}
                       >
                         {status === 'completed'
@@ -334,7 +334,7 @@ export function HandsMap({
         <button
           type="button"
           onClick={scrollToCurrent}
-          className="absolute bottom-[8.5rem] right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-mushroom/25 bg-sidebar/80 text-mushroom shadow-[0_8px_20px_rgb(0_0_0_/_0.28)] backdrop-blur-sm transition hover:border-mushroom/50"
+          className="absolute bottom-[8.5rem] right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-subtle/25 bg-sidebar/80 text-on-chrome shadow-[0_8px_20px_rgb(0_0_0_/_0.28)] backdrop-blur-sm transition hover:border-subtle/50"
           aria-label="Jump to current hand"
         >
           <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden>

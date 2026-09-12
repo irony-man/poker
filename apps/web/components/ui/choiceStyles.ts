@@ -8,17 +8,17 @@ const option = {
     selected: 'choice-chip choice-chip-selected',
   },
   segmented: {
-    idle: 'relative flex min-h-10 flex-1 cursor-pointer items-center justify-center rounded-lg px-3 py-2 text-center font-display text-xs font-bold uppercase tracking-[0.14em] transition text-ink-strong hover:bg-sidebar/[0.06] hover:text-sidebar disabled:opacity-50',
+    idle: 'relative flex min-h-10 flex-1 cursor-pointer items-center justify-center rounded-lg px-3 py-2 text-center font-display text-xs font-bold uppercase tracking-[0.14em] transition text-primary hover:bg-sidebar/[0.06] hover:text-sidebar disabled:opacity-50',
     selected:
-      'relative flex min-h-10 flex-1 cursor-pointer items-center justify-center rounded-lg px-3 py-2 text-center font-display text-xs font-bold uppercase tracking-[0.14em] transition bg-sidebar text-mushroom shadow-[0_4px_14px_rgb(29_4_50/0.18)] disabled:opacity-50',
+      'relative flex min-h-10 flex-1 cursor-pointer items-center justify-center rounded-lg px-3 py-2 text-center font-display text-xs font-bold uppercase tracking-[0.14em] transition bg-sidebar text-on-chrome shadow-[0_4px_14px_rgb(29_4_50/0.18)] disabled:opacity-50',
   },
   pill: {
-    idle: 'rounded-full border border-sidebar/20 bg-mushroom/70 px-2.5 py-1 text-[11px] font-semibold text-ink-strong transition hover:border-sidebar/35 hover:bg-sidebar/8 disabled:opacity-50',
+    idle: 'rounded-full border border-sidebar/20 bg-raised/80 px-2.5 py-1 text-[11px] font-semibold text-primary transition hover:border-sidebar/35 hover:bg-sidebar/8 disabled:opacity-50',
     selected:
-      'rounded-full border border-sidebar/40 bg-sidebar px-2.5 py-1 text-[11px] font-semibold text-mushroom transition disabled:opacity-50',
+      'rounded-full border border-sidebar/40 bg-sidebar px-2.5 py-1 text-[11px] font-semibold text-on-chrome transition disabled:opacity-50',
   },
   underline: {
-    idle: 'relative inline-flex items-center gap-2 py-3.5 text-sm font-display font-bold tracking-wide transition text-ink-strong-muted hover:text-sidebar disabled:opacity-50',
+    idle: 'relative inline-flex items-center gap-2 py-3.5 text-sm font-display font-bold tracking-wide transition text-muted hover:text-sidebar disabled:opacity-50',
     selected:
       'relative inline-flex items-center gap-2 py-3.5 text-sm font-display font-bold tracking-wide transition text-sidebar disabled:opacity-50',
   },
@@ -26,7 +26,7 @@ const option = {
 
 const track = {
   chip: 'flex flex-wrap gap-2',
-  segmented: 'flex rounded-xl border border-sidebar/20 bg-mushroom/70 p-1',
+  segmented: 'flex rounded-xl border border-sidebar/20 bg-raised/80 p-1',
   pill: 'flex flex-nowrap items-center gap-1.5',
   underline: 'flex flex-nowrap gap-6 overflow-x-auto border-t border-sidebar/10',
 } as const;

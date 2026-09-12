@@ -67,7 +67,7 @@ export function ReadyPlayersRoster({
       aria-label={heading}
       className={
         compact
-          ? `mx-auto w-full max-w-sm rounded-lg border border-sidebar/10 bg-mushroom/40 px-2.5 py-2 ${className}`.trim()
+          ? `mx-auto w-full max-w-sm rounded-lg border border-sidebar/10 bg-page/40 px-2.5 py-2 ${className}`.trim()
           : `rounded-2xl border border-sidebar/12 bg-white/95 px-3 py-3 shadow-[0_12px_32px_rgb(29_4_50_/_0.12)] sm:px-4 sm:py-3.5 ${className}`.trim()
       }
     >
@@ -127,7 +127,7 @@ export function ReadyPlayersRoster({
                 />
                 {p.ready && !p.sittingOut ? (
                   <span
-                    className={`absolute -bottom-0.5 -right-0.5 flex items-center justify-center rounded-full border-2 border-white bg-sidebar text-mushroom shadow-sm ${
+                    className={`absolute -bottom-0.5 -right-0.5 flex items-center justify-center rounded-full border-2 border-white bg-sidebar text-on-chrome shadow-sm ${
                       compact ? 'h-3.5 w-3.5' : 'h-4 w-4 sm:h-5 sm:w-5'
                     }`}
                     aria-hidden
@@ -290,12 +290,12 @@ export function WinHandModal({
     );
   } else {
     primary = (
-      <p className="flex-1 text-center text-xs text-ink-strong-muted">Waiting…</p>
+      <p className="flex-1 text-center text-xs text-muted">Waiting…</p>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-ink-overlay/55 p-3 backdrop-blur-[3px] sm:items-center sm:p-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-overlay/55 p-3 backdrop-blur-[3px] sm:items-center sm:p-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
       <div className="flex w-full max-w-lg flex-col items-stretch gap-3 sm:gap-4">
         <div
           ref={dialogRef}
@@ -305,7 +305,7 @@ export function WinHandModal({
           tabIndex={-1}
           className="surface-modal flex max-h-[min(78dvh,36rem)] w-full flex-col"
         >
-          <div className="shrink-0 border-b border-sidebar/10 bg-mushroom/40 px-4 py-3 text-center sm:px-5 sm:py-5">
+          <div className="shrink-0 border-b border-sidebar/10 bg-page/40 px-4 py-3 text-center sm:px-5 sm:py-5">
             <p className="text-[11px] font-display uppercase tracking-[0.28em] text-sidebar sm:text-xs">
               Hand complete
             </p>
@@ -327,8 +327,8 @@ export function WinHandModal({
                   key={`${w.seat}-${i}`}
                   className={`rounded-xl border px-3 py-3 sm:px-4 sm:py-4 ${
                     w.isSelf
-                      ? 'border-sidebar/25 bg-mushroom/50 shadow-[0_4px_16px_rgb(29_4_50_/_0.05)]'
-                      : 'border-sidebar/10 bg-mushroom/30'
+                      ? 'border-sidebar/25 bg-page/50 shadow-[0_4px_16px_rgb(29_4_50_/_0.05)]'
+                      : 'border-sidebar/10 bg-page/30'
                   }`}
                 >
                   <div className="flex items-baseline justify-between gap-2">
@@ -363,7 +363,7 @@ export function WinHandModal({
                       ))}
                     </div>
                   ) : (
-                    <p className="mt-2 text-center text-xs text-ink-strong-muted">
+                    <p className="mt-2 text-center text-xs text-muted">
                       Won without showdown
                     </p>
                   )}
@@ -372,7 +372,7 @@ export function WinHandModal({
             })}
           </div>
 
-          <div className="shrink-0 border-t border-sidebar/10 bg-mushroom/25 px-3 py-2.5 sm:px-5 sm:py-3">
+          <div className="shrink-0 border-t border-sidebar/10 bg-page/25 px-3 py-2.5 sm:px-5 sm:py-3">
             <div className="flex flex-wrap items-center gap-1.5">
               {/* Secondary actions — top-up is primary when it's the only path forward */}
               {canTopUp && onTopUp && canStartNext && (
@@ -398,7 +398,7 @@ export function WinHandModal({
                 ref={closeRef}
                 type="button"
                 onClick={onDismiss}
-                className="rounded-md border border-sidebar/20 bg-white px-2.5 py-1.5 text-[11px] font-display font-semibold text-sidebar hover:bg-mushroom/60"
+                className="rounded-md border border-sidebar/20 bg-white px-2.5 py-1.5 text-[11px] font-display font-semibold text-sidebar hover:bg-page/60"
               >
                 Close
               </button>

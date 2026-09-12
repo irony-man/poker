@@ -240,7 +240,7 @@ function InviteCard({
           <p className="text-[10px] font-display font-bold uppercase tracking-[0.14em] text-sidebar/70">
             {title}
           </p>
-          <p className="mt-0.5 text-sm font-semibold leading-snug text-ink-strong">{subtitle}</p>
+          <p className="mt-0.5 text-sm font-semibold leading-snug text-primary">{subtitle}</p>
           <div className="mt-2 flex gap-2">
             <Button
               size="sm"

@@ -84,14 +84,14 @@ export function TurnTimerBar({
       <div className="mb-1.5 flex items-center justify-between gap-3">
         <span
           className={`text-[10px] font-display uppercase tracking-[0.2em] ${
-            urgent ? 'text-red-300' : 'text-cream/50'
+            urgent ? 'text-red-300' : 'text-on-chrome/50'
           }`}
         >
           Turn clock
         </span>
         <span
           className={`font-mono text-sm font-bold tabular-nums ${
-            urgent ? 'text-red-300' : 'text-cream/80'
+            urgent ? 'text-red-300' : 'text-on-chrome/80'
           }`}
         >
           {formatTurnSeconds(remaining)}s

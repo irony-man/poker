@@ -29,7 +29,7 @@ function ChipBadge() {
 
 function SpadeBadge() {
   return (
-    <span className="inline-flex h-6 w-6 items-center justify-center text-base text-mushroom">♠</span>
+    <span className="inline-flex h-6 w-6 items-center justify-center text-base text-on-chrome">♠</span>
   );
 }
 
@@ -41,14 +41,14 @@ function HeartBadge() {
 
 function NodeBadge({ kind, plus }: { kind: NodeBadgeKind; plus?: number }) {
   return (
-    <div className="absolute -top-9 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-mushroom/20 bg-sidebar/90 px-2 py-1 shadow-[0_8px_20px_rgb(0_0_0_/_0.35)] backdrop-blur-sm">
+    <div className="absolute -top-9 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-subtle/20 bg-sidebar/90 px-2 py-1 shadow-[0_8px_20px_rgb(0_0_0_/_0.35)] backdrop-blur-sm">
       {kind === 'chip' ? <ChipBadge /> : null}
       {kind === 'spade' ? <SpadeBadge /> : null}
       {kind === 'heart' ? <HeartBadge /> : null}
       {kind === 'plus' ? (
         <>
           <ChipBadge />
-          <span className="pr-0.5 text-xs font-extrabold tabular-nums text-mushroom">+{plus ?? 5}</span>
+          <span className="pr-0.5 text-xs font-extrabold tabular-nums text-on-chrome">+{plus ?? 5}</span>
         </>
       ) : null}
     </div>
@@ -131,7 +131,7 @@ export function LevelNode({
         {showCheck && !locked ? (
           <div
             className={`pointer-events-none absolute -right-0.5 -top-1 z-[2] flex h-5 w-5 items-center justify-center rounded-full border border-white/30 shadow-sm ${
-              hand?.won ? 'bg-brass text-sidebar' : 'bg-sidebar text-mushroom'
+              hand?.won ? 'bg-brass text-sidebar' : 'bg-sidebar text-on-chrome'
             }`}
           >
             <CheckIcon className="h-3 w-3" />
@@ -140,7 +140,7 @@ export function LevelNode({
       </div>
       <span
         className={`mt-0.5 font-display text-[10px] font-extrabold tabular-nums tracking-wide ${
-          locked ? 'text-mushroom/40' : 'text-mushroom/85'
+          locked ? 'text-on-chrome/40' : 'text-on-chrome/85'
         }`}
       >
         {level}

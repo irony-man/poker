@@ -371,7 +371,7 @@ export function LudoDice3D({
         ) : null}
       </button>
       {label ? (
-        <div className="text-center text-[11px] font-display font-semibold uppercase tracking-[0.14em] text-ink-strong">
+        <div className="text-center text-[11px] font-display font-semibold uppercase tracking-[0.14em] text-primary">
           {label}
         </div>
       ) : null}

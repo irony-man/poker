@@ -97,12 +97,12 @@ export function PagesSection({
           <div className="space-y-5">
             <DetailHeader
               title={
-                <h3 className="font-display text-lg font-bold tracking-tight text-ink-strong">
+                <h3 className="font-display text-lg font-bold tracking-tight text-primary">
                   {PAGE_COPY_LABELS[selectedKey]}
                 </h3>
               }
               meta={
-                <p className="mt-1 font-mono text-xs text-ink-strong-muted">
+                <p className="mt-1 font-mono text-xs text-muted">
                   {PAGE_COPY_PATHS[selectedKey]}
                 </p>
               }

@@ -117,7 +117,7 @@ export function ChatActionDock({
       <div className="glass-sheet flex shrink-0 items-center justify-between gap-2 border-b border-sidebar/10 px-3 py-1.5">
         <span
           className={`text-[10px] font-display uppercase tracking-[0.18em] ${
-            expanded ? 'text-ink-strong' : 'text-ink-strong-muted'
+            expanded ? 'text-primary' : 'text-muted'
           }`}
         >
           {expanded ? 'Your move' : 'Actions'}
@@ -125,7 +125,7 @@ export function ChatActionDock({
         <button
           type="button"
           onClick={onFloat}
-          className="rounded border border-sidebar/20 px-2 py-0.5 text-[10px] font-display font-semibold uppercase tracking-wider text-ink-strong-muted hover:border-sidebar/40 hover:bg-sidebar/8 hover:text-sidebar"
+          className="rounded border border-sidebar/20 px-2 py-0.5 text-[10px] font-display font-semibold uppercase tracking-wider text-muted hover:border-sidebar/40 hover:bg-sidebar/8 hover:text-sidebar"
           title="Float actions over the table"
         >
           Float
@@ -300,8 +300,8 @@ export function FloatingActionDock({
           onClick={() => setOpen(true)}
           className={`play-action-dock glass-sheet rounded-full border px-5 py-3 text-xs font-display font-bold uppercase tracking-[0.18em] shadow-[0_8px_24px_rgb(29_4_50/0.12)] ${
             expanded
-              ? 'border-sidebar/40 text-ink-strong animate-hud-pulse'
-              : 'border-sidebar/20 text-ink-strong-muted'
+              ? 'border-sidebar/40 text-primary animate-hud-pulse'
+              : 'border-sidebar/20 text-muted'
           }`}
         >
           {expanded ? 'Your move' : label}
@@ -315,7 +315,7 @@ export function FloatingActionDock({
           <div className="flex shrink-0 cursor-grab items-center justify-between gap-2 border-b border-sidebar/12 bg-white/70 px-3 py-1.5 active:cursor-grabbing">
             <span
               className={`min-w-0 truncate text-[10px] font-display font-semibold uppercase tracking-[0.18em] ${
-                expanded ? 'text-ink-strong' : 'text-ink-strong-muted'
+                expanded ? 'text-primary' : 'text-muted'
               }`}
             >
               Drag · {expanded ? 'your move' : 'actions'}

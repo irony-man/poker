@@ -129,15 +129,15 @@ function FeatureRow({ feature, index }: { feature: HomeLandingFeature; index: nu
       </div>
 
       <div className={`min-w-0 text-center sm:text-left ${textOrder}`}>
-        <h2 className="font-display text-[clamp(1.85rem,3.8vw,2.85rem)] font-bold leading-[1.1] tracking-tight text-ink-strong">
+        <h2 className="font-display text-[clamp(1.85rem,3.8vw,2.85rem)] font-bold leading-[1.1] tracking-tight text-primary">
           {feature.title}
         </h2>
-        <p className="mx-auto mt-3 max-w-md text-[0.98rem] leading-relaxed text-ink-strong-muted sm:mx-0 sm:mt-4 sm:text-lg">
+        <p className="mx-auto mt-3 max-w-md text-[0.98rem] leading-relaxed text-muted sm:mx-0 sm:mt-4 sm:text-lg">
           {feature.body}
         </p>
         <Link
           href={feature.href}
-          className="mt-6 inline-flex min-h-10 items-center justify-center rounded-full bg-sidebar px-8 py-2.5 text-xs font-display font-bold uppercase tracking-[0.16em] text-mushroom shadow-[0_8px_22px_rgb(29_4_50/0.2)] transition duration-base ease-out hover:brightness-110 active:scale-[0.98] sm:mt-8"
+          className="mt-6 inline-flex min-h-10 items-center justify-center rounded-full bg-sidebar px-8 py-2.5 text-xs font-display font-bold uppercase tracking-[0.16em] text-on-chrome shadow-[0_8px_22px_rgb(29_4_50/0.2)] transition duration-base ease-out hover:brightness-110 active:scale-[0.98] sm:mt-8"
         >
           {feature.cta}
         </Link>

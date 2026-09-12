@@ -20,8 +20,8 @@ export function FriendList({
   if (friends.length === 0) {
     return (
       <div className="surface-empty-lg">
-        <p className="text-sm font-medium text-ink-strong">No friends yet</p>
-        <p className="mt-1 text-xs leading-relaxed text-ink-strong-muted">
+        <p className="text-sm font-medium text-primary">No friends yet</p>
+        <p className="mt-1 text-xs leading-relaxed text-muted">
           Enter someone&apos;s exact username under Find player to send a request, then challenge
           them or add them to a group.
         </p>
@@ -36,7 +36,7 @@ export function FriendList({
         return (
           <li
             key={f.userId}
-            className="flex items-center gap-3 rounded-2xl border border-sidebar/12 bg-mushroom/50 px-3 py-2.5"
+            className="flex items-center gap-3 rounded-2xl border border-sidebar/12 bg-raised/70 px-3 py-2.5"
           >
             <Link
               href={publicProfileHref(handle)}
@@ -62,7 +62,7 @@ export function FriendList({
               href={publicProfileHref(handle)}
               className="min-w-0 flex-1 outline-none focus-visible:underline"
             >
-              <span className="block truncate text-sm font-medium text-ink-strong hover:underline">
+              <span className="block truncate text-sm font-medium text-primary hover:underline">
                 {f.name}
               </span>
               {f.online ? (

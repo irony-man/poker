@@ -63,7 +63,7 @@ function MobileProfileButton({ signedIn }: { signedIn: boolean }) {
     return (
       <Link
         href={authHref('sign-in', pathname)}
-        className="flex h-10 w-10 items-center justify-center rounded-full text-mushroom/80 ring-1 ring-mushroom/20"
+        className="flex h-10 w-10 items-center justify-center rounded-full text-on-chrome/80 ring-1 ring-mushroom/20"
         aria-label="Sign in"
       >
         <PersonIcon />
@@ -256,7 +256,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
               </div>
               <OnlineFriendsStrip
                 signedIn={signedIn}
-                className="border-t border-mushroom/10 px-3 pb-2"
+                className="border-t border-subtle/10 px-3 pb-2"
               />
             </header>
 

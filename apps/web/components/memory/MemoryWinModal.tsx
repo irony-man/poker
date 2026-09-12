@@ -29,7 +29,7 @@ export function MemoryWinModal({
   const tied = winners.length > 1;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-ink-overlay/55 p-3 backdrop-blur-[3px] sm:items-center sm:p-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-overlay/55 p-3 backdrop-blur-[3px] sm:items-center sm:p-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
       <div className="flex w-full max-w-lg flex-col items-stretch gap-3 sm:gap-4">
         <div
           role="dialog"
@@ -38,12 +38,12 @@ export function MemoryWinModal({
           className="surface-modal flex max-h-[min(78dvh,36rem)] w-full flex-col"
         >
           <div className="shrink-0 border-b border-sidebar/10 bg-white px-4 py-3 text-center sm:px-5 sm:py-5">
-            <p className="text-[9px] font-display uppercase tracking-[0.28em] text-ink-strong-muted sm:text-[10px]">
+            <p className="text-[9px] font-display uppercase tracking-[0.28em] text-muted sm:text-[10px]">
               Match complete
             </p>
             <h2
               id="memory-win-title"
-              className="mt-0.5 font-display text-2xl font-extrabold uppercase tracking-wider text-ink-strong sm:mt-1 sm:text-3xl"
+              className="mt-0.5 font-display text-2xl font-extrabold uppercase tracking-wider text-primary sm:mt-1 sm:text-3xl"
             >
               {tied ? 'Tie' : youWon ? 'You won' : 'Winner'}
             </h2>
@@ -62,7 +62,7 @@ export function MemoryWinModal({
                 const hex = ludoHexForSeat(w.seat);
                 return (
                   <div key={w.seat} className="flex items-center justify-between gap-2">
-                    <span className="truncate font-display text-base font-bold text-ink-strong sm:text-lg">
+                    <span className="truncate font-display text-base font-bold text-primary sm:text-lg">
                       {w.name}
                       {w.isSelf ? ' · you' : ''}
                     </span>
@@ -75,10 +75,10 @@ export function MemoryWinModal({
                   </div>
                 );
               })}
-              <p className="mt-1 text-[11px] font-display font-semibold uppercase tracking-wider text-ink-strong-muted sm:mt-1.5 sm:text-sm">
+              <p className="mt-1 text-[11px] font-display font-semibold uppercase tracking-wider text-muted sm:mt-1.5 sm:text-sm">
                 {tied ? 'Shared the most pairs' : 'Most pairs found'}
               </p>
-              <p className="mt-2 text-center text-xs text-ink-strong-muted">
+              <p className="mt-2 text-center text-xs text-muted">
                 Ready up for a rematch when you want another round.
               </p>
             </div>
@@ -99,12 +99,12 @@ export function MemoryWinModal({
                   {isReady ? 'Not ready' : 'Play rematch'}
                 </Button>
               ) : (
-                <p className="flex-1 text-center text-[10px] text-ink-strong-muted">Waiting…</p>
+                <p className="flex-1 text-center text-[10px] text-muted">Waiting…</p>
               )}
               <button
                 type="button"
                 onClick={onDismiss}
-                className="rounded-md border border-sidebar/20 bg-white px-2.5 py-1.5 text-[11px] font-display font-semibold text-ink-strong hover:bg-sidebar/5"
+                className="rounded-md border border-sidebar/20 bg-white px-2.5 py-1.5 text-[11px] font-display font-semibold text-primary hover:bg-sidebar/5"
               >
                 Close
               </button>

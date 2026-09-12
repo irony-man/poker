@@ -2,7 +2,7 @@ import type { HTMLAttributes, ReactNode } from 'react';
 
 const tones = {
   neutral: 'border-sidebar/20 bg-sidebar/8 text-sidebar',
-  muted: 'border-sidebar/15 bg-mushroom/70 text-ink-strong-muted',
+  muted: 'border-sidebar/15 bg-page/70 text-muted',
   danger: 'border-danger/30 bg-danger/10 text-danger',
   positive: 'border-positive/30 bg-positive/10 text-positive',
   running: 'border-positive/30 bg-positive/10 text-positive',

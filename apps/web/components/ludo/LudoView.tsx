@@ -340,28 +340,28 @@ export function LudoView({
         </p>
       ) : null}
       {playing && needRoll ? (
-        <p className="text-center text-[11px] font-display font-semibold uppercase tracking-wider text-ink-strong">
+        <p className="text-center text-[11px] font-display font-semibold uppercase tracking-wider text-primary">
           Tap your dice
         </p>
       ) : null}
       {needMove && legalMoves.length === 1 ? (
-        <p className="text-center text-[11px] font-display font-semibold uppercase tracking-wider text-ink-strong">
+        <p className="text-center text-[11px] font-display font-semibold uppercase tracking-wider text-primary">
           Moving your token
         </p>
       ) : needMove && ludo.die === 6 ? (
-        <p className="text-center text-[11px] font-display font-semibold uppercase tracking-wider text-ink-strong">
+        <p className="text-center text-[11px] font-display font-semibold uppercase tracking-wider text-primary">
           Six! Tap a token · extra roll after
         </p>
       ) : needMove ? (
-        <p className="text-center text-[11px] font-display font-semibold uppercase tracking-wider text-ink-strong">
+        <p className="text-center text-[11px] font-display font-semibold uppercase tracking-wider text-primary">
           You got {ludo.die} · tap a token
         </p>
       ) : null}
       {isMyTurn && ludo.die != null && legalMoves.length === 0 && !rolling ? (
-        <p className="text-center text-[11px] text-ink-strong-muted">No legal moves</p>
+        <p className="text-center text-[11px] text-muted">No legal moves</p>
       ) : null}
       {playing && !isMyTurn ? (
-        <p className="text-center text-[11px] text-ink-strong-muted">
+        <p className="text-center text-[11px] text-muted">
           {ludo.toAct != null
             ? `${seats.find((s) => s.seat === ludo.toAct)?.name ?? ludoColorForSeat(ludo.toAct)} to act`
             : 'Waiting…'}
@@ -439,7 +439,7 @@ export function LudoView({
       actions={actions}
       chatEmptyHint="Cheer a capture or call the next six."
     >
-      <div className="flex min-h-0 flex-1 flex-col bg-ink text-on-chrome">
+      <div className="flex min-h-0 flex-1 flex-col bg-chrome text-on-chrome">
         <header className="play-chrome-bar">
           <div className="play-table-logo-row">
             <PlayTableLogo />
@@ -515,7 +515,7 @@ export function LudoView({
                       type="button"
                       disabled={mySeat !== null && !isSpectating}
                       onClick={() => sitAt(p.seat)}
-                      className="flex items-center gap-1.5 rounded-full border border-on-chrome/20 bg-ink-raised px-2.5 py-1 text-[11px] text-on-chrome/80 hover:border-on-chrome/40 disabled:opacity-50"
+                      className="flex items-center gap-1.5 rounded-full border border-on-chrome/20 bg-raised px-2.5 py-1 text-[11px] text-on-chrome/80 hover:border-on-chrome/40 disabled:opacity-50"
                     >
                       <span
                         className="h-2.5 w-2.5 rounded-full"

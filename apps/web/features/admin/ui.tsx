@@ -24,7 +24,7 @@ export function Section({
     <section id={id} className="surface-card">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-sidebar/8 pb-4">
         <div className="min-w-0">
-          <h2 className="font-display text-lg font-bold uppercase tracking-[0.12em] text-ink-strong">
+          <h2 className="font-display text-lg font-bold uppercase tracking-[0.12em] text-primary">
             {title}
           </h2>
           {description ? (
@@ -159,7 +159,7 @@ export function CheckboxRow({
   hint?: string;
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-sidebar/10 bg-mushroom/[0.04] px-3 py-3 text-sm text-ink-strong">
+    <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-sidebar/10 bg-page/[0.04] px-3 py-3 text-sm text-primary">
       <input
         type="checkbox"
         className="h-4 w-4 accent-sidebar"
@@ -168,7 +168,7 @@ export function CheckboxRow({
       />
       <span>
         <span className="font-medium">{title}</span>
-        {hint ? <span className="mt-0.5 block text-xs text-ink-strong-muted">{hint}</span> : null}
+        {hint ? <span className="mt-0.5 block text-xs text-muted">{hint}</span> : null}
       </span>
     </label>
   );
@@ -183,7 +183,7 @@ export function SaveBar({
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-sidebar/8 pt-4">
-      {hint ? <p className="text-xs text-ink-strong-muted">{hint}</p> : <span />}
+      {hint ? <p className="text-xs text-muted">{hint}</p> : <span />}
       <div className="flex flex-wrap items-center gap-2">{children}</div>
     </div>
   );
@@ -201,7 +201,7 @@ export function SplitPane({
   return (
     <div className="grid min-h-[32rem] overflow-hidden rounded-xl border border-sidebar/10 bg-white lg:grid-cols-[minmax(13.5rem,18rem)_minmax(0,1fr)]">
       <div
-        className="flex flex-col gap-0.5 overflow-y-auto border-b border-sidebar/10 bg-mushroom/[0.06] p-2 lg:max-h-[min(70vh,44rem)] lg:border-b-0 lg:border-r"
+        className="flex flex-col gap-0.5 overflow-y-auto border-b border-sidebar/10 bg-page/[0.06] p-2 lg:max-h-[min(70vh,44rem)] lg:border-b-0 lg:border-r"
         role="listbox"
         aria-label={sidebarLabel}
       >
@@ -241,14 +241,14 @@ export function SplitItem({
       onClick={onSelect}
       className={`w-full rounded-lg px-3 py-2.5 text-left transition ${
         selected
-          ? 'bg-sidebar text-mushroom shadow-[0_4px_12px_rgb(29_4_50/0.16)]'
-          : 'text-ink-strong hover:bg-white/80'
+          ? 'bg-sidebar text-on-chrome shadow-[0_4px_12px_rgb(29_4_50/0.16)]'
+          : 'text-primary hover:bg-white/80'
       }`}
     >
       <span className="flex items-center justify-between gap-2">
         <span
           className={`truncate font-display text-sm font-semibold uppercase tracking-wider ${
-            selected ? 'text-mushroom' : 'text-ink-strong'
+            selected ? 'text-on-chrome' : 'text-primary'
           }`}
         >
           {title}
@@ -256,7 +256,7 @@ export function SplitItem({
         {badge ? (
           <span
             className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] ${
-              selected ? 'bg-mushroom/20 text-mushroom' : 'bg-sidebar/10 text-sidebar'
+              selected ? 'bg-on-chrome/20 text-on-chrome' : 'bg-sidebar/10 text-sidebar'
             }`}
           >
             {badge}
@@ -266,7 +266,7 @@ export function SplitItem({
       {meta ? (
         <span
           className={`mt-0.5 block truncate text-xs ${
-            selected ? 'text-mushroom/70' : 'text-ink-strong-muted'
+            selected ? 'text-on-chrome/70' : 'text-muted'
           }`}
         >
           {meta}
@@ -295,6 +295,6 @@ export function DetailHeader({
 
 export function EmptyPane({ children }: { children: ReactNode }) {
   return (
-    <p className="px-4 py-16 text-center text-sm text-ink-strong-muted">{children}</p>
+    <p className="px-4 py-16 text-center text-sm text-muted">{children}</p>
   );
 }

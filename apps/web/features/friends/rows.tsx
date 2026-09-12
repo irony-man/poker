@@ -30,7 +30,7 @@ export function MemberAvatarStack({
         ))}
       </div>
       {extra > 0 && (
-        <span className="ml-1.5 text-[11px] font-medium text-ink-strong-muted">+{extra}</span>
+        <span className="ml-1.5 text-[11px] font-medium text-muted">+{extra}</span>
       )}
     </div>
   );
@@ -63,15 +63,15 @@ export function FriendToggleRow({
       aria-label={name}
       className={`flex w-full items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left transition disabled:opacity-45 ${
         selected
-          ? 'border-sidebar/40 bg-sidebar/[0.08] text-ink-strong'
-          : 'border-transparent bg-mushroom/40 text-ink-strong-muted hover:border-sidebar/15 hover:bg-mushroom/70'
+          ? 'border-sidebar/40 bg-sidebar/[0.08] text-primary'
+          : 'border-transparent bg-raised/70 text-primary hover:border-sidebar/15 hover:bg-raised'
       }`}
     >
       {showCheck ? (
         <span
           className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-[10px] font-bold ${
             selected
-              ? 'border-sidebar bg-sidebar text-mushroom'
+              ? 'border-sidebar bg-sidebar text-on-chrome'
               : 'border-sidebar/25 bg-transparent text-transparent'
           }`}
           aria-hidden

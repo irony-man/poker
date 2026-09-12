@@ -1,5 +1,6 @@
 export {
   chooseBotAction,
+  botThinkDelayMs,
   isBotUserId,
   makeBotUserId,
   pickBotName,

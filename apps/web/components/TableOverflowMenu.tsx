@@ -20,7 +20,7 @@ function itemClass(tone: OverflowItem['tone']): string {
   if (tone === 'accent' || tone === 'gold') {
     return `${base} text-sidebar hover:bg-sidebar/8 focus-visible:bg-sidebar/8`;
   }
-  return `${base} text-ink-strong hover:bg-sidebar/8 focus-visible:bg-sidebar/8`;
+  return `${base} text-primary hover:bg-sidebar/8 focus-visible:bg-sidebar/8`;
 }
 
 /** Compact ⋯ menu for table / play chrome. */

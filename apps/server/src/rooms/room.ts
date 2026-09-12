@@ -24,7 +24,14 @@ import type { HandHistoryStore } from '../history/history.store.js';
 import type { TableChipStore } from '../table-chips/table-chips.store.js';
 import { MemoryTableChipStore } from '../table-chips/table-chips.store.js';
 import { avatarIdFromUserId, clampAvatarId } from '../avatars.js';
-import { chooseBotAction, isBotUserId, makeBotUserId, pickBotName, resolveBotPersonalityId } from '../bot.js';
+import {
+  botThinkDelayMs,
+  chooseBotAction,
+  isBotUserId,
+  makeBotUserId,
+  pickBotName,
+  resolveBotPersonalityId,
+} from '../bot.js';
 import type { BotStyleOptions } from '@poker/engine';
 import type { WalletStore } from '../wallet/wallet.constants.js';
 import { UnlimitedWalletStore, WalletError } from '../wallet/wallet.store.js';
@@ -600,7 +607,7 @@ export class Room {
     const seat = this.state.toAct;
     const actor = this.state.players[seat];
     if (actor && isBotUserId(actor.userId)) {
-      const delay = 650 + Math.floor(Math.random() * 1400);
+      const delay = botThinkDelayMs(this.state, seat, this.config);
       this.turnEndsAt = Date.now() + delay;
       this.turnTimer = setTimeout(() => this.runBotTurn(seat), delay);
       return;

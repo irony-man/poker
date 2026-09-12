@@ -14,7 +14,7 @@ export function CollapsibleSection({
       <summary className="flex cursor-pointer list-none items-center gap-2.5 px-3.5 py-3 text-sm outline-none marker:content-none [&::-webkit-details-marker]:hidden focus-visible:ring-2 focus-visible:ring-sidebar/30">
         <span className="min-w-0 flex-1">
           <span className="hud-label block">{title}</span>
-          <span className="mt-1 block text-[0.8125rem] font-medium leading-snug text-ink-strong-muted">
+          <span className="mt-1 block text-[0.8125rem] font-medium leading-snug text-muted">
             {summary}
           </span>
         </span>
@@ -25,7 +25,7 @@ export function CollapsibleSection({
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="h-4 w-4 shrink-0 text-ink-strong transition-transform duration-200 group-open:rotate-180"
+          className="h-4 w-4 shrink-0 text-primary transition-transform duration-200 group-open:rotate-180"
           aria-hidden
         >
           <path d="m6 9 6 6 6-6" />

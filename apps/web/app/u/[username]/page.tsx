@@ -88,30 +88,32 @@ function SharedHandRow({ hand }: { hand: PlayedHandLevel }) {
         </p>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-end gap-5 sm:gap-7">
-        <SharedPlayerColumn label="You" cards={hand.holeCards} winner={hand.won} />
-        {others.map((p) => (
-          <SharedPlayerColumn
-            key={p.userId || p.name}
-            label={p.name}
-            cards={p.holeCards}
-            winner={p.isWinner}
-          />
-        ))}
-      </div>
-
-      {hand.community.length > 0 ? (
-        <div className="mt-4 border-t border-sidebar/10 pt-4">
-          <p className="mb-2 text-[10px] font-display font-bold uppercase tracking-[0.14em] text-ink-strong-muted">
-            Board
-          </p>
-          <div className="flex flex-wrap gap-1 sm:gap-1.5">
-            {hand.community.map((code, i) => (
-              <PlayingCard key={`${code}-${i}`} code={code} size="xs" dealDelay={0} />
-            ))}
-          </div>
+      <div className="mt-4 space-y-3 rounded-xl bg-sidebar/[0.07] p-3 ring-1 ring-inset ring-sidebar/12 sm:p-3.5">
+        <div className="flex flex-wrap items-end gap-5 sm:gap-7">
+          <SharedPlayerColumn label="You" cards={hand.holeCards} winner={hand.won} />
+          {others.map((p) => (
+            <SharedPlayerColumn
+              key={p.userId || p.name}
+              label={p.name}
+              cards={p.holeCards}
+              winner={p.isWinner}
+            />
+          ))}
         </div>
-      ) : null}
+
+        {hand.community.length > 0 ? (
+          <div className="border-t border-sidebar/10 pt-3">
+            <p className="mb-2 text-[10px] font-display font-bold uppercase tracking-[0.14em] text-ink-strong-muted">
+              Board
+            </p>
+            <div className="flex flex-wrap gap-1 sm:gap-1.5">
+              {hand.community.map((code, i) => (
+                <PlayingCard key={`${code}-${i}`} code={code} size="xs" dealDelay={0} />
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
     </li>
   );
 }

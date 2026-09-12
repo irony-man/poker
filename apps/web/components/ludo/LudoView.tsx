@@ -1,10 +1,10 @@
 'use client';
 
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CopyRoomLink } from '@/components/CopyRoomLink';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
+import { PlayTableLogo } from '@/components/PlayTableLogo';
 import { TableOverflowMenu, type OverflowItem } from '@/components/TableOverflowMenu';
 import { TableShell } from '@/components/TableShell';
 import { Button, buttonClass } from '@/components/ui/Button';
@@ -442,20 +442,13 @@ export function LudoView({
       <div className="flex min-h-0 flex-1 flex-col bg-ink text-on-chrome">
         <header className="play-chrome-bar">
           <div className="play-table-logo-row">
-            <Image
-              src="/purple-logo.png"
-              alt="POKR"
-              width={140}
-              height={40}
-              className="play-table-logo"
-              priority
-            />
+            <PlayTableLogo />
             {isSpectating ? (
               <span
                 className={buttonClass(
                   'chrome',
                   'md',
-                  'cursor-default border-brass/35 bg-brass/15 text-[10px] uppercase tracking-wider text-sidebar hover:border-brass/35 hover:bg-brass/15',
+                  'cursor-default border-brass/35 bg-brass/15 text-[10px] uppercase tracking-wider hover:border-brass/35 hover:bg-brass/15',
                 )}
               >
                 Spec

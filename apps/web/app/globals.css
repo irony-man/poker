@@ -54,8 +54,9 @@
   --patina: 186 162 198;
   --patina-dim: 88 62 112;
 
-  /* Cards */
+  /* Cards — faces + backs stay stable across UI themes (not remapped with page mushroom). */
   --card-face: 250 247 240;
+  --card-back: 230 217 215;
   --card-red: 200 16 46;
   --card-ink: 26 26 26;
 
@@ -1595,6 +1596,7 @@ html[data-ui-theme='v3'] .hud-panel::before {
 /*
  * Frost paper surfaces: nested bg-mushroom/* and text-ink-* assume light ground.
  * Re-bind tokens so Classic utility classes stay readable on Glass.
+ * Play chat / action docks stay on dusk ink — see rules below.
  */
 html[data-ui-theme='v3'] .lobby-shell .hud-panel,
 html[data-ui-theme='v3'] .surface-card,
@@ -1604,9 +1606,7 @@ html[data-ui-theme='v3'] .surface-row,
 html[data-ui-theme='v3'] .surface-empty,
 html[data-ui-theme='v3'] .surface-empty-lg,
 html[data-ui-theme='v3'] .surface-list,
-html[data-ui-theme='v3'] .glass-sheet,
-html[data-ui-theme='v3'] .chat-panel-shell,
-html[data-ui-theme='v3'] .recent-chat-ticker {
+html[data-ui-theme='v3'] .glass-sheet {
   --mushroom: 255 252 250;
   --lobby-card: 244 240 250;
   --ink-strong: 22 12 40;
@@ -1681,37 +1681,142 @@ html[data-ui-theme='v3'] .glass-sheet {
   box-shadow: var(--shadow-panel);
 }
 
-html[data-ui-theme='v3'] .chat-panel-shell {
-  background-image: none;
-  background-color: rgb(var(--glass-fill) / 0.92);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
-  border-color: rgb(var(--sidebar) / 0.22);
+/*
+ * Play chat + action docks — dusk ink to match the table, not frost paper.
+ * Re-bind text tokens so Classic utilities (text-ink-strong, text-sidebar) read light.
+ */
+html[data-ui-theme='v3'] .play-chat-column,
+html[data-ui-theme='v3'] .chat-panel-shell,
+html[data-ui-theme='v3'] .play-action-dock,
+html[data-ui-theme='v3'] .recent-chat-ticker,
+html[data-ui-theme='v3'] .play-chat-column .glass-sheet,
+html[data-ui-theme='v3'] .chat-panel-shell .glass-sheet,
+html[data-ui-theme='v3'] .play-action-dock.glass-sheet,
+html[data-ui-theme='v3'] .play-action-dock .glass-sheet {
+  --mushroom: 255 252 250;
+  --ink-strong: 255 252 250;
+  --ink-strong-muted: 214 204 232;
+  --sidebar: 196 168 255;
+  --on-chrome: 255 255 255;
+  color: rgb(255 252 250);
 }
 
-html[data-ui-theme='v3'] .chat-panel-shell .glass-sheet {
-  background-color: rgb(var(--glass-fill-strong) / 0.94);
-  border-color: rgb(var(--sidebar) / 0.16);
+html[data-ui-theme='v3'] .play-chat-column {
+  background-color: rgb(var(--ink-panel) / 0.92);
+  border-color: rgb(var(--glass-highlight) / 0.22);
+  box-shadow: -12px 0 40px rgb(8 4 20 / 0.35);
+}
+
+html[data-ui-theme='v3'] .chat-panel-shell {
+  background-image: none;
+  background-color: transparent;
+  border-color: transparent;
+  color: rgb(var(--ink-strong));
+}
+
+html[data-ui-theme='v3'] .play-chat-column .glass-sheet,
+html[data-ui-theme='v3'] .chat-panel-shell .glass-sheet,
+html[data-ui-theme='v3'] .play-action-dock,
+html[data-ui-theme='v3'] .play-action-dock .glass-sheet {
+  background-color: rgb(var(--ink-raised) / 0.45);
+  border-color: rgb(var(--glass-highlight) / 0.22);
+  box-shadow: 0 1px 0 0 rgb(var(--glass-highlight) / 0.28) inset;
+  backdrop-filter: blur(16px) saturate(1.25);
+  -webkit-backdrop-filter: blur(16px) saturate(1.25);
+  color: rgb(var(--ink-strong));
 }
 
 html[data-ui-theme='v3'] .chat-panel-shell h2,
 html[data-ui-theme='v3'] .chat-panel-shell .font-heading-sub,
 html[data-ui-theme='v3'] .chat-panel-shell .text-ink-strong,
-html[data-ui-theme='v3'] .chat-panel-shell input {
-  color: rgb(22 12 40);
+html[data-ui-theme='v3'] .chat-panel-shell input,
+html[data-ui-theme='v3'] .play-action-dock .text-ink-strong {
+  color: rgb(var(--ink-strong));
 }
 
-html[data-ui-theme='v3'] .chat-panel-shell .text-ink-strong-muted {
-  color: rgb(58 40 82);
+html[data-ui-theme='v3'] .chat-panel-shell .text-ink-strong-muted,
+html[data-ui-theme='v3'] .play-action-dock .text-ink-strong-muted {
+  color: rgb(var(--ink-strong-muted));
 }
 
-html[data-ui-theme='v3'] .chat-panel-shell .text-sidebar {
-  color: rgb(56 32 120);
+html[data-ui-theme='v3'] .chat-panel-shell .text-sidebar,
+html[data-ui-theme='v3'] .play-action-dock .text-sidebar,
+html[data-ui-theme='v3'] .play-chat-column .font-kicker-sidebar {
+  color: rgb(var(--sidebar));
+}
+
+html[data-ui-theme='v3'] .chat-panel-shell .surface-modal {
+  background-color: rgb(var(--ink-panel) / 0.96);
+  border-color: rgb(var(--glass-highlight) / 0.28);
+  color: rgb(var(--ink-strong));
+  --mushroom: 36 22 64;
+  --ink-strong: 255 252 250;
+  --ink-strong-muted: 214 204 232;
+  --sidebar: 196 168 255;
+}
+
+html[data-ui-theme='v3'] .chat-panel-shell .hud-popup-header {
+  border-color: rgb(var(--glass-highlight) / 0.18);
+}
+
+html[data-ui-theme='v3'] .play-chat-column .btn-soft,
+html[data-ui-theme='v3'] .play-action-dock .btn-soft {
+  background-color: rgb(var(--glass-fill) / 0.12);
+  color: rgb(var(--ink-strong));
+  border-color: rgb(var(--glass-highlight) / 0.35);
+  box-shadow: none;
+}
+
+html[data-ui-theme='v3'] .play-chat-column .btn-soft:hover,
+html[data-ui-theme='v3'] .play-action-dock .btn-soft:hover {
+  background-color: rgb(var(--glass-fill) / 0.2);
+  border-color: rgb(var(--glass-highlight) / 0.5);
+}
+
+html[data-ui-theme='v3'] .play-chat-column .btn-pill,
+html[data-ui-theme='v3'] .play-action-dock .btn-pill {
+  border-color: rgb(var(--glass-highlight) / 0.4);
+  color: rgb(var(--ink-strong));
+}
+
+html[data-ui-theme='v3'] .play-chat-column select,
+html[data-ui-theme='v3'] .play-action-dock select {
+  background-color: rgb(var(--ink-raised) / 0.7);
+  border-color: rgb(var(--glass-highlight) / 0.3);
+  color: rgb(var(--ink-strong));
+}
+
+html[data-ui-theme='v3'] .play-action-dock .bg-white\/70 {
+  background-color: rgb(var(--ink-raised) / 0.55);
+}
+
+html[data-ui-theme='v3'] .play-action-dock .hud-tag-chip {
+  background-color: rgb(var(--glass-fill) / 0.1);
+  border-color: rgb(var(--glass-highlight) / 0.3);
+  color: rgb(var(--ink-strong-muted));
+}
+
+html[data-ui-theme='v3'] .play-action-dock .hud-tag-chip:hover {
+  background-color: rgb(var(--glass-fill) / 0.18);
+  color: rgb(var(--ink-strong));
+  border-color: rgb(var(--glass-highlight) / 0.45);
+}
+
+html[data-ui-theme='v3'] .play-chat-toggle {
+  background-color: rgb(var(--ink-panel) / 0.88);
+  border-color: rgb(var(--glass-highlight) / 0.35);
+  color: rgb(var(--on-chrome));
+  box-shadow: 0 8px 24px rgb(8 4 20 / 0.35);
+}
+
+html[data-ui-theme='v3'] .play-chat-toggle:hover {
+  background-color: rgb(var(--ink-raised) / 0.9);
+  border-color: rgb(var(--glass-highlight) / 0.5);
 }
 
 html[data-ui-theme='v3'] .recent-chat-ticker {
-  background-color: rgb(var(--glass-fill) / 0.92);
-  border-color: rgb(var(--sidebar) / 0.18);
+  background-color: rgb(var(--ink-panel) / 0.82);
+  border-color: rgb(var(--glass-highlight) / 0.22);
 }
 
 /* Page-ground HUD fields (e.g. friends search) sit on dusk — keep labels light. */
@@ -1808,25 +1913,34 @@ html[data-ui-theme='v3'] .lobby-shell .status-chip {
 }
 
 html[data-ui-theme='v3'] .play-chrome-bar {
-  background-color: rgb(var(--ink-panel) / 0.38);
+  background-color: rgb(var(--ink-panel) / 0.55);
   backdrop-filter: blur(20px) saturate(1.35);
   -webkit-backdrop-filter: blur(20px) saturate(1.35);
-  border-color: rgb(var(--glass-highlight) / 0.22);
+  border-bottom: 1px solid rgb(var(--glass-highlight) / 0.22);
+  color: rgb(var(--on-chrome));
 }
 
 html[data-ui-theme='v3'] .play-chrome-control,
 html[data-ui-theme='v3'] .play-chrome-control-icon {
-  border-color: rgb(var(--glass-highlight) / 0.32);
-  background-color: rgb(var(--ink-panel) / 0.42);
-  box-shadow: 0 1px 0 0 rgb(var(--glass-highlight) / 0.4) inset;
+  border-color: rgb(var(--glass-highlight) / 0.42);
+  background-color: rgb(var(--glass-fill) / 0.16);
+  color: rgb(var(--on-chrome));
+  box-shadow: 0 1px 0 0 rgb(var(--glass-highlight) / 0.45) inset;
   backdrop-filter: blur(12px) saturate(1.25);
   -webkit-backdrop-filter: blur(12px) saturate(1.25);
 }
 
-html[data-ui-theme='v3'] .play-chrome-control-active {
-  background-color: rgb(var(--sidebar) / 0.62);
+html[data-ui-theme='v3'] .play-chrome-control:hover,
+html[data-ui-theme='v3'] .play-chrome-control-icon:hover {
+  border-color: rgb(var(--glass-highlight) / 0.58);
+  background-color: rgb(var(--glass-fill) / 0.26);
   color: #fff;
-  border-color: rgb(var(--glass-highlight) / 0.45);
+}
+
+html[data-ui-theme='v3'] .play-chrome-control-active {
+  background-color: rgb(var(--sidebar) / 0.72);
+  color: #fff;
+  border-color: rgb(var(--glass-highlight) / 0.5);
 }
 
 html[data-ui-theme='v3'] .play-chrome-leave {
@@ -1888,7 +2002,9 @@ html[data-ui-theme='v3'] .table-rim {
   html[data-ui-theme='v3'] .play-chrome-control-icon,
   html[data-ui-theme='v3'] .lobby-sidebar,
   html[data-ui-theme='v3'] .felt-surface,
-  html[data-ui-theme='v3'] .chat-panel-shell {
+  html[data-ui-theme='v3'] .chat-panel-shell,
+  html[data-ui-theme='v3'] .play-chat-column,
+  html[data-ui-theme='v3'] .play-action-dock {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
@@ -1899,8 +2015,9 @@ html[data-ui-theme='v3'] .table-rim {
   }
 
   html[data-ui-theme='v3'] .chat-panel-shell,
+  html[data-ui-theme='v3'] .play-chat-column,
   html[data-ui-theme='v3'] .recent-chat-ticker {
-    background-color: rgb(var(--glass-fill) / 0.97);
+    background-color: rgb(var(--ink-panel) / 0.96);
   }
 
   html[data-ui-theme='v3'] .lobby-shell .hud-panel,
@@ -1909,6 +2026,13 @@ html[data-ui-theme='v3'] .table-rim {
   html[data-ui-theme='v3'] .surface-modal,
   html[data-ui-theme='v3'] .glass-sheet {
     background-color: rgb(var(--glass-fill) / 0.94);
+  }
+
+  html[data-ui-theme='v3'] .play-chat-column .glass-sheet,
+  html[data-ui-theme='v3'] .chat-panel-shell .glass-sheet,
+  html[data-ui-theme='v3'] .play-action-dock,
+  html[data-ui-theme='v3'] .play-action-dock .glass-sheet {
+    background-color: rgb(var(--ink-raised) / 0.88);
   }
 
   html[data-ui-theme='v3'] .lobby-sidebar {

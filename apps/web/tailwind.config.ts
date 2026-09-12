@@ -61,6 +61,7 @@ export default {
         positive: token('positive'),
         card: {
           face: token('card-face'),
+          back: token('card-back'),
           red: token('card-red'),
           ink: token('card-ink'),
         },

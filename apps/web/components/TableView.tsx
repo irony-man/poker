@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { ActionControls } from './ActionControls';
 import { CommunityBoard } from './CommunityBoard';
@@ -14,6 +13,7 @@ import { CopyRoomLink } from './CopyRoomLink';
 import { TableOverflowMenu, type OverflowItem } from './TableOverflowMenu';
 import { TableLiveAnnouncer } from './TableLiveAnnouncer';
 import { TableShell } from './TableShell';
+import { PlayTableLogo } from './PlayTableLogo';
 import { VoiceCallBar } from './VoiceCallBar';
 import { WinHandModal } from './WinHandModal';
 import { buildTableJoinShareText } from '@/lib/tableLink';
@@ -611,16 +611,9 @@ export function TableView({
         {/* Cohesive play chrome: brand + room tools */}
         <header className="play-chrome-bar">
           <div className="play-table-logo-row">
-            <Image
-              src="/purple-logo.png"
-              alt="POKR"
-              width={140}
-              height={40}
-              className="play-table-logo"
-              priority
-            />
+            <PlayTableLogo />
             {isSpectating && (
-              <span className={buttonClass('chrome', 'md', 'cursor-default border-brass/35 bg-brass/15 text-[10px] uppercase tracking-wider text-sidebar hover:border-brass/35 hover:bg-brass/15')}>
+              <span className={buttonClass('chrome', 'md', 'cursor-default border-brass/35 bg-brass/15 text-[10px] uppercase tracking-wider hover:border-brass/35 hover:bg-brass/15')}>
                 Spec
               </span>
             )}

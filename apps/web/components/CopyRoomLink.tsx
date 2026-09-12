@@ -3,7 +3,37 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { buildLudoJoinLink, buildLudoJoinShareText } from '@/lib/ludoLink';
+import { buildMemoryJoinLink, buildMemoryJoinShareText } from '@/lib/memoryLink';
+import { buildSnakesJoinLink, buildSnakesJoinShareText } from '@/lib/snakesLink';
 import { buildTableJoinLink, buildTableJoinShareText } from '@/lib/tableLink';
+
+type RoomKind = 'table' | 'ludo' | 'snakes' | 'memory';
+
+function shareText(kind: RoomKind, id: string, inviteCode: string): string {
+  switch (kind) {
+    case 'ludo':
+      return buildLudoJoinShareText(id, inviteCode);
+    case 'snakes':
+      return buildSnakesJoinShareText(id, inviteCode);
+    case 'memory':
+      return buildMemoryJoinShareText(id, inviteCode);
+    default:
+      return buildTableJoinShareText(id, inviteCode);
+  }
+}
+
+function shareLink(kind: RoomKind, id: string, inviteCode: string): string {
+  switch (kind) {
+    case 'ludo':
+      return buildLudoJoinLink(id, inviteCode);
+    case 'snakes':
+      return buildSnakesJoinLink(id, inviteCode);
+    case 'memory':
+      return buildMemoryJoinLink(id, inviteCode);
+    default:
+      return buildTableJoinLink(id, inviteCode);
+  }
+}
 
 /** Shows the room code; click copies the join link (+ code text). */
 export function CopyRoomLink({
@@ -15,7 +45,7 @@ export function CopyRoomLink({
   tableId: string;
   inviteCode: string;
   compact?: boolean;
-  kind?: 'table' | 'ludo';
+  kind?: RoomKind;
 }) {
   const [copied, setCopied] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -27,14 +57,8 @@ export function CopyRoomLink({
   }, []);
 
   const copy = useCallback(async () => {
-    const text =
-      kind === 'ludo'
-        ? buildLudoJoinShareText(tableId, inviteCode)
-        : buildTableJoinShareText(tableId, inviteCode);
-    const link =
-      kind === 'ludo'
-        ? buildLudoJoinLink(tableId, inviteCode)
-        : buildTableJoinLink(tableId, inviteCode);
+    const text = shareText(kind, tableId, inviteCode);
+    const link = shareLink(kind, tableId, inviteCode);
     try {
       await navigator.clipboard.writeText(text);
     } catch {
@@ -71,10 +95,10 @@ export function CopyRoomLink({
         compact ? 'min-w-0 px-2 text-[11px]' : 'px-2.5 text-xs tracking-wide'
       }`}
     >
-      <span className="font-display text-[9px] font-bold uppercase tracking-[0.16em] text-sidebar/55">
+      <span className="font-display text-[9px] font-bold uppercase tracking-[0.16em] text-current opacity-60">
         {copied ? 'Copied' : 'Code'}
       </span>
-      <span className="tabular-nums tracking-wider text-sidebar">{inviteCode}</span>
+      <span className="tabular-nums tracking-wider text-current">{inviteCode}</span>
     </Button>
   );
 }

@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   applyAction,
@@ -36,6 +35,7 @@ import { isSeatActionLabel } from '@/lib/seatAction';
 import { TableOverflowMenu, type OverflowItem } from './TableOverflowMenu';
 import { TableLiveAnnouncer } from './TableLiveAnnouncer';
 import { TableShell } from './TableShell';
+import { PlayTableLogo } from './PlayTableLogo';
 import { Button, buttonClass } from '@/components/ui/Button';
 import { WinHandModal } from './WinHandModal';
 import { avatarIdFromUserId, loadSavedAvatarId } from '@/lib/avatars';
@@ -758,15 +758,8 @@ export function OfflineTableView({
         <TableLiveAnnouncer table={publicTable} userId={HUMAN_ID} />
         <header className="play-chrome-bar">
           <div className="play-table-logo-row">
-            <Image
-              src="/purple-logo.png"
-              alt="POKR"
-              width={140}
-              height={40}
-              className="play-table-logo"
-              priority
-            />
-            <span className={buttonClass('chrome', 'md', 'cursor-default text-[10px] uppercase tracking-wider text-sidebar/70 hover:border-sidebar/15 hover:bg-white')}>
+            <PlayTableLogo />
+            <span className={buttonClass('chrome', 'md', 'cursor-default text-[10px] uppercase tracking-wider')}>
               Offline
             </span>
           </div>

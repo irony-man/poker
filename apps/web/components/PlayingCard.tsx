@@ -32,11 +32,12 @@ const RANK_LABEL: Record<string, string> = {
   '2': '2',
 };
 
+/** Text-style suits (VS15) so CSS color applies — emoji presentation ignores it. */
 const SUIT_GLYPH: Record<string, string> = {
-  h: '♥',
-  d: '♦',
-  c: '♣',
-  s: '♠',
+  h: '♥\uFE0E',
+  d: '♦\uFE0E',
+  c: '♣\uFE0E',
+  s: '♠\uFE0E',
 };
 
 const RANK_NAME: Record<string, string> = {
@@ -111,7 +112,7 @@ function CardFace({
   red: boolean;
   size: CardSize;
 }) {
-  const color = red ? 'text-[#e53935]' : 'text-[#111111]';
+  const ink = red ? 'rgb(var(--card-red))' : 'rgb(var(--card-ink))';
   const tiny = isTiny(size);
   const isTen = rank === '10';
 
@@ -124,7 +125,6 @@ function CardFace({
       : 'text-[15px] sm:text-[20px] leading-none';
 
   const cornerSuit = tiny ? 'text-[9px] leading-none' : 'text-[12px] sm:text-[15px] leading-none';
-  const topRightSuit = tiny ? 'text-[12px] leading-none' : 'text-[16px] sm:text-[22px] leading-none';
   const centerSuit = tiny
     ? 'text-[1.55rem] leading-none'
     : 'text-[2.15rem] sm:text-[3rem] leading-none';
@@ -133,6 +133,7 @@ function CardFace({
     <div
       className="absolute inset-0"
       style={{
+        color: ink,
         background: 'linear-gradient(180deg, #ffffff 0%, #ffffff 48%, #f2f2f2 100%)',
       }}
     >
@@ -152,20 +153,25 @@ function CardFace({
       />
 
       {/* Top-left: rank + small suit */}
-      <div className={`absolute left-[5%] top-[5%] z-[1] flex flex-col items-center ${color}`}>
+      <div
+        className="absolute left-[5%] top-[5%] z-[1] flex flex-col items-center"
+        style={{ fontVariantEmoji: 'text' }}
+      >
         <span className={`select-none font-extrabold tracking-tight ${rankClass}`}>{rank}</span>
+        <span className={`mt-px select-none font-semibold ${cornerSuit}`} aria-hidden>
+          {suit}
+        </span>
       </div>
 
-      {/* Top-right: medium suit */}
-      {/* <div className={`absolute right-[6%] top-[6%] z-[1] ${color}`}>
-        <span className={`select-none font-semibold ${topRightSuit}`}>{suit}</span>
-      </div> */}
-
       {/* Large center suit */}
-      <div className={`absolute inset-0 flex items-center justify-center ${color}`}>
+      <div
+        className="absolute inset-0 flex items-center justify-center"
+        style={{ fontVariantEmoji: 'text' }}
+      >
         <span
           className={`select-none font-semibold ${centerSuit}`}
           style={{ transform: 'translateY(8%)' }}
+          aria-hidden
         >
           {suit}
         </span>
@@ -272,7 +278,7 @@ export function PlayingCard({
     w,
     radius,
     'relative overflow-hidden',
-    faceDown || !code ? 'bg-mushroom' : 'bg-white',
+    faceDown || !code ? 'bg-card-back' : 'bg-card-face',
     'shadow-[0_4px_12px_rgba(0,0,0,0.35)]',
     winRing,
     dim,

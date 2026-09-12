@@ -6,11 +6,14 @@ import {
   applyAction,
   applyTimeout,
   cardToString,
+  botBanterDelayMs,
   botThinkDelayMs,
   chooseBotAction,
   createEmptyTable,
   isBotUserId,
   makeBotUserId,
+  maybeBotBanter,
+  personalityForBot,
   pickBotName,
   resolveBotPersonalityId,
   returnToWaiting,
@@ -21,6 +24,7 @@ import {
   topUp,
   toPrivateView,
   toPublicView,
+  type BotBanterTrigger,
   type BotStyleOptions,
   type EngineEvent,
   type HandState,
@@ -221,6 +225,9 @@ export function OfflineTableView({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const botReadyTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const botReadyIdsRef = useRef<Set<string>>(new Set());
+  const botBanterTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+  const lastBotBanterAtRef = useRef(0);
+  const lastBotBanterByUserRef = useRef<Map<string, number>>(new Map());
   const [botReadyVersion, setBotReadyVersion] = useState(0);
   const persistSessionRef = useRef(true);
   const tableIdRef = useRef(newOfflineTableId(readStoredSession()?.userId));
@@ -245,6 +252,11 @@ export function OfflineTableView({
   const clearBotReadyTimers = useCallback(() => {
     for (const timer of botReadyTimersRef.current.values()) clearTimeout(timer);
     botReadyTimersRef.current.clear();
+  }, []);
+
+  const clearBotBanterTimers = useCallback(() => {
+    for (const timer of botBanterTimersRef.current) clearTimeout(timer);
+    botBanterTimersRef.current.clear();
   }, []);
 
   const resetBotReady = useCallback(() => {
@@ -279,6 +291,30 @@ export function OfflineTableView({
     [pushChat],
   );
 
+  const scheduleBotBanter = useCallback(
+    (userId: string, name: string, trigger: BotBanterTrigger) => {
+      const now = Date.now();
+      if (now - lastBotBanterAtRef.current < 2500) return;
+      const lastMine = lastBotBanterByUserRef.current.get(userId) ?? 0;
+      if (now - lastMine < 12_000) return;
+
+      const style = personalityForBot(userId, name, botStyles);
+      const line = maybeBotBanter({ personalityId: style.id, trigger });
+      if (!line) return;
+
+      lastBotBanterAtRef.current = now;
+      lastBotBanterByUserRef.current.set(userId, now);
+
+      const delay = botBanterDelayMs();
+      const timer = setTimeout(() => {
+        botBanterTimersRef.current.delete(timer);
+        recordChat({ userId, name, text: line, at: Date.now() });
+      }, delay);
+      botBanterTimersRef.current.add(timer);
+    },
+    [botStyles, recordChat],
+  );
+
   const persistCompletedHand = useCallback((next: HandState) => {
     if (!next.handId || recordedHandsRef.current.has(next.handId)) return;
     if (!readStoredSession()?.sessionToken) return;
@@ -303,11 +339,22 @@ export function OfflineTableView({
         if (!isSeatActionLabel(label)) return;
         setActionBurst({ seat, label, at: Date.now(), action });
       });
+      for (const e of events) {
+        if (e.type !== 'hand_ended') continue;
+        for (const w of e.winners) {
+          const winner = next.players[w.seat];
+          if (winner?.userId && isBotUserId(winner.userId)) {
+            scheduleBotBanter(winner.userId, winner.name ?? `Seat ${w.seat}`, {
+              kind: 'win',
+            });
+          }
+        }
+      }
       if (events.some((e) => e.type === 'hand_ended') || next.street === 'payout') {
         persistCompletedHand(next);
       }
     },
-    [recordChat, setActionBurst, persistCompletedHand],
+    [recordChat, setActionBurst, persistCompletedHand, scheduleBotBanter],
   );
 
   // Seed human + bots once (or restore a saved session).
@@ -388,6 +435,7 @@ export function OfflineTableView({
 
     return () => {
       clearBotReadyTimers();
+      clearBotBanterTimers();
       botReadyIdsRef.current.clear();
       useSession.setState({
         userId: restore.userId,
@@ -401,7 +449,7 @@ export function OfflineTableView({
         lastErrorCode: null,
       });
     };
-  }, [config, playerName, botNames, botStyles, resume, pushChat, clearBotReadyTimers]);
+  }, [config, playerName, botNames, botStyles, resume, pushChat, clearBotReadyTimers, clearBotBanterTimers]);
 
   useEffect(() => {
     if (!bootstrapped) return;
@@ -500,15 +548,26 @@ export function OfflineTableView({
       if (isBotUserId(actor.userId)) {
         const delay = botThinkDelayMs(s, s.toAct, config);
         setTurnEndsAt(Date.now() + delay);
+        const seat = s.toAct;
+        const userId = actor.userId!;
+        const name = actor.name ?? `Seat ${seat}`;
+        const street = s.street;
         timerRef.current = setTimeout(() => {
           setState((curr) => {
-            if (curr.toAct === null || curr.toAct !== s.toAct) return curr;
+            if (curr.toAct === null || curr.toAct !== seat) return curr;
             const intent = chooseBotAction(curr, curr.toAct, config);
             const result = intent
               ? applyAction(curr, curr.toAct, intent, config)
               : applyTimeout(curr, config);
             if (!result.ok) return curr;
             pendingAnnounceRef.current = { state: result.state, events: result.events };
+            if (intent) {
+              scheduleBotBanter(userId, name, {
+                kind: 'action',
+                action: intent.type,
+                street,
+              });
+            }
             return result.state;
           });
         }, delay);
@@ -538,7 +597,7 @@ export function OfflineTableView({
         });
       }, config.turnTimeMs);
     },
-    [config],
+    [config, scheduleBotBanter],
   );
 
   useEffect(() => {

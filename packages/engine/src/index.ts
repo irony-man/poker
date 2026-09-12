@@ -4,3 +4,4 @@ export * from './pots.js';
 export * from './hand.js';
 export * from './view.js';
 export * from './bot.js';
+export * from './bot-banter.js';

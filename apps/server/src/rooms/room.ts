@@ -26,13 +26,16 @@ import { MemoryTableChipStore } from '../table-chips/table-chips.store.js';
 import { avatarIdFromUserId, clampAvatarId } from '../avatars.js';
 import {
   botThinkDelayMs,
+  botBanterDelayMs,
   chooseBotAction,
   isBotUserId,
   makeBotUserId,
+  maybeBotBanter,
+  personalityForBot,
   pickBotName,
   resolveBotPersonalityId,
 } from '../bot.js';
-import type { BotStyleOptions } from '@poker/engine';
+import type { BotStyleOptions, BotBanterTrigger } from '@poker/engine';
 import type { WalletStore } from '../wallet/wallet.constants.js';
 import { UnlimitedWalletStore, WalletError } from '../wallet/wallet.store.js';
 
@@ -110,6 +113,10 @@ export class Room {
   /** Bots that have auto-readied for the next hand (UI; deal gating treats all bots as ready). */
   private botReadyUserIds = new Set<string>();
   private botReadyTimers = new Map<string, NodeJS.Timeout>();
+  /** Bot table-chat anti-spam. */
+  private lastBotBanterAt = 0;
+  private lastBotBanterByUser = new Map<string, number>();
+  private botBanterTimers = new Set<NodeJS.Timeout>();
   /** Cash: sit out after the current hand finishes (still finish this hand). */
   private pendingSitOutUserIds = new Set<string>();
   private kv: KvStore;
@@ -414,6 +421,8 @@ export class Room {
 
     this.clearTurnTimer();
     this.clearBotReadyTimers();
+    for (const timer of this.botBanterTimers) clearTimeout(timer);
+    this.botBanterTimers.clear();
     if (this.autoStartTimer) {
       clearTimeout(this.autoStartTimer);
       this.autoStartTimer = null;
@@ -632,6 +641,10 @@ export class Room {
     const intent = chooseBotAction(this.state, seat, this.config);
     if (!intent) return;
 
+    const userId = actor.userId!;
+    const name = actor.name ?? `Seat ${seat}`;
+    const street = this.state.street;
+
     const result = applyAction(this.state, seat, intent, this.config);
     if (!result.ok) {
       // Safety: never stall the hand
@@ -645,6 +658,11 @@ export class Room {
     }
     this.state = result.state;
     this.announceEngineEvents(result.events);
+    this.maybeScheduleBotBanter(userId, name, {
+      kind: 'action',
+      action: intent.type,
+      street,
+    });
     void this.afterStateChange();
   }
 
@@ -1437,10 +1455,14 @@ export class Room {
       } else if (e.type === 'hand_ended') {
         if (e.winners.length === 1) {
           const w = e.winners[0]!;
-          const name = this.state.players[w.seat]?.name ?? `Seat ${w.seat}`;
+          const winner = this.state.players[w.seat];
+          const name = winner?.name ?? `Seat ${w.seat}`;
           const hand =
             w.handName && w.handName !== 'Uncontested' ? ` with ${w.handName}` : '';
           this.systemChat('Dealer', `${name} wins ${w.amount}${hand}`);
+          if (winner?.userId && isBotUserId(winner.userId)) {
+            this.maybeScheduleBotBanter(winner.userId, name, { kind: 'win' });
+          }
         } else if (e.winners.length > 1) {
           const parts = e.winners.map((w) => {
             const name = this.state.players[w.seat]?.name ?? `Seat ${w.seat}`;
@@ -1449,6 +1471,16 @@ export class Room {
             return `${name} ${w.amount}${hand}`;
           });
           this.systemChat('Dealer', `Split pot — ${parts.join(', ')}`);
+          for (const w of e.winners) {
+            const winner = this.state.players[w.seat];
+            if (winner?.userId && isBotUserId(winner.userId)) {
+              this.maybeScheduleBotBanter(
+                winner.userId,
+                winner.name ?? `Seat ${w.seat}`,
+                { kind: 'win' },
+              );
+            }
+          }
         }
       } else if (e.type === 'blinds_posted') {
         const sb = this.state.players[e.sbSeat]?.name ?? `Seat ${e.sbSeat}`;
@@ -1488,6 +1520,41 @@ export class Room {
 
   private systemChat(name: string, text: string): void {
     this.broadcastChat('system', name, text, 'system');
+  }
+
+  /**
+   * Bot table chat — skips human rate limits; still recorded as user chat.
+   * Callers must already have passed cooldown / maybeBotBanter gates.
+   */
+  private botChat(userId: string, name: string, text: string): void {
+    this.broadcastChat(userId, name, text, 'user');
+  }
+
+  private maybeScheduleBotBanter(
+    userId: string,
+    name: string,
+    trigger: BotBanterTrigger,
+  ): void {
+    const now = Date.now();
+    if (now - this.lastBotBanterAt < 2500) return;
+    const lastMine = this.lastBotBanterByUser.get(userId) ?? 0;
+    if (now - lastMine < 12_000) return;
+
+    const style = personalityForBot(userId, name);
+    const line = maybeBotBanter({ personalityId: style.id, trigger });
+    if (!line) return;
+
+    // Reserve cooldown immediately so parallel win+action races don't double-post.
+    this.lastBotBanterAt = now;
+    this.lastBotBanterByUser.set(userId, now);
+
+    const delay = botBanterDelayMs();
+    const timer = setTimeout(() => {
+      this.botBanterTimers.delete(timer);
+      // Seat may have left; still fine to show as that bot if name matches history.
+      this.botChat(userId, name, line);
+    }, delay);
+    this.botBanterTimers.add(timer);
   }
 
   chat(userId: string, name: string, text: string): void {

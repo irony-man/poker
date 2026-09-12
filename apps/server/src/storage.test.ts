@@ -113,7 +113,12 @@ describe('AdminController soundUploadUrl', () => {
   const auth = { listUsers: () => [] };
   const wallet = {};
   const rooms = {};
+  const ludo = {};
   const contests = {};
+  const friends = {};
+  const history = {};
+  const presence = {};
+  const realtime = {};
 
   it('returns 503 when storage is not configured', async () => {
     const storage = makeStorage({});
@@ -122,11 +127,12 @@ describe('AdminController soundUploadUrl', () => {
       auth as never,
       wallet as never,
       rooms as never,
+      ludo as never,
       contests as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
+      friends as never,
+      history as never,
+      presence as never,
+      realtime as never,
       storage,
     );
     await expect(

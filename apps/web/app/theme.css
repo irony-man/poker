@@ -99,18 +99,31 @@
 }
 
 /*
- * Play HUD panels: light text on dark chrome.
- * Lobby shell rebinds to paper surfaces below.
+ * Dark ink HUD only — light glyphs on purple panels.
+ * Classic/Arcade play chat + action docks are light paper (see below).
  */
-.hud-panel,
-.play-chat-column,
-.chat-panel-shell,
-.play-action-dock {
+.hud-panel {
   --text-primary: 242 234 232;
   --text-muted: 206 190 204;
   --border-subtle: 230 217 215;
   --border-strong: 230 217 215;
   --focus-ring: 230 217 215;
+}
+
+/*
+ * Play chat / action docks — Classic & Arcade use white glass sheets on
+ * mushroom page ground. Keep dark ink so text-muted / text-primary stay readable.
+ * Glass (v3) rebinds these to light glyphs on dusk ink docks.
+ */
+.play-chat-column,
+.chat-panel-shell,
+.play-action-dock,
+.recent-chat-ticker {
+  --text-primary: 29 4 50;
+  --text-muted: 68 48 74;
+  --border-subtle: 29 4 50;
+  --border-strong: 29 4 50;
+  --focus-ring: 29 4 50;
 }
 
 /* Lobby: paper panels + dark body copy on page ground */
@@ -213,15 +226,14 @@ html[data-ui-theme='v2'] .lobby-sidebar {
   --text-muted: 214 196 232;
 }
 
-html[data-ui-theme='v2'] .hud-panel,
-html[data-ui-theme='v2'] .play-chat-column,
-html[data-ui-theme='v2'] .chat-panel-shell,
-html[data-ui-theme='v2'] .play-action-dock {
+html[data-ui-theme='v2'] .hud-panel {
   --text-primary: 255 255 255;
   --text-muted: 214 196 232;
   --border-subtle: 255 255 255;
   --on-chrome: 255 255 255;
 }
+
+/* Arcade play chat/docks stay light paper — keep Classic dark ink from base rules. */
 
 /*
  * Glass (v3) — dusk page ground; frost panels re-bind semantic text/surfaces.

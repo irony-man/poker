@@ -251,7 +251,7 @@ export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
     title: 'Open Tables',
     body: "Hold'em that runs the way a home game does, no set number of hands and no cap on buy-ins, so you can add chips whenever your stack runs low and leave when the night feels done.",
     cta: 'Join a Table',
-    href: '/join',
+    href: '/play?mode=join',
     image: '/poker-chip-shuffle.svg',
     imageAlt: 'POKR chips stacking for a fixed-round session',
     imageFirst: false,
@@ -367,8 +367,8 @@ export const DEFAULT_PAGES_COPY: PagesCopy = {
 };
 
 export const PAGE_COPY_LABELS: Record<PageCopyKey, string> = {
-  host: 'Host (/host)',
-  join: 'Join (/join)',
+  host: 'Host (/play)',
+  join: 'Join (/play?mode=join)',
   public: 'Public tables (/public)',
   contests: 'Contests (/contests)',
   friends: 'Friends (/friends)',

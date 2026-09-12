@@ -24,6 +24,8 @@
   /* Lobby shell + brand anchors */
   --sidebar: 29 4 50;
   --mushroom: 230 217 215;
+  /* Nested cards inside lobby panels (not the outer hud-panel fill). */
+  --lobby-card: 237 228 226;
   --ink-strong: 29 4 50;
   /* ≥7:1 on mushroom — secondary/caption copy at 11–12px (keep solid; avoid /50 stacking) */
   --ink-strong-muted: 68 48 74;
@@ -304,6 +306,14 @@ body > * {
   backdrop-filter: none;
 }
 
+/* Nested stake / option cards: tinted so they read against the panel. */
+.lobby-shell .hud-panel .surface-card,
+.lobby-shell .hud-panel .surface-card-lg {
+  background-color: rgb(var(--lobby-card));
+  box-shadow: none;
+  border-color: rgb(var(--sidebar) / 0.14);
+}
+
 .lobby-shell .hud-panel::before {
   background: linear-gradient(
     90deg,
@@ -329,11 +339,14 @@ body > * {
 }
 
 .lobby-shell .hud-label {
-  color: rgb(var(--ink-strong-muted));
+  color: rgb(var(--ink-strong));
+  letter-spacing: 0.12em;
 }
 
 .lobby-shell .field-help {
   color: rgb(var(--ink-strong-muted));
+  font-size: 0.8125rem;
+  line-height: 1.45;
 }
 
 .lobby-shell .choice-chip {
@@ -1203,6 +1216,7 @@ html[data-ui-theme='v2'] {
   --ink-overlay: 18 6 32;
   --sidebar: 91 33 182;
   --mushroom: 253 233 61;
+  --lobby-card: 255 245 157;
   --ink-strong: 26 16 40;
   --ink-strong-muted: 72 48 96;
   --on-chrome: 255 255 255;
@@ -1285,6 +1299,13 @@ html[data-ui-theme='v2'] .lobby-shell .hud-panel {
   box-shadow: 4px 4px 0 0 #000;
 }
 
+html[data-ui-theme='v2'] .lobby-shell .hud-panel .surface-card,
+html[data-ui-theme='v2'] .lobby-shell .hud-panel .surface-card-lg {
+  background-color: rgb(var(--lobby-card));
+  border: 3px solid #000;
+  box-shadow: 3px 3px 0 0 #000;
+}
+
 html[data-ui-theme='v2'] .surface-card,
 html[data-ui-theme='v2'] .surface-card-lg {
   border: 3px solid #000;
@@ -1355,6 +1376,12 @@ html[data-ui-theme='v2'] .lobby-shell .choice-chip-selected {
   border-color: #000;
 }
 
+/* Nested stake captions on solid selected chips (Arcade) */
+html[data-ui-theme='v2'] .choice-chip-selected .text-ink-strong-muted,
+html[data-ui-theme='v2'] .lobby-shell .choice-chip-selected .text-ink-strong-muted {
+  color: rgb(255 255 255 / 0.9);
+}
+
 html[data-ui-theme='v2'] .status-chip,
 html[data-ui-theme='v2'] .lobby-shell .status-chip {
   border: 2px solid #000;
@@ -1391,6 +1418,7 @@ html[data-ui-theme='v3'] {
   --ink-overlay: 6 4 16;
   --sidebar: 96 64 168;
   --mushroom: 42 24 72;
+  --lobby-card: 244 240 250;
   --ink-strong: 22 12 40;
   /*
    * Page ground is dusk purple — muted body copy must stay light.
@@ -1580,6 +1608,7 @@ html[data-ui-theme='v3'] .glass-sheet,
 html[data-ui-theme='v3'] .chat-panel-shell,
 html[data-ui-theme='v3'] .recent-chat-ticker {
   --mushroom: 255 252 250;
+  --lobby-card: 244 240 250;
   --ink-strong: 22 12 40;
   --ink-strong-muted: 58 40 82;
   --sidebar: 56 32 120;
@@ -1623,6 +1652,15 @@ html[data-ui-theme='v3'] .surface-modal {
   backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
   border-radius: var(--radius-xl);
+}
+
+html[data-ui-theme='v3'] .lobby-shell .hud-panel .surface-card,
+html[data-ui-theme='v3'] .lobby-shell .hud-panel .surface-card-lg {
+  background-color: rgb(var(--lobby-card) / 0.92);
+  border-color: rgb(var(--glass-stroke) / 0.45);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 html[data-ui-theme='v3'] .surface-row,

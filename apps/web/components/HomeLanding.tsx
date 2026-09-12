@@ -24,7 +24,7 @@ export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
     title: 'Open Tables',
     body: "Hold'em that runs the way a home game does, no set number of hands and no cap on buy-ins, so you can add chips whenever your stack runs low and leave when the night feels done.",
     cta: 'Join a Table',
-    href: '/join',
+    href: '/play?mode=join',
     image: imageAssetUrl('poker-chip-shuffle.svg'),
     imageAlt: 'POKR chips stacking for a fixed-round session',
     imageFirst: false,

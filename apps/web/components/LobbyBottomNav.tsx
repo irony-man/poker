@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useId, useRef, useState } from 'react';
 import { PendingCountBadge, useOnlineFriends } from '@/components/OnlineFriends';
 import {
   MOBILE_BOTTOM_NAV,
@@ -30,7 +29,7 @@ function NavIcon({ name, active }: { name: MobileBottomIcon; active: boolean }) 
           <path d="M3.6 10.8 12 3.8l8.4 7V20a1.4 1.4 0 0 1-1.4 1.4H14v-6.2h-4v6.2H5a1.4 1.4 0 0 1-1.4-1.4v-9.2Z" />
         </svg>
       );
-    case 'hostJoin':
+    case 'play':
       return (
         <svg {...props}>
           <ellipse cx="12" cy="13.2" rx="8.4" ry="5.4" />
@@ -103,29 +102,6 @@ export function LobbyBottomNav() {
   const pathname = usePathname();
   const signedIn = !!useSession((s) => s.sessionToken);
   const { pendingCount } = useOnlineFriends();
-  const [hostOpen, setHostOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const menuId = useId();
-
-  useEffect(() => {
-    setHostOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    if (!hostOpen) return;
-    const onPointer = (e: PointerEvent) => {
-      if (!menuRef.current?.contains(e.target as Node)) setHostOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setHostOpen(false);
-    };
-    document.addEventListener('pointerdown', onPointer);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('pointerdown', onPointer);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [hostOpen]);
 
   return (
     <nav
@@ -136,49 +112,6 @@ export function LobbyBottomNav() {
       <div className="flex items-stretch">
         {MOBILE_BOTTOM_NAV.map((item) => {
           const active = isMobileNavActive(pathname, item);
-          if (item.kind === 'hostJoin') {
-            return (
-              <div key={item.id} className="relative flex flex-1" ref={menuRef}>
-                <button
-                  type="button"
-                  className={slotClass(active)}
-                  aria-label={item.label}
-                  aria-expanded={hostOpen}
-                  aria-controls={menuId}
-                  aria-current={active ? 'page' : undefined}
-                  onClick={() => setHostOpen((open) => !open)}
-                >
-                  <NavIcon name={item.icon} active={active} />
-                  <SlotLabel text={item.shortLabel} active={active} />
-                </button>
-                {hostOpen ? (
-                  <div
-                    id={menuId}
-                    role="menu"
-                    className="absolute bottom-[calc(100%+0.5rem)] left-1/2 z-30 w-40 -translate-x-1/2 overflow-hidden rounded-xl border border-mushroom/15 bg-sidebar shadow-[0_12px_32px_rgb(0_0_0/0.35)]"
-                  >
-                    <Link
-                      href="/host"
-                      role="menuitem"
-                      className="menu-item-dark"
-                      onClick={() => setHostOpen(false)}
-                    >
-                      Host
-                    </Link>
-                    <Link
-                      href="/join"
-                      role="menuitem"
-                      className="menu-item-dark border-t border-mushroom/10"
-                      onClick={() => setHostOpen(false)}
-                    >
-                      Join
-                    </Link>
-                  </div>
-                ) : null}
-              </div>
-            );
-          }
-
           const showBadge = signedIn && item.id === 'friends' && pendingCount > 0;
           return (
             <Link

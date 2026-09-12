@@ -44,6 +44,8 @@ data class PokrPalette(
     val mushroom: Color,
     val sidebar: Color,
     val lobbyPanel: Color,
+    /** Nested cards inside lobby panels (stake tiles, option cards). */
+    val lobbyCard: Color,
     val feltGreen: Color,
     val feltGreenDark: Color,
     val feltMid: Color,
@@ -67,6 +69,7 @@ data class PokrPalette(
             mushroom = Color(0xFFE6D9D7),
             sidebar = Color(0xFF1D0432),
             lobbyPanel = Color(0xFFFFFFFF),
+            lobbyCard = Color(0xFFEDE4E2),
             feltGreen = Color(0xFF1D0432),
             feltGreenDark = Color(0xFF120220),
             feltMid = Color(0xFF341252),
@@ -90,6 +93,7 @@ data class PokrPalette(
             mushroom = Color(0xFFFDE93D),
             sidebar = Color(0xFF5B21B6),
             lobbyPanel = Color(0xFFFFFFFF),
+            lobbyCard = Color(0xFFFFF59D),
             feltGreen = Color(0xFF4C1D95),
             feltGreenDark = Color(0xFF2E1065),
             feltMid = Color(0xFF6D28D9),
@@ -114,6 +118,7 @@ data class PokrPalette(
             mushroom = Color(0xFF2A1848),
             sidebar = Color(0xFF6040A8),
             lobbyPanel = Color(0xFFFFFFFF),
+            lobbyCard = Color(0xFFF4F0FA),
             feltGreen = Color(0xFF1C1238),
             feltGreenDark = Color(0xFF120C20),
             feltMid = Color(0xFF342460),
@@ -152,6 +157,7 @@ object PokrColors {
     val Mushroom get() = active.mushroom
     val Sidebar get() = active.sidebar
     val LobbyPanel get() = active.lobbyPanel
+    val LobbyCard get() = active.lobbyCard
     val White = Color(0xFFFFFFFF)
 
     val FeltGreen get() = active.feltGreen

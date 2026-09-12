@@ -123,15 +123,17 @@ export function FriendInvitePicker({
 
   return (
     <div className="min-w-0">
-      {title ? <div className="flex items-baseline justify-between gap-2">
-        <span className="hud-label">{title}</span>
-      </div> : null}
-      <p className="field-help mt-1">
+      {title ? (
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="hud-label">{title}</span>
+        </div>
+      ) : null}
+      <p className="field-help mt-1.5">
         {help ??
           'Selected friends get a notification to join. Optional — you can also share the code.'}
       </p>
 
-      <div className="mt-2.5 flex flex-wrap items-center gap-2">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         <button
           type="button"
           role="switch"

@@ -1,6 +1,7 @@
 'use client';
 
 import { useId, type ReactNode } from 'react';
+import { cn } from '@/lib/cn';
 import {
   type ChoiceStyle,
   choiceOptionClass,
@@ -17,6 +18,8 @@ export function ChoiceRow<T extends string | number>({
   format,
   variant = 'chip',
   disabled,
+  trackClassName,
+  optionClassName,
 }: {
   label?: string;
   /** Shared `name` for the radio group. */
@@ -27,16 +30,18 @@ export function ChoiceRow<T extends string | number>({
   format?: (value: T) => ReactNode;
   variant?: ChoiceStyle;
   disabled?: boolean;
+  trackClassName?: string;
+  optionClassName?: string;
 }) {
   const autoName = useId();
   const groupName = name || autoName;
   return (
     <fieldset className="block min-w-0">
-      {label ? <legend className="hud-label mb-2">{label}</legend> : null}
+      {label ? <legend className="hud-label mb-2.5">{label}</legend> : null}
       <div
         role="radiogroup"
         aria-label={label}
-        className={choiceTrackClass(variant)}
+        className={choiceTrackClass(variant, trackClassName)}
       >
         {options.map((option) => {
           const isSelected = option === selected;
@@ -45,7 +50,7 @@ export function ChoiceRow<T extends string | number>({
             <label
               key={String(option)}
               htmlFor={id}
-              className={choiceOptionClass(variant, isSelected)}
+              className={cn(choiceOptionClass(variant, isSelected), optionClassName)}
             >
               <input
                 id={id}

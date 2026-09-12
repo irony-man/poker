@@ -65,6 +65,8 @@ export interface HandHistoryStore {
   listHands(tableId: string, limit?: number): Promise<HandHistoryRow[]>;
   listHandsForContest(contestId: string, limit?: number): Promise<HandHistoryRow[]>;
   listHandsForUser(userId: string, limit?: number): Promise<HandHistoryRow[]>;
+  /** Hands where both users appear in result_json.players. */
+  listHandsForUsers(userIdA: string, userIdB: string, limit?: number): Promise<HandHistoryRow[]>;
   listHandsPage(query: ListHandsPageQuery): Promise<HandHistoryPage>;
   getHandById(id: string): Promise<HandHistoryRow | null>;
   listChat(query: ListChatQuery): Promise<ChatMessageRow[]>;
@@ -168,6 +170,9 @@ export function memoryHistoryStore(): HandHistoryStore {
       return [];
     },
     async listHandsForUser() {
+      return [];
+    },
+    async listHandsForUsers() {
       return [];
     },
     async listHandsPage() {
@@ -283,6 +288,15 @@ export class FileHistoryStore implements HandHistoryStore {
   async listHandsForUser(userId: string, limit = 50): Promise<HandHistoryRow[]> {
     await this.ensure();
     const matched = this.hands.filter((h) => playerUserIdsFromResultJson(h.resultJson).includes(userId));
+    return matched.slice(-limit).reverse();
+  }
+
+  async listHandsForUsers(userIdA: string, userIdB: string, limit = 50): Promise<HandHistoryRow[]> {
+    await this.ensure();
+    const matched = this.hands.filter((h) => {
+      const ids = playerUserIdsFromResultJson(h.resultJson);
+      return ids.includes(userIdA) && ids.includes(userIdB);
+    });
     return matched.slice(-limit).reverse();
   }
 
@@ -481,6 +495,31 @@ export class PostgresHistoryStore implements HandHistoryStore {
        )
        ORDER BY started_at DESC LIMIT $2`,
       [userId, limit],
+    );
+    return res.rows;
+  }
+
+  async listHandsForUsers(userIdA: string, userIdB: string, limit = 50): Promise<HandHistoryRow[]> {
+    const playersJson = `
+           CASE
+             WHEN h.result_json IS NULL THEN '[]'::jsonb
+             WHEN jsonb_typeof(h.result_json::jsonb -> 'players') = 'array'
+               THEN h.result_json::jsonb -> 'players'
+             ELSE '[]'::jsonb
+           END`;
+    const res = await this.pool.query(
+      `SELECT ${pgHandSelect()}
+       FROM hand_history h
+       WHERE EXISTS (
+         SELECT 1 FROM jsonb_array_elements(${playersJson}) p
+         WHERE p->>'userId' = $1
+       )
+       AND EXISTS (
+         SELECT 1 FROM jsonb_array_elements(${playersJson}) p
+         WHERE p->>'userId' = $2
+       )
+       ORDER BY started_at DESC LIMIT $3`,
+      [userIdA, userIdB, limit],
     );
     return res.rows;
   }

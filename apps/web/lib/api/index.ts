@@ -13,6 +13,7 @@ export {
 } from './auth';
 export {
   fetchPublicProfile,
+  fetchHandsTogether,
   type PublicProfile,
   type PublicProfileRelationship,
 } from './users';

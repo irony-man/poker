@@ -34,6 +34,14 @@ export function cardCodes(raw: unknown): string[] {
   return raw.map(cardCode).filter((c): c is string => !!c);
 }
 
+export type ShownPlayerHand = {
+  userId: string;
+  name: string;
+  holeCards: [string, string] | null;
+  isViewer: boolean;
+  isWinner: boolean;
+};
+
 export type PlayedHandLevel = {
   id: string;
   handId: string;
@@ -44,6 +52,8 @@ export type PlayedHandLevel = {
   won: boolean;
   winnerName: string | null;
   handName: string | null;
+  /** Viewer + anyone whose hole cards were revealed at showdown. */
+  shownPlayers: ShownPlayerHand[];
 };
 
 function parseResult(resultJson: unknown): Record<string, unknown> | null {
@@ -72,30 +82,92 @@ function startedAtMs(raw: string | number | Date | null | undefined): number {
 export function parsePlayedHand(row: MyHandRow, userId: string): PlayedHandLevel {
   const result = parseResult(row.resultJson);
   const players = Array.isArray(result?.players) ? result.players : [];
+  const nameBySeat = new Map<number, string>();
+  const playerBySeat = new Map<
+    number,
+    { userId: string; name: string; holeCards: string[]; revealed: boolean }
+  >();
+
   let seat: number | null = null;
   let hole: string[] = [];
   for (const p of players) {
     if (!p || typeof p !== 'object') continue;
-    const rec = p as { userId?: unknown; seat?: unknown; holeCards?: unknown; name?: unknown };
-    if (rec.userId !== userId) continue;
-    if (typeof rec.seat === 'number') seat = rec.seat;
-    hole = cardCodes(rec.holeCards);
-    break;
+    const rec = p as {
+      userId?: unknown;
+      seat?: unknown;
+      holeCards?: unknown;
+      name?: unknown;
+      revealed?: unknown;
+    };
+    const pid = typeof rec.userId === 'string' ? rec.userId : '';
+    const pname =
+      typeof rec.name === 'string' && rec.name
+        ? rec.name
+        : pid
+          ? pid
+          : 'Player';
+    const cards = cardCodes(rec.holeCards);
+    if (typeof rec.seat === 'number') {
+      nameBySeat.set(rec.seat, pname);
+      playerBySeat.set(rec.seat, {
+        userId: pid,
+        name: pname,
+        holeCards: cards,
+        revealed: rec.revealed === true,
+      });
+    }
+    if (pid === userId) {
+      if (typeof rec.seat === 'number') seat = rec.seat;
+      hole = cards;
+    }
   }
+
   const winnersRaw = Array.isArray(result?.winners) ? result.winners : [];
   let won = false;
-  let winnerName: string | null = null;
   let handName: string | null = null;
+  const winnerNames: string[] = [];
+  const winnerSeats = new Set<number>();
   for (const w of winnersRaw) {
     if (!w || typeof w !== 'object') continue;
     const rec = w as { seat?: unknown; name?: unknown; handName?: unknown };
-    if (typeof rec.seat === 'number' && rec.seat === seat) {
-      won = true;
-      handName = typeof rec.handName === 'string' ? rec.handName : null;
+    if (typeof rec.seat !== 'number') continue;
+    winnerSeats.add(rec.seat);
+    const resolved =
+      (typeof rec.name === 'string' && rec.name) || nameBySeat.get(rec.seat) || null;
+    if (resolved && !winnerNames.includes(resolved)) winnerNames.push(resolved);
+    if (!handName && typeof rec.handName === 'string' && rec.handName) {
+      handName = rec.handName;
     }
-    if (!winnerName && typeof rec.name === 'string' && rec.name) winnerName = rec.name;
+    if (rec.seat === seat) won = true;
   }
+  const winnerName = winnerNames.length > 0 ? winnerNames.join(' & ') : null;
   const pair: [string, string] | null = hole.length >= 2 ? [hole[0]!, hole[1]!] : null;
+
+  const shownPlayers: ShownPlayerHand[] = [];
+  const seen = new Set<string>();
+  for (const [seatNum, p] of playerBySeat) {
+    const isViewer = p.userId === userId;
+    const hasCards = p.holeCards.length >= 2;
+    // Viewer always; others only when hole cards survived redaction (revealed at showdown).
+    if (!isViewer && !hasCards) continue;
+    const key = p.userId || `${seatNum}:${p.name}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    shownPlayers.push({
+      userId: p.userId,
+      name: p.name,
+      holeCards: hasCards ? [p.holeCards[0]!, p.holeCards[1]!] : isViewer ? pair : null,
+      isViewer,
+      isWinner: winnerSeats.has(seatNum),
+    });
+  }
+  // Viewer first, then winners, then others by name.
+  shownPlayers.sort((a, b) => {
+    if (a.isViewer !== b.isViewer) return a.isViewer ? -1 : 1;
+    if (a.isWinner !== b.isWinner) return a.isWinner ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+
   return {
     id: row.id,
     handId: row.handId,
@@ -106,6 +178,7 @@ export function parsePlayedHand(row: MyHandRow, userId: string): PlayedHandLevel
     won,
     winnerName,
     handName,
+    shownPlayers,
   };
 }
 

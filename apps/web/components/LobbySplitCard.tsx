@@ -50,7 +50,7 @@ export function LobbySplitCard({
         </div>
       </div>
 
-      <div className="hud-panel flex min-h-0 min-w-0 flex-col gap-4 p-5 sm:gap-5 sm:p-7 lg:p-8">
+      <div className="hud-panel flex min-h-0 min-w-0 flex-col gap-5 p-5 sm:gap-6 sm:p-7 lg:p-8">
         {children}
       </div>
     </div>

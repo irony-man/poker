@@ -600,7 +600,7 @@ function ProfilePageInner() {
                 Same bankroll for public, private, and contest tables — shown above.
               </p>
               <div className="mt-6 flex flex-wrap gap-2.5">
-                <Link href="/host" className="btn-pill">
+                <Link href="/play" className="btn-pill">
                   Host a table
                 </Link>
                 <button type="button" onClick={() => selectTab('hands')} className="btn-pill">

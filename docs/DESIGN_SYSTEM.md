@@ -29,6 +29,7 @@ Change a Classic value in both places or not at all.
 | Mushroom | `#E6D9D7` | `--mushroom` | `PokrColors.Mushroom` | Page / lobby ground |
 | On chrome | `#E6D9D7` | `--on-chrome` / `text-on-chrome` | `PokrColors.OnChrome` | Text/icons on purple chrome |
 | Lobby panel | `#FFFCFA` | lobby `hud-panel` fill | `PokrColors.LobbyPanel` | Light cards |
+| Lobby card | `#EDE4E2` | `--lobby-card` / nested `.surface-card` | `PokrColors.LobbyCard` | Nested cards inside panels |
 | Felt / Felt deep | `#1D0432` / `#120220` | `--felt` / `--felt-deep` | `PokrColors.FeltGreen*` | Table surface |
 | Felt mid / edge | `#341252` / `#0A0414` | table felt mid/edge | `PokrColors.FeltMid` / `.FeltEdge` | Table radial + primary start |
 | Felt rim / rim edge | `#120220` / `#A88CA2` | `--felt-rim*` | `PokrColors.FeltRim*` | Wood/brass rim |
@@ -45,20 +46,22 @@ Change a Classic value in both places or not at all.
 
 Selected on Profile → Theme. Does **not** change felt presets, playing cards, brass-as-money, `--danger`, or `--positive`.
 
-| Token | Classic | Arcade |
-| --- | --- | --- |
-| Mushroom (page ground) | `#E6D9D7` | `#FDE93D` (24px grid overlay) |
-| Sidebar / ink panel | `#1D0432` | `#5B21B6` / `#4C1D95` |
-| Ink strong (text on light) | `#1D0432` | `#1A1028` |
-| Cream (text on dark) | `#F2EAE8` | `#FFFFFF` |
-| Chrome | 1px muted borders, soft shadow | 3px black borders, hard `4px 4px 0 #000` shadow |
+| Token | Classic | Arcade | Glass |
+| --- | --- | --- | --- |
+| Mushroom (page ground) | `#E6D9D7` | `#FDE93D` (24px grid overlay) | dusk purple |
+| Sidebar / ink panel | `#1D0432` | `#5B21B6` / `#4C1D95` | frost purple |
+| Lobby panel (outer) | `#FFFCFA` | `#FFFFFF` | frost fill |
+| Lobby card (nested) | `#EDE4E2` | `#FFF59D` | `#F4F0FA` |
+| Ink strong (text on light) | `#1D0432` | `#1A1028` | dark on frost |
+| Cream (text on dark) | `#F2EAE8` | `#FFFFFF` | `#FFFFFF` |
+| Chrome | 1px muted borders, soft shadow | 3px black borders, hard `4px 4px 0 #000` shadow | ice rim + blur |
 | Display font | RF Tone | Clash Display (web); system extra-bold (Android) |
 
 Web applies `data-ui-theme="v2"` on `<html>` (localStorage `pokr-ui-theme`, hydrated from `GET /api/me`). Android provides `PokrTheme(uiTheme)` from DataStore `ui_theme`.
 
 ### Glass (v3) remap
 
-Dusk aurora page ground. `--ink-strong-muted` / `--cream-muted` are **light** (`#D6CCE8`) for copy on dusk. Frost panels (`.hud-panel`, `.surface-card*`, etc.) re-bind `--mushroom` to paper and `--ink-strong-muted` to dark ink so nested Classic utilities stay readable.
+Dusk aurora page ground. `--ink-strong-muted` / `--cream-muted` are **light** (`#D6CCE8`) for copy on dusk. Frost panels (`.hud-panel`, `.surface-card*`, etc.) re-bind `--mushroom` / `--lobby-card` to paper values and `--ink-strong-muted` to dark ink so nested Classic utilities stay readable.
 
 ### Chrome contexts
 

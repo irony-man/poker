@@ -49,8 +49,8 @@ export const PAGE_COPY_LABELS: Record<PageCopyKey, string> = {
 };
 
 export const PAGE_COPY_PATHS: Record<PageCopyKey, string> = {
-  host: '/host',
-  join: '/join',
+  host: '/play',
+  join: '/play?mode=join',
   public: '/public',
   contests: '/contests',
   friends: '/friends',

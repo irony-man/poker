@@ -66,7 +66,7 @@ fun PublicTab(
                                     modifier = Modifier
                                         .weight(1f)
                                         .clip(RoundedCornerShape(PokrRadius.Md))
-                                        .background(PokrColors.White)
+                                        .background(PokrColors.LobbyCard)
                                         .border(
                                             1.dp,
                                             PokrColors.Sidebar.copy(alpha = 0.12f),

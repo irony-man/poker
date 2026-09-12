@@ -166,6 +166,14 @@ export class HistoryService implements HandHistoryStore, OnModuleInit {
     return this.store.listHandsForUser(userId, limit);
   }
 
+  listHandsForUsers(
+    userIdA: string,
+    userIdB: string,
+    limit?: number,
+  ): Promise<HandHistoryRow[]> {
+    return this.store.listHandsForUsers(userIdA, userIdB, limit);
+  }
+
   listHandsPage(query: ListHandsPageQuery): Promise<HandHistoryPage> {
     return this.store.listHandsPage(query);
   }

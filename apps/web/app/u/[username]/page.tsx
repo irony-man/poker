@@ -1,25 +1,120 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MoneyAmount } from '@/components/CurrencyIcon';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
+import { PlayingCard } from '@/components/PlayingCard';
 import { Button } from '@/components/ui/Button';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { authHref } from '@/lib/authRedirect';
 import {
   challengeFriend,
+  fetchHandsTogether,
   fetchPublicProfile,
   respondFriendRequest,
   sendFriendRequest,
   type PublicProfile,
 } from '@/lib/api';
 import { cn } from '@/lib/cn';
+import {
+  formatHandWhen,
+  parsePlayedHand,
+  type PlayedHandLevel,
+} from '@/features/progress/playedHand';
 import { readStoredSession } from '@/lib/session';
 import { useSession } from '@/lib/store';
 import { useLobbySession } from '@/lib/useLobbySession';
+
+function HoleThumb({ cards }: { cards: [string, string] | null }) {
+  return (
+    <div className="flex shrink-0 items-end">
+      <div className="-mr-2 origin-bottom -rotate-[6deg] sm:-mr-2.5">
+        <PlayingCard code={cards?.[0]} faceDown={!cards} size="xs" dealDelay={0} />
+      </div>
+      <div className="relative z-[1] origin-bottom rotate-[5deg]">
+        <PlayingCard code={cards?.[1]} faceDown={!cards} size="xs" dealDelay={0} />
+      </div>
+    </div>
+  );
+}
+
+function SharedPlayerColumn({
+  label,
+  cards,
+  winner,
+}: {
+  label: string;
+  cards: [string, string] | null;
+  winner?: boolean;
+}) {
+  return (
+    <div className="flex min-w-[4.5rem] flex-col items-start gap-2 sm:min-w-[5.5rem]">
+      <div className="flex max-w-full items-center gap-1.5">
+        <span className="truncate text-xs font-semibold text-ink-strong">{label}</span>
+        {winner ? (
+          <StatusChip tone="positive" className="!px-1.5 !py-0.5 text-[10px]">
+            Won
+          </StatusChip>
+        ) : null}
+      </div>
+      <HoleThumb cards={cards} />
+    </div>
+  );
+}
+
+function SharedHandRow({ hand }: { hand: PlayedHandLevel }) {
+  const when = formatHandWhen(hand.startedAt);
+  const winnerLabel = hand.won
+    ? 'You won'
+    : hand.winnerName
+      ? `${hand.winnerName} won`
+      : 'Hand complete';
+  const others = hand.shownPlayers.filter((p) => !p.isViewer && p.holeCards);
+  return (
+    <li className="overflow-hidden rounded-2xl border border-sidebar/12 bg-white p-4 shadow-[0_4px_16px_rgb(29_4_50_/_0.04)] sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+        <p className="min-w-0 text-sm font-semibold text-ink-strong">
+          <span className={hand.won ? 'text-positive' : 'text-sidebar'}>{winnerLabel}</span>
+          {hand.handName && hand.handName !== 'Uncontested' ? (
+            <span className="font-medium text-ink-strong-muted"> · {hand.handName}</span>
+          ) : null}
+        </p>
+        <p className="shrink-0 text-xs text-ink-strong-muted">
+          {when || 'Unknown time'}
+          {hand.source === 'offline' ? ' · Solo' : ''}
+        </p>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-end gap-5 sm:gap-7">
+        <SharedPlayerColumn label="You" cards={hand.holeCards} winner={hand.won} />
+        {others.map((p) => (
+          <SharedPlayerColumn
+            key={p.userId || p.name}
+            label={p.name}
+            cards={p.holeCards}
+            winner={p.isWinner}
+          />
+        ))}
+      </div>
+
+      {hand.community.length > 0 ? (
+        <div className="mt-4 border-t border-sidebar/10 pt-4">
+          <p className="mb-2 text-[10px] font-display font-bold uppercase tracking-[0.14em] text-ink-strong-muted">
+            Board
+          </p>
+          <div className="flex flex-wrap gap-1 sm:gap-1.5">
+            {hand.community.map((code, i) => (
+              <PlayingCard key={`${code}-${i}`} code={code} size="xs" dealDelay={0} />
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </li>
+  );
+}
 
 function PublicProfilePageInner() {
   const params = useParams<{ username: string }>();
@@ -29,12 +124,18 @@ function PublicProfilePageInner() {
 
   const { authReady, signedIn } = useLobbySession();
   const sessionToken = useSession((s) => s.sessionToken);
+  const userId = useSession((s) => s.userId);
   const token = sessionToken ?? readStoredSession()?.sessionToken ?? null;
+  const viewerId = userId ?? readStoredSession()?.userId ?? null;
 
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+
+  const [sharedHands, setSharedHands] = useState<PlayedHandLevel[]>([]);
+  const [sharedLoading, setSharedLoading] = useState(false);
+  const [sharedError, setSharedError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!usernameParam) {
@@ -63,6 +164,31 @@ function PublicProfilePageInner() {
     if (!authReady) return;
     void load();
   }, [authReady, load]);
+
+  const loadShared = useCallback(async () => {
+    if (!token || !viewerId || !usernameParam || !profile || profile.relationship === 'self') {
+      setSharedHands([]);
+      setSharedError(null);
+      setSharedLoading(false);
+      return;
+    }
+    setSharedLoading(true);
+    setSharedError(null);
+    try {
+      const res = await fetchHandsTogether(usernameParam, token, 50);
+      setSharedHands(res.hands.map((row) => parsePlayedHand(row, viewerId)));
+    } catch (err) {
+      setSharedHands([]);
+      setSharedError(err instanceof Error ? err.message : 'Could not load shared hands');
+    } finally {
+      setSharedLoading(false);
+    }
+  }, [token, viewerId, usernameParam, profile]);
+
+  useEffect(() => {
+    if (!authReady || !signedIn || !profile || profile.relationship === 'self') return;
+    void loadShared();
+  }, [authReady, signedIn, profile, loadShared]);
 
   const onAddFriend = async () => {
     if (!token || !profile || busy) return;
@@ -129,6 +255,13 @@ function PublicProfilePageInner() {
     : null;
 
   const returnPath = usernameParam ? `/u/${encodeURIComponent(usernameParam)}` : '/';
+
+  const sharedCountLabel = useMemo(() => {
+    const n = sharedHands.length;
+    if (sharedLoading) return null;
+    if (n === 0) return null;
+    return `${n} shared ${n === 1 ? 'hand' : 'hands'}`;
+  }, [sharedHands.length, sharedLoading]);
 
   if (!authReady || (loading && !profile && !error)) {
     return <LoadingScreen label="Loading profile…" />;
@@ -248,6 +381,36 @@ function PublicProfilePageInner() {
               </div>
             </div>
           </section>
+
+          {signedIn ? (
+            <section className="surface-card-lg relative z-0 overflow-hidden border-sidebar/12">
+              <div className="relative z-10 mb-4 flex items-baseline justify-between gap-3">
+                <h3 className="font-heading-section">Hands together</h3>
+                {sharedCountLabel ? (
+                  <span className="text-xs font-medium text-ink-strong-muted">
+                    {sharedCountLabel}
+                  </span>
+                ) : null}
+              </div>
+              {sharedLoading ? (
+                <p className="text-sm text-ink-strong-muted">Loading shared hands…</p>
+              ) : sharedError ? (
+                <StatusChip tone="danger" role="alert" className="text-xs">
+                  {sharedError}
+                </StatusChip>
+              ) : sharedHands.length === 0 ? (
+                <div className="surface-empty">
+                  <p className="text-sm text-ink-strong-muted">No shared hands yet</p>
+                </div>
+              ) : (
+                <ul className="relative z-0 space-y-3">
+                  {sharedHands.map((hand) => (
+                    <SharedHandRow key={hand.id} hand={hand} />
+                  ))}
+                </ul>
+              )}
+            </section>
+          ) : null}
         </div>
       ) : !loading ? (
         <div className="surface-empty-lg">

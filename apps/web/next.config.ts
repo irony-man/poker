@@ -53,6 +53,9 @@ const nextConfig: NextConfig = {
         destination: 'https://pokr.site/:path*',
         permanent: true,
       },
+      // Host + join merged into /play.
+      { source: '/host', destination: '/play', permanent: true },
+      { source: '/join', destination: '/play?mode=join', permanent: true },
     ];
   },
   // Browser calls same-origin `/api/*`; Next proxies to the Nest server (no CORS).

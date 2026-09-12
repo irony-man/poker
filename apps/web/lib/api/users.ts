@@ -1,5 +1,6 @@
 import { coerceMoney } from '@/lib/currency';
 import { apiBase, parseError, sessionHeaders } from './client';
+import type { MyHandRow } from './history';
 
 export type PublicProfileRelationship =
   | 'self'
@@ -58,4 +59,20 @@ export async function fetchPublicProfile(
   if (res.status === 404) throw new Error('User not found');
   if (!res.ok) throw new Error(await parseError(res, 'Could not load profile'));
   return normalizePublicProfile((await res.json()) as PublicProfile);
+}
+
+/** Hands both the viewer and this user played (session required). */
+export async function fetchHandsTogether(
+  username: string,
+  sessionToken: string,
+  limit = 50,
+): Promise<{ hands: MyHandRow[] }> {
+  const n = Math.max(1, Math.min(200, Math.floor(limit)));
+  const res = await fetch(
+    `${apiBase()}/api/users/${encodeURIComponent(username)}/hands-together?limit=${n}`,
+    { headers: sessionHeaders(sessionToken) },
+  );
+  if (res.status === 404) throw new Error('User not found');
+  if (!res.ok) throw new Error(await parseError(res, 'Could not load shared hands'));
+  return res.json() as Promise<{ hands: MyHandRow[] }>;
 }

@@ -1,14 +1,14 @@
 import type { Metadata } from 'next';
 import { pageJsonLd, publicPageMetadata } from '@/lib/site';
 
-const title = 'Host a private table';
+const title = 'Host or join a table';
 const description =
-  "Host a private No-Limit Texas Hold'em table for friends. Set seats and stakes, share a link, and start dealing on pokr.site.";
-const path = '/host';
+  "Host a private No-Limit Texas Hold'em table or join with an invite code. Play free on pokr.site.";
+const path = '/play';
 
 export const metadata: Metadata = publicPageMetadata({ title, description, path });
 
-export default function HostLayout({ children }: { children: React.ReactNode }) {
+export default function PlayLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <script

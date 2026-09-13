@@ -1,7 +1,6 @@
 import { Injectable, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import type { GridSize } from '@poker/memory-engine';
 import { ContestsService } from '../contests/contests.service.js';
-import { CourtpieceRoomsService } from '../courtpiece/courtpiece.service.js';
 import { LudoRoomsService } from '../ludo/ludo.service.js';
 import { RoomsService } from '../rooms/rooms.service.js';
 import { SiteConfigService } from '../site-config/site-config.service.js';
@@ -23,7 +22,6 @@ export class MemoryRoomsService implements OnModuleInit, OnModuleDestroy {
     private readonly contests: ContestsService,
     @Optional() private readonly ludo?: LudoRoomsService,
     @Optional() private readonly snakes?: SnakesRoomsService,
-    @Optional() private readonly courtpiece?: CourtpieceRoomsService,
     @Optional() private readonly site?: SiteConfigService,
   ) {}
 
@@ -34,8 +32,7 @@ export class MemoryRoomsService implements OnModuleInit, OnModuleDestroy {
         this.rooms.getByInvite(code) ||
           this.contests.getByInvite(code) ||
           this.ludo?.getByInvite(code) ||
-          this.snakes?.getByInvite(code) ||
-          this.courtpiece?.getByInvite(code),
+          this.snakes?.getByInvite(code),
       );
     });
     this.idleSweepTimer = setInterval(() => {

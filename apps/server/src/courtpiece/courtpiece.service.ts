@@ -2,7 +2,6 @@ import { Injectable, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/com
 import type { RulesVariant } from '@poker/courtpiece-engine';
 import { ContestsService } from '../contests/contests.service.js';
 import { LudoRoomsService } from '../ludo/ludo.service.js';
-import { MemoryRoomsService } from '../memory/memory.service.js';
 import { RoomsService } from '../rooms/rooms.service.js';
 import { SiteConfigService } from '../site-config/site-config.service.js';
 import { SnakesRoomsService } from '../snakes/snakes.service.js';
@@ -23,19 +22,19 @@ export class CourtpieceRoomsService implements OnModuleInit, OnModuleDestroy {
     private readonly contests: ContestsService,
     @Optional() private readonly ludo?: LudoRoomsService,
     @Optional() private readonly snakes?: SnakesRoomsService,
-    @Optional() private readonly memory?: MemoryRoomsService,
     @Optional() private readonly site?: SiteConfigService,
   ) {}
 
   onModuleInit(): void {
     this.manager = new CourtpieceRoomManager();
+    // Intentionally do not inject MemoryRoomsService — that creates an ESM
+    // circular init with Nest design:paramtypes (crash on boot).
     this.manager.setExternalInviteTaken((code) => {
       return Boolean(
         this.rooms.getByInvite(code) ||
           this.contests.getByInvite(code) ||
           this.ludo?.getByInvite(code) ||
-          this.snakes?.getByInvite(code) ||
-          this.memory?.getByInvite(code),
+          this.snakes?.getByInvite(code),
       );
     });
     this.idleSweepTimer = setInterval(() => {

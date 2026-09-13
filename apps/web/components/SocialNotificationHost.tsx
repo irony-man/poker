@@ -66,6 +66,7 @@ export function SocialNotificationHost() {
       const isLudo = challenge.kind === 'ludo' || Boolean(challenge.ludoId);
       const isSnakes = challenge.kind === 'snakes' || Boolean(challenge.snakesId);
       const isMemory = challenge.kind === 'memory' || Boolean(challenge.memoryId);
+      const isCourtpiece = challenge.kind === 'courtpiece' || Boolean(challenge.courtpieceId);
       if (isContest && challenge.contestId) {
         try {
           await registerContest(challenge.contestId, { sessionToken });
@@ -88,6 +89,11 @@ export function SocialNotificationHost() {
           ? `?invite=${encodeURIComponent(challenge.inviteCode)}`
           : '';
         router.push(`/memory/${challenge.memoryId}${q}`);
+      } else if (isCourtpiece && challenge.courtpieceId) {
+        const q = challenge.inviteCode
+          ? `?invite=${encodeURIComponent(challenge.inviteCode)}`
+          : '';
+        router.push(`/courtpiece/${challenge.courtpieceId}${q}`);
       } else if (challenge.tableId) {
         const q = challenge.inviteCode
           ? `?invite=${encodeURIComponent(challenge.inviteCode)}`
@@ -178,6 +184,7 @@ function challengeTitle(c: PendingChallenge): string {
   if (c.kind === 'ludo' || c.ludoId) return 'Ludo invite';
   if (c.kind === 'snakes' || c.snakesId) return 'Snakes invite';
   if (c.kind === 'memory' || c.memoryId) return 'Memory invite';
+  if (c.kind === 'courtpiece' || c.courtpieceId) return 'Court Piece invite';
   return 'Table invite';
 }
 
@@ -193,6 +200,9 @@ function challengeSubtitle(c: PendingChallenge): string {
   }
   if (c.kind === 'memory' || c.memoryId) {
     return `${c.challenger.name} invited you to Memory Match`;
+  }
+  if (c.kind === 'courtpiece' || c.courtpieceId) {
+    return `${c.challenger.name} invited you to Court Piece`;
   }
   return `${c.challenger.name} wants to play`;
 }

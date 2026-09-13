@@ -91,6 +91,7 @@ const PagesBody = z.object({
     ludo: PageCopyBody,
     snakes: PageCopyBody,
     memory: PageCopyBody,
+    courtpiece: PageCopyBody,
     signIn: PageCopyBody,
     signUp: PageCopyBody,
     homeAuthFooter: PageCopyBody,

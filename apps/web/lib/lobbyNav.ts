@@ -67,18 +67,6 @@ export function isLobbyNavActive(
   if (href === '/friends') {
     return pathname === '/friends' || pathname.startsWith('/friends/');
   }
-  if (href === '/arcade') {
-    return (
-      pathname === '/arcade' ||
-      pathname.startsWith('/arcade/') ||
-      pathname === '/ludo' ||
-      pathname.startsWith('/ludo/') ||
-      pathname === '/snakes' ||
-      pathname.startsWith('/snakes/') ||
-      pathname === '/memory' ||
-      pathname.startsWith('/memory/')
-    );
-  }
   if (href === '/play' || href === '/play?mode=join') {
     if (!isPlayPath(pathname)) return false;
     const mode = playModeFromSearch(search);

@@ -1,21 +1,21 @@
 import { Injectable, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
-import type { GridSize } from '@poker/memory-engine';
+import type { RulesVariant } from '@poker/courtpiece-engine';
 import { ContestsService } from '../contests/contests.service.js';
-import { CourtpieceRoomsService } from '../courtpiece/courtpiece.service.js';
 import { LudoRoomsService } from '../ludo/ludo.service.js';
+import { MemoryRoomsService } from '../memory/memory.service.js';
 import { RoomsService } from '../rooms/rooms.service.js';
 import { SiteConfigService } from '../site-config/site-config.service.js';
 import { SnakesRoomsService } from '../snakes/snakes.service.js';
 import {
-  MEMORY_IDLE_SWEEP_MS,
-  MEMORY_INACTIVITY_MS,
-  MemoryRoomManager,
-  type MemoryMeta,
-} from './memory-room.js';
+  COURTPIECE_IDLE_SWEEP_MS,
+  COURTPIECE_INACTIVITY_MS,
+  CourtpieceRoomManager,
+  type CourtpieceMeta,
+} from './courtpiece-room.js';
 
 @Injectable()
-export class MemoryRoomsService implements OnModuleInit, OnModuleDestroy {
-  private manager!: MemoryRoomManager;
+export class CourtpieceRoomsService implements OnModuleInit, OnModuleDestroy {
+  private manager!: CourtpieceRoomManager;
   private idleSweepTimer: NodeJS.Timeout | null = null;
 
   constructor(
@@ -23,25 +23,25 @@ export class MemoryRoomsService implements OnModuleInit, OnModuleDestroy {
     private readonly contests: ContestsService,
     @Optional() private readonly ludo?: LudoRoomsService,
     @Optional() private readonly snakes?: SnakesRoomsService,
-    @Optional() private readonly courtpiece?: CourtpieceRoomsService,
+    @Optional() private readonly memory?: MemoryRoomsService,
     @Optional() private readonly site?: SiteConfigService,
   ) {}
 
   onModuleInit(): void {
-    this.manager = new MemoryRoomManager();
+    this.manager = new CourtpieceRoomManager();
     this.manager.setExternalInviteTaken((code) => {
       return Boolean(
         this.rooms.getByInvite(code) ||
           this.contests.getByInvite(code) ||
           this.ludo?.getByInvite(code) ||
           this.snakes?.getByInvite(code) ||
-          this.courtpiece?.getByInvite(code),
+          this.memory?.getByInvite(code),
       );
     });
     this.idleSweepTimer = setInterval(() => {
-      const inactivityMs = this.site?.getRoomInactivityMs() ?? MEMORY_INACTIVITY_MS;
+      const inactivityMs = this.site?.getRoomInactivityMs() ?? COURTPIECE_INACTIVITY_MS;
       this.manager.terminateIdleRooms(Date.now(), inactivityMs);
-    }, MEMORY_IDLE_SWEEP_MS);
+    }, COURTPIECE_IDLE_SWEEP_MS);
     this.idleSweepTimer.unref?.();
   }
 
@@ -52,28 +52,25 @@ export class MemoryRoomsService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  asManager(): MemoryRoomManager {
+  asManager(): CourtpieceRoomManager {
     return this.manager;
   }
 
   create(opts: {
     name: string;
     hostUserId: string;
-    maxSeats: 2 | 3 | 4;
-    gridSize?: GridSize;
+    rulesVariant: RulesVariant;
     inviteCode?: string;
     botCount?: number;
-  }): MemoryMeta {
+  }): CourtpieceMeta {
     const meta = this.manager.create({
       name: opts.name,
       hostUserId: opts.hostUserId,
-      maxSeats: opts.maxSeats,
-      gridSize: opts.gridSize,
+      rulesVariant: opts.rulesVariant,
       inviteCode: opts.inviteCode,
     });
     const room = this.manager.get(meta.id);
-    const maxBots = Math.max(0, opts.maxSeats - 1);
-    const bots = Math.min(opts.botCount ?? 0, maxBots);
+    const bots = Math.min(opts.botCount ?? 0, 3);
     if (room && bots > 0) {
       const seating = this.site?.getBotSeatingConfig();
       room.addBot(

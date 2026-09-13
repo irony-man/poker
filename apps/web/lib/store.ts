@@ -8,6 +8,8 @@ import type {
 } from '@poker/engine';
 import { create } from 'zustand';
 import type {
+  CourtpiecePublicView,
+  CourtpieceYou,
   LudoLegalMove,
   LudoPublicView,
   LudoYou,
@@ -96,6 +98,8 @@ interface SessionState {
   boundSnakesId: string | null;
   /** Memory board the active socket is bound to. */
   boundMemoryId: string | null;
+  /** Court Piece board the active socket is bound to. */
+  boundCourtpieceId: string | null;
   table: PublicTable | null;
   ludo: LudoPublicView | null;
   ludoYou: LudoYou | null;
@@ -104,6 +108,8 @@ interface SessionState {
   snakesYou: SnakesYou | null;
   memory: MemoryPublicView | null;
   memoryYou: MemoryYou | null;
+  courtpiece: CourtpiecePublicView | null;
+  courtpieceYou: CourtpieceYou | null;
   private: PrivateView | null;
   chat: ChatMessage[];
   lastError: string | null;
@@ -149,6 +155,7 @@ interface SessionState {
   bindLudo: (ludoId: string | null) => void;
   bindSnakes: (snakesId: string | null) => void;
   bindMemory: (memoryId: string | null) => void;
+  bindCourtpiece: (courtpieceId: string | null) => void;
   applyStateSync: (table: PublicTable, priv: PrivateView | null) => void;
   applyLudoStateSync: (
     ludo: LudoPublicView,
@@ -157,10 +164,12 @@ interface SessionState {
   ) => void;
   applySnakesStateSync: (snakes: SnakesPublicView, you: SnakesYou) => void;
   applyMemoryStateSync: (memory: MemoryPublicView, you: MemoryYou) => void;
+  applyCourtpieceStateSync: (courtpiece: CourtpiecePublicView, you: CourtpieceYou) => void;
   clearTable: () => void;
   clearLudo: () => void;
   clearSnakes: () => void;
   clearMemory: () => void;
+  clearCourtpiece: () => void;
   pushChat: (m: ChatMessage) => void;
   setError: (e: string | null, code?: string | null) => void;
   setEmoji: (e: { emoji: string; name: string; at: number } | null) => void;
@@ -186,6 +195,7 @@ const clearedArcade = {
   boundLudoId: null as string | null,
   boundSnakesId: null as string | null,
   boundMemoryId: null as string | null,
+  boundCourtpieceId: null as string | null,
   ludo: null as LudoPublicView | null,
   ludoYou: null as LudoYou | null,
   ludoLegalMoves: [] as LudoLegalMove[],
@@ -193,6 +203,8 @@ const clearedArcade = {
   snakesYou: null as SnakesYou | null,
   memory: null as MemoryPublicView | null,
   memoryYou: null as MemoryYou | null,
+  courtpiece: null as CourtpiecePublicView | null,
+  courtpieceYou: null as CourtpieceYou | null,
 };
 
 const clearedTable = {
@@ -212,6 +224,7 @@ export const useSession = create<SessionState>((set) => ({
   boundLudoId: null,
   boundSnakesId: null,
   boundMemoryId: null,
+  boundCourtpieceId: null,
   table: null,
   ludo: null,
   ludoYou: null,
@@ -220,6 +233,8 @@ export const useSession = create<SessionState>((set) => ({
   snakesYou: null,
   memory: null,
   memoryYou: null,
+  courtpiece: null,
+  courtpieceYou: null,
   private: null,
   chat: [],
   lastError: null,
@@ -285,11 +300,14 @@ export const useSession = create<SessionState>((set) => ({
             boundLudoId,
             boundSnakesId: null,
             boundMemoryId: null,
+            boundCourtpieceId: null,
             ...clearedTable,
             snakes: null,
             snakesYou: null,
             memory: null,
             memoryYou: null,
+            courtpiece: null,
+            courtpieceYou: null,
             ludo: null,
             ludoYou: null,
             ludoLegalMoves: [],
@@ -306,12 +324,15 @@ export const useSession = create<SessionState>((set) => ({
             boundSnakesId,
             boundLudoId: null,
             boundMemoryId: null,
+            boundCourtpieceId: null,
             ...clearedTable,
             ludo: null,
             ludoYou: null,
             ludoLegalMoves: [],
             memory: null,
             memoryYou: null,
+            courtpiece: null,
+            courtpieceYou: null,
             snakes: null,
             snakesYou: null,
             chat: [],
@@ -327,12 +348,15 @@ export const useSession = create<SessionState>((set) => ({
             boundMemoryId,
             boundLudoId: null,
             boundSnakesId: null,
+            boundCourtpieceId: null,
             ...clearedTable,
             ludo: null,
             ludoYou: null,
             ludoLegalMoves: [],
             snakes: null,
             snakesYou: null,
+            courtpiece: null,
+            courtpieceYou: null,
             memory: null,
             memoryYou: null,
             chat: [],
@@ -341,9 +365,40 @@ export const useSession = create<SessionState>((set) => ({
           }
         : { boundMemoryId },
     ),
+  bindCourtpiece: (boundCourtpieceId) =>
+    set(
+      boundCourtpieceId
+        ? {
+            boundCourtpieceId,
+            boundLudoId: null,
+            boundSnakesId: null,
+            boundMemoryId: null,
+            ...clearedTable,
+            ludo: null,
+            ludoYou: null,
+            ludoLegalMoves: [],
+            snakes: null,
+            snakesYou: null,
+            memory: null,
+            memoryYou: null,
+            courtpiece: null,
+            courtpieceYou: null,
+            chat: [],
+            lastError: null,
+            lastErrorCode: null,
+          }
+        : { boundCourtpieceId },
+    ),
   applyStateSync: (table, priv) =>
     set((prev) => {
-      if (prev.boundLudoId || prev.boundSnakesId || prev.boundMemoryId) return prev;
+      if (
+        prev.boundLudoId ||
+        prev.boundSnakesId ||
+        prev.boundMemoryId ||
+        prev.boundCourtpieceId
+      ) {
+        return prev;
+      }
       if (prev.boundTableId && table.tableId !== prev.boundTableId) {
         return prev;
       }
@@ -357,7 +412,14 @@ export const useSession = create<SessionState>((set) => ({
     }),
   applyLudoStateSync: (ludo, you, legalMoves) =>
     set((prev) => {
-      if (prev.boundTableId || prev.boundSnakesId || prev.boundMemoryId) return prev;
+      if (
+        prev.boundTableId ||
+        prev.boundSnakesId ||
+        prev.boundMemoryId ||
+        prev.boundCourtpieceId
+      ) {
+        return prev;
+      }
       if (prev.boundLudoId && ludo.id !== prev.boundLudoId) return prev;
       if (prev.ludo && prev.ludo.id !== ludo.id) return prev;
       if (prev.ludo && ludo.seq < prev.ludo.seq) return prev;
@@ -369,7 +431,14 @@ export const useSession = create<SessionState>((set) => ({
     }),
   applySnakesStateSync: (snakes, you) =>
     set((prev) => {
-      if (prev.boundTableId || prev.boundLudoId || prev.boundMemoryId) return prev;
+      if (
+        prev.boundTableId ||
+        prev.boundLudoId ||
+        prev.boundMemoryId ||
+        prev.boundCourtpieceId
+      ) {
+        return prev;
+      }
       if (prev.boundSnakesId && snakes.id !== prev.boundSnakesId) return prev;
       if (prev.snakes && prev.snakes.id !== snakes.id) return prev;
       if (prev.snakes && snakes.seq < prev.snakes.seq) return prev;
@@ -377,11 +446,33 @@ export const useSession = create<SessionState>((set) => ({
     }),
   applyMemoryStateSync: (memory, you) =>
     set((prev) => {
-      if (prev.boundTableId || prev.boundLudoId || prev.boundSnakesId) return prev;
+      if (
+        prev.boundTableId ||
+        prev.boundLudoId ||
+        prev.boundSnakesId ||
+        prev.boundCourtpieceId
+      ) {
+        return prev;
+      }
       if (prev.boundMemoryId && memory.id !== prev.boundMemoryId) return prev;
       if (prev.memory && prev.memory.id !== memory.id) return prev;
       if (prev.memory && memory.seq < prev.memory.seq) return prev;
       return { memory, memoryYou: you };
+    }),
+  applyCourtpieceStateSync: (courtpiece, you) =>
+    set((prev) => {
+      if (
+        prev.boundTableId ||
+        prev.boundLudoId ||
+        prev.boundSnakesId ||
+        prev.boundMemoryId
+      ) {
+        return prev;
+      }
+      if (prev.boundCourtpieceId && courtpiece.id !== prev.boundCourtpieceId) return prev;
+      if (prev.courtpiece && prev.courtpiece.id !== courtpiece.id) return prev;
+      if (prev.courtpiece && courtpiece.seq < prev.courtpiece.seq) return prev;
+      return { courtpiece, courtpieceYou: you };
     }),
   clearTable: () =>
     set({
@@ -420,6 +511,15 @@ export const useSession = create<SessionState>((set) => ({
       lastError: null,
       lastErrorCode: null,
       boundMemoryId: null,
+    }),
+  clearCourtpiece: () =>
+    set({
+      courtpiece: null,
+      courtpieceYou: null,
+      chat: [],
+      lastError: null,
+      lastErrorCode: null,
+      boundCourtpieceId: null,
     }),
   pushChat: (m) => set((s) => ({ chat: [...s.chat.slice(-80), m] })),
   setError: (lastError, code = null) => set({ lastError, lastErrorCode: lastError ? code : null }),

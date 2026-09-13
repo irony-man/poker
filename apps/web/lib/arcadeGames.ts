@@ -17,6 +17,12 @@ export const ARCADE_GAMES = [
     blurb: 'Flip cards, find pairs, and outscore the table on a 4×4 or 6×6 grid.',
     href: '/memory',
   },
+  {
+    id: 'courtpiece',
+    title: 'Court Piece',
+    blurb: 'Partnership trick-taking with trump. Classic, Classic Full, or Hokm.',
+    href: '/courtpiece',
+  },
 ] as const;
 
 export type ArcadeGameId = (typeof ARCADE_GAMES)[number]['id'];

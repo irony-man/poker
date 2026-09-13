@@ -4,26 +4,25 @@ import { ContestsModule } from '../contests/contests.module.js';
 import { FriendsModule } from '../friends/friends.module.js';
 import { LudoModule } from '../ludo/ludo.module.js';
 import { MemoryModule } from '../memory/memory.module.js';
-import { CourtpieceModule } from '../courtpiece/courtpiece.module.js';
 import { RoomsModule } from '../rooms/rooms.module.js';
 import { SiteConfigModule } from '../site-config/site-config.module.js';
 import { SnakesModule } from '../snakes/snakes.module.js';
-import { WalletModule } from '../wallet/wallet.module.js';
-import { PokerGateway } from './poker.gateway.js';
+import { CourtpieceController } from './courtpiece.controller.js';
+import { CourtpieceRoomsService } from './courtpiece.service.js';
 
 @Module({
   imports: [
-    forwardRef(() => AuthModule),
-    forwardRef(() => WalletModule),
     RoomsModule,
     ContestsModule,
     LudoModule,
     SnakesModule,
     MemoryModule,
-    CourtpieceModule,
     SiteConfigModule,
     forwardRef(() => FriendsModule),
+    forwardRef(() => AuthModule),
   ],
-  providers: [PokerGateway],
+  controllers: [CourtpieceController],
+  providers: [CourtpieceRoomsService],
+  exports: [CourtpieceRoomsService],
 })
-export class GatewayModule {}
+export class CourtpieceModule {}

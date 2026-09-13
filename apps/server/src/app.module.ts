@@ -13,6 +13,7 @@ import { HealthModule } from './health/health.module.js';
 import { HistoryModule } from './history/history.module.js';
 import { LudoModule } from './ludo/ludo.module.js';
 import { MemoryModule } from './memory/memory.module.js';
+import { CourtpieceModule } from './courtpiece/courtpiece.module.js';
 import { PresenceModule } from './presence/presence.module.js';
 import { RealtimeModule } from './realtime/realtime.module.js';
 import { SiteConfigModule } from './site-config/site-config.module.js';
@@ -50,6 +51,7 @@ import { WalletModule } from './wallet/wallet.module.js';
     LudoModule,
     SnakesModule,
     MemoryModule,
+    CourtpieceModule,
     FriendsModule,
     ContestsModule,
     AdminModule,

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
-import { resolveContestInvite, resolveInvite, resolveLudoInvite, resolveMemoryInvite, resolveSnakesInvite } from '@/lib/api';
+import { resolveContestInvite, resolveCourtpieceInvite, resolveInvite, resolveLudoInvite, resolveMemoryInvite, resolveSnakesInvite } from '@/lib/api';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 
 export function JoinTableForm({
@@ -58,8 +58,15 @@ export function JoinTableForm({
       } catch {
         /* not Snakes — try Memory */
       }
-      const board = await resolveMemoryInvite(code);
-      router.push(`/memory/${board.memoryId}?invite=${board.inviteCode}${spectate}`);
+      try {
+        const board = await resolveMemoryInvite(code);
+        router.push(`/memory/${board.memoryId}?invite=${board.inviteCode}${spectate}`);
+        return;
+      } catch {
+        /* not Memory — try Court Piece */
+      }
+      const board = await resolveCourtpieceInvite(code);
+      router.push(`/courtpiece/${board.courtpieceId}?invite=${board.inviteCode}${spectate}`);
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Failed');
     } finally {

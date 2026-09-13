@@ -39,6 +39,7 @@ export function FriendsPanel({
   onNavigateLudo,
   onNavigateSnakes,
   onNavigateMemory,
+  onNavigateCourtpiece,
   variant = 'page',
   onFriendCountChange,
   imageSrc,
@@ -50,6 +51,7 @@ export function FriendsPanel({
   onNavigateLudo?: (ludoId: string, inviteCode: string) => void;
   onNavigateSnakes?: (snakesId: string, inviteCode: string) => void;
   onNavigateMemory?: (memoryId: string, inviteCode: string) => void;
+  onNavigateCourtpiece?: (courtpieceId: string, inviteCode: string) => void;
   /** Page uses lobby split+art; embedded is a single column for profile tab. */
   variant?: 'page' | 'embedded';
   onFriendCountChange?: (count: number) => void;
@@ -225,6 +227,7 @@ export function FriendsPanel({
       const isLudo = challenge.kind === 'ludo' || Boolean(challenge.ludoId);
       const isSnakes = challenge.kind === 'snakes' || Boolean(challenge.snakesId);
       const isMemory = challenge.kind === 'memory' || Boolean(challenge.memoryId);
+      const isCourtpiece = challenge.kind === 'courtpiece' || Boolean(challenge.courtpieceId);
       if (isContest && challenge.contestId) {
         try {
           await registerContest(challenge.contestId, auth());
@@ -242,6 +245,12 @@ export function FriendsPanel({
       } else if (isMemory && challenge.memoryId) {
         if (onNavigateMemory) onNavigateMemory(challenge.memoryId, challenge.inviteCode);
         else window.location.href = `/memory/${challenge.memoryId}?invite=${challenge.inviteCode}`;
+      } else if (isCourtpiece && challenge.courtpieceId) {
+        if (onNavigateCourtpiece) {
+          onNavigateCourtpiece(challenge.courtpieceId, challenge.inviteCode);
+        } else {
+          window.location.href = `/courtpiece/${challenge.courtpieceId}?invite=${challenge.inviteCode}`;
+        }
       } else if (challenge.tableId) {
         onNavigateTable(challenge.tableId, challenge.inviteCode);
       } else {

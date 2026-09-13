@@ -78,6 +78,14 @@ export {
   type MemoryInviteResult,
   type MemoryChatLine,
 } from './memory';
+export {
+  createCourtpiece,
+  resolveCourtpieceInvite,
+  fetchCourtpieceChat,
+  type CreateCourtpieceResult,
+  type CourtpieceInviteResult,
+  type CourtpieceChatLine,
+} from './courtpiece';
 export { uploadOfflineHand, fetchMyHands, type UploadHandPayload, type MyHandRow } from './history';
 export {
   fetchPublicSite,

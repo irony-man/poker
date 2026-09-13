@@ -15,7 +15,7 @@ export interface FriendRequest {
   createdAt: number;
 }
 
-export type ChallengeKind = 'table' | 'contest' | 'ludo' | 'snakes' | 'memory';
+export type ChallengeKind = 'table' | 'contest' | 'ludo' | 'snakes' | 'memory' | 'courtpiece';
 
 export interface Challenge {
   id: string;
@@ -31,6 +31,8 @@ export interface Challenge {
   snakesId?: string;
   /** Memory Match board id. */
   memoryId?: string;
+  /** Court Piece board id. */
+  courtpieceId?: string;
   inviteCode: string;
   /** Defaults to table when omitted (legacy snapshots). */
   kind?: ChallengeKind;
@@ -81,6 +83,7 @@ export interface PendingChallengeView {
   ludoId: string | null;
   snakesId: string | null;
   memoryId: string | null;
+  courtpieceId: string | null;
   inviteCode: string;
   createdAt: number;
   groupId?: string;
@@ -439,7 +442,8 @@ export class FriendsStore {
       | { kind: 'contest'; contestId: string; inviteCode: string }
       | { kind: 'ludo'; ludoId: string; inviteCode: string }
       | { kind: 'snakes'; snakesId: string; inviteCode: string }
-      | { kind: 'memory'; memoryId: string; inviteCode: string },
+      | { kind: 'memory'; memoryId: string; inviteCode: string }
+      | { kind: 'courtpiece'; courtpieceId: string; inviteCode: string },
   ): Promise<Challenge[]> {
     await this.ensureLoaded();
     const unique = [...new Set(friendUserIds)].filter((id) => id !== hostUserId);
@@ -458,6 +462,7 @@ export class FriendsStore {
             c.kind !== 'ludo' &&
             c.kind !== 'snakes' &&
             c.kind !== 'memory' &&
+            c.kind !== 'courtpiece' &&
             c.tableId === target.tableId
           );
         }
@@ -470,7 +475,10 @@ export class FriendsStore {
         if (target.kind === 'snakes') {
           return c.snakesId !== target.snakesId;
         }
-        return c.memoryId !== target.memoryId;
+        if (target.kind === 'memory') {
+          return c.memoryId !== target.memoryId;
+        }
+        return c.courtpieceId !== target.courtpieceId;
       });
 
       const challenge: Challenge =
@@ -521,17 +529,29 @@ export class FriendsStore {
                     status: 'pending',
                     createdAt: Date.now(),
                   }
-                : {
-                    id: nanoid(10),
-                    challengerId: hostUserId,
-                    challengedId: targetId,
-                    tableId: '',
-                    memoryId: target.memoryId,
-                    inviteCode: target.inviteCode,
-                    kind: 'memory',
-                    status: 'pending',
-                    createdAt: Date.now(),
-                  };
+                : target.kind === 'memory'
+                  ? {
+                      id: nanoid(10),
+                      challengerId: hostUserId,
+                      challengedId: targetId,
+                      tableId: '',
+                      memoryId: target.memoryId,
+                      inviteCode: target.inviteCode,
+                      kind: 'memory',
+                      status: 'pending',
+                      createdAt: Date.now(),
+                    }
+                  : {
+                      id: nanoid(10),
+                      challengerId: hostUserId,
+                      challengedId: targetId,
+                      tableId: '',
+                      courtpieceId: target.courtpieceId,
+                      inviteCode: target.inviteCode,
+                      kind: 'courtpiece',
+                      status: 'pending',
+                      createdAt: Date.now(),
+                    };
       this.challenges.push(challenge);
       created.push(challenge);
     }
@@ -560,7 +580,9 @@ export class FriendsStore {
               ? 'snakes'
               : c.memoryId
                 ? 'memory'
-                : 'table');
+                : c.courtpieceId
+                  ? 'courtpiece'
+                  : 'table');
       out.push({
         id: c.id,
         challenger,
@@ -570,6 +592,7 @@ export class FriendsStore {
         ludoId: c.ludoId ?? null,
         snakesId: c.snakesId ?? null,
         memoryId: c.memoryId ?? null,
+        courtpieceId: c.courtpieceId ?? null,
         inviteCode: c.inviteCode,
         createdAt: c.createdAt,
         ...(c.groupId ? { groupId: c.groupId } : {}),

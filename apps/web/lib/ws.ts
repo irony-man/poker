@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import type {
+  CourtpiecePublicView,
+  CourtpieceYou,
   LudoLegalMove,
   LudoPublicView,
   LudoYou,
@@ -213,6 +215,32 @@ function dispatchMessage(msg: { type?: string; [key: string]: unknown }): void {
     }
     case 'memory_chat': {
       if (s.boundMemoryId && msg.memoryId && String(msg.memoryId) !== s.boundMemoryId) break;
+      s.pushChat({
+        userId: String(msg.userId ?? ''),
+        name: String(msg.name ?? ''),
+        text: String(msg.text ?? ''),
+        at: typeof msg.at === 'number' ? msg.at : Date.now(),
+      });
+      break;
+    }
+    case 'courtpiece_state_sync': {
+      if (msg.courtpiece && typeof msg.courtpiece === 'object') {
+        const you =
+          msg.you && typeof msg.you === 'object'
+            ? (msg.you as CourtpieceYou)
+            : { seat: null };
+        s.applyCourtpieceStateSync(msg.courtpiece as CourtpiecePublicView, you);
+      }
+      break;
+    }
+    case 'courtpiece_chat': {
+      if (
+        s.boundCourtpieceId &&
+        msg.courtpieceId &&
+        String(msg.courtpieceId) !== s.boundCourtpieceId
+      ) {
+        break;
+      }
       s.pushChat({
         userId: String(msg.userId ?? ''),
         name: String(msg.name ?? ''),
@@ -779,4 +807,79 @@ export function useMemorySocket(memoryId: string | null, opts?: { spectate?: boo
   }, [memoryId, bindMemory, setError]);
 
   return { send, leaveMemory };
+}
+
+/**
+ * Join a Court Piece board on the shared session socket.
+ * Does not own the connection lifecycle.
+ */
+export function useCourtpieceSocket(courtpieceId: string | null, opts?: { spectate?: boolean }) {
+  const spectate = opts?.spectate ?? false;
+  const bindCourtpiece = useSession((s) => s.bindCourtpiece);
+  const setError = useSession((s) => s.setError);
+  const connection = useSession((s) => s.connection);
+  const lastErrorCode = useSession((s) => s.lastErrorCode);
+  const spectateRef = useRef(spectate);
+  const joinedRef = useRef<string | null>(null);
+  spectateRef.current = spectate;
+
+  const sendJoin = useCallback(
+    (id: string, force = false) => {
+      if (useSession.getState().connection !== 'open') return;
+      if (!force && joinedRef.current === id) return;
+      if (
+        sessionSocketSend({
+          type: 'join_courtpiece',
+          courtpieceId: id,
+          ...(spectateRef.current ? { spectate: true } : {}),
+        })
+      ) {
+        joinedRef.current = id;
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!courtpieceId) return;
+    bindCourtpiece(courtpieceId);
+    joinedRef.current = null;
+    sendJoin(courtpieceId, true);
+    const id = window.setInterval(() => sendJoin(courtpieceId), 500);
+    return () => {
+      window.clearInterval(id);
+      if (joinedRef.current === courtpieceId) {
+        sessionSocketSend({ type: 'leave_courtpiece', courtpieceId });
+        joinedRef.current = null;
+      }
+    };
+  }, [courtpieceId, bindCourtpiece, sendJoin]);
+
+  useEffect(() => {
+    if (connection !== 'open' || !courtpieceId) return;
+    sendJoin(courtpieceId, true);
+  }, [connection, courtpieceId, sendJoin]);
+
+  useEffect(() => {
+    if (
+      lastErrorCode === 'not_found' ||
+      lastErrorCode === 'kicked' ||
+      lastErrorCode === 'bad_auth' ||
+      lastErrorCode === 'account_deleted'
+    ) {
+      joinedRef.current = courtpieceId;
+    }
+  }, [lastErrorCode, courtpieceId]);
+
+  const send = useCallback((payload: unknown): boolean => sessionSocketSend(payload), []);
+
+  const leaveCourtpiece = useCallback(() => {
+    if (!courtpieceId) return;
+    joinedRef.current = null;
+    sessionSocketSend({ type: 'leave_courtpiece', courtpieceId });
+    bindCourtpiece(null);
+    setError(null);
+  }, [courtpieceId, bindCourtpiece, setError]);
+
+  return { send, leaveCourtpiece };
 }

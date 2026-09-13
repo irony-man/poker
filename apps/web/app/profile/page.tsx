@@ -1175,6 +1175,10 @@ function ProfilePageInner() {
                   enterMobileFullscreen();
                   router.push(`/memory/${memoryId}?invite=${inviteCode}`);
                 }}
+                onNavigateCourtpiece={(courtpieceId, inviteCode) => {
+                  enterMobileFullscreen();
+                  router.push(`/courtpiece/${courtpieceId}?invite=${inviteCode}`);
+                }}
               />
             </section>
           )}

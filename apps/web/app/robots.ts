@@ -11,6 +11,7 @@ export default function robots(): MetadataRoute.Robots {
         '/ludo/',
         '/snakes/',
         '/memory/',
+        '/courtpiece/',
         '/contest/',
         '/offline',
         '/sign-in',

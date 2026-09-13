@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { buildCourtpieceJoinLink, buildCourtpieceJoinShareText } from '@/lib/courtpieceLink';
 import { buildLudoJoinLink, buildLudoJoinShareText } from '@/lib/ludoLink';
 import { buildMemoryJoinLink, buildMemoryJoinShareText } from '@/lib/memoryLink';
 import { buildSnakesJoinLink, buildSnakesJoinShareText } from '@/lib/snakesLink';
 import { buildTableJoinLink, buildTableJoinShareText } from '@/lib/tableLink';
 
-type RoomKind = 'table' | 'ludo' | 'snakes' | 'memory';
+type RoomKind = 'table' | 'ludo' | 'snakes' | 'memory' | 'courtpiece';
 
 function shareText(kind: RoomKind, id: string, inviteCode: string): string {
   switch (kind) {
@@ -17,6 +18,8 @@ function shareText(kind: RoomKind, id: string, inviteCode: string): string {
       return buildSnakesJoinShareText(id, inviteCode);
     case 'memory':
       return buildMemoryJoinShareText(id, inviteCode);
+    case 'courtpiece':
+      return buildCourtpieceJoinShareText(id, inviteCode);
     default:
       return buildTableJoinShareText(id, inviteCode);
   }
@@ -30,6 +33,8 @@ function shareLink(kind: RoomKind, id: string, inviteCode: string): string {
       return buildSnakesJoinLink(id, inviteCode);
     case 'memory':
       return buildMemoryJoinLink(id, inviteCode);
+    case 'courtpiece':
+      return buildCourtpieceJoinLink(id, inviteCode);
     default:
       return buildTableJoinLink(id, inviteCode);
   }

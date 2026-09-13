@@ -37,6 +37,7 @@ export type PageCopyKey =
   | 'ludo'
   | 'snakes'
   | 'memory'
+  | 'courtpiece'
   | 'signIn'
   | 'signUp'
   | 'homeAuthFooter';
@@ -303,6 +304,7 @@ export const PAGE_COPY_KEYS: PageCopyKey[] = [
   'ludo',
   'snakes',
   'memory',
+  'courtpiece',
   'signIn',
   'signUp',
   'homeAuthFooter',
@@ -354,7 +356,7 @@ export const DEFAULT_PAGES_COPY: PagesCopy = {
   arcade: {
     title: 'Arcade',
     subtitle:
-      'Side quests with no stakes — Ludo, Snakes & Ladders, and Memory Match. Pick a board and share a code.',
+      'Side quests with no stakes — Ludo, Snakes & Ladders, Memory Match, and Court Piece. Pick a board and share a code.',
     image: '/home-ludo.png',
     imageAlt: 'Arcade side quests on POKR',
   },
@@ -378,6 +380,13 @@ export const DEFAULT_PAGES_COPY: PagesCopy = {
       'Flip cards, find pairs, and outscore the table on a 4×4 or 6×6 grid. Friends or bots, no stakes.',
     image: '/home-offline.png',
     imageAlt: 'Host Memory Match with no stakes',
+  },
+  courtpiece: {
+    title: 'Court Piece',
+    subtitle:
+      'Trump, tricks, and team play — Classic or Hokm with friends or bots. No stakes, just a code you share.',
+    image: '/home-offline.png',
+    imageAlt: 'Host Court Piece with no stakes',
   },
   signIn: {
     title: 'Sign in',
@@ -408,6 +417,7 @@ export const PAGE_COPY_LABELS: Record<PageCopyKey, string> = {
   ludo: 'Ludo (/ludo)',
   snakes: 'Snakes & Ladders (/snakes)',
   memory: 'Memory Match (/memory)',
+  courtpiece: 'Court Piece (/courtpiece)',
   signIn: 'Sign in',
   signUp: 'Sign up',
   homeAuthFooter: 'Home auth footer',

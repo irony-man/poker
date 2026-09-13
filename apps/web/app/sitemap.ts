@@ -15,6 +15,7 @@ const routes: {
   { path: '/arcade', changeFrequency: 'monthly', priority: 0.6 },
   { path: '/snakes', changeFrequency: 'monthly', priority: 0.55 },
   { path: '/memory', changeFrequency: 'monthly', priority: 0.55 },
+  { path: '/courtpiece', changeFrequency: 'monthly', priority: 0.55 },
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

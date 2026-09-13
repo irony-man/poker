@@ -6,3 +6,4 @@ export * from './history.js';
 export * from './ludo.js';
 export * from './snakes.js';
 export * from './memory.js';
+export * from './courtpiece.js';

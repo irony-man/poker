@@ -87,6 +87,7 @@ export function FriendInvites({
               const isLudo = c.kind === 'ludo' || Boolean(c.ludoId);
               const isSnakes = c.kind === 'snakes' || Boolean(c.snakesId);
               const isMemory = c.kind === 'memory' || Boolean(c.memoryId);
+              const isCourtpiece = c.kind === 'courtpiece' || Boolean(c.courtpieceId);
               const actionBusy = busy === `join-${c.id}` || busy === `decline-${c.id}`;
               const handle = c.challenger.username ?? c.challenger.name;
               const inviteLabel = isContest
@@ -97,7 +98,9 @@ export function FriendInvites({
                     ? 'invited you to Snakes & Ladders'
                     : isMemory
                       ? 'invited you to Memory Match'
-                      : 'wants to play';
+                      : isCourtpiece
+                        ? 'invited you to Court Piece'
+                        : 'wants to play';
               const joinLabel = isContest
                 ? 'Join contest'
                 : isLudo
@@ -106,7 +109,9 @@ export function FriendInvites({
                     ? 'Join Snakes'
                     : isMemory
                       ? 'Join Memory'
-                      : 'Join table';
+                      : isCourtpiece
+                        ? 'Join Court Piece'
+                        : 'Join table';
               return (
                 <li
                   key={c.id}

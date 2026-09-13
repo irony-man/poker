@@ -93,7 +93,8 @@ export function AppChrome({ children }: { children: ReactNode }) {
     pathname === '/offline' ||
     (pathname.startsWith('/ludo/') && pathname !== '/ludo') ||
     (pathname.startsWith('/snakes/') && pathname !== '/snakes') ||
-    (pathname.startsWith('/memory/') && pathname !== '/memory');
+    (pathname.startsWith('/memory/') && pathname !== '/memory') ||
+    (pathname.startsWith('/courtpiece/') && pathname !== '/courtpiece');
   /** Full-bleed play only — contest lobby uses sidebar + scrollable main like other tools. */
   const immersive = tablePlay;
   const isAdminRoute = pathname === '/admin' || pathname.startsWith('/admin/');

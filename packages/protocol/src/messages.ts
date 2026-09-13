@@ -6,6 +6,12 @@ import {
   LudoYouSchema,
 } from './ludo.js';
 import { MemoryPublicViewSchema, MemorySeatSchema, MemoryYouSchema } from './memory.js';
+import {
+  CourtpiecePublicViewSchema,
+  CourtpieceSeatSchema,
+  CourtpieceSuitSchema,
+  CourtpieceYouSchema,
+} from './courtpiece.js';
 import { SnakesPublicViewSchema, SnakesSeatSchema, SnakesYouSchema } from './snakes.js';
 
 export const ActionTypeSchema = z.enum(['fold', 'check', 'call', 'bet', 'raise', 'allin']);
@@ -282,6 +288,57 @@ export const ClientMessageSchema = z.discriminatedUnion('type', [
     memoryId: z.string().min(1),
     text: z.string().min(1).max(280),
   }),
+  z.object({
+    type: z.literal('join_courtpiece'),
+    courtpieceId: z.string().min(1),
+    spectate: z.boolean().nullish(),
+  }),
+  z.object({
+    type: z.literal('leave_courtpiece'),
+    courtpieceId: z.string().min(1),
+  }),
+  z.object({
+    type: z.literal('courtpiece_sit'),
+    courtpieceId: z.string().min(1),
+    seat: CourtpieceSeatSchema,
+  }),
+  z.object({
+    type: z.literal('courtpiece_stand'),
+    courtpieceId: z.string().min(1),
+    seat: CourtpieceSeatSchema,
+  }),
+  z.object({
+    type: z.literal('courtpiece_set_ready'),
+    courtpieceId: z.string().min(1),
+    ready: z.boolean(),
+  }),
+  z.object({
+    type: z.literal('courtpiece_set_trump'),
+    courtpieceId: z.string().min(1),
+    suit: CourtpieceSuitSchema,
+    seq: z.number().int().nonnegative(),
+  }),
+  z.object({
+    type: z.literal('courtpiece_play'),
+    courtpieceId: z.string().min(1),
+    card: z.string().min(2).max(2),
+    seq: z.number().int().nonnegative(),
+  }),
+  z.object({
+    type: z.literal('courtpiece_add_bot'),
+    courtpieceId: z.string().min(1),
+    seat: CourtpieceSeatSchema.nullish(),
+  }),
+  z.object({
+    type: z.literal('courtpiece_remove_bot'),
+    courtpieceId: z.string().min(1),
+    seat: CourtpieceSeatSchema,
+  }),
+  z.object({
+    type: z.literal('courtpiece_chat'),
+    courtpieceId: z.string().min(1),
+    text: z.string().min(1).max(280),
+  }),
 ]);
 
 export type ClientMessage = z.infer<typeof ClientMessageSchema>;
@@ -415,6 +472,19 @@ export const ServerMessageSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('memory_chat'),
     memoryId: z.string(),
+    userId: z.string(),
+    name: z.string(),
+    text: z.string(),
+    at: z.number(),
+  }),
+  z.object({
+    type: z.literal('courtpiece_state_sync'),
+    courtpiece: CourtpiecePublicViewSchema,
+    you: CourtpieceYouSchema,
+  }),
+  z.object({
+    type: z.literal('courtpiece_chat'),
+    courtpieceId: z.string(),
     userId: z.string(),
     name: z.string(),
     text: z.string(),

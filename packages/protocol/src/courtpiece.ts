@@ -55,6 +55,14 @@ export const CourtpiecePublicViewSchema = z.object({
   handsToWin: z.number().int().positive(),
   handNumber: z.number().int().nonnegative(),
   winnerTeam: z.union([z.literal(0), z.literal(1)]).nullable().optional(),
+  lastHand: z
+    .object({
+      winningTeam: z.union([z.literal(0), z.literal(1)]),
+      handsAwarded: z.number().int().positive(),
+      tricks: z.tuple([z.number().int().nonnegative(), z.number().int().nonnegative()]),
+    })
+    .nullable()
+    .optional(),
   seq: z.number().int().nonnegative(),
   turnEndsAt: z.number().nullable().optional(),
   turnTimeMs: z.number().int().positive().optional(),

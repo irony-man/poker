@@ -15,7 +15,14 @@ import type { ReadyRosterPlayer } from '@/components/WinHandModal';
 import type { CourtpiecePlayerView, CourtpieceSuit } from '@poker/protocol';
 import { fetchCourtpieceChat } from '@/lib/api';
 import { buildCourtpieceJoinShareText } from '@/lib/courtpieceLink';
-import { useIsNarrow } from '@/lib/tableLayout';
+import { loadSavedTableColorId } from '@/lib/tableColors';
+import {
+  seatAnglesCourtpiece,
+  seatEllipseRadii,
+  seatSlotAvatarSize,
+  useIsLandscapePhone,
+  useIsNarrow,
+} from '@/lib/tableLayout';
 import { useSession } from '@/lib/store';
 import { useCourtpieceSocket } from '@/lib/ws';
 import { CourtpieceWinModal } from './CourtpieceWinModal';
@@ -29,6 +36,23 @@ const SUIT_LABEL: Record<CourtpieceSuit, string> = {
 
 const SUITS: CourtpieceSuit[] = ['s', 'h', 'd', 'c'];
 
+const SUIT_ORDER: Record<string, number> = { s: 0, h: 1, d: 2, c: 3 };
+const RANK_ORDER: Record<string, number> = {
+  A: 14,
+  K: 13,
+  Q: 12,
+  J: 11,
+  T: 10,
+  '9': 9,
+  '8': 8,
+  '7': 7,
+  '6': 6,
+  '5': 5,
+  '4': 4,
+  '3': 3,
+  '2': 2,
+};
+
 function teamLabel(team: 0 | 1): string {
   return team === 0 ? 'NS' : 'EW';
 }
@@ -39,8 +63,16 @@ function rulesLabel(v: string): string {
   return 'Classic';
 }
 
-function seatAtOffset(mySeat: number, offset: number): number {
-  return (mySeat + offset) % 4;
+/** Suit then high-to-low rank (♠♥♦♣). */
+function sortHandCodes(codes: string[]): string[] {
+  return [...codes].sort((a, b) => {
+    const sa = SUIT_ORDER[a[1]?.toLowerCase() ?? ''] ?? 9;
+    const sb = SUIT_ORDER[b[1]?.toLowerCase() ?? ''] ?? 9;
+    if (sa !== sb) return sa - sb;
+    const ra = RANK_ORDER[a[0]?.toUpperCase() ?? ''] ?? 0;
+    const rb = RANK_ORDER[b[0]?.toUpperCase() ?? ''] ?? 0;
+    return rb - ra;
+  });
 }
 
 export function CourtpieceView({
@@ -54,6 +86,7 @@ export function CourtpieceView({
 }) {
   const router = useRouter();
   const narrow = useIsNarrow();
+  const landscape = useIsLandscapePhone();
   const userId = useSession((s) => s.userId);
   const sessionToken = useSession((s) => s.sessionToken);
   const connection = useSession((s) => s.connection);
@@ -68,7 +101,12 @@ export function CourtpieceView({
   const [chatOpen, setChatOpen] = useState(false);
   const [winDismissed, setWinDismissed] = useState(false);
   const [spectating, setSpectating] = useState(initialSpectate);
+  const [tableColorId, setTableColorId] = useState(0);
   const { send, leaveCourtpiece } = useCourtpieceSocket(courtpieceId, { spectate: spectating });
+
+  useEffect(() => {
+    setTableColorId(loadSavedTableColorId());
+  }, []);
 
   useEffect(() => {
     setWinDismissed(false);
@@ -133,17 +171,19 @@ export function CourtpieceView({
   const mySeat =
     you?.seat ?? seats.find((s) => s.userId && s.userId === userId)?.seat ?? null;
   const myPlayer = mySeat !== null ? seats.find((s) => s.seat === mySeat) : undefined;
+  const partnerSeat = mySeat !== null ? (mySeat + 2) % 4 : null;
   const isSpectating = spectating && mySeat === null;
   const isHost = Boolean(board && userId && board.hostUserId === userId);
   const waiting = board?.status === 'waiting';
   const playing = board?.status === 'playing';
   const finished = board?.status === 'finished';
   const phase = board?.phase ?? 'lobby';
+  const betweenHands = phase === 'between_hands';
   const isMyTurn = playing && board?.toAct !== null && board?.toAct === mySeat;
   const choosingTrump = phase === 'choosing_trump' && isMyTurn;
   const canPlay = phase === 'playing' && isMyTurn;
   const displayCode = inviteCode || board?.inviteCode || '';
-  const hand = you?.hand ?? [];
+  const hand = useMemo(() => sortHandCodes(you?.hand ?? []), [you?.hand]);
   const legal = new Set(you?.legal ?? []);
   const winnerTeam = board?.winnerTeam ?? null;
   const myTeam = you?.team ?? (mySeat !== null ? ((mySeat % 2) as 0 | 1) : null);
@@ -153,6 +193,18 @@ export function CourtpieceView({
   const botSeats = seats.filter((s) => s.isBot).length;
   const humans = seats.filter((s) => s.userId && !s.isBot);
   const readyHumans = humans.filter((s) => s.ready);
+  const lastHand = board?.lastHand ?? null;
+
+  const teamTricks = useMemo((): [number, number] => {
+    const t: [number, number] = [0, 0];
+    for (const p of seats) {
+      t[p.team] += p.tricksThisHand;
+    }
+    return t;
+  }, [seats]);
+
+  const seatAngles = useMemo(() => seatAnglesCourtpiece(mySeat ?? undefined), [mySeat]);
+  const ellipse = seatEllipseRadii({ maxSeats: 4, compact: narrow, landscape });
 
   const readyPlayers: ReadyRosterPlayer[] = humans.map((p) => ({
     seat: p.seat,
@@ -191,6 +243,10 @@ export function CourtpieceView({
     if (!board || !canPlay) return;
     if (legal.size > 0 && !legal.has(card)) return;
     send({ type: 'courtpiece_play', courtpieceId, card, seq: board.seq });
+  };
+
+  const toggleReady = () => {
+    send({ type: 'courtpiece_set_ready', courtpieceId, ready: !myPlayer?.ready });
   };
 
   if (lastErrorCode === 'not_found' || lastErrorCode === 'kicked') {
@@ -287,10 +343,20 @@ export function CourtpieceView({
     });
   }
 
+  const leftTeam: 0 | 1 = myTeam ?? 0;
+  const rightTeam: 0 | 1 = (1 - leftTeam) as 0 | 1;
+  const leftTitle =
+    myTeam !== null ? 'Your team' : teamLabel(leftTeam);
+  const rightTitle = myTeam !== null ? 'Opponents' : teamLabel(rightTeam);
+  const leftSub = myTeam !== null ? teamLabel(myTeam) : 'Seats 0 & 2';
+  const rightSub = myTeam !== null ? teamLabel(rightTeam) : 'Seats 1 & 3';
+
   const actions = (
     <div className="flex flex-col gap-2 px-3 py-3">
       <MoveTimerStrip
-        endsAt={playing || phase === 'choosing_trump' ? board.turnEndsAt : null}
+        endsAt={
+          phase === 'playing' || phase === 'choosing_trump' ? board.turnEndsAt : null
+        }
         totalMs={board.turnTimeMs ?? 20_000}
       />
       {lastError ? (
@@ -310,42 +376,44 @@ export function CourtpieceView({
           ))}
         </div>
       ) : null}
-      {canPlay ? (
+      {(canPlay || (mySeat !== null && hand.length > 0 && phase === 'playing')) && (
         <div className="flex max-w-full flex-wrap justify-center gap-1">
           {hand.map((card) => {
-            const enabled = legal.size === 0 || legal.has(card);
+            const enabled = canPlay && (legal.size === 0 || legal.has(card));
+            const dimmed = canPlay ? !enabled : false;
             return (
               <button
                 key={card}
                 type="button"
-                disabled={!enabled}
+                disabled={!canPlay || !enabled}
                 onClick={() => playCard(card)}
-                className={enabled ? '' : 'opacity-40'}
-                aria-label={`Play ${card}`}
+                className={enabled || !canPlay ? '' : 'opacity-40'}
+                aria-label={canPlay ? `Play ${card}` : card}
               >
-                <PlayingCard code={card} size={narrow ? 'handSm' : 'hand'} dimmed={!enabled} />
+                <PlayingCard
+                  code={card}
+                  size={narrow ? 'handSm' : 'hand'}
+                  dimmed={dimmed}
+                />
               </button>
             );
           })}
         </div>
-      ) : null}
-      {!canPlay && mySeat !== null && hand.length > 0 && phase !== 'lobby' ? (
-        <div className="flex max-w-full flex-wrap justify-center gap-1 opacity-90">
-          {hand.map((card) => (
-            <PlayingCard key={card} code={card} size={narrow ? 'handSm' : 'hand'} />
-          ))}
-        </div>
-      ) : null}
-      {(waiting || finished) && mySeat !== null ? (
+      )}
+      {(waiting || finished || betweenHands) && mySeat !== null ? (
         <Button
           type="button"
           variant={myPlayer?.ready ? 'ghost' : 'primary'}
           className="min-h-11 w-full"
-          onClick={() =>
-            send({ type: 'courtpiece_set_ready', courtpieceId, ready: !myPlayer?.ready })
-          }
+          onClick={toggleReady}
         >
-          {myPlayer?.ready ? 'Not ready' : finished ? 'Play rematch' : 'Ready'}
+          {myPlayer?.ready
+            ? 'Not ready'
+            : finished
+              ? 'Play rematch'
+              : betweenHands
+                ? 'Ready for next hand'
+                : 'Ready'}
         </Button>
       ) : null}
       {isSpectating ? (
@@ -389,16 +457,9 @@ export function CourtpieceView({
     </div>
   );
 
-  const anchor = mySeat ?? 0;
-  const layoutSeats = [
-    { offset: 2, pos: 'top' as const },
-    { offset: 1, pos: 'right' as const },
-    { offset: 0, pos: 'bottom' as const },
-    { offset: 3, pos: 'left' as const },
-  ];
-
   return (
     <TableShell
+      tableColorId={tableColorId}
       onSend={(text) => send({ type: 'courtpiece_chat', courtpieceId, text })}
       onEmoji={(emoji) => send({ type: 'courtpiece_chat', courtpieceId, text: emoji })}
       chatOpen={chatOpen}
@@ -408,6 +469,7 @@ export function CourtpieceView({
         choosingTrump ||
         waiting ||
         finished ||
+        betweenHands ||
         isSpectating ||
         Boolean(lastError) ||
         hand.length > 0
@@ -415,7 +477,7 @@ export function CourtpieceView({
       actions={actions}
       chatEmptyHint="Talk trump and tricks."
     >
-      <div className="flex min-h-0 flex-1 flex-col bg-chrome text-on-chrome">
+      <div className="flex min-h-0 flex-1 flex-col">
         <header className="play-chrome-bar">
           <div className="play-table-logo-row">
             <PlayTableLogo />
@@ -452,90 +514,206 @@ export function CourtpieceView({
           )}
         </header>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2 sm:px-3">
+        <div className="flex min-h-0 flex-1 flex-col gap-2 px-2 pb-2 sm:px-3">
           <div className="flex flex-wrap items-center gap-2 px-0.5">
-            <StatusChip tone={playing ? 'playPositive' : finished ? 'playBrass' : 'play'}>
-              {finished ? 'Finished' : playing ? 'Playing' : 'Waiting'}
+            <StatusChip
+              tone={
+                finished
+                  ? 'playBrass'
+                  : betweenHands
+                    ? 'playBrass'
+                    : playing
+                      ? 'playPositive'
+                      : 'play'
+              }
+            >
+              {finished
+                ? 'Finished'
+                : betweenHands
+                  ? 'Between hands'
+                  : playing
+                    ? 'Playing'
+                    : 'Waiting'}
             </StatusChip>
             <StatusChip tone="playMuted">{rulesLabel(board.rulesVariant)}</StatusChip>
             <StatusChip tone="playMuted" className="tabular-nums">
-              NS {board.teamHands[0]}–{board.teamHands[1]} EW
+              Hands NS {board.teamHands[0]}–{board.teamHands[1]} EW · first to{' '}
+              {board.handsToWin}
             </StatusChip>
             {board.trump ? (
               <StatusChip tone="playPositive">Trump {SUIT_LABEL[board.trump]}</StatusChip>
             ) : null}
-            {waiting || finished ? (
+            {waiting || finished || betweenHands ? (
               <StatusChip tone="playMuted" className="tabular-nums">
                 Ready {readyHumans.length}/{Math.max(humans.length, 1)}
               </StatusChip>
             ) : null}
           </div>
 
-          <div className="relative mx-auto aspect-[4/3] w-full max-w-xl rounded-[40%] border border-white/10 bg-[radial-gradient(ellipse_at_center,_#1a5c3a_0%,_#0d3d26_70%)] shadow-inner">
-            <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 gap-1">
-              {(board.currentTrick ?? []).map((p) => (
-                <PlayingCard key={`${p.seat}-${p.card}`} code={p.card} size="sm" />
-              ))}
-              {(board.currentTrick ?? []).length === 0 && playing ? (
-                <span className="text-xs text-white/70">Hand {board.handNumber}</span>
-              ) : null}
-            </div>
+          <div className="play-table-stage min-h-[18rem] flex-1">
+            <div className="relative min-h-0 min-w-0 flex-1">
+              <div
+                className={
+                  narrow
+                    ? 'absolute inset-0 overflow-hidden felt-surface'
+                    : 'absolute inset-0 overflow-hidden felt-surface table-rim shadow-felt rounded-[42%] border-[12px]'
+                }
+              >
+                {!narrow ? <div className="play-table-oval-ring" /> : null}
 
-            {layoutSeats.map(({ offset, pos }) => {
-              const seat = seatAtOffset(anchor, offset);
-              const p = seats[seat]!;
-              const isTurn = board.toAct === seat;
-              const posClass =
-                pos === 'top'
-                  ? 'left-1/2 top-2 -translate-x-1/2'
-                  : pos === 'bottom'
-                    ? 'bottom-2 left-1/2 -translate-x-1/2'
-                    : pos === 'left'
-                      ? 'left-2 top-1/2 -translate-y-1/2'
-                      : 'right-2 top-1/2 -translate-y-1/2';
-              return (
-                <div
-                  key={seat}
-                  className={`absolute flex flex-col items-center gap-0.5 ${posClass} ${
-                    isTurn ? 'rounded-lg p-1 ring-2 ring-amber-300/80' : ''
-                  }`}
-                >
-                  {p.userId ? (
-                    <>
-                      <PlayerAvatar
-                        userId={p.userId}
-                        avatarId={p.avatarId}
-                        avatarUrl={p.avatarUrl}
-                        size={22}
-                        title={p.name ?? `Seat ${seat + 1}`}
-                      />
-                      <span className="max-w-[5.5rem] truncate text-[10px] font-semibold text-white">
-                        {p.name}
-                        {p.userId === userId ? ' · you' : ''}
-                      </span>
-                      <span className="text-[9px] text-white/70">
-                        {teamLabel(p.team)} · {p.tricksThisHand}t
-                        {p.cardCount > 0 ? ` · ${p.cardCount}c` : ''}
-                      </span>
-                      {waiting && p.ready ? (
-                        <span className="text-[9px] text-emerald-200">Ready</span>
-                      ) : null}
-                    </>
-                  ) : waiting ? (
-                    <button
-                      type="button"
-                      className="rounded-md border border-white/30 bg-black/30 px-2 py-1 text-[10px] text-white"
-                      onClick={() => sitAt(seat)}
-                      disabled={mySeat !== null}
-                    >
-                      Sit {seat + 1}
-                    </button>
-                  ) : (
-                    <span className="text-[10px] text-white/50">Empty</span>
+                <div className="absolute left-1/2 top-1/2 z-20 flex w-[min(92%,20rem)] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1.5">
+                  {betweenHands && lastHand ? (
+                    <div className="rounded-lg bg-black/45 px-3 py-2 text-center shadow-lg backdrop-blur-sm">
+                      <p className="text-[11px] font-display font-semibold uppercase tracking-wider text-felt-neon">
+                        {teamLabel(lastHand.winningTeam)} wins the hand
+                        {lastHand.handsAwarded > 1 ? ` (+${lastHand.handsAwarded})` : ''}
+                      </p>
+                      <p className="mt-0.5 text-[10px] table-label-on-felt tabular-nums">
+                        Tricks {lastHand.tricks[0]}–{lastHand.tricks[1]} · Ready for next
+                      </p>
+                    </div>
+                  ) : (board.currentTrick ?? []).length > 0 ? (
+                    <div className="flex gap-1">
+                      {(board.currentTrick ?? []).map((p) => (
+                        <PlayingCard key={`${p.seat}-${p.card}`} code={p.card} size="sm" />
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {(playing || betweenHands || waiting) && (
+                    <div className="grid w-full grid-cols-2 gap-2 rounded-lg bg-black/40 px-2.5 py-2 backdrop-blur-sm">
+                      <div className="text-center">
+                        <p className="text-[9px] font-display font-bold uppercase tracking-wider text-[rgb(var(--table-accent))]">
+                          {leftTitle}
+                        </p>
+                        <p className="text-[8px] table-label-on-felt opacity-80">{leftSub}</p>
+                        <p className="mt-0.5 text-lg font-black tabular-nums text-white">
+                          {board.teamHands[leftTeam]}
+                        </p>
+                        <p className="text-[9px] table-label-on-felt tabular-nums">
+                          {teamTricks[leftTeam]} tricks
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[9px] font-display font-bold uppercase tracking-wider text-felt-neon">
+                          {rightTitle}
+                        </p>
+                        <p className="text-[8px] table-label-on-felt opacity-80">{rightSub}</p>
+                        <p className="mt-0.5 text-lg font-black tabular-nums text-white">
+                          {board.teamHands[rightTeam]}
+                        </p>
+                        <p className="text-[9px] table-label-on-felt tabular-nums">
+                          {teamTricks[rightTeam]} tricks
+                        </p>
+                      </div>
+                      <p className="col-span-2 text-center text-[9px] table-label-on-felt opacity-70">
+                        First to {board.handsToWin}
+                        {playing && !betweenHands ? ` · Hand ${board.handNumber}` : ''}
+                      </p>
+                    </div>
                   )}
+
+                  {!playing && !betweenHands && waiting ? (
+                    <span className="table-label-on-felt text-[10px] font-display uppercase tracking-wider">
+                      Court Piece
+                    </span>
+                  ) : null}
                 </div>
-              );
-            })}
+
+                {seats.map((p) => {
+                  const angle = seatAngles[p.seat] ?? 90;
+                  const rad = (angle * Math.PI) / 180;
+                  const x = 50 + Math.cos(rad) * ellipse.rx;
+                  const y = 50 + Math.sin(rad) * ellipse.ry;
+                  const isTurn = board.toAct === p.seat;
+                  const isSelf = p.userId === userId;
+                  const isPartner = partnerSeat !== null && p.seat === partnerSeat;
+                  const isNs = p.team === 0;
+                  const avatarSize = seatSlotAvatarSize({
+                    maxSeats: 4,
+                    compact: narrow,
+                    isSelf,
+                  });
+                  return (
+                    <div
+                      key={p.seat}
+                      className="absolute z-10 -translate-x-1/2 -translate-y-1/2"
+                      style={{ left: `${x}%`, top: `${y}%` }}
+                    >
+                      <div
+                        className={`flex flex-col items-center gap-0.5 rounded-xl px-1.5 py-1 ${
+                          isTurn
+                            ? 'ring-2 ring-[rgb(var(--table-accent))] ring-offset-1 ring-offset-transparent'
+                            : ''
+                        }`}
+                      >
+                        {p.userId ? (
+                          <>
+                            <div className="relative">
+                              <div
+                                className={`rounded-full p-0.5 ${
+                                  isNs
+                                    ? 'bg-[rgb(var(--table-accent))]/90'
+                                    : 'bg-[rgb(var(--positive))]/90'
+                                }`}
+                              >
+                                <div className="table-chrome-disc rounded-full p-0.5">
+                                  <PlayerAvatar
+                                    userId={p.userId}
+                                    avatarId={p.avatarId}
+                                    avatarUrl={p.avatarUrl}
+                                    size={avatarSize}
+                                    title={p.name ?? `Seat ${p.seat + 1}`}
+                                  />
+                                </div>
+                              </div>
+                              <span
+                                className={`absolute -right-1 -top-1 rounded px-1 text-[8px] font-black uppercase tracking-wide text-black ${
+                                  isNs
+                                    ? 'bg-[rgb(var(--table-accent))]'
+                                    : 'bg-[rgb(var(--positive))]'
+                                }`}
+                              >
+                                {teamLabel(p.team)}
+                              </span>
+                            </div>
+                            <span className="table-label-on-felt max-w-[5.5rem] truncate text-[10px] font-semibold">
+                              {p.name}
+                              {isSelf ? ' · you' : ''}
+                            </span>
+                            {isPartner ? (
+                              <span className="text-[9px] font-display font-bold uppercase tracking-wider text-felt-neon">
+                                Partner
+                              </span>
+                            ) : null}
+                            <span className="table-label-on-felt text-[9px] opacity-80">
+                              {p.tricksThisHand} trick{p.tricksThisHand === 1 ? '' : 's'}
+                              {p.cardCount > 0 ? ` · ${p.cardCount} cards` : ''}
+                            </span>
+                            {(waiting || betweenHands || finished) && p.ready ? (
+                              <span className="text-[9px] font-display uppercase tracking-wider text-felt-neon">
+                                Ready
+                              </span>
+                            ) : null}
+                          </>
+                        ) : waiting ? (
+                          <button
+                            type="button"
+                            className="rounded-md border border-white/25 bg-black/35 px-2 py-1 text-[10px] text-white"
+                            onClick={() => sitAt(p.seat)}
+                            disabled={mySeat !== null}
+                          >
+                            Sit {p.seat + 1}
+                          </button>
+                        ) : (
+                          <span className="table-label-on-felt text-[10px] opacity-50">Empty</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -551,13 +729,7 @@ export function CourtpieceView({
           readyPlayers={readyPlayers}
           readyCount={readyHumans.length}
           readyTotal={humans.length}
-          onReady={() =>
-            send({
-              type: 'courtpiece_set_ready',
-              courtpieceId,
-              ready: !myPlayer?.ready,
-            })
-          }
+          onReady={toggleReady}
           onDismiss={() => setWinDismissed(true)}
         />
       ) : null}

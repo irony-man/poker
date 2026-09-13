@@ -11,6 +11,7 @@ export type {
   CourtpieceEvent,
   CourtpieceState,
   CreateMatchOpts,
+  LastHandResult,
   MatchPhase,
   RulesVariant,
   SeatState,
@@ -33,6 +34,7 @@ export {
 
 export {
   autoPlayLegal,
+  advanceAfterHand,
   createMatch,
   playCard,
   setReady,
@@ -54,7 +56,7 @@ export {
 export { chooseBotAction } from './bot.js';
 export type { BotAction } from './bot.js';
 
-export { toPrivateView, toPublicView } from './view.js';
+export { toPrivateView, toPublicView, sortHand } from './view.js';
 export type {
   PrivateCourtpieceView,
   PublicCourtpieceView,

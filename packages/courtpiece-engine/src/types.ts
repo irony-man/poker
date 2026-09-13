@@ -39,6 +39,13 @@ export interface CourtpieceConfig {
   handsToWin: number;
 }
 
+/** Result of the hand just scored (shown during between_hands). */
+export interface LastHandResult {
+  winningTeam: TeamId;
+  handsAwarded: number;
+  tricks: [number, number];
+}
+
 export interface CourtpieceState {
   matchId: string;
   phase: MatchPhase;
@@ -58,6 +65,8 @@ export interface CourtpieceState {
   handNumber: number;
   /** Winning team when finished. */
   winnerTeam: TeamId | null;
+  /** Set after a hand scores until the next hand begins. */
+  lastHand: LastHandResult | null;
   /** Remaining undealt cards (hokm after 5-card preview). */
   undealt: Card[];
   actionSeq: number;

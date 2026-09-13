@@ -108,12 +108,12 @@ export default function CourtpieceHostPage() {
             onSelect={setRulesVariant}
             format={formatRule}
           />
-          <p className="text-xs text-on-chrome/60">
+          <p className="field-help">
             {rulesVariant === 'hokm'
-              ? 'Hakem sees 5 cards, sets trump, then the rest are dealt. First to 7 hands.'
+              ? 'Iranian Hokm: the hakem peeks at 5 cards, picks trump, then everyone gets a full hand. Partners sit across. First team to 7 hands wins; hakem keeps the deal until their team loses a hand.'
               : rulesVariant === 'classic_full'
-                ? 'Classic with court (13 tricks) and baazi (<4 tricks). First to 7 hands.'
-                : 'Fixed partners, trump by left of dealer. First team to 7 hands wins.'}
+                ? 'Same as Classic, with bonus scoring: sweep all 13 tricks (court) or hold the losers under 4 tricks (baazi) and that hand counts as 2. First team to 7 hands wins.'
+                : 'Standard Court Piece: fixed partners (N–S vs E–W), full deal, left of dealer names trump. Win the hand by taking more tricks. First team to 7 hands wins the match.'}
           </p>
 
           <CollapsibleSection title="Bots & room code" summary={moreSummary}>

@@ -35,6 +35,11 @@ export interface PublicCourtpieceView {
   handsToWin: number;
   handNumber: number;
   winnerTeam: TeamId | null;
+  lastHand: {
+    winningTeam: TeamId;
+    handsAwarded: number;
+    tricks: [number, number];
+  } | null;
   actionSeq: number;
   version: number;
   turnTimeMs: number;
@@ -78,6 +83,13 @@ export function toPublicView(state: CourtpieceState): PublicCourtpieceView {
     handsToWin: state.config.handsToWin,
     handNumber: state.handNumber,
     winnerTeam: state.winnerTeam,
+    lastHand: state.lastHand
+      ? {
+          winningTeam: state.lastHand.winningTeam,
+          handsAwarded: state.lastHand.handsAwarded,
+          tricks: [state.lastHand.tricks[0], state.lastHand.tricks[1]],
+        }
+      : null,
     actionSeq: state.actionSeq,
     version: state.version,
     turnTimeMs: state.config.turnTimeMs,
@@ -87,10 +99,12 @@ export function toPublicView(state: CourtpieceState): PublicCourtpieceView {
 export function toPrivateView(state: CourtpieceState, seat: number): PrivateCourtpieceView | null {
   const p = state.seats[seat];
   if (!p || p.status !== 'seated') return null;
-  const hand = p.hand.map(cardToString);
+  const sorted = sortHand(p.hand);
+  const hand = sorted.map(cardToString);
   let legal: string[] = [];
   if (state.phase === 'playing' && state.toAct === seat) {
-    legal = legalCards(state, seat).map(cardToString);
+    const legalSet = new Set(legalCards(state, seat).map(cardToString));
+    legal = hand.filter((c) => legalSet.has(c));
   } else if (state.phase === 'choosing_trump' && state.toAct === seat) {
     legal = [];
   }

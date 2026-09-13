@@ -41,6 +41,13 @@ export function cloneState(state: CourtpieceState): CourtpieceState {
       card: { ...p.card },
     })),
     teamHands: [state.teamHands[0], state.teamHands[1]],
+    lastHand: state.lastHand
+      ? {
+          winningTeam: state.lastHand.winningTeam,
+          handsAwarded: state.lastHand.handsAwarded,
+          tricks: [state.lastHand.tricks[0], state.lastHand.tricks[1]],
+        }
+      : null,
     undealt: state.undealt.map((c) => ({ ...c })),
   };
 }

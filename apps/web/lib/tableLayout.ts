@@ -109,6 +109,21 @@ export function seatAnglesForHero(maxSeats: number, heroSeat: number | undefined
   });
 }
 
+/**
+ * Court Piece compass seats: partners opposite (N–S / E–W).
+ * Hero at bottom (90°), partner top (270°), next seat left (180°), previous right (0°).
+ * Spectators (no hero) keep seat 0 at the bottom.
+ */
+export function seatAnglesCourtpiece(heroSeat: number | undefined): number[] {
+  const hero = heroSeat ?? 0;
+  const angles = [0, 0, 0, 0];
+  angles[hero] = BOTTOM_CENTER; // 90 bottom
+  angles[(hero + 2) % 4] = 270; // partner top
+  angles[(hero + 1) % 4] = 180; // left
+  angles[(hero + 3) % 4] = 0; // right
+  return angles;
+}
+
 export type SeatEllipseRadii = {
   rx: number;
   ry: number;

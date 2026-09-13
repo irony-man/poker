@@ -7,8 +7,7 @@ export type LobbyHref =
   | '/public'
   | '/contests'
   | '/solo'
-  | '/friends'
-  | '/arcade';
+  | '/friends';
 
 export const LOBBY_NAV: { href: LobbyHref; label: string }[] = [
   { href: '/play', label: 'Host' },
@@ -17,7 +16,6 @@ export const LOBBY_NAV: { href: LobbyHref; label: string }[] = [
   { href: '/contests', label: 'Contests' },
   { href: '/friends', label: 'Friends' },
   { href: '/solo', label: 'Offline' },
-  { href: '/arcade', label: 'Arcade' },
 ];
 
 export type MobileBottomIcon = 'home' | 'play' | 'public' | 'contests' | 'friends' | 'offline';

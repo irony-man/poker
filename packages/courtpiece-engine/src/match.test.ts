@@ -1,6 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { parseCard } from './cards.js';
 import {
+  advanceAfterHand,
   createMatch,
   playCard,
   setReady,
@@ -10,6 +9,8 @@ import {
 } from './match.js';
 import { legalCards, scoreHand, teamOf, trickWinner } from './rules.js';
 import type { CourtpieceState } from './types.js';
+import { parseCard } from './cards.js';
+import { describe, expect, it } from 'vitest';
 
 function seatFour(variant: 'classic' | 'classic_full' | 'hokm' = 'classic') {
   let s = createMatch({ matchId: 't', rulesVariant: variant });
@@ -140,5 +141,58 @@ describe('classic_full scoring', () => {
     const scored = scoreHand(s);
     expect(scored.winningTeam).toBe(0);
     expect(scored.handsAwarded).toBe(2);
+  });
+});
+
+describe('between_hands', () => {
+  function finishOneCardHand(s: CourtpieceState): CourtpieceState {
+    // One card each — play out the hand
+    s.seats[0]!.hand = [parseCard('Ah')];
+    s.seats[1]!.hand = [parseCard('Kh')];
+    s.seats[2]!.hand = [parseCard('Qh')];
+    s.seats[3]!.hand = [parseCard('Jh')];
+    s.toAct = 0;
+    s.trickLeader = 0;
+    s.currentTrick = [];
+    s.phase = 'playing';
+    s.trump = 'c';
+    s.handNumber = 1;
+    s.teamHands = [0, 0];
+    s.lastHand = null;
+    let cur = s;
+    cur = playCard(cur, 0, parseCard('Ah')).state;
+    cur = playCard(cur, 1, parseCard('Kh')).state;
+    cur = playCard(cur, 2, parseCard('Qh')).state;
+    cur = playCard(cur, 3, parseCard('Jh')).state;
+    return cur;
+  }
+
+  it('pauses for ready instead of dealing next hand', () => {
+    let s = seatFour('classic');
+    s = startMatch(s).state;
+    s = setTrump(s, s.trumpSetter!, 'c').state;
+    s = finishOneCardHand(s);
+    expect(s.phase).toBe('between_hands');
+    expect(s.lastHand?.winningTeam).toBe(0);
+    expect(s.teamHands[0]).toBe(1);
+    expect(s.toAct).toBeNull();
+    expect(s.seats.every((p) => !p.isBot && !p.ready)).toBe(true);
+  });
+
+  it('advances when all humans ready', () => {
+    let s = seatFour('classic');
+    s = startMatch(s).state;
+    s = setTrump(s, s.trumpSetter!, 'c').state;
+    s = finishOneCardHand(s);
+    s = setReady(s, 0, true).state;
+    s = setReady(s, 1, true).state;
+    s = setReady(s, 2, true).state;
+    expect(advanceAfterHand(s).ok).toBe(false);
+    s = setReady(s, 3, true).state;
+    const next = advanceAfterHand(s);
+    expect(next.ok).toBe(true);
+    expect(next.state.phase).toBe('choosing_trump');
+    expect(next.state.handNumber).toBe(2);
+    expect(next.state.lastHand).toBeNull();
   });
 });

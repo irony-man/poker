@@ -47,6 +47,10 @@ function inLobbyOrFinished(state: CourtpieceState): boolean {
   return state.phase === 'lobby' || state.phase === 'finished';
 }
 
+function canSetReady(state: CourtpieceState): boolean {
+  return inLobbyOrFinished(state) || state.phase === 'between_hands';
+}
+
 function isBotUserId(userId: string, opts?: SitOpts): boolean {
   return !!opts?.bot || userId.startsWith(BOT_PREFIX);
 }
@@ -55,6 +59,13 @@ function humansAllReady(state: CourtpieceState): boolean {
   const seated = seatedSeats(state);
   if (seated.length < SEAT_COUNT) return false;
   return seated.every((s) => s.isBot || s.ready);
+}
+
+function clearHumanReady(s: CourtpieceState): void {
+  for (const seat of s.seats) {
+    if (seat.status === 'seated' && !seat.isBot) seat.ready = false;
+    if (seat.status === 'seated' && seat.isBot) seat.ready = true;
+  }
 }
 
 export function createMatch(opts: CreateMatchOpts): CourtpieceState {
@@ -84,6 +95,7 @@ export function createMatch(opts: CreateMatchOpts): CourtpieceState {
     teamHands: [0, 0],
     handNumber: 0,
     winnerTeam: null,
+    lastHand: null,
     undealt: [],
     actionSeq: 0,
     version: 0,
@@ -131,7 +143,7 @@ export function stand(state: CourtpieceState, seat: number): ApplyResult {
 }
 
 export function setReady(state: CourtpieceState, seat: number, ready: boolean): ApplyResult {
-  if (!inLobbyOrFinished(state)) return fail(state, 'Ready only in lobby');
+  if (!canSetReady(state)) return fail(state, 'Ready only in lobby');
   const s = cloneState(state);
   const p = s.seats[seat];
   if (!p || p.status !== 'seated') return fail(state, 'Empty seat');
@@ -147,6 +159,7 @@ function beginHand(
   shuffle: <T>(arr: T[]) => T[] = defaultShuffle,
 ): void {
   s.handNumber += 1;
+  s.lastHand = null;
   clearHands(s);
   s.trump = null;
   s.currentTrick = [];
@@ -186,16 +199,32 @@ export function startMatch(
 
   const s = cloneState(state);
   const events: CourtpieceEvent[] = [];
-  for (const seat of s.seats) {
-    if (seat.status === 'seated' && !seat.isBot) seat.ready = false;
-  }
+  clearHumanReady(s);
   s.teamHands = [0, 0];
   s.handNumber = 0;
   s.winnerTeam = null;
+  s.lastHand = null;
   s.dealer = 0;
   s.hakem = s.config.rulesVariant === 'hokm' ? 0 : null;
   bump(s);
   events.push({ type: 'match_started', handNumber: 1 });
+  beginHand(s, events, opts?.shuffle ?? defaultShuffle);
+  return { state: s, events, ok: true };
+}
+
+/** After between_hands, start the next hand when all humans are ready. */
+export function advanceAfterHand(
+  state: CourtpieceState,
+  opts?: { shuffle?: CreateMatchOpts['shuffle'] },
+): ApplyResult {
+  if (state.phase !== 'between_hands') return fail(state, 'Not between hands');
+  if (seatedSeats(state).length < SEAT_COUNT) return fail(state, 'Need 4 players');
+  if (!humansAllReady(state)) return fail(state, 'All humans must be ready');
+
+  const s = cloneState(state);
+  const events: CourtpieceEvent[] = [];
+  clearHumanReady(s);
+  bump(s);
   beginHand(s, events, opts?.shuffle ?? defaultShuffle);
   return { state: s, events, ok: true };
 }
@@ -243,16 +272,18 @@ function removeFromHand(hand: Card[], card: Card): boolean {
 function finishHand(
   s: CourtpieceState,
   events: CourtpieceEvent[],
-  shuffle: <T>(arr: T[]) => T[],
+  _shuffle: <T>(arr: T[]) => T[],
 ): void {
   const { winningTeam, handsAwarded, tricks } = scoreHand(s);
   s.teamHands[winningTeam] += handsAwarded;
+  s.lastHand = { winningTeam, handsAwarded, tricks };
   events.push({ type: 'hand_scored', winningTeam, handsAwarded, tricks });
 
   if (s.teamHands[winningTeam] >= s.config.handsToWin) {
     s.phase = 'finished';
     s.winnerTeam = winningTeam;
     s.toAct = null;
+    clearHumanReady(s);
     events.push({ type: 'won', team: winningTeam });
     return;
   }
@@ -267,7 +298,11 @@ function finishHand(
     s.dealer = nextSeat(s.dealer);
   }
 
-  beginHand(s, events, shuffle);
+  s.phase = 'between_hands';
+  s.toAct = null;
+  s.currentTrick = [];
+  s.trickLeader = null;
+  clearHumanReady(s);
 }
 
 export function playCard(

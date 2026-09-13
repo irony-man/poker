@@ -1,5 +1,6 @@
 import { nanoid } from 'nanoid';
 import {
+  advanceAfterHand,
   chooseBotAction,
   cardToString,
   createMatch,
@@ -222,6 +223,7 @@ export class CourtpieceRoom {
     if (!result.ok) return { ok: false, error: result.error };
     this.state = result.state;
     this.tryStartMatch();
+    this.tryAdvanceAfterHand();
     this.afterStateChange();
     return { ok: true };
   }
@@ -249,10 +251,12 @@ export class CourtpieceRoom {
     const result = playCard(this.state, seat, card, seq);
     if (!result.ok) return { ok: false, error: result.error };
     this.state = result.state;
+    this.announceHandEvents(result.events);
     if (result.state.phase === 'finished' && result.state.winnerTeam != null) {
       const team = result.state.winnerTeam;
       this.systemChat(`Team ${team === 0 ? 'NS' : 'EW'} wins the match`);
     }
+    this.tryAdvanceAfterHand();
     this.afterStateChange();
     return { ok: true };
   }
@@ -374,6 +378,13 @@ export class CourtpieceRoom {
       handsToWin: this.state.config.handsToWin,
       handNumber: this.state.handNumber,
       winnerTeam: this.state.winnerTeam,
+      lastHand: this.state.lastHand
+        ? {
+            winningTeam: this.state.lastHand.winningTeam,
+            handsAwarded: this.state.lastHand.handsAwarded,
+            tricks: [this.state.lastHand.tricks[0], this.state.lastHand.tricks[1]],
+          }
+        : null,
       seq: this.state.actionSeq,
       turnEndsAt: this.turnEndsAt,
       turnTimeMs: this.state.config.turnTimeMs,
@@ -450,6 +461,25 @@ export class CourtpieceRoom {
     this.systemChat('Match started');
   }
 
+  private tryAdvanceAfterHand(): void {
+    if (this.state.phase !== 'between_hands') return;
+    const result = advanceAfterHand(this.state);
+    if (!result.ok) return;
+    this.state = result.state;
+    this.systemChat(`Hand ${this.state.handNumber} started`);
+  }
+
+  private announceHandEvents(
+    events: { type: string; winningTeam?: 0 | 1; handsAwarded?: number }[],
+  ): void {
+    for (const ev of events) {
+      if (ev.type !== 'hand_scored' || ev.winningTeam == null || ev.handsAwarded == null) continue;
+      const team = ev.winningTeam === 0 ? 'NS' : 'EW';
+      const bonus = ev.handsAwarded > 1 ? ` (+${ev.handsAwarded})` : '';
+      this.systemChat(`${team} wins the hand${bonus}`);
+    }
+  }
+
   private afterStateChange(): void {
     this.vacateDisconnectedIfLobby();
     this.armTurnTimer();
@@ -517,9 +547,11 @@ export class CourtpieceRoom {
       const result = playCard(this.state, seat, intent.card);
       if (result.ok) {
         this.state = result.state;
+        this.announceHandEvents(result.events);
         if (result.state.phase === 'finished' && result.state.winnerTeam != null) {
           this.systemChat(`Team ${result.state.winnerTeam === 0 ? 'NS' : 'EW'} wins the match`);
         }
+        this.tryAdvanceAfterHand();
         this.afterStateChange();
       }
     }
@@ -540,6 +572,11 @@ export class CourtpieceRoom {
       const result = playCard(this.state, seat, intent.card);
       if (result.ok) {
         this.state = result.state;
+        this.announceHandEvents(result.events);
+        if (result.state.phase === 'finished' && result.state.winnerTeam != null) {
+          this.systemChat(`Team ${result.state.winnerTeam === 0 ? 'NS' : 'EW'} wins the match`);
+        }
+        this.tryAdvanceAfterHand();
         this.afterStateChange();
       }
     }

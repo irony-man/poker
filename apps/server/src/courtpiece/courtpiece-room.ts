@@ -13,6 +13,8 @@ import {
   toPrivateView,
   type CourtpieceState,
   type RulesVariant,
+  type SeatState,
+  type TrickPlay,
 } from '@poker/courtpiece-engine';
 import type { CourtpiecePublicView, CourtpieceYou } from '@poker/protocol';
 import { avatarIdFromUserId, clampAvatarId } from '../avatars.js';
@@ -180,7 +182,7 @@ export class CourtpieceRoom {
 
   autoSit(userId: string, name: string): { ok: boolean; error?: string } {
     if (this.seatOf(userId) !== null) return { ok: true };
-    const empty = this.state.seats.find((s) => s.status === 'empty');
+    const empty = this.state.seats.find((s: SeatState) => s.status === 'empty');
     if (!empty) return { ok: false, error: 'Board full' };
     return this.sit(userId, name, empty.seat);
   }
@@ -273,14 +275,18 @@ export class CourtpieceRoom {
     let added = 0;
     const joined: string[] = [];
     for (let i = 0; i < toAdd; i++) {
-      const emptySeats = this.state.seats.filter((s) => s.status === 'empty').map((s) => s.seat);
+      const emptySeats = this.state.seats
+        .filter((s: SeatState) => s.status === 'empty')
+        .map((s: SeatState) => s.seat);
       if (emptySeats.length === 0) break;
       let nextSeat = emptySeats[0]!;
       if (i === 0 && seat !== undefined) {
         if (!emptySeats.includes(seat)) break;
         nextSeat = seat;
       }
-      const taken = new Set(this.state.seats.filter((s) => s.name).map((s) => s.name!));
+      const taken = new Set(
+        this.state.seats.filter((s: SeatState) => s.name).map((s: SeatState) => s.name!),
+      );
       const name = pickBotName(taken, this.botNamePool ?? undefined);
       const bareId = nanoid(8);
       const personality = resolveBotPersonalityId(name, bareId, this.botStyles);
@@ -335,7 +341,7 @@ export class CourtpieceRoom {
       rulesVariant: this.meta.rulesVariant,
       status: matchStatus(this.state.phase),
       phase: this.state.phase,
-      seats: this.state.seats.map((s) => {
+      seats: this.state.seats.map((s: SeatState) => {
         const connected = s.userId ? s.isBot || this.connections.has(s.userId) : false;
         const avatarUrl = s.userId ? (this.avatarUrlByUser.get(s.userId) ?? null) : null;
         return {
@@ -358,7 +364,7 @@ export class CourtpieceRoom {
       hakem: this.state.hakem,
       trumpSetter: this.state.trumpSetter,
       trump: this.state.trump,
-      currentTrick: this.state.currentTrick.map((p) => ({
+      currentTrick: this.state.currentTrick.map((p: TrickPlay) => ({
         seat: p.seat,
         card: cardToString(p.card),
       })),
@@ -431,12 +437,12 @@ export class CourtpieceRoom {
   }
 
   private seatOf(userId: string): number | null {
-    const s = this.state.seats.find((x) => x.userId === userId);
+    const s = this.state.seats.find((x: SeatState) => x.userId === userId);
     return s ? s.seat : null;
   }
 
   private tryStartMatch(): void {
-    const hasHuman = this.state.seats.some((s) => s.status === 'seated' && !s.isBot);
+    const hasHuman = this.state.seats.some((s: SeatState) => s.status === 'seated' && !s.isBot);
     if (!hasHuman) return;
     const result = startMatch(this.state);
     if (!result.ok) return;

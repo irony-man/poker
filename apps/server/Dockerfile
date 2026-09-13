@@ -6,6 +6,7 @@ COPY packages/engine/package.json ./packages/engine/
 COPY packages/ludo-engine/package.json ./packages/ludo-engine/
 COPY packages/snakes-engine/package.json ./packages/snakes-engine/
 COPY packages/memory-engine/package.json ./packages/memory-engine/
+COPY packages/courtpiece-engine/package.json ./packages/courtpiece-engine/
 COPY packages/protocol/package.json ./packages/protocol/
 COPY packages/db/package.json ./packages/db/
 COPY apps/server/package.json ./apps/server/
@@ -17,7 +18,7 @@ WORKDIR /app
 COPY --from=deps /app ./
 COPY packages ./packages
 COPY apps/server ./apps/server
-RUN npm run build -w @poker/engine -w @poker/ludo-engine -w @poker/snakes-engine -w @poker/memory-engine -w @poker/protocol -w @poker/db -w @poker/server \
+RUN npm run build -w @poker/engine -w @poker/ludo-engine -w @poker/snakes-engine -w @poker/memory-engine -w @poker/courtpiece-engine -w @poker/protocol -w @poker/db -w @poker/server \
   && npm prune --omit=dev
 
 FROM node:22-alpine AS runner
@@ -32,6 +33,7 @@ COPY --from=build /app/packages/engine ./packages/engine
 COPY --from=build /app/packages/ludo-engine ./packages/ludo-engine
 COPY --from=build /app/packages/snakes-engine ./packages/snakes-engine
 COPY --from=build /app/packages/memory-engine ./packages/memory-engine
+COPY --from=build /app/packages/courtpiece-engine ./packages/courtpiece-engine
 COPY --from=build /app/packages/protocol ./packages/protocol
 COPY --from=build /app/packages/db ./packages/db
 COPY --from=build /app/apps/server ./apps/server

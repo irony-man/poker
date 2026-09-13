@@ -35,6 +35,7 @@ jobs:
             -w @poker/ludo-engine \
             -w @poker/snakes-engine \
             -w @poker/memory-engine \
+            -w @poker/courtpiece-engine \
             -w @poker/protocol \
             -w @poker/db \
             -w @poker/server

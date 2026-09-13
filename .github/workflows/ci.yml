@@ -1,15 +1,12 @@
 name: CI
 
+# Manual: Actions → CI → Run workflow
 on:
-  pull_request:
-    branches: [main]
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  # Cancel overlapping PR runs; never cancel main (would abort an in-flight deploy).
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -50,10 +47,3 @@ jobs:
 
       - name: Test
         run: npm test
-
-  deploy:
-    name: Deploy
-    needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: ./.github/workflows/deploy.yml
-    secrets: inherit

@@ -1,10 +1,8 @@
 name: Deploy
 
 # Manual: Actions → Deploy → Run workflow
-# Automatic: called by CI after a successful push build on main
 on:
   workflow_dispatch:
-  workflow_call:
 
 concurrency:
   group: deploy-production

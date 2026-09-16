@@ -30,14 +30,22 @@ import {
   chooseBotAction,
   isBotUserId,
   makeBotUserId,
-  maybeBotBanter,
   personalityForBot,
   pickBotName,
+  pickBotBanterLine,
+  pickReactingBot,
   resolveBotPersonalityId,
+  resolveChatReplyBot,
+  shouldAttemptBotBanter,
 } from '../bot.js';
-import type { BotStyleOptions, BotBanterTrigger } from '@poker/engine';
+import type {
+  BotStyleOptions,
+  BotBanterContext,
+  BotBanterTrigger,
+} from '@poker/engine';
 import type { WalletStore } from '../wallet/wallet.constants.js';
 import { UnlimitedWalletStore, WalletError } from '../wallet/wallet.store.js';
+import type { BotBanterLlmService } from '../bot/bot-banter-llm.service.js';
 
 export interface TournamentTableRules {
   contestId: string;
@@ -147,6 +155,8 @@ export class Room {
   private botNamePool: string[] | null = null;
   /** Style map from an admin bot group; sticks with the name pool. */
   private botStyles: BotStyleOptions | null = null;
+  /** Optional in-house LLM for elaborate banter (null → templates only). */
+  private banterLlm: BotBanterLlmService | null = null;
 
   /** Resolved name pool used for bots on this room (or null if not set). */
   getBotNamePool(): string[] | null {
@@ -170,6 +180,7 @@ export class Room {
     chips: TableChipStore = new MemoryTableChipStore(),
     wallet: WalletStore = new UnlimitedWalletStore(),
     onSeatingChange: (() => void) | null = null,
+    banterLlm: BotBanterLlmService | null = null,
   ) {
     this.meta = meta;
     this.state = createEmptyTable(meta.config);
@@ -179,9 +190,14 @@ export class Room {
     this.wallet = wallet;
     this.tournamentHook = tournamentHook;
     this.onSeatingChange = onSeatingChange;
+    this.banterLlm = banterLlm;
     this.lastLobbySeats = this.seatedCount();
     // Empty until a human joins — age from creation.
     this.idleSince = meta.createdAt;
+  }
+
+  setBanterLlm(llm: BotBanterLlmService | null): void {
+    this.banterLlm = llm;
   }
 
   setSeatingChangeHandler(handler: (() => void) | null): void {
@@ -658,11 +674,27 @@ export class Room {
     }
     this.state = result.state;
     this.announceEngineEvents(result.events);
-    this.maybeScheduleBotBanter(userId, name, {
-      kind: 'action',
-      action: intent.type,
-      street,
-    });
+    const banterStreet =
+      street === 'preflop' || street === 'flop' || street === 'turn' || street === 'river'
+        ? street
+        : 'preflop';
+    const actionEv = result.events.find(
+      (e): e is Extract<EngineEvent, { type: 'action' }> => e.type === 'action',
+    );
+    this.maybeScheduleBotBanter(
+      userId,
+      name,
+      {
+        kind: 'action',
+        action: intent.type,
+        street: banterStreet,
+      },
+      {
+        street: banterStreet,
+        amount: intent.amount ?? actionEv?.amount,
+        pot: this.state.pot,
+      },
+    );
     void this.afterStateChange();
   }
 
@@ -1426,6 +1458,31 @@ export class Room {
     if (!result.ok) return { ok: false, error: result.error };
     this.state = result.state;
     this.announceEngineEvents(result.events);
+    // Human moves: one in-hand bot may react (LLM or templates).
+    if (!isBotUserId(userId)) {
+      const actorName = this.state.players[seat]?.name ?? 'Player';
+      const reactor = pickReactingBot(this.state.players, userId);
+      if (reactor) {
+        const street = this.state.street;
+        const actionStreet =
+          street === 'preflop' || street === 'flop' || street === 'turn' || street === 'river'
+            ? street
+            : 'preflop';
+        const actionAmount =
+          result.events.find((e) => e.type === 'action')?.amount ?? amount;
+        this.maybeScheduleBotBanter(
+          reactor.userId,
+          reactor.name,
+          { kind: 'react', action: type, street: actionStreet },
+          {
+            street: actionStreet,
+            amount: actionAmount,
+            pot: this.state.pot,
+            actorName,
+          },
+        );
+      }
+    }
     void this.afterStateChange();
     return { ok: true };
   }
@@ -1461,7 +1518,11 @@ export class Room {
             w.handName && w.handName !== 'Uncontested' ? ` with ${w.handName}` : '';
           this.systemChat('Dealer', `${name} wins ${w.amount}${hand}`);
           if (winner?.userId && isBotUserId(winner.userId)) {
-            this.maybeScheduleBotBanter(winner.userId, name, { kind: 'win' });
+            this.maybeScheduleBotBanter(winner.userId, name, { kind: 'win' }, {
+              winAmount: w.amount,
+              handName: w.handName,
+              pot: this.state.pot,
+            });
           }
         } else if (e.winners.length > 1) {
           const parts = e.winners.map((w) => {
@@ -1478,6 +1539,11 @@ export class Room {
                 winner.userId,
                 winner.name ?? `Seat ${w.seat}`,
                 { kind: 'win' },
+                {
+                  winAmount: w.amount,
+                  handName: w.handName,
+                  pot: this.state.pot,
+                },
               );
             }
           }
@@ -1524,7 +1590,7 @@ export class Room {
 
   /**
    * Bot table chat — skips human rate limits; still recorded as user chat.
-   * Callers must already have passed cooldown / maybeBotBanter gates.
+   * Callers must already have passed cooldown / chance gates.
    */
   private botChat(userId: string, name: string, text: string): void {
     this.broadcastChat(userId, name, text, 'user');
@@ -1534,32 +1600,77 @@ export class Room {
     userId: string,
     name: string,
     trigger: BotBanterTrigger,
+    context?: BotBanterContext,
+    scheduleOpts?: { force?: boolean; perBotCooldownMs?: number },
   ): void {
     const now = Date.now();
     if (now - this.lastBotBanterAt < 2500) return;
     const lastMine = this.lastBotBanterByUser.get(userId) ?? 0;
-    if (now - lastMine < 12_000) return;
+    const perBotMs = scheduleOpts?.perBotCooldownMs ?? 12_000;
+    if (now - lastMine < perBotMs) return;
 
-    const style = personalityForBot(userId, name);
-    const line = maybeBotBanter({ personalityId: style.id, trigger });
-    if (!line) return;
+    const style = personalityForBot(userId, name, this.botStyles);
+    const opts = { personalityId: style.id, trigger, context };
+    if (!scheduleOpts?.force && !shouldAttemptBotBanter(opts)) return;
 
     // Reserve cooldown immediately so parallel win+action races don't double-post.
     this.lastBotBanterAt = now;
     this.lastBotBanterByUser.set(userId, now);
 
     const delay = botBanterDelayMs();
-    const timer = setTimeout(() => {
-      this.botBanterTimers.delete(timer);
-      // Seat may have left; still fine to show as that bot if name matches history.
-      this.botChat(userId, name, line);
-    }, delay);
-    this.botBanterTimers.add(timer);
+    const started = Date.now();
+
+    const post = (line: string) => {
+      const wait = Math.max(0, delay - (Date.now() - started));
+      const timer = setTimeout(() => {
+        this.botBanterTimers.delete(timer);
+        this.botChat(userId, name, line);
+      }, wait);
+      this.botBanterTimers.add(timer);
+    };
+
+    const line = pickBotBanterLine(opts);
+    // Chat replies are templates only; action/react/win may still use the LLM.
+    const templatesOnly = trigger.kind === 'chat_reply';
+    if (!templatesOnly && this.banterLlm?.isConfigured()) {
+      void this.banterLlm
+        .generateBanter({
+          personalityId: style.id,
+          botName: name,
+          trigger,
+          context,
+        })
+        .then((llmLine) => {
+          const text = llmLine ?? line;
+          if (text) post(text);
+        })
+        .catch(() => {
+          if (line) post(line);
+        });
+      return;
+    }
+
+    if (line) post(line);
   }
 
   chat(userId: string, name: string, text: string): void {
     if (!this.rateLimit(`${userId}:chat`, 10, 5000)) return;
     this.broadcastChat(userId, name, text, 'user');
+    if (isBotUserId(userId)) return;
+
+    const trimmed = text.trim();
+    if (!trimmed) return;
+
+    const target = resolveChatReplyBot(this.state.players, trimmed, userId);
+    if (!target) return;
+
+    this.maybeScheduleBotBanter(
+      target.userId,
+      target.name,
+      { kind: 'chat_reply' },
+      { actorName: name, message: trimmed },
+      { force: target.mentioned, perBotCooldownMs: 8000 },
+    );
   }
 
   emoji(userId: string, name: string, emoji: string): void {
@@ -1675,6 +1786,7 @@ export class RoomManager {
   private wallet: WalletStore;
   private tournamentHook: TournamentHandEndedHook | null = null;
   private onPublicLobbyChange: (() => void) | null = null;
+  private banterLlm: BotBanterLlmService | null = null;
 
   constructor(
     kv: KvStore,
@@ -1692,6 +1804,13 @@ export class RoomManager {
     this.tournamentHook = hook;
     for (const room of this.rooms.values()) {
       room.setTournamentHook(hook);
+    }
+  }
+
+  setBanterLlm(llm: BotBanterLlmService | null): void {
+    this.banterLlm = llm;
+    for (const room of this.rooms.values()) {
+      room.setBanterLlm(llm);
     }
   }
 
@@ -1743,6 +1862,7 @@ export class RoomManager {
       this.chips,
       this.wallet,
       this.onPublicLobbyChange,
+      this.banterLlm,
     );
     this.rooms.set(id, room);
     this.byInvite.set(inviteCode, id);

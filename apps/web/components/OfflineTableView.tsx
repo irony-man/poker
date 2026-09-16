@@ -12,24 +12,29 @@ import {
   createEmptyTable,
   isBotUserId,
   makeBotUserId,
-  maybeBotBanter,
   personalityForBot,
+  pickBotBanterLine,
   pickBotName,
+  pickReactingBot,
   resolveBotPersonalityId,
+  resolveChatReplyBot,
   returnToWaiting,
   sitDown,
   sitIn,
   sitOut,
   startHand,
+  shouldAttemptBotBanter,
   topUp,
   toPrivateView,
   toPublicView,
+  type BotBanterContext,
   type BotBanterTrigger,
   type BotStyleOptions,
   type EngineEvent,
   type HandState,
   type TableConfig,
 } from '@poker/engine';
+import { fetchBotBanterLine } from '@/lib/api/botBanter';
 import { ActionControls } from './ActionControls';
 import { CommunityBoard } from './CommunityBoard';
 import { DealerPotZone } from './DealerPotZone';
@@ -292,25 +297,55 @@ export function OfflineTableView({
   );
 
   const scheduleBotBanter = useCallback(
-    (userId: string, name: string, trigger: BotBanterTrigger) => {
+    (
+      userId: string,
+      name: string,
+      trigger: BotBanterTrigger,
+      context?: BotBanterContext,
+      scheduleOpts?: { force?: boolean; perBotCooldownMs?: number },
+    ) => {
       const now = Date.now();
       if (now - lastBotBanterAtRef.current < 2500) return;
       const lastMine = lastBotBanterByUserRef.current.get(userId) ?? 0;
-      if (now - lastMine < 12_000) return;
+      const perBotMs = scheduleOpts?.perBotCooldownMs ?? 12_000;
+      if (now - lastMine < perBotMs) return;
 
       const style = personalityForBot(userId, name, botStyles);
-      const line = maybeBotBanter({ personalityId: style.id, trigger });
-      if (!line) return;
+      const opts = { personalityId: style.id, trigger, context };
+      if (!scheduleOpts?.force && !shouldAttemptBotBanter(opts)) return;
 
       lastBotBanterAtRef.current = now;
       lastBotBanterByUserRef.current.set(userId, now);
 
       const delay = botBanterDelayMs();
-      const timer = setTimeout(() => {
-        botBanterTimersRef.current.delete(timer);
-        recordChat({ userId, name, text: line, at: Date.now() });
-      }, delay);
-      botBanterTimersRef.current.add(timer);
+      const started = Date.now();
+      const post = (line: string) => {
+        const wait = Math.max(0, delay - (Date.now() - started));
+        const timer = setTimeout(() => {
+          botBanterTimersRef.current.delete(timer);
+          recordChat({ userId, name, text: line, at: Date.now() });
+        }, wait);
+        botBanterTimersRef.current.add(timer);
+      };
+
+      // Chat replies are local templates only. Other triggers may still try the API.
+      if (trigger.kind === 'chat_reply') {
+        const line = pickBotBanterLine(opts);
+        if (line) post(line);
+        return;
+      }
+
+      void (async () => {
+        const llmLine = await fetchBotBanterLine({
+          personalityId: style.id,
+          botName: name,
+          trigger,
+          context,
+          force: true,
+        });
+        const line = llmLine ?? pickBotBanterLine(opts);
+        if (line) post(line);
+      })();
     },
     [botStyles, recordChat],
   );
@@ -344,8 +379,10 @@ export function OfflineTableView({
         for (const w of e.winners) {
           const winner = next.players[w.seat];
           if (winner?.userId && isBotUserId(winner.userId)) {
-            scheduleBotBanter(winner.userId, winner.name ?? `Seat ${w.seat}`, {
-              kind: 'win',
+            scheduleBotBanter(winner.userId, winner.name ?? `Seat ${w.seat}`, { kind: 'win' }, {
+              winAmount: w.amount,
+              handName: w.handName,
+              pot: next.pot,
             });
           }
         }
@@ -562,11 +599,27 @@ export function OfflineTableView({
             if (!result.ok) return curr;
             pendingAnnounceRef.current = { state: result.state, events: result.events };
             if (intent) {
-              scheduleBotBanter(userId, name, {
-                kind: 'action',
-                action: intent.type,
-                street,
-              });
+              const banterStreet =
+                street === 'preflop' || street === 'flop' || street === 'turn' || street === 'river'
+                  ? street
+                  : 'preflop';
+              const actionEv = result.events.find(
+                (e): e is Extract<EngineEvent, { type: 'action' }> => e.type === 'action',
+              );
+              scheduleBotBanter(
+                userId,
+                name,
+                {
+                  kind: 'action',
+                  action: intent.type,
+                  street: banterStreet,
+                },
+                {
+                  street: banterStreet,
+                  amount: intent.amount ?? actionEv?.amount,
+                  pot: result.state.pot,
+                },
+              );
             }
             return result.state;
           });
@@ -633,6 +686,29 @@ export function OfflineTableView({
     );
     if (!result.ok) return;
     syncChat(result.state, result.events);
+    const actorName = state.players[mySeat]?.name ?? 'Player';
+    const reactor = pickReactingBot(result.state.players, HUMAN_ID);
+    if (reactor) {
+      const street = result.state.street;
+      const actionStreet =
+        street === 'preflop' || street === 'flop' || street === 'turn' || street === 'river'
+          ? street
+          : 'preflop';
+      const actionEv = result.events.find(
+        (e): e is Extract<EngineEvent, { type: 'action' }> => e.type === 'action',
+      );
+      scheduleBotBanter(
+        reactor.userId,
+        reactor.name,
+        { kind: 'react', action: type, street: actionStreet },
+        {
+          street: actionStreet,
+          amount: actionEv?.amount ?? amount,
+          pot: result.state.pot,
+          actorName,
+        },
+      );
+    }
     setState(result.state);
   };
 
@@ -801,9 +877,20 @@ export function OfflineTableView({
   return (
     <TableShell
       tableColorId={tableColorId}
-      onSend={(text) =>
-        recordChat({ userId: HUMAN_ID, name: playerName, text, at: Date.now() })
-      }
+      onSend={(text) => {
+        const trimmed = text.trim();
+        if (!trimmed) return;
+        recordChat({ userId: HUMAN_ID, name: playerName, text: trimmed, at: Date.now() });
+        const target = resolveChatReplyBot(state.players, trimmed, HUMAN_ID);
+        if (!target) return;
+        scheduleBotBanter(
+          target.userId,
+          target.name,
+          { kind: 'chat_reply' },
+          { actorName: playerName, message: trimmed },
+          { force: target.mentioned, perBotCooldownMs: 8000 },
+        );
+      }}
       onEmoji={(emoji) => {
         const at = Date.now();
         setEmoji({ emoji, name: playerName, at });

@@ -4,6 +4,7 @@ import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AdminModule } from './admin/admin.module.js';
 import { AuthModule } from './auth/auth.module.js';
+import { BotBanterModule } from './bot/bot-banter.module.js';
 import { ApiExceptionFilter } from './common/api-exception.filter.js';
 import { ContestsModule } from './contests/contests.module.js';
 import { DatabaseModule } from './database/database.module.js';
@@ -47,6 +48,7 @@ import { WalletModule } from './wallet/wallet.module.js';
     AuthModule,
     UsersModule,
     WalletModule,
+    BotBanterModule,
     TablesModule,
     LudoModule,
     SnakesModule,

@@ -95,24 +95,37 @@ function buildUserPrompt(trigger: BotBanterTrigger, context?: BotBanterContext):
 /**
  * In-house LLM client for bot table banter (OpenAI-compatible chat completions).
  * Returns null when unset, timed out, or response is unusable.
+ *
+ * Nest constructs with a no-arg constructor (env config). Tests use `create()`.
  */
 @Injectable()
 export class BotBanterLlmService {
-  private readonly baseUrl: string | null;
-  private readonly apiKey: string | null;
-  private readonly model: string;
-  private readonly path: string;
-  private readonly timeoutMs: number;
-  private readonly fetchFn: typeof fetch;
+  private baseUrl: string | null;
+  private apiKey: string | null;
+  private model: string;
+  private path: string;
+  private timeoutMs: number;
+  private fetchFn: typeof fetch;
 
-  constructor(config?: BotBanterLlmConfig) {
-    const base = (config?.baseUrl ?? process.env.BANTER_LLM_BASE_URL ?? '').replace(/\/$/, '');
+  constructor() {
+    this.applyConfig({});
+  }
+
+  /** Manual / test construction with explicit config (overrides env). */
+  static create(config: BotBanterLlmConfig): BotBanterLlmService {
+    const svc = new BotBanterLlmService();
+    svc.applyConfig(config);
+    return svc;
+  }
+
+  private applyConfig(config: Partial<BotBanterLlmConfig>): void {
+    const base = (config.baseUrl ?? process.env.BANTER_LLM_BASE_URL ?? '').replace(/\/$/, '');
     this.baseUrl = base || null;
-    this.apiKey = (config?.apiKey ?? process.env.BANTER_LLM_API_KEY)?.trim() || null;
-    this.model = config?.model ?? process.env.BANTER_LLM_MODEL?.trim() ?? 'banter';
-    this.path = config?.path ?? process.env.BANTER_LLM_PATH?.trim() ?? DEFAULT_PATH;
-    this.timeoutMs = config?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-    this.fetchFn = config?.fetchFn ?? fetch;
+    this.apiKey = (config.apiKey ?? process.env.BANTER_LLM_API_KEY)?.trim() || null;
+    this.model = config.model ?? process.env.BANTER_LLM_MODEL?.trim() ?? 'banter';
+    this.path = config.path ?? process.env.BANTER_LLM_PATH?.trim() ?? DEFAULT_PATH;
+    this.timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.fetchFn = config.fetchFn ?? fetch;
   }
 
   isConfigured(): boolean {

@@ -19,7 +19,7 @@ describe('sanitizeBanterLine', () => {
 
 describe('BotBanterLlmService', () => {
   it('returns null when base URL is unset', async () => {
-    const svc = new BotBanterLlmService({
+    const svc = BotBanterLlmService.create({
       baseUrl: '',
       model: 'banter',
       fetchFn: vi.fn() as unknown as typeof fetch,
@@ -40,7 +40,7 @@ describe('BotBanterLlmService', () => {
         choices: [{ message: { content: '"Big bet on the flop — respect."' } }],
       }),
     ) as unknown as typeof fetch;
-    const svc = new BotBanterLlmService({
+    const svc = BotBanterLlmService.create({
       baseUrl: 'http://llm.test',
       apiKey: 'secret',
       model: 'banter-v1',
@@ -64,7 +64,7 @@ describe('BotBanterLlmService', () => {
 
   it('returns null on HTTP failure', async () => {
     const fetchFn = vi.fn(async () => new Response('nope', { status: 500 })) as unknown as typeof fetch;
-    const svc = new BotBanterLlmService({
+    const svc = BotBanterLlmService.create({
       baseUrl: 'http://llm.test',
       model: 'banter',
       fetchFn,
@@ -82,7 +82,7 @@ describe('BotBanterLlmService', () => {
     const fetchFn = vi.fn(async () => {
       throw new Error('network');
     }) as unknown as typeof fetch;
-    const svc = new BotBanterLlmService({
+    const svc = BotBanterLlmService.create({
       baseUrl: 'http://llm.test',
       model: 'banter',
       fetchFn,

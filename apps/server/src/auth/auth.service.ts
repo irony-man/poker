@@ -102,6 +102,13 @@ export class AuthService implements OnModuleInit {
     return this.store.setSfxMuted(userId, sfxMuted);
   }
 
+  setKeyboardShortcuts(
+    userId: string,
+    shortcuts: Record<string, string>,
+  ): Promise<User | null> {
+    return this.store.setKeyboardShortcuts(userId, shortcuts);
+  }
+
   incrementHandsPlayed(userId: string): Promise<void> {
     return this.store.incrementHandsPlayed(userId);
   }

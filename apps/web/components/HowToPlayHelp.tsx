@@ -31,6 +31,10 @@ const TIPS: { title: string; body: string }[] = [
     title: 'Table tools',
     body: 'Between hands: Ready starts the next deal. Sit out skips hands; sit in when you want the next hand. Mid-hand you can request “Sit out next hand” and still finish this one. Chat and voice sit in the toolbar. Broke stacks can Top up between hands from your bankroll.',
   },
+  {
+    title: 'Keyboard shortcuts',
+    body: 'On desktop, play and table tools respond to remappable hotkeys (fold, check/call, raise, voice, chat, and more). Change them anytime under Profile → Shortcuts.',
+  },
 ];
 
 /** Strongest → weakest. `dimmed` codes are kickers / non-scoring cards. */
@@ -210,8 +214,21 @@ function useHelpPanelStyle(
 }
 
 /** Compact “How to play” help for table chrome (popover, not browser title tooltip). */
-export function HowToPlayHelp({ className = '' }: { className?: string }) {
-  const [open, setOpen] = useState(false);
+export function HowToPlayHelp({
+  className = '',
+  open: openProp,
+  onOpenChange,
+}: {
+  className?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = openProp ?? uncontrolledOpen;
+  const setOpen = (next: boolean) => {
+    if (onOpenChange) onOpenChange(next);
+    else setUncontrolledOpen(next);
+  };
   const [tab, setTab] = useState<'basics' | 'rankings'>('rankings');
   const panelId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -353,7 +370,7 @@ export function HowToPlayHelp({ className = '' }: { className?: string }) {
         aria-controls={panelId}
         aria-haspopup="dialog"
         aria-label="How to play"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(!open)}
         title="How to play"
       >
         <span aria-hidden className="text-[13px] leading-none">

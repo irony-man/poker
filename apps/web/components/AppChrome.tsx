@@ -22,6 +22,7 @@ import { fetchMe, logout as apiLogout } from '@/lib/api';
 import { loadSavedAvatarId, saveAvatarId } from '@/lib/avatars';
 import { saveTableColorId } from '@/lib/tableColors';
 import { setSfxMuted } from '@/lib/audio';
+import { saveKeyboardShortcuts } from '@/lib/keyboardShortcuts';
 import { loadSavedTableLayout, saveTableLayout } from '@/lib/tableLayoutPref';
 import { loadSavedUiTheme, saveUiTheme } from '@/lib/uiTheme';
 import { attachPlayFullscreen } from '@/lib/mobileFullscreen';
@@ -175,6 +176,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
         saveUiTheme(me.uiTheme);
         saveTableLayout(me.tableLayout);
         setSfxMuted(me.sfxMuted);
+        saveKeyboardShortcuts(me.keyboardShortcuts);
       })
       .catch(() => {
         /* ignore — balance shown when available */

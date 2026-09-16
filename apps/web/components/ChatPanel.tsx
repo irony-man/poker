@@ -16,16 +16,20 @@ export function ChatPanel({
   onClose,
   closeLabel = 'Hide',
   emptyHint = 'Drop a reaction or say hi when the hand gets interesting.',
+  focusRequestId = 0,
 }: {
   onSend: (text: string) => void;
   onEmoji: (emoji: string) => void;
   onClose?: () => void;
   closeLabel?: string;
   emptyHint?: string;
+  /** Increment to focus the composer (e.g. chat hotkey). */
+  focusRequestId?: number;
 }) {
   const chat = useSession((s) => s.chat);
   const emojiBurst = useSession((s) => s.emojiBurst);
   const scroller = useRef<HTMLUListElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [draft, setDraft] = useState('');
 
@@ -34,6 +38,11 @@ export function ChatPanel({
     if (!el) return;
     el.scrollTop = el.scrollHeight;
   }, [chat.length]);
+
+  useEffect(() => {
+    if (!focusRequestId) return;
+    queueMicrotask(() => inputRef.current?.focus());
+  }, [focusRequestId]);
 
   const pick = (emoji: string) => {
     onEmoji(emoji);
@@ -224,6 +233,7 @@ export function ChatPanel({
           }}
         >
           <input
+            ref={inputRef}
             name="text"
             maxLength={280}
             value={draft}

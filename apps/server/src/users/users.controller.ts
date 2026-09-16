@@ -11,7 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AvatarUploadUrlBodySchema, UpdateMeBodySchema } from '@poker/protocol';
+import { AvatarUploadUrlBodySchema, UpdateMeBodySchema, clampKeyboardShortcuts } from '@poker/protocol';
 import { isAdminUsername, parseAdminUsernames } from '../admin/admin-allowlist.js';
 import { CurrentUser } from '../common/session-auth.guard.js';
 import { SessionAuthGuard } from '../common/session-auth.guard.js';
@@ -40,6 +40,7 @@ function toMeProfile(
     uiTheme: user.uiTheme ?? 'v1',
     tableLayout: user.tableLayout ?? 'v1',
     sfxMuted: user.sfxMuted === true,
+    keyboardShortcuts: clampKeyboardShortcuts(user.keyboardShortcuts ?? {}),
     createdAt: user.createdAt,
     chipBalance,
     whuffieBalance,
@@ -172,6 +173,12 @@ export class UsersController {
     }
     if (parsed.data.sfxMuted !== undefined) {
       updated = await this.auth.setSfxMuted(user.id, parsed.data.sfxMuted);
+    }
+    if (parsed.data.keyboardShortcuts !== undefined) {
+      updated = await this.auth.setKeyboardShortcuts(
+        user.id,
+        clampKeyboardShortcuts(parsed.data.keyboardShortcuts),
+      );
     }
     if (!updated) {
       throw new UnauthorizedException({ error: 'Unknown user' });

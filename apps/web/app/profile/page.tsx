@@ -30,6 +30,13 @@ import {
   saveTableLayout,
   type TableLayout,
 } from '@/lib/tableLayoutPref';
+import { KeyboardShortcutsEditor } from '@/components/KeyboardShortcutsEditor';
+import {
+  clampKeyboardShortcuts,
+  loadSavedKeyboardShortcuts,
+  saveKeyboardShortcuts,
+  type KeyboardShortcuts,
+} from '@/lib/keyboardShortcuts';
 import { isSfxMuted, setSfxMuted } from '@/lib/audio';
 import { clampUiTheme, saveUiTheme, type UiTheme } from '@/lib/uiTheme';
 import { MoneyAmount } from '@/components/CurrencyIcon';
@@ -45,7 +52,7 @@ import { useSession } from '@/lib/store';
 import { useLobbySession } from '@/lib/useLobbySession';
 import { cn } from '@/lib/cn';
 
-type ProfileTab = 'overview' | 'hands' | 'theme' | 'contests' | 'friends';
+type ProfileTab = 'overview' | 'hands' | 'theme' | 'shortcuts' | 'contests' | 'friends';
 
 type ContestMatchRow = {
   contest: ContestView;
@@ -93,7 +100,15 @@ function ThemeRadioGroup<T extends string | number | boolean>({
 }
 
 function parseProfileTab(raw: string | null): ProfileTab {
-  if (raw === 'friends' || raw === 'contests' || raw === 'theme' || raw === 'hands') return raw;
+  if (
+    raw === 'friends' ||
+    raw === 'contests' ||
+    raw === 'theme' ||
+    raw === 'shortcuts' ||
+    raw === 'hands'
+  ) {
+    return raw;
+  }
   return 'overview';
 }
 
@@ -128,6 +143,10 @@ function ProfilePageInner() {
   const [savingTableLayout, setSavingTableLayout] = useState(false);
   const [draftSfxMuted, setDraftSfxMuted] = useState(isSfxMuted);
   const [savingSfxMuted, setSavingSfxMuted] = useState(false);
+  const [draftKeyboardShortcuts, setDraftKeyboardShortcuts] = useState<KeyboardShortcuts>(
+    loadSavedKeyboardShortcuts,
+  );
+  const [savingKeyboardShortcuts, setSavingKeyboardShortcuts] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
   const token = sessionToken ?? readStoredSession()?.sessionToken ?? null;
@@ -173,6 +192,9 @@ function ProfilePageInner() {
       saveTableLayout(me.tableLayout);
       setDraftSfxMuted(me.sfxMuted);
       setSfxMuted(me.sfxMuted);
+      const shortcuts = clampKeyboardShortcuts(me.keyboardShortcuts ?? {});
+      setDraftKeyboardShortcuts(shortcuts);
+      saveKeyboardShortcuts(shortcuts);
       setChipBalance(me.chipBalance);
       setWhuffieBalance(me.whuffieBalance);
       setFriendCount(me.friendCount ?? 0);
@@ -399,6 +421,32 @@ function ProfilePageInner() {
     }
   };
 
+  const saveKeyboardShortcutsPref = async (next: KeyboardShortcuts) => {
+    if (!token || !profile || savingKeyboardShortcuts) return;
+    const clamped = clampKeyboardShortcuts(next);
+    const previous = draftKeyboardShortcuts;
+    setDraftKeyboardShortcuts(clamped);
+    saveKeyboardShortcuts(clamped);
+    setSavingKeyboardShortcuts(true);
+    setError(null);
+    try {
+      const me = await updateMe(token, { keyboardShortcuts: clamped });
+      setProfile(me);
+      setChipBalance(me.chipBalance);
+      setWhuffieBalance(me.whuffieBalance);
+      setFriendCount(me.friendCount ?? 0);
+      const saved = clampKeyboardShortcuts(me.keyboardShortcuts ?? {});
+      setDraftKeyboardShortcuts(saved);
+      saveKeyboardShortcuts(saved);
+    } catch (err) {
+      setDraftKeyboardShortcuts(previous);
+      saveKeyboardShortcuts(previous);
+      setError(err instanceof Error ? err.message : 'Could not update keyboard shortcuts');
+    } finally {
+      setSavingKeyboardShortcuts(false);
+    }
+  };
+
   const handleSignOut = async () => {
     if (signingOut) return;
     setSigningOut(true);
@@ -572,6 +620,7 @@ function ProfilePageInner() {
                 { id: 'overview', label: 'Overview', panelId: 'profile-panel-overview' },
                 { id: 'hands', label: 'Hands', panelId: 'profile-panel-hands' },
                 { id: 'theme', label: 'Theme', panelId: 'profile-panel-theme' },
+                { id: 'shortcuts', label: 'Shortcuts', panelId: 'profile-panel-shortcuts' },
                 { id: 'contests', label: 'Contests', panelId: 'profile-panel-contests' },
                 {
                   id: 'friends',
@@ -1068,6 +1117,33 @@ function ProfilePageInner() {
                 })
                 }
               </ThemeRadioGroup>
+            </section>
+          ) : tab === 'shortcuts' ? (
+            <section
+              role="tabpanel"
+              id="profile-panel-shortcuts"
+              aria-labelledby="profile-tab-shortcuts"
+              className="surface-card-lg"
+            >
+              <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+                <div className="min-w-0">
+                  <h3 className="font-heading-section">Keyboard shortcuts</h3>
+                  <p className="mt-1.5 max-w-lg font-prose-muted">
+                    Remap table hotkeys for actions, voice, chat, and more. Only you use these.
+                  </p>
+                </div>
+                {savingKeyboardShortcuts ? (
+                  <p className="text-xs font-medium text-muted" role="status">
+                    Saving…
+                  </p>
+                ) : null}
+              </div>
+
+              <KeyboardShortcutsEditor
+                value={draftKeyboardShortcuts}
+                disabled={savingKeyboardShortcuts}
+                onChange={(next) => void saveKeyboardShortcutsPref(next)}
+              />
             </section>
           ) : tab === 'contests' ? (
             <section

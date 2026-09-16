@@ -14,6 +14,8 @@ export interface User {
   tableLayout: 'v1' | 'v2';
   /** Mute table SFX (deal / action / win). */
   sfxMuted: boolean;
+  /** Remappable table keyboard shortcuts (full map after clamp). */
+  keyboardShortcuts: Record<string, string>;
   passwordHash: string;
   /** Global play-money balance (chips). */
   chipBalance: number;

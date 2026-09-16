@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type MutableRefObject, type RefObject } from 'react';
 import { useModalFocus } from '@/lib/useModalFocus';
 import { MoveTimerStrip } from './TurnTimer';
 import { ReadyPlayersRoster, type ReadyRosterPlayer } from './WinHandModal';
@@ -8,6 +8,8 @@ import { useSession, type PrivateView, type PublicTable } from '@/lib/store';
 import { formatMoneyAmount } from '@/lib/currency';
 import { Button } from '@/components/ui/Button';
 import { useIsLandscapePhone, useIsNarrow } from '@/lib/tableLayout';
+import { formatShortcutKey, isTypingTarget, useKeyboardShortcuts } from '@/lib/keyboardShortcuts';
+import type { PlayHotkeyHandlers } from '@/lib/useTableHotkeys';
 
 function waitingCopy(opts: {
   spectating: boolean;
@@ -292,6 +294,7 @@ export function ActionControls({
   userId: userIdProp,
   onViewContest,
   tableTools,
+  playHotkeysRef,
 }: {
   onAction: (action: string, amount?: number) => void;
   spectating?: boolean;
@@ -307,6 +310,10 @@ export function ActionControls({
   onViewContest?: () => void;
   /** Between-hand / sit / host controls for the Actions dock idle state. */
   tableTools?: ActionTableTools;
+  /** Filled each render for remappable table hotkeys. */
+  playHotkeysRef?:
+    | RefObject<PlayHotkeyHandlers | null>
+    | MutableRefObject<PlayHotkeyHandlers | null>;
 }) {
   const tableFromStore = useSession((s) => s.table);
   const privFromStore = useSession((s) => s.private);
@@ -316,6 +323,7 @@ export function ActionControls({
   const userId = userIdProp !== undefined ? userIdProp : userIdFromStore;
   const narrow = useIsNarrow();
   const landscape = useIsLandscapePhone();
+  const shortcuts = useKeyboardShortcuts();
 
   const connectionOpen = connection === 'open';
   const mySeat = table?.players.find((p) => p.userId === userId)?.seat;
@@ -351,6 +359,121 @@ export function ActionControls({
     setBetAmount(min);
     setConfirm(null);
   }, [min, table?.actionSeq]);
+
+  const snap = useCallback((v: number) => Math.round(v / bb) * bb, [bb]);
+
+  const clampBet = useCallback(
+    (raw: number) => {
+      if (max <= min) return min;
+      return snap(Math.min(max, Math.max(min, raw)));
+    },
+    [max, min, snap],
+  );
+
+  const setBet = useCallback((raw: number) => setBetAmount(clampBet(raw)), [clampBet]);
+
+  const canBet = Boolean(legal?.types.includes('bet') || legal?.types.includes('raise'));
+  const betLabel = legal?.types.includes('bet') ? 'Bet' : 'Raise';
+  const betAction = legal?.types.includes('bet') ? 'bet' : 'raise';
+  const amount = clampBet(betAmount);
+  const sliderMax = Math.max(min, max);
+  const halfPot = snap(Math.min(max, Math.max(min, Math.floor(pot / 2) + (table?.currentBet ?? 0))));
+  const potBet = snap(Math.min(max, Math.max(min, pot + (table?.currentBet ?? 0))));
+
+  const needsConfirm = useCallback(
+    (action: string, amt?: number) => {
+      if (action === 'allin') return true;
+      if (action === 'fold' && callAmount > 0 && callAmount >= myStack * 0.4) return true;
+      if ((action === 'bet' || action === 'raise') && amt != null && myStack > 0 && amt >= myStack * 0.5) {
+        return true;
+      }
+      return false;
+    },
+    [callAmount, myStack],
+  );
+
+  const commit = useCallback(
+    (action: string, amt?: number, label?: string) => {
+      if (!connectionOpen) return;
+      if (needsConfirm(action, amt)) {
+        setConfirm({
+          action,
+          amount: amt,
+          label: label ?? action,
+        });
+        return;
+      }
+      onAction(action, amt);
+    },
+    [connectionOpen, needsConfirm, onAction],
+  );
+
+  const submitBet = useCallback(
+    (raw: number) => {
+      const v = clampBet(raw);
+      commit(betAction, v, `${betLabel} ${formatMoneyAmount(v)}`);
+    },
+    [betAction, betLabel, clampBet, commit],
+  );
+
+  const confirmPending = useCallback(() => {
+    if (!confirm) return;
+    onAction(confirm.action, confirm.amount);
+    setConfirm(null);
+  }, [confirm, onAction]);
+
+  useEffect(() => {
+    if (!confirm) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter') return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (isTypingTarget(e.target)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      confirmPending();
+    };
+    // Capture so Enter confirms even when Cancel has initial focus.
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [confirm, confirmPending]);
+
+  useEffect(() => {
+    if (!playHotkeysRef) return;
+    const types = legal?.types ?? [];
+    const active = Boolean(isTurn && legal && types.length > 0 && !contestOver);
+    const noop = () => undefined;
+    playHotkeysRef.current = {
+      confirmOpen: confirm != null,
+      fold: active && types.includes('fold') ? () => commit('fold', undefined, 'Fold') : noop,
+      call: active && types.includes('call') ? () => commit('call') : noop,
+      check: active && types.includes('check') ? () => commit('check') : noop,
+      betRaise: active && canBet ? () => submitBet(amount) : noop,
+      allIn: active && types.includes('allin') ? () => commit('allin', undefined, 'All-in') : noop,
+    };
+  }, [
+    amount,
+    canBet,
+    commit,
+    confirm,
+    contestOver,
+    isTurn,
+    legal,
+    playHotkeysRef,
+    submitBet,
+  ]);
+
+  const shortcutHint =
+    !narrow && legal && legal.types.length > 0
+      ? [
+          legal.types.includes('fold') ? `${formatShortcutKey(shortcuts.fold)} fold` : null,
+          legal.types.includes('check') ? `${formatShortcutKey(shortcuts.check)} check` : null,
+          legal.types.includes('call') ? `${formatShortcutKey(shortcuts.call)} call` : null,
+          canBet ? `${formatShortcutKey(shortcuts.betRaise)} ${betLabel.toLowerCase()}` : null,
+          legal.types.includes('allin') ? `${formatShortcutKey(shortcuts.allIn)} all-in` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')
+      : '';
 
   const shell = bare
     ? 'flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden text-primary'
@@ -426,52 +549,6 @@ export function ActionControls({
     );
   }
 
-  const snap = (v: number) => Math.round(v / bb) * bb;
-
-  const clampBet = (raw: number) => {
-    if (max <= min) return min;
-    return snap(Math.min(max, Math.max(min, raw)));
-  };
-
-  const setBet = (raw: number) => setBetAmount(clampBet(raw));
-
-  const halfPot = snap(Math.min(max, Math.max(min, Math.floor(pot / 2) + (table?.currentBet ?? 0))));
-  const potBet = snap(Math.min(max, Math.max(min, pot + (table?.currentBet ?? 0))));
-
-  const canBet = legal.types.includes('bet') || legal.types.includes('raise');
-  const betLabel = legal.types.includes('bet') ? 'Bet' : 'Raise';
-  const betAction = legal.types.includes('bet') ? 'bet' : 'raise';
-  const amount = clampBet(betAmount);
-  const sliderMax = Math.max(min, max);
-
-  /** Large commitments need an extra confirm tap. */
-  const needsConfirm = (action: string, amt?: number) => {
-    if (action === 'allin') return true;
-    if (action === 'fold' && callAmount > 0 && callAmount >= myStack * 0.4) return true;
-    if ((action === 'bet' || action === 'raise') && amt != null && myStack > 0 && amt >= myStack * 0.5) {
-      return true;
-    }
-    return false;
-  };
-
-  const commit = (action: string, amt?: number, label?: string) => {
-    if (!connectionOpen) return;
-    if (needsConfirm(action, amt)) {
-      setConfirm({
-        action,
-        amount: amt,
-        label: label ?? action,
-      });
-      return;
-    }
-    onAction(action, amt);
-  };
-
-  const submitBet = (raw: number) => {
-    const v = clampBet(raw);
-    commit(betAction, v, `${betLabel} ${formatMoneyAmount(v)}`);
-  };
-
   if (confirm) {
     return (
       <div
@@ -496,17 +573,11 @@ export function ActionControls({
             >
               Cancel
             </Button>
-            <Button
-              type="button"
-              className="min-h-11"
-              onClick={() => {
-                onAction(confirm.action, confirm.amount);
-                setConfirm(null);
-              }}
-            >
+            <Button type="button" className="min-h-11" onClick={confirmPending}>
               Confirm
             </Button>
           </div>
+          <p className="text-center text-[10px] text-muted">Enter confirm · Esc cancel</p>
         </div>
       </div>
     );
@@ -540,6 +611,12 @@ export function ActionControls({
       ))}
     </>
   );
+
+  const hintRow = shortcutHint ? (
+    <p className="px-0.5 text-center text-[10px] leading-snug tracking-wide text-muted" aria-hidden>
+      {shortcutHint}
+    </p>
+  ) : null;
 
   /* —— Landscape: sized strip + three wide actions —— */
   if (narrow && landscape) {
@@ -838,6 +915,7 @@ export function ActionControls({
             </Button>
           )}
         </div>
+        {hintRow}
       </div>
     </div>
   );

@@ -3,6 +3,10 @@ import { coerceMoney } from '@/lib/currency';
 import { clampTableColorId } from '@/lib/tableColors';
 import { clampTableLayout, type TableLayout } from '@/lib/tableLayoutPref';
 import { clampUiTheme, type UiTheme } from '@/lib/uiTheme';
+import {
+  clampKeyboardShortcuts,
+  type KeyboardShortcuts,
+} from '@/lib/keyboardShortcuts';
 import { apiBase, parseError, sessionHeaders } from './client';
 
 export interface MeProfile {
@@ -15,6 +19,7 @@ export interface MeProfile {
   uiTheme: UiTheme;
   tableLayout: TableLayout;
   sfxMuted: boolean;
+  keyboardShortcuts: KeyboardShortcuts;
   createdAt: number;
   chipBalance: number;
   whuffieBalance: number;
@@ -49,6 +54,7 @@ function normalizeMe(data: MeProfile): MeProfile {
     uiTheme: clampUiTheme(data.uiTheme),
     tableLayout: clampTableLayout(data.tableLayout),
     sfxMuted: data.sfxMuted === true,
+    keyboardShortcuts: clampKeyboardShortcuts(data.keyboardShortcuts ?? {}),
   };
 }
 
@@ -119,6 +125,7 @@ export async function updateMe(
     uiTheme?: UiTheme;
     tableLayout?: TableLayout;
     sfxMuted?: boolean;
+    keyboardShortcuts?: KeyboardShortcuts;
   },
 ): Promise<MeProfile> {
   const res = await fetch(`${apiBase()}/api/me`, {

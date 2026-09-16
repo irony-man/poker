@@ -70,6 +70,8 @@ import {
 } from '@/lib/offlineSession';
 import { readStoredSession } from '@/lib/session';
 import type { ActionType } from '@poker/engine';
+import { useSfxMuted } from '@/lib/useSfxMuted';
+import { useTableHotkeys, type PlayHotkeyHandlers } from '@/lib/useTableHotkeys';
 
 const HUMAN_ID = 'offline-human';
 const BOT_READY_DELAY_MIN_MS = 400;
@@ -222,6 +224,10 @@ export function OfflineTableView({
   const [turnEndsAt, setTurnEndsAt] = useState<number | null>(null);
   const [dismissedWinHandId, setDismissedWinHandId] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [chatFocusRequestId, setChatFocusRequestId] = useState(0);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const playHotkeysRef = useRef<PlayHotkeyHandlers | null>(null);
+  const { muted: sfxMuted, setMuted: setSfxMutedPref } = useSfxMuted();
   const [tableColorId, setTableColorId] = useState(0);
 
   useEffect(() => {
@@ -775,6 +781,28 @@ export function OfflineTableView({
     myPlayer?.status !== 'sittingOut' &&
     myPlayer?.status !== 'empty' &&
     coerceMoney(myPlayer?.stack) > 0;
+
+  useTableHotkeys({
+    playRef: playHotkeysRef,
+    chrome: {
+      chat: () => {
+        setChatOpen(true);
+        setChatFocusRequestId((n) => n + 1);
+      },
+      sfxMute: () => setSfxMutedPref(!sfxMuted),
+      help: () => setHelpOpen((v) => !v),
+      ready: () => {
+        if (canStartHand) start();
+      },
+      sitOut: () => {
+        if (canSitOut) doSitOut();
+      },
+      sitIn: () => {
+        if (canSitIn) doSitIn();
+      },
+    },
+  });
+
   const eligiblePlayers = publicTable.players.filter((p) => eligibleForNextHand(p));
   const readyCount = eligiblePlayers.filter((p) => p.ready).length;
   const readyRosterPlayers = eligiblePlayers.map((p) => ({
@@ -854,6 +882,7 @@ export function OfflineTableView({
           private={priv}
           userId={HUMAN_ID}
           connection="open"
+          playHotkeysRef={playHotkeysRef}
           tableTools={{
             onStart: canStartHand ? start : undefined,
             startLabel: publicTable.street === 'waiting' ? 'Start hand' : 'Next hand',
@@ -899,6 +928,7 @@ export function OfflineTableView({
       }}
       chatOpen={chatOpen}
       onChatOpenChange={setChatOpen}
+      chatFocusRequestId={chatFocusRequestId}
       actionsExpanded={!!isMyTurn || canStartHand || canSitIn}
       actions={actionControls}
     >
@@ -914,13 +944,13 @@ export function OfflineTableView({
           {narrow ? (
             <div className="play-chrome-rail">
               <TableSoundMuteButton />
-              <HowToPlayHelp />
+              <HowToPlayHelp open={helpOpen} onOpenChange={setHelpOpen} />
               <TableOverflowMenu items={offlineOverflow} />
             </div>
           ) : (
             <div className="play-chrome-rail">
               <TableSoundMuteButton />
-              <HowToPlayHelp />
+              <HowToPlayHelp open={helpOpen} onOpenChange={setHelpOpen} />
               <Button type="button" variant="chrome" onClick={startNewGame}>
                 New game
               </Button>

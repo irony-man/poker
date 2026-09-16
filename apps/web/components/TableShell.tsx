@@ -90,6 +90,7 @@ export function TableShell({
   dockActions = true,
   voice,
   chatEmptyHint,
+  chatFocusRequestId = 0,
 }: {
   children: ReactNode;
   onSend: (text: string) => void;
@@ -107,6 +108,8 @@ export function TableShell({
   /** Compact voice controls for the phone comms strip (online tables). */
   voice?: ReactNode;
   chatEmptyHint?: string;
+  /** Increment to open chat and focus the composer. */
+  chatFocusRequestId?: number;
 }) {
   const narrow = useIsNarrow();
   const sessionToken = useSession((s) => s.sessionToken);
@@ -154,6 +157,17 @@ export function TableShell({
       saveActionPlacement('float');
     }
   }
+
+  useEffect(() => {
+    if (!chatFocusRequestId) return;
+    if (narrow) {
+      setMobileOpen(true);
+    } else {
+      setChatVisible(true);
+    }
+    // setChatVisible closes over actionPlacement; intentional for open-only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- open chat on hotkey bump
+  }, [chatFocusRequestId, narrow, setMobileOpen]);
 
   function placeActions(next: ActionPlacement) {
     setActionPlacement(next);
@@ -312,6 +326,7 @@ export function TableShell({
               onClose={() => setChatVisible(false)}
               closeLabel="Hide"
               emptyHint={chatEmptyHint}
+              focusRequestId={chatFocusRequestId}
             />
           </div>
           {showChatDock ? (
@@ -360,6 +375,7 @@ export function TableShell({
               onClose={() => setMobileOpen(false)}
               closeLabel="Close"
               emptyHint={chatEmptyHint}
+              focusRequestId={chatFocusRequestId}
             />
           </aside>
         </div>

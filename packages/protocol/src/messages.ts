@@ -652,6 +652,118 @@ export type UiTheme = z.infer<typeof UiThemeSchema>;
 export const TableLayoutSchema = z.enum(['v1', 'v2']);
 export type TableLayout = z.infer<typeof TableLayoutSchema>;
 
+/** Remappable table keyboard shortcut action ids. */
+export const KEYBOARD_SHORTCUT_ACTION_IDS = [
+  'fold',
+  'call',
+  'check',
+  'betRaise',
+  'allIn',
+  'voiceToggle',
+  'micMute',
+  'chat',
+  'sfxMute',
+  'help',
+  'ready',
+  'sitOut',
+  'sitIn',
+] as const;
+export type KeyboardShortcutActionId = (typeof KEYBOARD_SHORTCUT_ACTION_IDS)[number];
+
+export type KeyboardShortcuts = Record<KeyboardShortcutActionId, string>;
+
+export const DEFAULT_KEYBOARD_SHORTCUTS: KeyboardShortcuts = {
+  fold: 'F',
+  call: 'C',
+  check: 'K',
+  betRaise: 'R',
+  allIn: 'A',
+  voiceToggle: 'V',
+  micMute: 'M',
+  chat: '/',
+  sfxMute: 'S',
+  help: 'H',
+  ready: 'Y',
+  sitOut: 'O',
+  sitIn: 'I',
+};
+
+const RESERVED_SHORTCUT_KEYS = new Set(['ENTER', 'ESCAPE', 'TAB', ' ', 'SPACE']);
+
+/** Canonical form for comparing / storing a shortcut key (`F`, `/`, …). */
+export function normalizeShortcutKey(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed.length > 24) return null;
+  if (trimmed.length === 1) {
+    const ch = trimmed.toUpperCase();
+    if (RESERVED_SHORTCUT_KEYS.has(ch === ' ' ? ' ' : ch)) return null;
+    return ch;
+  }
+  const upper = trimmed.toUpperCase();
+  if (upper === 'SPACE' || upper === 'ENTER' || upper === 'ESCAPE' || upper === 'TAB') {
+    return null;
+  }
+  // Multi-char keys (ArrowUp, etc.) are not used for remappable bindings.
+  if (trimmed.length > 1) return null;
+  return trimmed;
+}
+
+export function isRemappableShortcutKey(key: string): boolean {
+  return normalizeShortcutKey(key) != null;
+}
+
+/**
+ * Merge partial overrides with defaults. Unknown ids dropped; invalid keys ignored;
+ * first action id in {@link KEYBOARD_SHORTCUT_ACTION_IDS} wins on duplicate keys.
+ */
+export function clampKeyboardShortcuts(raw: unknown): KeyboardShortcuts {
+  const out: KeyboardShortcuts = { ...DEFAULT_KEYBOARD_SHORTCUTS };
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+
+  const record = raw as Record<string, unknown>;
+  const claimed = new Set<string>();
+  const overrides = new Map<KeyboardShortcutActionId, string>();
+
+  for (const id of KEYBOARD_SHORTCUT_ACTION_IDS) {
+    const key = normalizeShortcutKey(record[id]);
+    if (!key || claimed.has(key)) continue;
+    overrides.set(id, key);
+    claimed.add(key);
+  }
+
+  for (const id of KEYBOARD_SHORTCUT_ACTION_IDS) {
+    const custom = overrides.get(id);
+    if (custom) {
+      out[id] = custom;
+      continue;
+    }
+    const fallback = DEFAULT_KEYBOARD_SHORTCUTS[id];
+    if (!claimed.has(fallback)) {
+      out[id] = fallback;
+      claimed.add(fallback);
+      continue;
+    }
+    // Default key stolen — pick the first free single letter / slash.
+    const pool = 'BDEFGJLN PQTUWXYZ/'.replace(/\s/g, '');
+    let assigned = fallback;
+    for (const ch of pool) {
+      if (!claimed.has(ch)) {
+        assigned = ch;
+        break;
+      }
+    }
+    out[id] = assigned;
+    claimed.add(assigned);
+  }
+
+  return out;
+}
+
+export const KeyboardShortcutsSchema = z.record(z.string(), z.string()).transform((value) =>
+  clampKeyboardShortcuts(value),
+);
+
 export const UpdateMeBodySchema = z
   .object({
     /** Preset profile picture index (0–7). */
@@ -666,6 +778,8 @@ export const UpdateMeBodySchema = z
     tableLayout: TableLayoutSchema.optional(),
     /** Mute table SFX (deal / action / win). */
     sfxMuted: z.boolean().optional(),
+    /** Remappable table keyboard shortcuts (merged with defaults). */
+    keyboardShortcuts: z.record(z.string(), z.string()).optional(),
   })
   .refine(
     (body) =>
@@ -674,10 +788,11 @@ export const UpdateMeBodySchema = z
       body.tableColorId !== undefined ||
       body.uiTheme !== undefined ||
       body.tableLayout !== undefined ||
-      body.sfxMuted !== undefined,
+      body.sfxMuted !== undefined ||
+      body.keyboardShortcuts !== undefined,
     {
       message:
-        'At least one of avatarId, avatarUrl, tableColorId, uiTheme, tableLayout, or sfxMuted is required',
+        'At least one of avatarId, avatarUrl, tableColorId, uiTheme, tableLayout, sfxMuted, or keyboardShortcuts is required',
     },
   );
 

@@ -52,6 +52,10 @@ export class UserEntity {
   @Column({ name: 'sfx_muted', type: 'boolean', default: false })
   sfxMuted!: boolean;
 
+  /** Remappable table keyboard shortcuts (partial overrides; empty = defaults). */
+  @Column({ name: 'keyboard_shortcuts', type: 'jsonb', default: () => "'{}'::jsonb" })
+  keyboardShortcuts!: Record<string, string>;
+
   @Column({ name: 'chip_balance', type: 'int', default: 10_000 })
   chipBalance!: number;
 

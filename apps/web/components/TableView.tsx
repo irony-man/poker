@@ -31,6 +31,8 @@ import { useConfirm } from './ConfirmPopover';
 import { Button, buttonClass } from '@/components/ui/Button';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { fetchPublicBotGroups, type PublicBotGroup } from '@/lib/api';
+import { useSfxMuted } from '@/lib/useSfxMuted';
+import { useTableHotkeys, type PlayHotkeyHandlers } from '@/lib/useTableHotkeys';
 
 export function TableView({
   tableId,
@@ -99,6 +101,10 @@ export function TableView({
   }
   const [dismissedWinHandId, setDismissedWinHandId] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [chatFocusRequestId, setChatFocusRequestId] = useState(0);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const playHotkeysRef = useRef<PlayHotkeyHandlers | null>(null);
+  const { muted: sfxMuted, setMuted: setSfxMutedPref } = useSfxMuted();
   const autoSitSent = useRef(false);
 
   useTableSounds(table);
@@ -272,6 +278,38 @@ export function TableView({
     myPlayer.status !== 'empty' &&
     myStack > 0;
   const readyLabel = myReady ? 'Not ready' : 'Play Next Hand';
+
+  useTableHotkeys({
+    playRef: playHotkeysRef,
+    chrome: {
+      voiceToggle: () => {
+        if (voice.inVoice) voice.leaveVoice();
+        else void voice.joinVoice();
+      },
+      micMute: () => {
+        if (voice.inVoice) voice.toggleMute();
+      },
+      chat: () => {
+        setChatOpen(true);
+        setChatFocusRequestId((n) => n + 1);
+      },
+      sfxMute: () => setSfxMutedPref(!sfxMuted),
+      help: () => setHelpOpen((v) => !v),
+      ready: () => {
+        if (!canReady) return;
+        send({ type: 'set_ready', tableId, ready: !myReady });
+      },
+      sitOut: () => {
+        if ((!canSitOut && !canCancelSitOutNext) || mySeat === undefined) return;
+        send({ type: 'sit_out', tableId, seat: mySeat });
+      },
+      sitIn: () => {
+        if (!canSitIn || mySeat === undefined) return;
+        send({ type: 'sit_in', tableId, seat: mySeat });
+      },
+    },
+  });
+
   /** Seated humans + eligible bots for the Actions dock ready strip. */
   const readyRosterPlayers =
     eligiblePlayers.map((p) => ({
@@ -523,6 +561,7 @@ export function TableView({
           bare
           connection={connection}
           onViewContest={contestOver ? goToContest : undefined}
+          playHotkeysRef={playHotkeysRef}
           tableTools={{
             canReady,
             readyLabel,
@@ -584,6 +623,7 @@ export function TableView({
       onEmoji={(emoji) => send({ type: 'emoji', tableId, emoji })}
       chatOpen={chatOpen}
       onChatOpenChange={setChatOpen}
+      chatFocusRequestId={chatFocusRequestId}
       actionsExpanded={
         !!isMyTurn ||
         contestOver ||
@@ -626,7 +666,7 @@ export function TableView({
                 <CopyRoomLink tableId={tableId} inviteCode={inviteCode} compact />
               ) : null}
               <TableSoundMuteButton />
-              <HowToPlayHelp />
+              <HowToPlayHelp open={helpOpen} onOpenChange={setHelpOpen} />
               <TableOverflowMenu items={mobileOverflowItems} />
             </div>
           ) : (
@@ -644,7 +684,7 @@ export function TableView({
                 onToggleMute={voice.toggleMute}
               />
               <TableSoundMuteButton />
-              <HowToPlayHelp />
+              <HowToPlayHelp open={helpOpen} onOpenChange={setHelpOpen} />
               <Button type="button" variant="chromeLeave" onClick={() => void leaveRoom()}>
                 Leave
               </Button>

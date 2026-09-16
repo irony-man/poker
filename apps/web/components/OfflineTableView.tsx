@@ -752,30 +752,6 @@ export function OfflineTableView({
     setState(result.state);
   };
 
-  const angles = useMemo(
-    () => seatAnglesForHero(config.maxSeats, mySeat),
-    [config.maxSeats, mySeat],
-  );
-  const {
-    winBySeat,
-    winLines,
-    handNameBySeat,
-    winningCards,
-    highlightMode,
-    showWinModal,
-    youWon,
-  } = useHandPresentation(publicTable, HUMAN_ID, dismissedWinHandId);
-
-  if (!publicTable || !bootstrapped) {
-    return <p className="text-muted">Dealing offline table…</p>;
-  }
-
-  const isMyTurn = publicTable.toAct === mySeat && !!(priv?.legal?.types.length);
-  const potTotal =
-    (publicTable.pot || 0) ||
-    (publicTable.sidePots?.reduce((s, p) => s + p.amount, 0) ?? 0);
-  const dealerPlayer = publicTable.players[publicTable.dealerButton];
-  const showDealerZone = publicTable.street !== 'waiting';
   const canStartHand =
     betweenHands &&
     myPlayer?.status !== 'sittingOut' &&
@@ -802,6 +778,31 @@ export function OfflineTableView({
       },
     },
   });
+
+  const angles = useMemo(
+    () => seatAnglesForHero(config.maxSeats, mySeat),
+    [config.maxSeats, mySeat],
+  );
+  const {
+    winBySeat,
+    winLines,
+    handNameBySeat,
+    winningCards,
+    highlightMode,
+    showWinModal,
+    youWon,
+  } = useHandPresentation(publicTable, HUMAN_ID, dismissedWinHandId);
+
+  if (!publicTable || !bootstrapped) {
+    return <p className="text-muted">Dealing offline table…</p>;
+  }
+
+  const isMyTurn = publicTable.toAct === mySeat && !!(priv?.legal?.types.length);
+  const potTotal =
+    (publicTable.pot || 0) ||
+    (publicTable.sidePots?.reduce((s, p) => s + p.amount, 0) ?? 0);
+  const dealerPlayer = publicTable.players[publicTable.dealerButton];
+  const showDealerZone = publicTable.street !== 'waiting';
 
   const eligiblePlayers = publicTable.players.filter((p) => eligibleForNextHand(p));
   const readyCount = eligiblePlayers.filter((p) => p.ready).length;

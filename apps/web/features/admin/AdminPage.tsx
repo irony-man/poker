@@ -59,14 +59,18 @@ import { useSession } from '@/lib/store';
 import { useLobbySession } from '@/lib/useLobbySession';
 import {
   DEFAULT_BOT_NAME_LIST,
+  applyBotGroupsImport,
   emptyBotGroup,
   groupBulkText,
   normalizeAdminBotGroup,
+  parseBotGroupsJson,
   parseBulkBotRoster,
   pruneNamePersonalities,
   rosterToBulkText,
+  serializeBotGroupsJson,
   slugBotGroupId,
   MAX_BOT_GROUPS,
+  type BotGroupsImportMode,
 } from './botRoster';
 import { parseAdminTab, MAX_HOME_BLOCKS, type AdminTab } from './tabs';
 import { AdminShell } from './AdminShell';
@@ -190,6 +194,9 @@ function AdminPageInner() {
   const [openBotGroup, setOpenBotGroup] = useState<string | null>('classic');
   const [botNameInput, setBotNameInput] = useState('');
   const [showBulkEdit, setShowBulkEdit] = useState(false);
+  const [showJsonImport, setShowJsonImport] = useState(false);
+  const [importJsonText, setImportJsonText] = useState('');
+  const [importMode, setImportMode] = useState<BotGroupsImportMode>('merge');
   const [openBlocks, setOpenBlocks] = useState<Record<number, boolean>>({ 0: true });
   const [openPage, setOpenPage] = useState<string | null>('host');
   const [userQuery, setUserQuery] = useState('');
@@ -645,6 +652,61 @@ function AdminPageInner() {
     setBotGroupNames(id, next);
   }
 
+  function applyImportedBotGroups(imported: BotGroup[], mode: BotGroupsImportMode) {
+    const applied = applyBotGroupsImport(botGroups, imported, mode);
+    if (!applied.ok) {
+      setError(applied.errors[0] ?? 'Import failed');
+      return;
+    }
+    setBotGroups(applied.groups);
+    setBotNameDrafts(
+      Object.fromEntries(
+        applied.groups.map((g) => [g.id, rosterToBulkText(g.names, g.namePersonalities)]),
+      ),
+    );
+    setOpenBotGroup(imported[0]?.id ?? applied.groups[0]?.id ?? null);
+    setShowBulkEdit(false);
+    setBotNameInput('');
+    setShowJsonImport(false);
+    setImportJsonText('');
+    setError(null);
+    const summary =
+      mode === 'replace'
+        ? `Replaced with ${applied.groups.length} group${applied.groups.length === 1 ? '' : 's'}`
+        : `Imported ${applied.added} new, updated ${applied.replaced}`;
+    flash(`${summary} — save to persist`);
+  }
+
+  async function importBotGroupsFromJson() {
+    const parsed = parseBotGroupsJson(importJsonText);
+    if (!parsed.ok) {
+      setError(parsed.errors[0] ?? 'Invalid JSON');
+      return;
+    }
+    if (importMode === 'replace') {
+      const ok = await confirm({
+        title: 'Replace all bot groups?',
+        description: `This replaces your ${botGroups.length} group${botGroups.length === 1 ? '' : 's'} with ${parsed.groups.length} from JSON. Save afterward to persist.`,
+        confirmLabel: 'Replace',
+        tone: 'danger',
+      });
+      if (!ok) return;
+    }
+    applyImportedBotGroups(parsed.groups, importMode);
+  }
+
+  async function exportBotGroupsJson() {
+    const text = serializeBotGroupsJson(botGroups);
+    try {
+      await navigator.clipboard.writeText(text);
+      flash('Bot groups JSON copied to clipboard');
+    } catch {
+      setShowJsonImport(true);
+      setImportJsonText(text);
+      flash('Could not copy — JSON shown in the import box');
+    }
+  }
+
   function updateHomeFeature(index: number, patch: Partial<HomeLandingFeature>) {
     setHomeFeaturesByTheme((bags) => ({
       ...bags,
@@ -1052,6 +1114,9 @@ function AdminPageInner() {
             openBotGroup={openBotGroup}
             botNameInput={botNameInput}
             showBulkEdit={showBulkEdit}
+            showJsonImport={showJsonImport}
+            importJsonText={importJsonText}
+            importMode={importMode}
             busy={busy}
             busyKey={busyKey}
             onSelectGroup={(id) => {
@@ -1121,6 +1186,14 @@ function AdminPageInner() {
               setError(null);
               setShowBulkEdit((v) => !v);
             }}
+            onToggleJsonImport={() => {
+              setShowJsonImport((v) => !v);
+              setError(null);
+            }}
+            onImportJsonText={setImportJsonText}
+            onImportMode={setImportMode}
+            onImportJson={() => void importBotGroupsFromJson()}
+            onExportJson={() => void exportBotGroupsJson()}
             onSave={(e) => void saveBotGroups(e)}
           />
         ) : null}

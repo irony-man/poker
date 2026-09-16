@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { BOT_PERSONALITY_IDS } from '@poker/engine';
 import { Button } from '@/components/ui/Button';
 import { SelectField, TextAreaField, TextField } from '@/components/ui/TextField';
@@ -7,7 +8,9 @@ import {
   MAX_BOT_GROUPS,
   PERSONALITY_LABELS,
   groupBulkText,
+  parseBotGroupsJson,
   parseBulkBotRoster,
+  type BotGroupsImportMode,
 } from '../botRoster';
 import { FORM_LABEL_CLASS } from '@/components/ui/TextField';
 import {
@@ -26,6 +29,9 @@ export function BotsSection({
   openBotGroup,
   botNameInput,
   showBulkEdit,
+  showJsonImport,
+  importJsonText,
+  importMode,
   busy,
   busyKey,
   onSelectGroup,
@@ -40,6 +46,11 @@ export function BotsSection({
   onRemoveName,
   onDraft,
   onToggleBulk,
+  onToggleJsonImport,
+  onImportJsonText,
+  onImportMode,
+  onImportJson,
+  onExportJson,
   onSave,
 }: {
   botGroups: BotGroup[];
@@ -47,6 +58,9 @@ export function BotsSection({
   openBotGroup: string | null;
   botNameInput: string;
   showBulkEdit: boolean;
+  showJsonImport: boolean;
+  importJsonText: string;
+  importMode: BotGroupsImportMode;
   busy: boolean;
   busyKey: string | null;
   onSelectGroup: (id: string) => void;
@@ -61,9 +75,18 @@ export function BotsSection({
   onRemoveName: (id: string, name: string) => void;
   onDraft: (id: string, text: string) => void;
   onToggleBulk: (group: BotGroup) => void;
+  onToggleJsonImport: () => void;
+  onImportJsonText: (text: string) => void;
+  onImportMode: (mode: BotGroupsImportMode) => void;
+  onImportJson: () => void;
+  onExportJson: () => void;
   onSave: (e: React.FormEvent) => void;
 }) {
   const group = botGroups.find((g) => g.id === openBotGroup) ?? botGroups[0] ?? null;
+  const importPreview = useMemo(
+    () => (showJsonImport ? parseBotGroupsJson(importJsonText) : null),
+    [showJsonImport, importJsonText],
+  );
 
   return (
     <Section
@@ -76,6 +99,22 @@ export function BotsSection({
           </span>
           <Button
             variant="ghost"
+            disabled={busy}
+            onClick={onExportJson}
+            className="min-h-9 px-4 text-xs"
+          >
+            Export JSON
+          </Button>
+          <Button
+            variant="ghost"
+            disabled={busy}
+            onClick={onToggleJsonImport}
+            className="min-h-9 px-4 text-xs"
+          >
+            {showJsonImport ? 'Hide import' : 'Import JSON'}
+          </Button>
+          <Button
+            variant="ghost"
             disabled={busy || botGroups.length >= MAX_BOT_GROUPS}
             onClick={onAddGroup}
             className="min-h-9 px-4 text-xs"
@@ -86,6 +125,75 @@ export function BotsSection({
       }
     >
       <form onSubmit={onSave} className="space-y-4">
+        {showJsonImport ? (
+          <div className="space-y-3 rounded-xl border border-sidebar/12 bg-page/[0.03] p-4">
+            <div>
+              <span className={FORM_LABEL_CLASS}>Paste bot group JSON</span>
+              <p className="mt-0.5 text-xs text-muted">
+                Accepts an array,{' '}
+                <code className="font-mono text-[11px]">{'{ "groups": [...] }'}</code>, or one
+                group object. Merge updates matching ids and appends new ones; Replace swaps the
+                whole list. Save afterward to persist.
+              </p>
+            </div>
+            <TextAreaField
+              value={importJsonText}
+              onChange={(e) => onImportJsonText(e.target.value)}
+              rows={12}
+              className={`font-mono text-xs leading-relaxed ${
+                importPreview && !importPreview.ok && importJsonText.trim()
+                  ? 'border-danger/40 focus:border-danger/50 focus:ring-danger/15'
+                  : ''
+              }`}
+              placeholder={`[\n  {\n    "id": "tight-table",\n    "name": "Tight Table",\n    "isDefault": false,\n    "defaultPersonality": null,\n    "names": ["StoneWall", "FoldBot"],\n    "namePersonalities": { "StoneWall": "nit", "FoldBot": "nit" }\n  }\n]`}
+              aria-label="Bot groups JSON"
+              aria-invalid={Boolean(importPreview && !importPreview.ok && importJsonText.trim())}
+            />
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="min-w-[10rem] max-w-xs flex-1">
+                <SelectField
+                  label="Import mode"
+                  value={importMode}
+                  onChange={(e) => onImportMode(e.target.value as BotGroupsImportMode)}
+                  disabled={busy}
+                >
+                  <option value="merge">Merge (add / update by id)</option>
+                  <option value="replace">Replace all groups</option>
+                </SelectField>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={busy || !importJsonText.trim() || importPreview?.ok !== true}
+                onClick={onImportJson}
+                className="min-h-9 px-4 text-xs"
+              >
+                Import into editor
+              </Button>
+            </div>
+            {importPreview?.ok === true ? (
+              <p className="text-xs text-muted">
+                Ready: {importPreview.groups.length} group
+                {importPreview.groups.length === 1 ? '' : 's'} (
+                {importPreview.groups.map((g) => g.name || g.id).join(', ')})
+              </p>
+            ) : null}
+            {importPreview && !importPreview.ok && importJsonText.trim() ? (
+              <ul
+                className="space-y-1 rounded-lg border border-danger/25 bg-danger/5 px-3 py-2 text-xs text-danger"
+                role="alert"
+              >
+                {importPreview.errors.slice(0, 12).map((err) => (
+                  <li key={err}>{err}</li>
+                ))}
+                {importPreview.errors.length > 12 ? (
+                  <li>+{importPreview.errors.length - 12} more</li>
+                ) : null}
+              </ul>
+            ) : null}
+          </div>
+        ) : null}
+
         <SplitPane
           sidebarLabel="Bot groups"
           sidebar={botGroups.map((g) => {

@@ -76,6 +76,7 @@ data class TableUiState(
     val winAmountBySeat: Map<Int, Int> = emptyMap(),
     val turnEndsAt: Long? = null,
     val turnTimeMs: Long = 20_000L,
+    val actionLabelBySeat: Map<Int, String> = emptyMap(),
 )
 
 data class LegalActionsUi(
@@ -144,7 +145,20 @@ fun PokrTableLayout(
     canSit: Boolean = true,
     landscape: Boolean = false,
     tableColorId: Int = 0,
+    stacked: Boolean = false,
 ) {
+    if (stacked && !landscape) {
+        StackedPokrTable(
+            table = table,
+            userId = userId,
+            holeCards = holeCards,
+            onSit = onSit,
+            canSit = canSit,
+            tableColorId = tableColorId,
+            modifier = modifier,
+        )
+        return
+    }
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
@@ -226,6 +240,7 @@ fun PokrTableLayout(
                             player.status != "sittingOut",
                         turnEndsAt = if (table.toAct == player.seat) table.turnEndsAt else null,
                         turnTotalMs = table.turnTimeMs,
+                        actionLabel = table.actionLabelBySeat[player.seat],
                         onSit = { onSit(player.seat) },
                         canSit = canSit,
                         landscape = landscape,
@@ -256,6 +271,7 @@ private fun SeatChip(
     modifier: Modifier = Modifier,
     canSit: Boolean = true,
     landscape: Boolean = false,
+    actionLabel: String? = null,
 ) {
     BoxWithConstraints(modifier = modifier) {
         val rad = Math.toRadians(angleDeg)
@@ -301,6 +317,7 @@ private fun SeatChip(
                     turnTotalMs = turnTotalMs,
                     folded = folded,
                 )
+                SeatActionPopup(actionLabel)
                 if (showReady) {
                     Text(
                         "READY",
@@ -330,6 +347,7 @@ private fun SeatChip(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.then(if (folded || sittingOut) Modifier else Modifier),
                 ) {
+                    SeatActionPopup(actionLabel)
                     when {
                         faceDown -> {
                             Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -512,6 +530,24 @@ private fun SeatChip(
     }
 }
 
+@Composable
+internal fun SeatActionPopup(label: String?) {
+    val text = label?.trim().orEmpty()
+    if (text.isEmpty()) return
+    Text(
+        text = text,
+        color = PokrColors.Ink,
+        fontFamily = PokrFonts.Display,
+        fontWeight = FontWeight.Bold,
+        fontSize = 11.sp,
+        maxLines = 1,
+        modifier = Modifier
+            .padding(bottom = 2.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(PokrColors.Brass)
+            .padding(horizontal = 8.dp, vertical = 3.dp),
+    )
+}
 
 /** Landscape seat: cards → bet chip → avatar + turn ring → stack/name. */
 @Composable

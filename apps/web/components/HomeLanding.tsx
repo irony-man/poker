@@ -4,10 +4,12 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { HomeAuthFooter } from '@/components/HomeAuthFooter';
+import { HomePendingStrip } from '@/components/HomePendingStrip';
 import { imageAssetUrl, resolvePublicImage } from '@/lib/assets';
 import { fetchPublicSite, type HomeFeaturesByTheme, type HomeLandingFeature } from '@/lib/api';
 import { pickHomeFeaturesForTheme } from '@/lib/themeCopy';
 import { useUiTheme } from '@/lib/useUiTheme';
+import { useSession } from '@/lib/store';
 
 /** Defaults match original static HomeLanding blocks (used until /api/site loads). */
 export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
@@ -60,6 +62,7 @@ export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
 
 export function HomeLanding() {
   const uiTheme = useUiTheme();
+  const sessionToken = useSession((s) => s.sessionToken);
   const [homeFeatures, setHomeFeatures] = useState<HomeLandingFeature[] | undefined>();
   const [homeFeaturesByTheme, setHomeFeaturesByTheme] = useState<
     Partial<HomeFeaturesByTheme> | undefined
@@ -86,6 +89,7 @@ export function HomeLanding() {
 
   return (
     <div className="mx-auto w-full mt-32 max-w-5xl pb-12 pt-2 sm:pb-20 sm:pt-4 lg:pt-6">
+      {sessionToken ? <HomePendingStrip /> : null}
       <div className="flex flex-col gap-16 sm:gap-20 lg:gap-28">
         {features.map((feature, i) => (
           <FeatureRow key={`${feature.title}-${i}`} feature={feature} index={i} />

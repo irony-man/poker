@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 import { Button } from '@/components/ui/Button';
@@ -9,6 +9,8 @@ import { Tabs } from '@/components/ui/Tabs';
 import { TextField } from '@/components/ui/TextField';
 import { imageAssetUrl, resolvePublicImage } from '@/lib/assets';
 import {
+  cancelFriendChallenge,
+  cancelFriendRequest,
   challengeFriend,
   createFriendGroup,
   declineFriendChallenge,
@@ -30,6 +32,18 @@ import { publicProfileHref } from '@/lib/publicProfile';
 import { FriendGroups } from './FriendGroups';
 import { FriendInvites } from './FriendInvites';
 import { FriendList } from './FriendList';
+
+type SocialTab = 'pending' | 'friends' | 'groups';
+
+function parseSocialTab(raw: string | null | undefined): SocialTab | null {
+  if (raw === 'pending' || raw === 'friends' || raw === 'groups') return raw;
+  return null;
+}
+
+function tabFromLocation(): SocialTab | null {
+  if (typeof window === 'undefined') return null;
+  return parseSocialTab(new URLSearchParams(window.location.search).get('tab'));
+}
 
 /** Friends, groups & challenges for the main lobby content area. */
 export function FriendsPanel({
@@ -66,7 +80,9 @@ export function FriendsPanel({
     friends,
     groups,
     incoming,
+    outgoing,
     challenges,
+    outgoingChallenges,
     setChallenges,
     searchQuery,
     setSearchQuery,
@@ -86,7 +102,26 @@ export function FriendsPanel({
     refresh,
   } = useFriendsSocial({ disabled, onFriendCountChange });
 
-  const [socialTab, setSocialTab] = useState<'friends' | 'groups'>('friends');
+  const incomingPendingCount = incoming.length + challenges.length;
+  const [socialTab, setSocialTab] = useState<SocialTab>(() => {
+    const fromUrl = tabFromLocation();
+    if (fromUrl) return fromUrl;
+    return incomingPendingCount > 0 ? 'pending' : 'friends';
+  });
+  const didAutoSelectPending = useRef(false);
+
+  useEffect(() => {
+    const fromUrl = tabFromLocation();
+    if (fromUrl) {
+      setSocialTab(fromUrl);
+      return;
+    }
+    if (!didAutoSelectPending.current && incomingPendingCount > 0) {
+      didAutoSelectPending.current = true;
+      setSocialTab('pending');
+    }
+  }, [incomingPendingCount]);
+
   const [newGroupName, setNewGroupName] = useState('');
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
   const [showCreateGroup, setShowCreateGroup] = useState(false);
@@ -278,6 +313,34 @@ export function FriendsPanel({
     }
   }
 
+  async function onCancelRequest(requestId: string) {
+    setBusy(`cancel-req-${requestId}`);
+    setError(null);
+    try {
+      await cancelFriendRequest(requestId, auth());
+      flash('Request cancelled');
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not cancel request');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function onCancelChallenge(challengeId: string) {
+    setBusy(`cancel-ch-${challengeId}`);
+    setError(null);
+    try {
+      await cancelFriendChallenge(challengeId, auth());
+      flash('Invite cancelled');
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not cancel invite');
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function onCreateGroup(e: React.FormEvent) {
     e.preventDefault();
     if (!newGroupName.trim()) {
@@ -426,30 +489,71 @@ export function FriendsPanel({
         </div>
       )}
 
-      <FriendInvites
-        incoming={incoming}
-        challenges={challenges}
-        busy={busy}
-        disabled={disabled}
-        onRespond={(id, accept) => void onRespond(id, accept)}
-        onJoinChallenge={(c) => void onJoinChallenge(c)}
-        onDeclineChallenge={(id) => void onDeclineChallenge(id)}
-      />
-
       <div className="min-w-0">
         {variant !== 'embedded' ? (
           <Tabs
-            label="Friends and groups"
+            label="Friends, pending, and groups"
             variant="segmented"
             idPrefix="social-tab"
             selected={socialTab}
             onSelect={setSocialTab}
             disabled={disabled}
             options={[
+              {
+                id: 'pending',
+                label:
+                  incomingPendingCount > 0
+                    ? `Pending (${incomingPendingCount})`
+                    : 'Pending',
+                panelId: 'social-panel-pending',
+              },
               { id: 'friends', label: 'Friends', panelId: 'social-panel-friends' },
               { id: 'groups', label: 'Groups', panelId: 'social-panel-groups' },
             ]}
           />
+        ) : (
+          <Tabs
+            label="Friends and pending"
+            variant="segmented"
+            idPrefix="social-embed-tab"
+            selected={socialTab === 'groups' ? 'friends' : socialTab}
+            onSelect={(id) => setSocialTab(id)}
+            disabled={disabled}
+            options={[
+              {
+                id: 'pending',
+                label:
+                  incomingPendingCount > 0
+                    ? `Pending (${incomingPendingCount})`
+                    : 'Pending',
+                panelId: 'social-panel-pending',
+              },
+              { id: 'friends', label: 'Friends', panelId: 'social-panel-friends' },
+            ]}
+          />
+        )}
+
+        {socialTab === 'pending' ? (
+          <section
+            role="tabpanel"
+            id="social-panel-pending"
+            aria-labelledby="social-tab-pending"
+            className="mt-3 min-w-0"
+          >
+            <FriendInvites
+              incoming={incoming}
+              challenges={challenges}
+              outgoing={outgoing}
+              outgoingChallenges={outgoingChallenges}
+              busy={busy}
+              disabled={disabled}
+              onRespond={(id, accept) => void onRespond(id, accept)}
+              onJoinChallenge={(c) => void onJoinChallenge(c)}
+              onDeclineChallenge={(id) => void onDeclineChallenge(id)}
+              onCancelRequest={(id) => void onCancelRequest(id)}
+              onCancelChallenge={(id) => void onCancelChallenge(id)}
+            />
+          </section>
         ) : null}
 
         {variant !== 'embedded' && socialTab === 'groups' && (
@@ -485,12 +589,12 @@ export function FriendsPanel({
           />
         )}
 
-        {(variant === 'embedded' || socialTab === 'friends') && (
+        {socialTab === 'friends' && (
           <section
             role="tabpanel"
             id="social-panel-friends"
             aria-labelledby="social-tab-friends"
-            className={variant === 'embedded' ? 'min-w-0' : 'mt-3 min-w-0'}
+            className="mt-3 min-w-0"
           >
             <FriendList
               friends={friends}

@@ -30,6 +30,7 @@ export {
   searchUsers,
   sendFriendRequest,
   respondFriendRequest,
+  cancelFriendRequest,
   removeFriend,
   createFriendGroup,
   updateFriendGroup,
@@ -38,9 +39,12 @@ export {
   challengeFriend,
   joinFriendChallenge,
   declineFriendChallenge,
+  cancelFriendChallenge,
   type FriendProfile,
   type PendingRequest,
+  type OutgoingRequest,
   type PendingChallenge,
+  type OutgoingChallenge,
   type FriendGroup,
 } from './friends';
 export {

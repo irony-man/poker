@@ -41,17 +41,22 @@ export class FriendsService implements OnModuleInit {
   }
 
   async buildSocialSync(userId: string) {
-    const [friends, incoming, pendingChallenges, groups] = await Promise.all([
-      this.listFriends(userId),
-      this.listIncomingRequests(userId),
-      this.listPendingChallenges(userId),
-      this.listGroups(userId),
-    ]);
+    const [friends, incoming, outgoing, pendingChallenges, outgoingChallenges, groups] =
+      await Promise.all([
+        this.listFriends(userId),
+        this.listIncomingRequests(userId),
+        this.listOutgoingRequests(userId),
+        this.listPendingChallenges(userId),
+        this.listOutgoingChallenges(userId),
+        this.listGroups(userId),
+      ]);
     return {
       type: 'social_sync' as const,
       friends,
       incoming,
+      outgoing,
       pendingChallenges,
+      outgoingChallenges,
       groups,
     };
   }
@@ -81,8 +86,16 @@ export class FriendsService implements OnModuleInit {
     return this.store.listIncomingRequests(this.authStore(), userId);
   }
 
+  listOutgoingRequests(userId: string) {
+    return this.store.listOutgoingRequests(this.authStore(), userId);
+  }
+
   listPendingChallenges(userId: string) {
     return this.store.listPendingChallenges(this.authStore(), userId);
+  }
+
+  listOutgoingChallenges(userId: string) {
+    return this.store.listOutgoingChallenges(this.authStore(), userId);
   }
 
   listGroups(userId: string) {
@@ -101,6 +114,14 @@ export class FriendsService implements OnModuleInit {
 
   async respondRequest(userId: string, requestId: string, accept: boolean) {
     const result = await this.store.respondRequest(userId, requestId, accept);
+    if (result.ok) {
+      await this.notifyUsers(result.fromUserId, result.toUserId);
+    }
+    return result;
+  }
+
+  async cancelRequest(userId: string, requestId: string) {
+    const result = await this.store.cancelRequest(userId, requestId);
     if (result.ok) {
       await this.notifyUsers(result.fromUserId, result.toUserId);
     }
@@ -167,6 +188,14 @@ export class FriendsService implements OnModuleInit {
     const result = await this.store.declineChallenge(challengeId, userId);
     if (result.ok) {
       await this.notifyUsers(userId);
+    }
+    return result;
+  }
+
+  async cancelChallenge(challengeId: string, userId: string) {
+    const result = await this.store.cancelChallenge(challengeId, userId);
+    if (result.ok) {
+      await this.notifyUsers(result.challengerId, result.challengedId);
     }
     return result;
   }

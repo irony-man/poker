@@ -6,6 +6,7 @@ import com.pokr.android.core.model.EmojiBurst
 import com.pokr.android.core.model.PrivateView
 import com.pokr.android.core.model.PublicBotGroup
 import com.pokr.android.core.model.PublicTable
+import com.pokr.android.core.model.SeatActionBurst
 
 object TableContract {
 
@@ -28,6 +29,9 @@ object TableContract {
         data object EnableSitToPlay : Intent
         data object LeaveTable : Intent
         data object ToggleSfxMute : Intent
+        data object JoinVoice : Intent
+        data object LeaveVoice : Intent
+        data object ToggleVoiceMute : Intent
     }
 
     data class UiState(
@@ -41,12 +45,18 @@ object TableContract {
         val chatOpen: Boolean = false,
         val lastError: String? = null,
         val emojiBurst: EmojiBurst? = null,
+        val seatAction: SeatActionBurst? = null,
         val loading: Boolean = true,
         val spectating: Boolean = false,
         val tableColorId: Int = 0,
+        val tableLayout: String = "v1",
         val sfxMuted: Boolean = false,
         val botGroups: List<PublicBotGroup> = emptyList(),
         val botGroupId: String? = null,
+        val voiceState: String = "idle",
+        val voiceMuted: Boolean = true,
+        val voicePeerCount: Int = 0,
+        val voiceError: String? = null,
     )
 
     sealed interface Effect {

@@ -41,11 +41,13 @@ dependencies {
 
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.hilt.navigation.compose)
     implementation(libs.hilt.android)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.stream.webrtc.android)
     ksp(libs.hilt.compiler)
 
     implementation(platform(libs.androidx.compose.bom))

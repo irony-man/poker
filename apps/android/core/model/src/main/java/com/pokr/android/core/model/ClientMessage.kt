@@ -121,6 +121,22 @@ sealed interface ClientMessage {
     data object Ping : ClientMessage
 
     @Serializable
+    @SerialName("voice_join")
+    data class VoiceJoin(val tableId: String) : ClientMessage
+
+    @Serializable
+    @SerialName("voice_leave")
+    data class VoiceLeave(val tableId: String) : ClientMessage
+
+    @Serializable
+    @SerialName("voice_signal")
+    data class VoiceSignal(
+        val tableId: String,
+        val toUserId: String,
+        val signal: VoiceSignalPayload,
+    ) : ClientMessage
+
+    @Serializable
     @SerialName("join_contest")
     data class JoinContest(val contestId: String) : ClientMessage
 
@@ -314,6 +330,75 @@ sealed interface ClientMessage {
     @SerialName("memory_chat")
     data class MemoryChat(
         val memoryId: String,
+        val text: String,
+    ) : ClientMessage
+
+    @Serializable
+    @SerialName("join_courtpiece")
+    data class JoinCourtpiece(
+        val courtpieceId: String,
+        val spectate: Boolean? = null,
+    ) : ClientMessage
+
+    @Serializable
+    @SerialName("leave_courtpiece")
+    data class LeaveCourtpiece(val courtpieceId: String) : ClientMessage
+
+    @Serializable
+    @SerialName("courtpiece_sit")
+    data class CourtpieceSit(
+        val courtpieceId: String,
+        val seat: Int,
+    ) : ClientMessage
+
+    @Serializable
+    @SerialName("courtpiece_stand")
+    data class CourtpieceStand(
+        val courtpieceId: String,
+        val seat: Int,
+    ) : ClientMessage
+
+    @Serializable
+    @SerialName("courtpiece_set_ready")
+    data class CourtpieceSetReady(
+        val courtpieceId: String,
+        val ready: Boolean,
+    ) : ClientMessage
+
+    @Serializable
+    @SerialName("courtpiece_set_trump")
+    data class CourtpieceSetTrump(
+        val courtpieceId: String,
+        val suit: String,
+        val seq: Int,
+    ) : ClientMessage
+
+    @Serializable
+    @SerialName("courtpiece_play")
+    data class CourtpiecePlay(
+        val courtpieceId: String,
+        val card: String,
+        val seq: Int,
+    ) : ClientMessage
+
+    @Serializable
+    @SerialName("courtpiece_add_bot")
+    data class CourtpieceAddBot(
+        val courtpieceId: String,
+        val seat: Int? = null,
+    ) : ClientMessage
+
+    @Serializable
+    @SerialName("courtpiece_remove_bot")
+    data class CourtpieceRemoveBot(
+        val courtpieceId: String,
+        val seat: Int,
+    ) : ClientMessage
+
+    @Serializable
+    @SerialName("courtpiece_chat")
+    data class CourtpieceChat(
+        val courtpieceId: String,
         val text: String,
     ) : ClientMessage
 }

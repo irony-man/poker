@@ -217,6 +217,7 @@ fun JoinTab(
     onLudo: (ludoId: String, invite: String, spectate: Boolean) -> Unit,
     onSnakes: (snakesId: String, invite: String, spectate: Boolean) -> Unit,
     onMemory: (memoryId: String, invite: String, spectate: Boolean) -> Unit,
+    onCourtpiece: (courtpieceId: String, invite: String, spectate: Boolean) -> Unit,
 ) {
     LobbyScrollColumn {
         PlayModeSelect(playMode = playMode, onPlayMode = onPlayMode)
@@ -247,6 +248,7 @@ fun JoinTab(
                             onLudo = { id, invite -> onLudo(id, invite, false) },
                             onSnakes = { id, invite -> onSnakes(id, invite, false) },
                             onMemory = { id, invite -> onMemory(id, invite, false) },
+                            onCourtpiece = { id, invite -> onCourtpiece(id, invite, false) },
                         )
                     },
                     enabled = !state.busy && state.inviteCode.isNotBlank(),
@@ -260,6 +262,7 @@ fun JoinTab(
                             onLudo = { id, invite -> onLudo(id, invite, true) },
                             onSnakes = { id, invite -> onSnakes(id, invite, true) },
                             onMemory = { id, invite -> onMemory(id, invite, true) },
+                            onCourtpiece = { id, invite -> onCourtpiece(id, invite, true) },
                         )
                     },
                     enabled = !state.busy && state.inviteCode.isNotBlank(),
@@ -279,6 +282,7 @@ fun ArcadeTab(
     onLudo: (ludoId: String, invite: String) -> Unit,
     onSnakes: (snakesId: String, invite: String) -> Unit,
     onMemory: (memoryId: String, invite: String) -> Unit,
+    onCourtpiece: (courtpieceId: String, invite: String) -> Unit,
 ) {
     when (selectedGame) {
         "ludo" -> LudoHostForm(
@@ -299,6 +303,12 @@ fun ArcadeTab(
             onBack = { onSelectGame(null) },
             onMemory = onMemory,
         )
+        "courtpiece" -> CourtpieceHostForm(
+            state = state,
+            viewModel = viewModel,
+            onBack = { onSelectGame(null) },
+            onCourtpiece = onCourtpiece,
+        )
         else -> LobbyScrollColumn {
             LobbyPageHeader(
                 title = "Arcade",
@@ -318,6 +328,11 @@ fun ArcadeTab(
                 title = "Memory Match",
                 blurb = "2–4 players · 16 or 36 card grids",
                 onClick = { onSelectGame("memory") },
+            )
+            ArcadeGameCard(
+                title = "Court Piece",
+                blurb = "4 players · partnerships, trump, first to 7 hands",
+                onClick = { onSelectGame("courtpiece") },
             )
         }
     }
@@ -518,6 +533,67 @@ private fun MemoryHostForm(
                 modifier = Modifier.fillMaxWidth(),
             )
             FieldHelp("No wallet, no buy-in — just the matches.")
+        }
+    }
+}
+
+@Composable
+private fun CourtpieceHostForm(
+    state: LobbyUiState,
+    viewModel: LobbyViewModel,
+    onBack: () -> Unit,
+    onCourtpiece: (courtpieceId: String, invite: String) -> Unit,
+) {
+    LobbyScrollColumn {
+        PokrGhostButton(text = "← Arcade", onClick = onBack)
+        LobbyPageHeader(
+            title = "Court Piece",
+            subtitle = "Four seats, partners opposite. Pick a rules variant, add bots, and deal.",
+        )
+        LobbySplitCard(imageRes = LobbyIllustrations.contests, imageAlt = "Host Court Piece") {
+            ChoiceRowString(
+                label = "Rules",
+                selected = state.courtpieceRules,
+                options = listOf("classic", "classic_full", "hokm"),
+                onSelect = viewModel::onCourtpieceRulesChange,
+            ) {
+                when (it) {
+                    "classic_full" -> "Classic Full"
+                    "hokm" -> "Hokm"
+                    else -> "Classic"
+                }
+            }
+            ChoiceRow(
+                label = "Starting bots",
+                selected = state.courtpieceBotCount.coerceIn(0, 3),
+                options = (0..3).toList(),
+                onSelect = viewModel::onCourtpieceBotCountChange,
+            ) { if (it == 0) "None" else "$it" }
+            if (state.signedIn) {
+                FriendInvitePicker(
+                    friends = state.friends,
+                    groups = state.groups,
+                    selectedIds = state.inviteFriendIds,
+                    onChange = viewModel::onInviteFriendsChange,
+                    disabled = state.busy,
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                PokrLabel("Room code (optional)")
+                LobbyTextField(
+                    value = state.courtpieceRoomCode,
+                    onValueChange = viewModel::onCourtpieceRoomCodeChange,
+                    placeholder = "Auto · or 4–8 digits",
+                    numeric = true,
+                )
+            }
+            PokrPrimaryButton(
+                text = "Create Court Piece table",
+                onClick = { viewModel.hostCourtpiece(onCourtpiece) },
+                enabled = !state.busy,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            FieldHelp("Always 4 seats. Partners are 0↔2 and 1↔3.")
         }
     }
 }

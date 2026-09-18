@@ -74,9 +74,33 @@ export interface PendingRequestView {
   createdAt: number;
 }
 
+/** Outgoing friend request (viewer is the sender). */
+export interface OutgoingRequestView {
+  id: string;
+  to: FriendProfile;
+  createdAt: number;
+}
+
 export interface PendingChallengeView {
   id: string;
   challenger: FriendProfile;
+  kind: ChallengeKind;
+  tableId: string | null;
+  contestId: string | null;
+  ludoId: string | null;
+  snakesId: string | null;
+  memoryId: string | null;
+  courtpieceId: string | null;
+  inviteCode: string;
+  createdAt: number;
+  groupId?: string;
+  groupName?: string;
+}
+
+/** Outgoing game invite (viewer is the challenger). */
+export interface OutgoingChallengeView {
+  id: string;
+  challenged: FriendProfile;
   kind: ChallengeKind;
   tableId: string | null;
   contestId: string | null;
@@ -402,6 +426,75 @@ export class FriendsStore {
       .sort((a, b) => b.createdAt - a.createdAt);
   }
 
+  async listOutgoingRequests(
+    auth: AuthStore,
+    userId: string,
+  ): Promise<OutgoingRequestView[]> {
+    await this.ensureLoaded();
+    return this.requests
+      .filter((r) => r.fromUserId === userId && r.status === 'pending')
+      .map((r) => {
+        const to = this.profile(auth, r.toUserId);
+        if (!to) return null;
+        return { id: r.id, to, createdAt: r.createdAt };
+      })
+      .filter((v): v is OutgoingRequestView => v !== null)
+      .sort((a, b) => b.createdAt - a.createdAt);
+  }
+
+  /**
+   * Sender withdraws a pending friend request.
+   * Marks status `declined` so it no longer blocks a fresh send.
+   */
+  async cancelRequest(
+    userId: string,
+    requestId: string,
+  ): Promise<{ ok: true; fromUserId: string; toUserId: string } | { ok: false; error: string }> {
+    await this.ensureLoaded();
+    const req = this.requests.find((r) => r.id === requestId);
+    if (!req || req.fromUserId !== userId || req.status !== 'pending') {
+      return { ok: false, error: 'Request not found' };
+    }
+    const fromUserId = req.fromUserId;
+    const toUserId = req.toUserId;
+    req.status = 'declined';
+    await this.persist();
+    return { ok: true, fromUserId, toUserId };
+  }
+
+  private challengeKind(c: Challenge): ChallengeKind {
+    return (
+      c.kind ??
+      (c.contestId
+        ? 'contest'
+        : c.ludoId
+          ? 'ludo'
+          : c.snakesId
+            ? 'snakes'
+            : c.memoryId
+              ? 'memory'
+              : c.courtpieceId
+                ? 'courtpiece'
+                : 'table')
+    );
+  }
+
+  private challengeDestinationFields(c: Challenge) {
+    return {
+      kind: this.challengeKind(c),
+      tableId: c.tableId || null,
+      contestId: c.contestId ?? null,
+      ludoId: c.ludoId ?? null,
+      snakesId: c.snakesId ?? null,
+      memoryId: c.memoryId ?? null,
+      courtpieceId: c.courtpieceId ?? null,
+      inviteCode: c.inviteCode,
+      createdAt: c.createdAt,
+      ...(c.groupId ? { groupId: c.groupId } : {}),
+      ...(c.groupName ? { groupName: c.groupName } : {}),
+    };
+  }
+
   async createChallenge(
     challengerId: string,
     challengedId: string,
@@ -570,36 +663,56 @@ export class FriendsStore {
       if (c.challengedId !== userId || c.status !== 'pending') continue;
       const challenger = this.profile(auth, c.challengerId);
       if (!challenger) continue;
-      const kind: ChallengeKind =
-        c.kind ??
-        (c.contestId
-          ? 'contest'
-          : c.ludoId
-            ? 'ludo'
-            : c.snakesId
-              ? 'snakes'
-              : c.memoryId
-                ? 'memory'
-                : c.courtpieceId
-                  ? 'courtpiece'
-                  : 'table');
       out.push({
         id: c.id,
         challenger,
-        kind,
-        tableId: c.tableId || null,
-        contestId: c.contestId ?? null,
-        ludoId: c.ludoId ?? null,
-        snakesId: c.snakesId ?? null,
-        memoryId: c.memoryId ?? null,
-        courtpieceId: c.courtpieceId ?? null,
-        inviteCode: c.inviteCode,
-        createdAt: c.createdAt,
-        ...(c.groupId ? { groupId: c.groupId } : {}),
-        ...(c.groupName ? { groupName: c.groupName } : {}),
+        ...this.challengeDestinationFields(c),
       });
     }
     return out.sort((a, b) => b.createdAt - a.createdAt);
+  }
+
+  async listOutgoingChallenges(
+    auth: AuthStore,
+    userId: string,
+  ): Promise<OutgoingChallengeView[]> {
+    await this.ensureLoaded();
+    await this.expireStaleChallenges();
+    const out: OutgoingChallengeView[] = [];
+    for (const c of this.challenges) {
+      if (c.challengerId !== userId || c.status !== 'pending') continue;
+      const challenged = this.profile(auth, c.challengedId);
+      if (!challenged) continue;
+      out.push({
+        id: c.id,
+        challenged,
+        ...this.challengeDestinationFields(c),
+      });
+    }
+    return out.sort((a, b) => b.createdAt - a.createdAt);
+  }
+
+  /** Challenger withdraws a pending invite. */
+  async cancelChallenge(
+    challengeId: string,
+    userId: string,
+  ): Promise<
+    { ok: true; challengerId: string; challengedId: string } | { ok: false; error: string }
+  > {
+    await this.ensureLoaded();
+    await this.expireStaleChallenges();
+    const c = this.challenges.find((x) => x.id === challengeId);
+    if (!c || c.challengerId !== userId) {
+      return { ok: false, error: 'Invite not found' };
+    }
+    if (c.status !== 'pending') {
+      return { ok: false, error: 'Invite is no longer pending' };
+    }
+    const challengerId = c.challengerId;
+    const challengedId = c.challengedId;
+    c.status = 'expired';
+    await this.persist();
+    return { ok: true, challengerId, challengedId };
   }
 
   /** Mark pending invites older than {@link CHALLENGE_TTL_MS} as expired. */

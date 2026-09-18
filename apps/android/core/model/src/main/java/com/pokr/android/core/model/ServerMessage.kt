@@ -51,6 +51,43 @@ sealed interface ServerMessage {
     ) : ServerMessage
 
     @Serializable
+    @SerialName("seat_action")
+    data class SeatAction(
+        val tableId: String,
+        val seat: Int,
+        val action: String = "",
+        val amount: Int = 0,
+        val label: String = "",
+        val at: Long = 0,
+    ) : ServerMessage
+
+    @Serializable
+    @SerialName("voice_roster")
+    data class VoiceRoster(
+        val peers: List<VoicePeer> = emptyList(),
+    ) : ServerMessage
+
+    @Serializable
+    @SerialName("voice_peer_joined")
+    data class VoicePeerJoined(
+        val userId: String,
+        val name: String = "",
+    ) : ServerMessage
+
+    @Serializable
+    @SerialName("voice_peer_left")
+    data class VoicePeerLeft(
+        val userId: String,
+    ) : ServerMessage
+
+    @Serializable
+    @SerialName("voice_signal")
+    data class VoiceSignal(
+        val fromUserId: String,
+        val signal: VoiceSignalPayload,
+    ) : ServerMessage
+
+    @Serializable
     @SerialName("pong")
     data object Pong : ServerMessage
 
@@ -95,7 +132,9 @@ sealed interface ServerMessage {
     data class SocialSync(
         val friends: List<FriendProfile> = emptyList(),
         val incoming: List<PendingRequestView> = emptyList(),
+        val outgoing: List<OutgoingRequestView> = emptyList(),
         val pendingChallenges: List<PendingChallenge> = emptyList(),
+        val outgoingChallenges: List<OutgoingChallenge> = emptyList(),
         val groups: List<FriendGroupView> = emptyList(),
     ) : ServerMessage
 
@@ -145,6 +184,23 @@ sealed interface ServerMessage {
     @SerialName("memory_chat")
     data class MemoryChat(
         val memoryId: String,
+        val userId: String,
+        val name: String,
+        val text: String,
+        val at: Long,
+    ) : ServerMessage
+
+    @Serializable
+    @SerialName("courtpiece_state_sync")
+    data class CourtpieceStateSync(
+        val courtpiece: CourtpiecePublicView,
+        val you: CourtpieceYou,
+    ) : ServerMessage
+
+    @Serializable
+    @SerialName("courtpiece_chat")
+    data class CourtpieceChat(
+        val courtpieceId: String,
         val userId: String,
         val name: String,
         val text: String,

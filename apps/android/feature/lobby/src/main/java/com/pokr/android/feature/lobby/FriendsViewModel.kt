@@ -10,6 +10,8 @@ import com.pokr.android.core.model.FriendProfile
 import com.pokr.android.core.model.FriendRequestBody
 import com.pokr.android.core.model.FriendSearchUser
 import com.pokr.android.core.model.InviteFriendGroupBody
+import com.pokr.android.core.model.OutgoingChallenge
+import com.pokr.android.core.model.OutgoingRequestView
 import com.pokr.android.core.model.PendingChallenge
 import com.pokr.android.core.model.PendingRequestView
 import com.pokr.android.core.model.UpdateFriendGroupBody
@@ -31,7 +33,9 @@ data class FriendsUiState(
     val pane: String = "friends",
     val friends: List<FriendProfile> = emptyList(),
     val incoming: List<PendingRequestView> = emptyList(),
+    val outgoing: List<OutgoingRequestView> = emptyList(),
     val pendingChallenges: List<PendingChallenge> = emptyList(),
+    val outgoingChallenges: List<OutgoingChallenge> = emptyList(),
     val groups: List<FriendGroupView> = emptyList(),
     val results: List<FriendSearchUser> = emptyList(),
     val loading: Boolean = true,
@@ -68,7 +72,9 @@ class FriendsViewModel @Inject constructor(
                     it.copy(
                         friends = snap.friends,
                         incoming = snap.incoming,
+                        outgoing = snap.outgoing,
                         pendingChallenges = snap.pendingChallenges,
+                        outgoingChallenges = snap.outgoingChallenges,
                         groups = snap.groups,
                         loading = !social.loaded.value,
                     )
@@ -128,6 +134,24 @@ class FriendsViewModel @Inject constructor(
         }
     }
 
+    fun cancelRequest(requestId: String) {
+        viewModelScope.launch {
+            runCatching { social.cancelRequest(requestId) }
+                .onFailure { err ->
+                    _uiState.update { it.copy(error = err.message ?: "Couldn't cancel") }
+                }
+        }
+    }
+
+    fun cancelOutgoingChallenge(challengeId: String) {
+        viewModelScope.launch {
+            runCatching { social.cancelChallenge(challengeId) }
+                .onFailure { err ->
+                    _uiState.update { it.copy(error = err.message ?: "Couldn't cancel") }
+                }
+        }
+    }
+
     fun respond(requestId: String, accept: Boolean) {
         viewModelScope.launch {
             runCatching { social.respondRequest(requestId, accept) }
@@ -163,6 +187,7 @@ class FriendsViewModel @Inject constructor(
         onLudo: (ludoId: String, invite: String) -> Unit = { _, _ -> },
         onSnakes: (snakesId: String, invite: String) -> Unit = { _, _ -> },
         onMemory: (memoryId: String, invite: String) -> Unit = { _, _ -> },
+        onCourtpiece: (courtpieceId: String, invite: String) -> Unit = { _, _ -> },
     ) {
         viewModelScope.launch {
             _uiState.update { it.copy(busyKey = "join-${challenge.id}", error = null) }
@@ -175,6 +200,7 @@ class FriendsViewModel @Inject constructor(
                     is SocialJoinTarget.Ludo -> onLudo(nav.ludoId, nav.invite)
                     is SocialJoinTarget.Snakes -> onSnakes(nav.snakesId, nav.invite)
                     is SocialJoinTarget.Memory -> onMemory(nav.memoryId, nav.invite)
+                    is SocialJoinTarget.Courtpiece -> onCourtpiece(nav.courtpieceId, nav.invite)
                 }
             }.onFailure { err ->
                 _uiState.update {

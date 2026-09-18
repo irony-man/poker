@@ -38,13 +38,23 @@ export class FriendsController {
   @Get()
   async list(@CurrentUser() user: User) {
     try {
-      const [friendList, incoming, pendingChallenges, groups] = await Promise.all([
-        this.friends.listFriends(user.id),
-        this.friends.listIncomingRequests(user.id),
-        this.friends.listPendingChallenges(user.id),
-        this.friends.listGroups(user.id),
-      ]);
-      return { friends: friendList, incoming, pendingChallenges, groups };
+      const [friendList, incoming, outgoing, pendingChallenges, outgoingChallenges, groups] =
+        await Promise.all([
+          this.friends.listFriends(user.id),
+          this.friends.listIncomingRequests(user.id),
+          this.friends.listOutgoingRequests(user.id),
+          this.friends.listPendingChallenges(user.id),
+          this.friends.listOutgoingChallenges(user.id),
+          this.friends.listGroups(user.id),
+        ]);
+      return {
+        friends: friendList,
+        incoming,
+        outgoing,
+        pendingChallenges,
+        outgoingChallenges,
+        groups,
+      };
     } catch (err) {
       throw new BadRequestException({
         error: err instanceof Error ? err.message : 'Failed',
@@ -94,6 +104,15 @@ export class FriendsController {
       throw new BadRequestException({ error: parsed.error.message });
     }
     const result = await this.friends.respondRequest(user.id, id, parsed.data.accept);
+    if (!result.ok) {
+      throw new NotFoundException({ error: result.error });
+    }
+    return { ok: true };
+  }
+
+  @Delete('requests/:id')
+  async cancelRequest(@CurrentUser() user: User, @Param('id') id: string) {
+    const result = await this.friends.cancelRequest(user.id, id);
     if (!result.ok) {
       throw new NotFoundException({ error: result.error });
     }
@@ -163,6 +182,15 @@ export class FriendsController {
   @Post('challenges/:id/decline')
   async declineChallenge(@CurrentUser() user: User, @Param('id') id: string) {
     const result = await this.friends.declineChallenge(id, user.id);
+    if (!result.ok) {
+      throw new NotFoundException({ error: result.error });
+    }
+    return { ok: true };
+  }
+
+  @Post('challenges/:id/cancel')
+  async cancelChallenge(@CurrentUser() user: User, @Param('id') id: string) {
+    const result = await this.friends.cancelChallenge(id, user.id);
     if (!result.ok) {
       throw new NotFoundException({ error: result.error });
     }

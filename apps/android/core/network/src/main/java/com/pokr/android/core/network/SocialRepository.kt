@@ -29,6 +29,7 @@ sealed class SocialJoinTarget {
     data class Ludo(val ludoId: String, val invite: String) : SocialJoinTarget()
     data class Snakes(val snakesId: String, val invite: String) : SocialJoinTarget()
     data class Memory(val memoryId: String, val invite: String) : SocialJoinTarget()
+    data class Courtpiece(val courtpieceId: String, val invite: String) : SocialJoinTarget()
 }
 
 @Singleton
@@ -89,7 +90,9 @@ class SocialRepository @Inject constructor(
                         _snapshot.value = FriendsSnapshot(
                             friends = msg.friends,
                             incoming = msg.incoming,
+                            outgoing = msg.outgoing,
                             pendingChallenges = msg.pendingChallenges,
+                            outgoingChallenges = msg.outgoingChallenges,
                             groups = msg.groups,
                         )
                         _loaded.value = true
@@ -135,17 +138,34 @@ class SocialRepository @Inject constructor(
         refresh()
     }
 
+    suspend fun cancelRequest(requestId: String) {
+        api.cancelFriendRequest(requestId)
+        refresh()
+    }
+
+    suspend fun cancelChallenge(challengeId: String) {
+        api.cancelFriendChallenge(challengeId)
+        _snapshot.value = _snapshot.value.copy(
+            outgoingChallenges = _snapshot.value.outgoingChallenges.filter { it.id != challengeId },
+        )
+        refresh()
+    }
+
     suspend fun joinChallenge(challenge: PendingChallenge): SocialJoinTarget {
         api.joinFriendChallenge(challenge.id)
         val contestId = challenge.contestId
         val ludoId = challenge.ludoId
         val snakesId = challenge.snakesId
         val memoryId = challenge.memoryId
+        val courtpieceId = challenge.courtpieceId
         val isLudo = challenge.kind == "ludo" || !ludoId.isNullOrBlank()
         val isSnakes = challenge.kind == "snakes" || !snakesId.isNullOrBlank()
         val isMemory = challenge.kind == "memory" || !memoryId.isNullOrBlank()
+        val isCourtpiece = challenge.kind == "courtpiece" || !courtpieceId.isNullOrBlank()
         val isContest = challenge.kind == "contest" || !contestId.isNullOrBlank()
         val target = when {
+            isCourtpiece && !courtpieceId.isNullOrBlank() ->
+                SocialJoinTarget.Courtpiece(courtpieceId, challenge.inviteCode)
             isSnakes && !snakesId.isNullOrBlank() ->
                 SocialJoinTarget.Snakes(snakesId, challenge.inviteCode)
             isMemory && !memoryId.isNullOrBlank() ->

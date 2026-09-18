@@ -14,6 +14,7 @@ import { listFriends, type FriendProfile } from '@/lib/api';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 import { SocialNotificationHost } from '@/components/SocialNotificationHost';
 import { publicProfileHref } from '@/lib/publicProfile';
+import { socialSnapshotFromList } from '@/lib/socialInvites';
 import { useSession } from '@/lib/store';
 import { useIsNarrow } from '@/lib/tableLayout';
 
@@ -83,12 +84,7 @@ export function OnlineFriendsProvider({
     }
     try {
       const data = await listFriends({ sessionToken });
-      applySocial({
-        friends: data.friends,
-        incoming: data.incoming,
-        pendingChallenges: data.pendingChallenges,
-        groups: data.groups ?? [],
-      });
+      applySocial(socialSnapshotFromList(data));
     } catch {
       /* push path is source of truth; REST is bootstrap / mutation fallback */
     }

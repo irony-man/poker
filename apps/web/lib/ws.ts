@@ -16,6 +16,8 @@ import type {
   ContestView,
   FriendGroup,
   FriendProfile,
+  OutgoingChallenge,
+  OutgoingRequest,
   PendingChallenge,
   PendingRequest,
   PublicTableSummary,
@@ -93,7 +95,10 @@ function dispatchMessage(msg: { type?: string; [key: string]: unknown }): void {
       s.applySocial({
         friends: (msg.friends as FriendProfile[]) ?? [],
         incoming: (msg.incoming as PendingRequest[]) ?? [],
+        outgoing: ((msg as { outgoing?: OutgoingRequest[] }).outgoing) ?? [],
         pendingChallenges: (msg.pendingChallenges as PendingChallenge[]) ?? [],
+        outgoingChallenges:
+          ((msg as { outgoingChallenges?: OutgoingChallenge[] }).outgoingChallenges) ?? [],
         groups: (msg.groups as FriendGroup[]) ?? [],
       });
       break;

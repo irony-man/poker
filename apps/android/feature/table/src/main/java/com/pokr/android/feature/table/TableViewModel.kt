@@ -1,5 +1,6 @@
 package com.pokr.android.feature.table
 
+import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -10,11 +11,13 @@ import com.pokr.android.core.model.ChatMessage
 import com.pokr.android.core.model.ClientMessage
 import com.pokr.android.core.model.ConnectionStatus
 import com.pokr.android.core.model.EmojiBurst
+import com.pokr.android.core.model.SeatActionBurst
 import com.pokr.android.core.model.ServerMessage
 import com.pokr.android.core.model.UpdateMeBody
+import com.pokr.android.core.model.VoicePeer
 import com.pokr.android.core.network.PokrApi
-import com.pokr.android.feature.table.OnlineTableRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -28,6 +31,7 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel
 class TableViewModel @Inject constructor(
+    @ApplicationContext private val appContext: Context,
     private val repository: TableRepository,
     private val sessionPreferences: SessionPreferences,
     private val api: PokrApi,
@@ -54,6 +58,9 @@ class TableViewModel @Inject constructor(
 
     private var observeJob: Job? = null
     private var emojiClearJob: Job? = null
+    private var seatActionClearJob: Job? = null
+    private var voiceSession: VoiceCallSession? = null
+    private var inVoice = false
     private var autoSitSent = false
     private var prevStreet: String? = null
     private var prevHandId: String? = null
@@ -113,6 +120,9 @@ class TableViewModel @Inject constructor(
             }
             TableContract.Intent.LeaveTable -> leaveTable()
             TableContract.Intent.ToggleSfxMute -> toggleSfxMute()
+            TableContract.Intent.JoinVoice -> joinVoice()
+            TableContract.Intent.LeaveVoice -> leaveVoice()
+            TableContract.Intent.ToggleVoiceMute -> voiceSession?.toggleMuted()
         }
     }
 
@@ -130,7 +140,45 @@ class TableViewModel @Inject constructor(
         }
     }
 
+    private fun joinVoice() {
+        val uid = _uiState.value.userId ?: return
+        if (inVoice) return
+        val session = VoiceCallSession(appContext, uid) { toUserId, signal ->
+            repository.send(ClientMessage.VoiceSignal(tableId, toUserId, signal))
+        }
+        session.subscribe { snap ->
+            _uiState.update {
+                it.copy(
+                    voiceState = snap.state.name.lowercase(),
+                    voiceMuted = snap.muted,
+                    voicePeerCount = snap.peers.size,
+                    voiceError = snap.error,
+                )
+            }
+        }
+        voiceSession = session
+        inVoice = true
+        session.join()
+        if (session.snapshot.state == VoiceCallState.Error) {
+            inVoice = false
+            return
+        }
+        repository.send(ClientMessage.VoiceJoin(tableId))
+    }
+
+    private fun leaveVoice() {
+        if (!inVoice) return
+        inVoice = false
+        repository.send(ClientMessage.VoiceLeave(tableId))
+        voiceSession?.leave()
+        voiceSession = null
+        _uiState.update {
+            it.copy(voiceState = "idle", voiceMuted = true, voicePeerCount = 0, voiceError = null)
+        }
+    }
+
     private fun leaveTable() {
+        leaveVoice()
         repository.leave(tableId)
     }
 
@@ -147,6 +195,7 @@ class TableViewModel @Inject constructor(
                 sessionPreferences.saveTableLayout(me.tableLayout)
             }
             sounds.enabled = !sfxMuted
+            val layout = me?.tableLayout ?: sessionPreferences.getTableLayout()
             val botGroups = runCatching { api.getSite().botGroups }.getOrDefault(emptyList())
             _uiState.update {
                 it.copy(
@@ -154,6 +203,7 @@ class TableViewModel @Inject constructor(
                     connection = ConnectionStatus.Connecting,
                     loading = true,
                     tableColorId = colorId,
+                    tableLayout = layout,
                     sfxMuted = sfxMuted,
                     botGroups = botGroups,
                     botGroupId = it.botGroupId
@@ -223,6 +273,19 @@ class TableViewModel @Inject constructor(
                                 _uiState.update { it.copy(emojiBurst = null) }
                             }
                         }
+                        is ServerMessage.SeatAction -> {
+                            if (msg.tableId != tableId) return@collect
+                            val label = msg.label.trim()
+                            if (label.isEmpty()) return@collect
+                            _uiState.update {
+                                it.copy(seatAction = SeatActionBurst(msg.seat, label, msg.at))
+                            }
+                            seatActionClearJob?.cancel()
+                            seatActionClearJob = launch {
+                                delay(5_000)
+                                _uiState.update { it.copy(seatAction = null) }
+                            }
+                        }
                         is ServerMessage.Error -> {
                             _uiState.update { it.copy(lastError = msg.message) }
                         }
@@ -238,7 +301,21 @@ class TableViewModel @Inject constructor(
                         is ServerMessage.SnakesStateSync,
                         is ServerMessage.SnakesChat,
                         is ServerMessage.MemoryStateSync,
-                        is ServerMessage.MemoryChat -> Unit // Social / arcade VMs apply these
+                        is ServerMessage.MemoryChat,
+                        is ServerMessage.CourtpieceStateSync,
+                        is ServerMessage.CourtpieceChat -> Unit
+                        is ServerMessage.VoiceRoster -> {
+                            if (inVoice) voiceSession?.applyRoster(msg.peers)
+                        }
+                        is ServerMessage.VoicePeerJoined -> {
+                            if (inVoice) voiceSession?.onPeerJoined(VoicePeer(msg.userId, msg.name))
+                        }
+                        is ServerMessage.VoicePeerLeft -> {
+                            if (inVoice) voiceSession?.onPeerLeft(msg.userId)
+                        }
+                        is ServerMessage.VoiceSignal -> {
+                            if (inVoice) voiceSession?.handleSignal(msg.fromUserId, msg.signal)
+                        }
                     }
                 }
             }
@@ -282,6 +359,7 @@ class TableViewModel @Inject constructor(
     }
 
     override fun onCleared() {
+        leaveVoice()
         repository.leave(tableId)
         super.onCleared()
     }

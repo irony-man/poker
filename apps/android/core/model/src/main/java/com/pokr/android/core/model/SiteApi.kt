@@ -11,6 +11,13 @@ data class PublicBotGroup(
 )
 
 @Serializable
+data class SiteAnnouncement(
+    val enabled: Boolean = false,
+    val text: String = "",
+)
+
+@Serializable
 data class SitePublicResponse(
     val botGroups: List<PublicBotGroup> = emptyList(),
+    val announcement: SiteAnnouncement? = null,
 )

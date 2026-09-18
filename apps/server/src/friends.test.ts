@@ -23,6 +23,51 @@ describe('FriendsStore', () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it('lists and cancels outgoing friend requests', async () => {
+    const req = await friends.sendRequest('user-alice', 'user-bob');
+    const outgoing = await friends.listOutgoingRequests(auth, 'user-alice');
+    expect(outgoing).toHaveLength(1);
+    expect(outgoing[0]!.to.name).toBe('Bob');
+    expect(await friends.listIncomingRequests(auth, 'user-bob')).toHaveLength(1);
+
+    const cancelled = await friends.cancelRequest('user-alice', req.id);
+    expect(cancelled.ok).toBe(true);
+    expect(await friends.listOutgoingRequests(auth, 'user-alice')).toHaveLength(0);
+    expect(await friends.listIncomingRequests(auth, 'user-bob')).toHaveLength(0);
+
+    const again = await friends.cancelRequest('user-alice', req.id);
+    expect(again.ok).toBe(false);
+
+    // Recipient cannot cancel
+    const req2 = await friends.sendRequest('user-alice', 'user-bob');
+    const asRecipient = await friends.cancelRequest('user-bob', req2.id);
+    expect(asRecipient.ok).toBe(false);
+  });
+
+  it('lists and cancels outgoing challenges', async () => {
+    const req = await friends.sendRequest('user-alice', 'user-bob');
+    await friends.respondRequest('user-bob', req.id, true);
+    const challenge = await friends.createChallenge(
+      'user-alice',
+      'user-bob',
+      'table-1',
+      'invite-1',
+    );
+
+    const outgoing = await friends.listOutgoingChallenges(auth, 'user-alice');
+    expect(outgoing).toHaveLength(1);
+    expect(outgoing[0]!.challenged.name).toBe('Bob');
+    expect(await friends.listPendingChallenges(auth, 'user-bob')).toHaveLength(1);
+
+    const cancelled = await friends.cancelChallenge(challenge.id, 'user-alice');
+    expect(cancelled.ok).toBe(true);
+    expect(await friends.listOutgoingChallenges(auth, 'user-alice')).toHaveLength(0);
+    expect(await friends.listPendingChallenges(auth, 'user-bob')).toHaveLength(0);
+
+    const asChallenged = await friends.cancelChallenge(challenge.id, 'user-bob');
+    expect(asChallenged.ok).toBe(false);
+  });
+
   it('sends and accepts friend requests', async () => {
     const req = await friends.sendRequest('user-alice', 'user-bob');
     expect(req.status).toBe('pending');

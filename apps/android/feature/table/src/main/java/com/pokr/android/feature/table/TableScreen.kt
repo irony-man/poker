@@ -205,6 +205,16 @@ fun TableScreen(
                 onToggleSfxMute = { viewModel.dispatch(TableContract.Intent.ToggleSfxMute) },
             )
 
+            VoiceCallBar(
+                voiceState = state.voiceState,
+                muted = state.voiceMuted,
+                peerCount = state.voicePeerCount,
+                error = state.voiceError,
+                onJoin = { viewModel.dispatch(TableContract.Intent.JoinVoice) },
+                onLeave = { viewModel.dispatch(TableContract.Intent.LeaveVoice) },
+                onToggleMute = { viewModel.dispatch(TableContract.Intent.ToggleVoiceMute) },
+            )
+
             state.lastError?.let { err ->
                 StatusChip(
                     text = err,
@@ -228,7 +238,11 @@ fun TableScreen(
                 }
             } else {
                 state.table?.let { liveTable ->
-                    val tableUi = liveTable.toTableUi()
+                    val tableUi = liveTable.toTableUi().copy(
+                        actionLabelBySeat = state.seatAction
+                            ?.let { mapOf(it.seat to it.label) }
+                            .orEmpty(),
+                    )
                     val tools = rememberTableActionTools(
                         table = liveTable,
                         userId = state.userId,
@@ -258,6 +272,7 @@ fun TableScreen(
                         },
                         canSit = !state.spectating,
                         landscape = landscape,
+                        stacked = state.tableLayout == "v2",
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth()

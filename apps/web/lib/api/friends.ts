@@ -17,10 +17,34 @@ export interface PendingRequest {
   createdAt: number;
 }
 
+/** Outgoing friend request (viewer is the sender). */
+export interface OutgoingRequest {
+  id: string;
+  to: FriendProfile;
+  createdAt: number;
+}
+
 export interface PendingChallenge {
   id: string;
   challenger: FriendProfile;
   /** Omitted on very old payloads; treat as table. */
+  kind?: 'table' | 'contest' | 'ludo' | 'snakes' | 'memory' | 'courtpiece';
+  tableId: string | null;
+  contestId?: string | null;
+  ludoId?: string | null;
+  snakesId?: string | null;
+  memoryId?: string | null;
+  courtpieceId?: string | null;
+  inviteCode: string;
+  createdAt: number;
+  groupId?: string;
+  groupName?: string;
+}
+
+/** Outgoing game invite (viewer is the challenger). */
+export interface OutgoingChallenge {
+  id: string;
+  challenged: FriendProfile;
   kind?: 'table' | 'contest' | 'ludo' | 'snakes' | 'memory' | 'courtpiece';
   tableId: string | null;
   contestId?: string | null;
@@ -47,7 +71,9 @@ export async function listFriends(options: AuthOptions) {
   return authedFetch(`/api/friends`, options) as Promise<{
     friends: FriendProfile[];
     incoming: PendingRequest[];
+    outgoing?: OutgoingRequest[];
     pendingChallenges: PendingChallenge[];
+    outgoingChallenges?: OutgoingChallenge[];
     groups: FriendGroup[];
   }>;
 }
@@ -86,6 +112,13 @@ export async function respondFriendRequest(
     method: 'POST',
     body: { accept },
   });
+}
+
+export async function cancelFriendRequest(requestId: string, options: AuthOptions) {
+  return authedFetch(`/api/friends/requests/${requestId}`, {
+    ...options,
+    method: 'DELETE',
+  }) as Promise<{ ok: boolean }>;
 }
 
 export async function removeFriend(friendUserId: string, options: AuthOptions) {
@@ -166,6 +199,14 @@ export async function joinFriendChallenge(challengeId: string, options: AuthOpti
 
 export async function declineFriendChallenge(challengeId: string, options: AuthOptions) {
   return authedFetch(`/api/friends/challenges/${challengeId}/decline`, {
+    ...options,
+    method: 'POST',
+    body: {},
+  }) as Promise<{ ok: boolean }>;
+}
+
+export async function cancelFriendChallenge(challengeId: string, options: AuthOptions) {
+  return authedFetch(`/api/friends/challenges/${challengeId}/cancel`, {
     ...options,
     method: 'POST',
     body: {},

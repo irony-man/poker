@@ -433,7 +433,11 @@ export const ServerMessageSchema = z.discriminatedUnion('type', [
     type: z.literal('social_sync'),
     friends: z.array(z.unknown()),
     incoming: z.array(z.unknown()),
+    /** Outgoing friend requests (viewer is sender). Older servers omit. */
+    outgoing: z.array(z.unknown()).optional(),
     pendingChallenges: z.array(z.unknown()),
+    /** Outgoing game invites (viewer is challenger). Older servers omit. */
+    outgoingChallenges: z.array(z.unknown()).optional(),
     groups: z.array(z.unknown()),
   }),
   z.object({

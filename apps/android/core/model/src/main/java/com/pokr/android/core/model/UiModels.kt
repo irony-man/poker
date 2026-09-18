@@ -12,3 +12,9 @@ data class EmojiBurst(
     val name: String,
     val at: Long,
 )
+
+data class SeatActionBurst(
+    val seat: Int,
+    val label: String,
+    val at: Long,
+)

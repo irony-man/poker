@@ -37,6 +37,7 @@ fun SocialInviteBanner(
     onOpenLudo: (ludoId: String, invite: String) -> Unit = { _, _ -> },
     onOpenSnakes: (snakesId: String, invite: String) -> Unit = { _, _ -> },
     onOpenMemory: (memoryId: String, invite: String) -> Unit = { _, _ -> },
+    onOpenCourtpiece: (courtpieceId: String, invite: String) -> Unit = { _, _ -> },
     onOpenFriends: () -> Unit,
     compact: Boolean = false,
     modifier: Modifier = Modifier,
@@ -79,6 +80,7 @@ fun SocialInviteBanner(
                         onOpenLudo,
                         onOpenSnakes,
                         onOpenMemory,
+                        onOpenCourtpiece,
                     )
                 },
                 onSecondary = { viewModel.declineChallenge(challenge.id) },
@@ -204,6 +206,7 @@ private fun challengeTitle(c: PendingChallenge): String {
         c.kind == "contest" || !c.contestId.isNullOrBlank() -> "Contest invite"
         c.kind == "snakes" || !c.snakesId.isNullOrBlank() -> "Snakes & Ladders invite"
         c.kind == "memory" || !c.memoryId.isNullOrBlank() -> "Memory Match invite"
+        c.kind == "courtpiece" || !c.courtpieceId.isNullOrBlank() -> "Court Piece invite"
         c.kind == "ludo" || !c.ludoId.isNullOrBlank() -> "Ludo invite"
         else -> "Table invite"
     }
@@ -217,6 +220,8 @@ private fun challengeSubtitle(c: PendingChallenge): String =
             "${c.challenger.name} invited you to Snakes & Ladders"
         c.kind == "memory" || !c.memoryId.isNullOrBlank() ->
             "${c.challenger.name} invited you to Memory Match"
+        c.kind == "courtpiece" || !c.courtpieceId.isNullOrBlank() ->
+            "${c.challenger.name} invited you to Court Piece"
         c.kind == "ludo" || !c.ludoId.isNullOrBlank() ->
             "${c.challenger.name} invited you to Ludo"
         else -> "${c.challenger.name} wants to play"

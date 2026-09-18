@@ -28,8 +28,10 @@ import com.pokr.android.engine.cardToString
 import com.pokr.android.engine.chooseBotAction
 import com.pokr.android.engine.createEmptyTable
 import com.pokr.android.engine.isBotUserId
+import com.pokr.android.engine.botThinkDelayMs
 import com.pokr.android.engine.makeBotUserId
 import com.pokr.android.engine.pickBotName
+import com.pokr.android.engine.resolveBotPersonalityId
 import com.pokr.android.engine.returnToWaiting
 import com.pokr.android.engine.sitDown
 import com.pokr.android.engine.sitIn as engineSitIn
@@ -71,7 +73,10 @@ data class OfflineUiState(
     val chatOpen: Boolean = false,
     val bootstrapped: Boolean = false,
     val tableColorId: Int = 0,
+    val tableLayout: String = "v1",
     val sfxMuted: Boolean = false,
+    val seatActionSeat: Int? = null,
+    val seatActionLabel: String? = null,
 )
 
 @HiltViewModel
@@ -109,6 +114,7 @@ class OfflineViewModel @Inject constructor(
 
     private var botJob: Job? = null
     private var payoutJob: Job? = null
+    private var seatActionClearJob: Job? = null
     private var turnEndsAt: Long? = null
     private var prevStreet: String? = null
     private var prevHandId: String? = null
@@ -136,7 +142,7 @@ class OfflineViewModel @Inject constructor(
                 sessionPreferences.saveUiTheme(me.uiTheme)
             }
             sounds.enabled = !sfxMuted
-            _uiState.update { it.copy(tableColorId = colorId, sfxMuted = sfxMuted) }
+            _uiState.update { it.copy(tableColorId = colorId, tableLayout = me?.tableLayout ?: sessionPreferences.getTableLayout(), sfxMuted = sfxMuted) }
             bootstrap()
         }
     }
@@ -240,7 +246,8 @@ class OfflineViewModel @Inject constructor(
                 val empty = state.players.firstOrNull { it.status == PlayerStatus.Empty } ?: return@repeat
                 val botName = pickBotName(taken)
                 taken.add(botName)
-                val r = sitDown(state, empty.seat, makeBotUserId("off-$i"), botName, config.buyIn)
+                val style = resolveBotPersonalityId(botName, "off-$i")
+                val r = sitDown(state, empty.seat, makeBotUserId("off-$i", style), botName, config.buyIn)
                 if (r.ok) state = r.state
             }
             pushSystem("Dealer", "Offline table ready — you vs $botCount bot(s)")
@@ -314,7 +321,7 @@ class OfflineViewModel @Inject constructor(
         val actor = state.players.getOrNull(toAct) ?: return
 
         if (isBotUserId(actor.userId)) {
-            val delayMs = Random.nextLong(700, 1500)
+            val delayMs = botThinkDelayMs(state, toAct, config)
             turnEndsAt = System.currentTimeMillis() + delayMs
             syncState(state)
             botJob = viewModelScope.launch {
@@ -355,6 +362,19 @@ class OfflineViewModel @Inject constructor(
                 is EngineEvent.ActionApplied -> {
                     val actorName = state.players[event.seat].name ?: "Seat ${event.seat}"
                     pushChat("system", actorName, formatAction(event.action.name.lowercase(), event.amount))
+                    val popup = formatActionPopup(event.action.name.lowercase(), event.amount)
+                    _uiState.update {
+                        it.copy(seatActionSeat = event.seat, seatActionLabel = popup)
+                    }
+                    seatActionClearJob?.cancel()
+                    seatActionClearJob = viewModelScope.launch {
+                        delay(5_000)
+                        _uiState.update { current ->
+                            if (current.seatActionSeat == event.seat) {
+                                current.copy(seatActionSeat = null, seatActionLabel = null)
+                            } else current
+                        }
+                    }
                 }
                 is EngineEvent.StreetAdvanced -> {
                     val label = event.street.name.lowercase().replaceFirstChar { it.uppercase() }
@@ -386,6 +406,16 @@ class OfflineViewModel @Inject constructor(
             }
             pushSystem("Dealer", "Split pot — ${parts.joinToString(", ")}")
         }
+    }
+
+    private fun formatActionPopup(action: String, amount: Int): String = when (action) {
+        "fold" -> "Fold"
+        "check" -> "Check"
+        "call" -> if (amount > 0) "Call $amount" else "Call"
+        "bet" -> "Bet $amount"
+        "raise" -> "Raise $amount"
+        "allin" -> "All-in"
+        else -> action.replaceFirstChar { it.uppercase() }
     }
 
     private fun formatAction(action: String, amount: Int): String = when (action) {

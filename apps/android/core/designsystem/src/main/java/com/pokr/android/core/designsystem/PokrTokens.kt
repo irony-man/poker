@@ -4,7 +4,9 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 /** App chrome look. Independent of table felt color. */
@@ -257,13 +259,21 @@ enum class PokrChrome {
 }
 
 /**
- * Type roles. Web uses RF Tone (Classic) / Clash Display (Arcade) and Inter for body.
- * Android uses system stand-ins until families are bundled under `res/font`.
+ * Type roles. Body is Inter (OFL). Display is Clash Display (Fontshare FFL).
+ * RF Tone is not bundled (no redistributable license).
  */
 object PokrFonts {
-    val Display: FontFamily = FontFamily.SansSerif
-    val Body: FontFamily = FontFamily.SansSerif
-    val Serif: FontFamily = FontFamily.Serif
+    val Body: FontFamily = FontFamily(
+        Font(R.font.inter_regular, FontWeight.Normal),
+        Font(R.font.inter_semibold, FontWeight.SemiBold),
+        Font(R.font.inter_bold, FontWeight.Bold),
+    )
+    val Display: FontFamily = FontFamily(
+        Font(R.font.clash_display_regular, FontWeight.Normal),
+        Font(R.font.clash_display_semibold, FontWeight.SemiBold),
+        Font(R.font.clash_display_bold, FontWeight.Bold),
+    )
+    val Serif: FontFamily = Body
 }
 
 /** Corner radii, matching `--radius-*` on web. */

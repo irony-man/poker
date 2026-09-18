@@ -6,6 +6,7 @@ import com.pokr.android.core.datastore.SessionPreferences
 import com.pokr.android.core.model.ContestView
 import com.pokr.android.core.model.CreateContestRequest
 import com.pokr.android.core.model.CreateLudoRequest
+import com.pokr.android.core.model.CreateCourtpieceRequest
 import com.pokr.android.core.model.CreateMemoryRequest
 import com.pokr.android.core.model.CreateSnakesRequest
 import com.pokr.android.core.model.CreateTableRequest
@@ -60,12 +61,16 @@ data class LobbyUiState(
     val memoryBotCount: Int = 0,
     val memoryGridSize: Int = 16,
     val memoryRoomCode: String = "",
+    val courtpieceRules: String = "classic",
+    val courtpieceBotCount: Int = 0,
+    val courtpieceRoomCode: String = "",
     val inviteFriendIds: List<String> = emptyList(),
     val friends: List<FriendProfile> = emptyList(),
     val groups: List<FriendGroupView> = emptyList(),
     val botGroups: List<PublicBotGroup> = emptyList(),
     val hostBotGroupId: String? = null,
     val publicContests: List<ContestView> = emptyList(),
+    val announcement: String? = null,
     val busy: Boolean = false,
     val error: String? = null,
 )
@@ -173,6 +178,10 @@ class LobbyViewModel @Inject constructor(
         _uiState.update { it.copy(memoryGridSize = if (value == 36) 36 else 16) }
     fun onMemoryRoomCodeChange(value: String) =
         _uiState.update { it.copy(memoryRoomCode = value.filter { ch -> ch.isDigit() }.take(8)) }
+    fun onCourtpieceRulesChange(value: String) = _uiState.update { it.copy(courtpieceRules = value) }
+    fun onCourtpieceBotCountChange(value: Int) = _uiState.update { it.copy(courtpieceBotCount = value.coerceIn(0, 3)) }
+    fun onCourtpieceRoomCodeChange(value: String) =
+        _uiState.update { it.copy(courtpieceRoomCode = value.filter { ch -> ch.isDigit() }.take(8)) }
     fun onHostBotGroupChange(id: String) = _uiState.update { it.copy(hostBotGroupId = id) }
     fun clearError() = _uiState.update { it.copy(error = null) }
 
@@ -200,14 +209,17 @@ class LobbyViewModel @Inject constructor(
 
     private fun loadSite() {
         viewModelScope.launch {
-            runCatching { api.getSite().botGroups }
-                .onSuccess { groups ->
+            runCatching { api.getSite() }
+                .onSuccess { site ->
+                    val text = site.announcement?.text?.trim().orEmpty()
+                    val announcement = if (site.announcement?.enabled == true && text.isNotBlank()) text else null
                     _uiState.update { state ->
                         state.copy(
-                            botGroups = groups,
+                            botGroups = site.botGroups,
+                            announcement = announcement,
                             hostBotGroupId = state.hostBotGroupId
-                                ?: groups.find { it.isDefault }?.id
-                                ?: groups.firstOrNull()?.id,
+                                ?: site.botGroups.find { it.isDefault }?.id
+                                ?: site.botGroups.firstOrNull()?.id,
                         )
                     }
                 }
@@ -312,6 +324,7 @@ class LobbyViewModel @Inject constructor(
         onLudo: ((ludoId: String, invite: String) -> Unit)? = null,
         onSnakes: ((snakesId: String, invite: String) -> Unit)? = null,
         onMemory: ((memoryId: String, invite: String) -> Unit)? = null,
+        onCourtpiece: ((courtpieceId: String, invite: String) -> Unit)? = null,
     ) {
         viewModelScope.launch {
             _uiState.update { it.copy(busy = true, error = null) }
@@ -352,6 +365,16 @@ class LobbyViewModel @Inject constructor(
                         return@runCatching JoinTarget.Memory(memoryId, memory!!.resolvedInvite().ifBlank { code })
                     }
                 }
+                if (onCourtpiece != null) {
+                    val courtpiece = runCatching { api.resolveCourtpieceInvite(code) }.getOrNull()
+                    val courtpieceId = courtpiece?.resolvedId().orEmpty()
+                    if (courtpieceId.isNotBlank()) {
+                        return@runCatching JoinTarget.Courtpiece(
+                            courtpieceId,
+                            courtpiece!!.resolvedInvite().ifBlank { code },
+                        )
+                    }
+                }
                 error("Invite not found")
             }.onSuccess { target ->
                 _uiState.update { it.copy(busy = false) }
@@ -361,6 +384,7 @@ class LobbyViewModel @Inject constructor(
                     is JoinTarget.Ludo -> onLudo?.invoke(target.ludoId, target.invite)
                     is JoinTarget.Snakes -> onSnakes?.invoke(target.snakesId, target.invite)
                     is JoinTarget.Memory -> onMemory?.invoke(target.memoryId, target.invite)
+                    is JoinTarget.Courtpiece -> onCourtpiece?.invoke(target.courtpieceId, target.invite)
                 }
             }.onFailure { err ->
                 _uiState.update { it.copy(busy = false, error = err.message ?: "Join failed") }
@@ -463,12 +487,44 @@ class LobbyViewModel @Inject constructor(
         }
     }
 
+    fun hostCourtpiece(onSuccess: (courtpieceId: String, invite: String) -> Unit) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(busy = true, error = null) }
+            runCatching {
+                val state = _uiState.value
+                val code = state.courtpieceRoomCode.trim()
+                if (code.isNotEmpty() && !code.matches(Regex("^\\d{4,8}$"))) {
+                    error("Room code must be 4–8 digits")
+                }
+                val session = requireSession()
+                val created = api.createCourtpiece(
+                    CreateCourtpieceRequest(
+                        name = "${session.name}'s Court Piece",
+                        rulesVariant = state.courtpieceRules,
+                        botCount = state.courtpieceBotCount.coerceIn(0, 3),
+                        inviteCode = code.ifBlank { null },
+                        inviteFriendIds = state.inviteFriendIds,
+                    ),
+                )
+                val id = created.resolvedId()
+                if (id.isBlank()) error("Could not create Court Piece table")
+                id to created.resolvedInvite()
+            }.onSuccess { (courtpieceId, invite) ->
+                _uiState.update { it.copy(busy = false) }
+                onSuccess(courtpieceId, invite)
+            }.onFailure { err ->
+                _uiState.update { it.copy(busy = false, error = err.message ?: "Host failed") }
+            }
+        }
+    }
+
     private sealed class JoinTarget {
         data class Table(val tableId: String, val invite: String) : JoinTarget()
         data class Contest(val contestId: String) : JoinTarget()
         data class Ludo(val ludoId: String, val invite: String) : JoinTarget()
         data class Snakes(val snakesId: String, val invite: String) : JoinTarget()
         data class Memory(val memoryId: String, val invite: String) : JoinTarget()
+        data class Courtpiece(val courtpieceId: String, val invite: String) : JoinTarget()
     }
 
     fun offline(onNavigate: (seats: Int, bots: Int, name: String) -> Unit) {

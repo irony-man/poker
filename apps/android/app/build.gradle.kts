@@ -81,6 +81,8 @@ dependencies {
     implementation(project(":feature:ludo"))
     implementation(project(":feature:snakes"))
     implementation(project(":feature:memory"))
+    implementation(project(":feature:courtpiece"))
+    implementation(project(":feature:admin"))
     implementation(project(":feature:progress"))
 
     implementation(libs.androidx.core.ktx)

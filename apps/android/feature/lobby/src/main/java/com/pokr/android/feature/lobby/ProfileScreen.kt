@@ -35,6 +35,7 @@ import com.pokr.android.core.designsystem.PokrChrome
 import com.pokr.android.core.designsystem.PokrColors
 import com.pokr.android.core.designsystem.PokrFonts
 import com.pokr.android.core.designsystem.PokrGhostButton
+import com.pokr.android.core.designsystem.PokrPrimaryButton
 import com.pokr.android.core.designsystem.PokrRadius
 import com.pokr.android.core.designsystem.TABLE_COLOR_PRESETS
 import com.pokr.android.core.designsystem.HudPanel
@@ -59,6 +60,9 @@ fun ProfileScreen(
     onOpenLudo: (ludoId: String, invite: String) -> Unit = { _, _ -> },
     onOpenSnakes: (snakesId: String, invite: String) -> Unit = { _, _ -> },
     onOpenMemory: (memoryId: String, invite: String) -> Unit = { _, _ -> },
+    onOpenCourtpiece: (courtpieceId: String, invite: String) -> Unit = { _, _ -> },
+    onOpenProfile: (username: String) -> Unit = {},
+    onAdmin: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ProfileViewModel = hiltViewModel(),
     friendsViewModel: FriendsViewModel = hiltViewModel(),
@@ -131,6 +135,8 @@ fun ProfileScreen(
                         onOpenLudo = onOpenLudo,
                         onOpenSnakes = onOpenSnakes,
                         onOpenMemory = onOpenMemory,
+                        onOpenCourtpiece = onOpenCourtpiece,
+                        onOpenProfile = onOpenProfile,
                     )
                 }
                 else -> {
@@ -152,7 +158,7 @@ fun ProfileScreen(
                                 contests = state.contests,
                                 onOpen = onContest,
                             )
-                            else -> state.profile?.let { OverviewPane(it) }
+                            else -> state.profile?.let { OverviewPane(it, onAdmin) }
                         }
                         PokrGhostButton(
                             text = "Sign out",
@@ -196,7 +202,7 @@ private fun ProfileTabChip(
 }
 
 @Composable
-private fun OverviewPane(profile: MeProfile) {
+private fun OverviewPane(profile: MeProfile, onAdmin: () -> Unit) {
     HudPanel(modifier = Modifier.fillMaxWidth(), chrome = PokrChrome.Lobby) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -253,6 +259,13 @@ private fun OverviewPane(profile: MeProfile) {
             Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
                 BalanceChip("Hands", profile.handsPlayed)
                 BalanceChip("Friends", profile.friendCount)
+            }
+            if (profile.isAdmin) {
+                PokrPrimaryButton(
+                    text = "Admin",
+                    onClick = onAdmin,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
     }
@@ -333,7 +346,7 @@ private fun ThemePane(
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
                 )
-                FieldHelp("Classic oval or stacked HUD. Stacked applies on web portrait. Only you see this.")
+                FieldHelp("Classic oval or stacked HUD. Stacked applies in portrait. Only you see this.")
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),

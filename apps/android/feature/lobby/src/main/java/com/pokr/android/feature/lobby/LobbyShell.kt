@@ -1,5 +1,7 @@
 package com.pokr.android.feature.lobby
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -16,12 +20,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pokr.android.core.designsystem.LockPortraitOrientation
 import com.pokr.android.core.designsystem.PokrChrome
 import com.pokr.android.core.designsystem.PokrColors
+import com.pokr.android.core.designsystem.PokrRadius
 import com.pokr.android.core.designsystem.StatusChip
 import com.pokr.android.core.designsystem.pokrPageGround
 
@@ -34,7 +41,9 @@ fun LobbyShell(
     onLudo: (ludoId: String, invite: String, spectate: Boolean) -> Unit,
     onSnakes: (snakesId: String, invite: String, spectate: Boolean) -> Unit,
     onMemory: (memoryId: String, invite: String, spectate: Boolean) -> Unit,
+    onCourtpiece: (courtpieceId: String, invite: String, spectate: Boolean) -> Unit,
     onProfile: () -> Unit,
+    onPublicProfile: (username: String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: LobbyViewModel = hiltViewModel(),
 ) {
@@ -70,6 +79,9 @@ fun LobbyShell(
                     onProfile()
                 },
             )
+            state.announcement?.let { text ->
+                SiteAnnouncementBanner(text = text)
+            }
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -94,6 +106,7 @@ fun LobbyShell(
                             onLudo = onLudo,
                             onSnakes = onSnakes,
                             onMemory = onMemory,
+                            onCourtpiece = onCourtpiece,
                         )
                     } else {
                         HostTab(
@@ -128,6 +141,8 @@ fun LobbyShell(
                             onOpenLudo = { ludoId, invite -> onLudo(ludoId, invite, false) },
                             onOpenSnakes = { snakesId, invite -> onSnakes(snakesId, invite, false) },
                             onOpenMemory = { memoryId, invite -> onMemory(memoryId, invite, false) },
+                            onOpenCourtpiece = { id, invite -> onCourtpiece(id, invite, false) },
+                            onOpenProfile = onPublicProfile,
                         )
                     }
                     LobbyTab.Arcade -> if (!state.signedIn) {
@@ -141,6 +156,7 @@ fun LobbyShell(
                             onLudo = { id, invite -> onLudo(id, invite, false) },
                             onSnakes = { id, invite -> onSnakes(id, invite, false) },
                             onMemory = { id, invite -> onMemory(id, invite, false) },
+                            onCourtpiece = { id, invite -> onCourtpiece(id, invite, false) },
                         )
                     }
                     LobbyTab.Offline -> OfflineTab(
@@ -207,4 +223,20 @@ fun LobbyShell(
             }
         }
     }
+}
+
+@Composable
+private fun SiteAnnouncementBanner(text: String) {
+    Text(
+        text = text,
+        color = PokrColors.InkStrong,
+        fontSize = 13.sp,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .background(PokrColors.Brass.copy(alpha = 0.12f), RoundedCornerShape(PokrRadius.Md))
+            .border(1.dp, PokrColors.Brass.copy(alpha = 0.28f), RoundedCornerShape(PokrRadius.Md))
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    )
 }

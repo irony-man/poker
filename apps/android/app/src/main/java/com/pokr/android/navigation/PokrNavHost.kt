@@ -11,17 +11,23 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.pokr.android.BuildConfig
+import com.pokr.android.feature.admin.AdminRoute
+import com.pokr.android.feature.admin.AdminScreen
 import com.pokr.android.feature.lobby.ContestRoute
 import com.pokr.android.feature.lobby.ContestScreen
 import com.pokr.android.feature.lobby.LobbyRoute
 import com.pokr.android.feature.lobby.LobbyScreen
 import com.pokr.android.feature.lobby.ProfileRoute
 import com.pokr.android.feature.lobby.ProfileScreen
+import com.pokr.android.feature.lobby.PublicProfileRoute
+import com.pokr.android.feature.lobby.PublicProfileScreen
 import com.pokr.android.feature.lobby.SocialInviteBanner
 import com.pokr.android.feature.ludo.LudoBoardRoute
 import com.pokr.android.feature.ludo.LudoBoardScreen
 import com.pokr.android.feature.memory.MemoryBoardRoute
 import com.pokr.android.feature.memory.MemoryBoardScreen
+import com.pokr.android.feature.courtpiece.CourtpieceBoardRoute
+import com.pokr.android.feature.courtpiece.CourtpieceBoardScreen
 import com.pokr.android.feature.offline.OfflineTableRoute
 import com.pokr.android.feature.offline.OfflineTableScreen
 import com.pokr.android.feature.progress.HandsRoute
@@ -39,7 +45,8 @@ fun PokrNavHost(modifier: Modifier = Modifier) {
     val compact = dest.contains("OnlineTable", ignoreCase = true) ||
         dest.contains("LudoBoard", ignoreCase = true) ||
         dest.contains("SnakesBoard", ignoreCase = true) ||
-        dest.contains("MemoryBoard", ignoreCase = true)
+        dest.contains("MemoryBoard", ignoreCase = true) ||
+        dest.contains("CourtpieceBoard", ignoreCase = true)
 
     Box(modifier = modifier.fillMaxSize()) {
     NavHost(
@@ -78,8 +85,16 @@ fun PokrNavHost(modifier: Modifier = Modifier) {
                         MemoryBoardRoute(id = memoryId, invite = invite, spectate = spectate),
                     )
                 },
+                onCourtpiece = { courtpieceId, invite, spectate ->
+                    navController.navigate(
+                        CourtpieceBoardRoute(id = courtpieceId, invite = invite, spectate = spectate),
+                    )
+                },
                 onProfile = {
                     navController.navigate(ProfileRoute)
+                },
+                onPublicProfile = { username ->
+                    navController.navigate(PublicProfileRoute(username = username))
                 },
             )
         }
@@ -109,6 +124,32 @@ fun PokrNavHost(modifier: Modifier = Modifier) {
                 onOpenMemory = { memoryId, invite ->
                     navController.navigate(MemoryBoardRoute(id = memoryId, invite = invite))
                 },
+                onOpenCourtpiece = { courtpieceId, invite ->
+                    navController.navigate(CourtpieceBoardRoute(id = courtpieceId, invite = invite))
+                },
+                onOpenProfile = { username ->
+                    navController.navigate(PublicProfileRoute(username = username))
+                },
+                onAdmin = {
+                    navController.navigate(AdminRoute)
+                },
+            )
+        }
+        composable<PublicProfileRoute> {
+            PublicProfileScreen(
+                onBack = { navController.popBackStack() },
+                onOpenSelf = {
+                    navController.popBackStack()
+                    navController.navigate(ProfileRoute)
+                },
+                onOpenTable = { tableId, invite ->
+                    navController.navigate(OnlineTableRoute(tableId = tableId, invite = invite))
+                },
+            )
+        }
+        composable<AdminRoute> {
+            AdminScreen(
+                onBack = { navController.popBackStack() },
             )
         }
         composable<ContestRoute> {
@@ -170,6 +211,14 @@ fun PokrNavHost(modifier: Modifier = Modifier) {
                 },
             )
         }
+        composable<CourtpieceBoardRoute> {
+            CourtpieceBoardScreen(
+                webBaseUrl = BuildConfig.POKR_WEB_URL,
+                onBack = {
+                    navController.popBackStack(LobbyRoute, inclusive = false)
+                },
+            )
+        }
     }
 
         SocialInviteBanner(
@@ -188,6 +237,9 @@ fun PokrNavHost(modifier: Modifier = Modifier) {
             },
             onOpenMemory = { memoryId, invite ->
                 navController.navigate(MemoryBoardRoute(id = memoryId, invite = invite))
+            },
+            onOpenCourtpiece = { courtpieceId, invite ->
+                navController.navigate(CourtpieceBoardRoute(id = courtpieceId, invite = invite))
             },
             onOpenFriends = {
                 navController.popBackStack(LobbyRoute, inclusive = false)

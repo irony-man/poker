@@ -5,6 +5,8 @@ import {
   searchUsers,
   type FriendGroup,
   type FriendProfile,
+  type OutgoingChallenge,
+  type OutgoingRequest,
   type PendingChallenge,
   type PendingRequest,
 } from '@/lib/api';
@@ -34,7 +36,9 @@ export function useFriendsSocial({
   const friends = social?.friends ?? [];
   const groups = social?.groups ?? [];
   const incoming = social?.incoming ?? [];
+  const outgoing = social?.outgoing ?? [];
   const challenges = social?.pendingChallenges ?? [];
+  const outgoingChallenges = social?.outgoingChallenges ?? [];
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<FriendProfile[]>([]);
@@ -86,12 +90,15 @@ export function useFriendsSocial({
   }, [social?.pendingChallenges]);
 
   const effectiveChallenges = challengeOverride ?? challenges;
-  const setChallenges = useCallback((next: PendingChallenge[] | ((prev: PendingChallenge[]) => PendingChallenge[])) => {
-    setChallengeOverride((prev) => {
-      const base = prev ?? challenges;
-      return typeof next === 'function' ? next(base) : next;
-    });
-  }, [challenges]);
+  const setChallenges = useCallback(
+    (next: PendingChallenge[] | ((prev: PendingChallenge[]) => PendingChallenge[])) => {
+      setChallengeOverride((prev) => {
+        const base = prev ?? challenges;
+        return typeof next === 'function' ? next(base) : next;
+      });
+    },
+    [challenges],
+  );
 
   useEffect(() => {
     const q = searchQuery.trim();
@@ -120,7 +127,9 @@ export function useFriendsSocial({
     friends,
     groups: groups as FriendGroup[],
     incoming: incoming as PendingRequest[],
+    outgoing: outgoing as OutgoingRequest[],
     challenges: effectiveChallenges,
+    outgoingChallenges: outgoingChallenges as OutgoingChallenge[],
     setChallenges,
     searchQuery,
     setSearchQuery,

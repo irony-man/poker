@@ -12,7 +12,9 @@ fun LobbyScreen(
     onLudo: (ludoId: String, invite: String, spectate: Boolean) -> Unit,
     onSnakes: (snakesId: String, invite: String, spectate: Boolean) -> Unit,
     onMemory: (memoryId: String, invite: String, spectate: Boolean) -> Unit,
+    onCourtpiece: (courtpieceId: String, invite: String, spectate: Boolean) -> Unit,
     onProfile: () -> Unit,
+    onPublicProfile: (username: String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     LobbyShell(
@@ -23,7 +25,9 @@ fun LobbyScreen(
         onLudo = onLudo,
         onSnakes = onSnakes,
         onMemory = onMemory,
+        onCourtpiece = onCourtpiece,
         onProfile = onProfile,
+        onPublicProfile = onPublicProfile,
         modifier = modifier,
     )
 }

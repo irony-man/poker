@@ -22,6 +22,8 @@ import type {
   ContestView,
   FriendGroup,
   FriendProfile,
+  OutgoingChallenge,
+  OutgoingRequest,
   PendingChallenge,
   PendingRequest,
   PublicTableSummary,
@@ -79,7 +81,9 @@ export interface ChatMessage {
 export interface SocialSnapshot {
   friends: FriendProfile[];
   incoming: PendingRequest[];
+  outgoing: OutgoingRequest[];
   pendingChallenges: PendingChallenge[];
+  outgoingChallenges: OutgoingChallenge[];
   groups: FriendGroup[];
 }
 
@@ -530,7 +534,18 @@ export const useSession = create<SessionState>((set) => ({
   applyPublicTables: (publicTables) => set({ publicTables }),
   applyPublicContests: (publicContests) => set({ publicContests }),
   applyMyContests: (myContests) => set({ myContests }),
-  applySocial: (social) => set({ social, socialLoaded: true }),
+  applySocial: (social) =>
+    set({
+      social: {
+        friends: social.friends ?? [],
+        incoming: social.incoming ?? [],
+        outgoing: social.outgoing ?? [],
+        pendingChallenges: social.pendingChallenges ?? [],
+        outgoingChallenges: social.outgoingChallenges ?? [],
+        groups: social.groups ?? [],
+      },
+      socialLoaded: true,
+    }),
   applyContestSync: (contest) =>
     set((s) => ({
       contestById: { ...s.contestById, [contest.id]: contest },

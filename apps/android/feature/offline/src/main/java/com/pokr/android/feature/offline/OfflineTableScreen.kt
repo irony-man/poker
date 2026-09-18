@@ -76,7 +76,15 @@ fun OfflineTableScreen(
         }
 
         val table = state.publicTable!!
-        val tableUi = table.toOfflineTableUi()
+        val actionSeat = state.seatActionSeat
+        val actionLabel = state.seatActionLabel
+        val tableUi = table.toOfflineTableUi().copy(
+            actionLabelBySeat = if (actionSeat != null && !actionLabel.isNullOrBlank()) {
+                mapOf(actionSeat to actionLabel)
+            } else {
+                emptyMap()
+            },
+        )
         val myPlayer = table.players.find { it.userId == HUMAN_USER_ID }
         val sittingOut = myPlayer?.status == "sittingOut"
         val betweenHands = table.street == "waiting" || table.street == "payout"
@@ -184,6 +192,7 @@ fun OfflineTableScreen(
                 tableColorId = state.tableColorId,
                 onSit = {},
                 landscape = landscape,
+                stacked = state.tableLayout == "v2",
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),

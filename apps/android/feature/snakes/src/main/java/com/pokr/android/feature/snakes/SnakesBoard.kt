@@ -42,7 +42,7 @@ fun SnakesBoard(
             .border(2.dp, PokrColors.Sidebar.copy(alpha = 0.2f), androidx.compose.foundation.shape.RoundedCornerShape(12.dp)),
     ) {
         val cell = maxWidth / 10
-        Canvas(Modifier = Modifier.fillMaxSize()) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width / 10f
             val h = size.height / 10f
             for (r in 0 until 10) {

@@ -85,6 +85,7 @@ class SocialInviteViewModel @Inject constructor(
         onLudo: (ludoId: String, invite: String) -> Unit = { _, _ -> },
         onSnakes: (snakesId: String, invite: String) -> Unit = { _, _ -> },
         onMemory: (memoryId: String, invite: String) -> Unit = { _, _ -> },
+        onCourtpiece: (courtpieceId: String, invite: String) -> Unit = { _, _ -> },
     ) {
         viewModelScope.launch {
             _busy.update { it.copy(busyKey = "join-${challenge.id}", error = null) }
@@ -97,6 +98,7 @@ class SocialInviteViewModel @Inject constructor(
                         is SocialJoinTarget.Ludo -> onLudo(target.ludoId, target.invite)
                         is SocialJoinTarget.Snakes -> onSnakes(target.snakesId, target.invite)
                         is SocialJoinTarget.Memory -> onMemory(target.memoryId, target.invite)
+                        is SocialJoinTarget.Courtpiece -> onCourtpiece(target.courtpieceId, target.invite)
                     }
                 }
                 .onFailure { err ->

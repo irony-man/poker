@@ -1,5 +1,6 @@
 package com.pokr.android.feature.lobby
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -36,6 +37,8 @@ fun FriendsTab(
     onOpenLudo: (ludoId: String, invite: String) -> Unit = { _, _ -> },
     onOpenSnakes: (snakesId: String, invite: String) -> Unit = { _, _ -> },
     onOpenMemory: (memoryId: String, invite: String) -> Unit = { _, _ -> },
+    onOpenCourtpiece: (courtpieceId: String, invite: String) -> Unit = { _, _ -> },
+    onOpenProfile: (username: String) -> Unit = {},
     viewModel: FriendsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -47,6 +50,8 @@ fun FriendsTab(
         onOpenLudo = onOpenLudo,
         onOpenSnakes = onOpenSnakes,
         onOpenMemory = onOpenMemory,
+        onOpenCourtpiece = onOpenCourtpiece,
+        onOpenProfile = onOpenProfile,
     )
 }
 
@@ -59,6 +64,8 @@ fun FriendsContent(
     onOpenLudo: (ludoId: String, invite: String) -> Unit = { _, _ -> },
     onOpenSnakes: (snakesId: String, invite: String) -> Unit = { _, _ -> },
     onOpenMemory: (memoryId: String, invite: String) -> Unit = { _, _ -> },
+    onOpenCourtpiece: (courtpieceId: String, invite: String) -> Unit = { _, _ -> },
+    onOpenProfile: (username: String) -> Unit = {},
 ) {
     LobbyScrollColumn {
         LobbyPageHeader(
@@ -79,14 +86,26 @@ fun FriendsContent(
                     PokerChipShuffle(size = 32.dp)
                 }
                 state.results.forEach { user ->
-                    SearchRow(user = user, onAdd = { viewModel.sendRequest(user.userId) })
+                    SearchRow(
+                        user = user,
+                        onAdd = { viewModel.sendRequest(user.userId) },
+                        onOpen = {
+                            if (user.username.isNotBlank()) onOpenProfile(user.username)
+                        },
+                    )
                 }
                 SegmentedChoice(
                     selected = state.pane,
-                    options = listOf("friends", "groups"),
+                    options = listOf("friends", "pending", "groups"),
                     onSelect = viewModel::onPaneChange,
                     style = ChoiceStyle.Segmented,
-                ) { if (it == "groups") "Groups" else "Friends" }
+                ) {
+                    when (it) {
+                        "groups" -> "Groups"
+                        "pending" -> "Pending"
+                        else -> "Friends"
+                    }
+                }
                 state.error?.let { err ->
                     StatusChip(text = err, accent = PokrColors.Danger, chrome = PokrChrome.Play)
                 }
@@ -97,6 +116,17 @@ fun FriendsContent(
                         state = state,
                         viewModel = viewModel,
                         onOpenTable = onOpenTable,
+                    )
+                } else if (state.pane == "pending") {
+                    PendingPane(
+                        state = state,
+                        viewModel = viewModel,
+                        onOpenTable = onOpenTable,
+                        onOpenContest = onOpenContest,
+                        onOpenLudo = onOpenLudo,
+                        onOpenSnakes = onOpenSnakes,
+                        onOpenMemory = onOpenMemory,
+                        onOpenCourtpiece = onOpenCourtpiece,
                     )
                 } else {
                     if (state.pendingChallenges.isNotEmpty()) {
@@ -114,6 +144,7 @@ fun FriendsContent(
                                         onLudo = onOpenLudo,
                                         onSnakes = onOpenSnakes,
                                         onMemory = onOpenMemory,
+                                        onCourtpiece = onOpenCourtpiece,
                                     )
                                 },
                                 onDecline = { viewModel.declineChallenge(challenge.id) },
@@ -141,6 +172,10 @@ fun FriendsContent(
                                 onChallenge = {
                                     viewModel.challenge(friend.userId, onOpenTable)
                                 },
+                                onOpen = {
+                                    val handle = friend.username.ifBlank { friend.name }
+                                    if (handle.isNotBlank()) onOpenProfile(handle)
+                                },
                             )
                         }
                     }
@@ -151,9 +186,11 @@ fun FriendsContent(
 }
 
 @Composable
-private fun SearchRow(user: FriendSearchUser, onAdd: () -> Unit) {
+private fun SearchRow(user: FriendSearchUser, onAdd: () -> Unit, onOpen: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onOpen),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -174,9 +211,12 @@ private fun FriendRow(
     busy: Boolean,
     enabled: Boolean,
     onChallenge: () -> Unit,
+    onOpen: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onOpen),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -209,6 +249,7 @@ private fun ChallengeRow(
     val isLudo = challenge.kind == "ludo" || !challenge.ludoId.isNullOrBlank()
     val isSnakes = challenge.kind == "snakes" || !challenge.snakesId.isNullOrBlank()
     val isMemory = challenge.kind == "memory" || !challenge.memoryId.isNullOrBlank()
+    val isCourtpiece = challenge.kind == "courtpiece" || !challenge.courtpieceId.isNullOrBlank()
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -231,6 +272,7 @@ private fun ChallengeRow(
                 when {
                     isSnakes -> "Snakes & Ladders challenge"
                     isMemory -> "Memory Match challenge"
+                    isCourtpiece -> "Court Piece challenge"
                     isLudo -> "Ludo challenge"
                     isContest -> "Contest challenge"
                     else -> "Heads-up challenge"
@@ -277,6 +319,108 @@ private fun IncomingRow(
         )
         PokrGhostButton(text = "Accept", onClick = onAccept)
         PokrGhostButton(text = "Decline", onClick = onDecline)
+    }
+}
+
+@Composable
+private fun PendingPane(
+    state: FriendsUiState,
+    viewModel: FriendsViewModel,
+    onOpenTable: (tableId: String, invite: String) -> Unit,
+    onOpenContest: (contestId: String) -> Unit,
+    onOpenLudo: (ludoId: String, invite: String) -> Unit,
+    onOpenSnakes: (snakesId: String, invite: String) -> Unit,
+    onOpenMemory: (memoryId: String, invite: String) -> Unit,
+    onOpenCourtpiece: (courtpieceId: String, invite: String) -> Unit,
+) {
+    if (state.incoming.isEmpty() && state.outgoing.isEmpty() &&
+        state.pendingChallenges.isEmpty() && state.outgoingChallenges.isEmpty()
+    ) {
+        FieldHelp("Nothing pending. Incoming requests and sent invites show up here.")
+        return
+    }
+    if (state.pendingChallenges.isNotEmpty()) {
+        PokrLabel("Incoming invites")
+        state.pendingChallenges.forEach { challenge ->
+            ChallengeRow(
+                challenge = challenge,
+                busy = state.busyKey != null,
+                joining = state.busyKey == "join-${challenge.id}",
+                onJoin = {
+                    viewModel.joinChallenge(
+                        challenge = challenge,
+                        onTable = onOpenTable,
+                        onContest = onOpenContest,
+                        onLudo = onOpenLudo,
+                        onSnakes = onOpenSnakes,
+                        onMemory = onOpenMemory,
+                        onCourtpiece = onOpenCourtpiece,
+                    )
+                },
+                onDecline = { viewModel.declineChallenge(challenge.id) },
+            )
+        }
+    }
+    if (state.incoming.isNotEmpty()) {
+        PokrLabel("Incoming requests")
+        state.incoming.forEach { req ->
+            IncomingRow(
+                request = req,
+                onAccept = { viewModel.respond(req.id, true) },
+                onDecline = { viewModel.respond(req.id, false) },
+            )
+        }
+    }
+    if (state.outgoing.isNotEmpty()) {
+        PokrLabel("Sent requests")
+        state.outgoing.forEach { req ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                PlayerAvatar(
+                    avatarId = req.to.avatarId,
+                    avatarUrl = req.to.avatarUrl,
+                    userId = req.to.userId,
+                    size = 36.dp,
+                )
+                Text(
+                    req.to.name,
+                    color = PokrColors.Sidebar,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                )
+                PokrGhostButton(text = "Cancel", onClick = { viewModel.cancelRequest(req.id) })
+            }
+        }
+    }
+    if (state.outgoingChallenges.isNotEmpty()) {
+        PokrLabel("Sent invites")
+        state.outgoingChallenges.forEach { challenge ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                PlayerAvatar(
+                    avatarId = challenge.challenged.avatarId,
+                    avatarUrl = challenge.challenged.avatarUrl,
+                    userId = challenge.challenged.userId,
+                    size = 36.dp,
+                )
+                Text(
+                    challenge.challenged.name,
+                    color = PokrColors.Sidebar,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                )
+                PokrGhostButton(
+                    text = "Cancel",
+                    onClick = { viewModel.cancelOutgoingChallenge(challenge.id) },
+                )
+            }
+        }
     }
 }
 

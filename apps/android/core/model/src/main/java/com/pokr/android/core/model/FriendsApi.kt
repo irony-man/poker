@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 data class FriendProfile(
     val userId: String,
     val name: String = "",
+    val username: String = "",
     val avatarId: Int = 0,
     val avatarUrl: String? = null,
     val online: Boolean = false,
@@ -29,6 +30,7 @@ data class PendingChallenge(
     val ludoId: String? = null,
     val snakesId: String? = null,
     val memoryId: String? = null,
+    val courtpieceId: String? = null,
     val inviteCode: String = "",
     val createdAt: Long = 0,
     val groupId: String? = null,
@@ -46,10 +48,36 @@ data class FriendGroupView(
 )
 
 @Serializable
+data class OutgoingRequestView(
+    val id: String,
+    val to: FriendProfile,
+    val createdAt: Long = 0,
+)
+
+@Serializable
+data class OutgoingChallenge(
+    val id: String,
+    val challenged: FriendProfile,
+    val kind: String? = null,
+    val tableId: String? = null,
+    val contestId: String? = null,
+    val ludoId: String? = null,
+    val snakesId: String? = null,
+    val memoryId: String? = null,
+    val courtpieceId: String? = null,
+    val inviteCode: String = "",
+    val createdAt: Long = 0,
+    val groupId: String? = null,
+    val groupName: String? = null,
+)
+
+@Serializable
 data class FriendsSnapshot(
     val friends: List<FriendProfile> = emptyList(),
     val incoming: List<PendingRequestView> = emptyList(),
+    val outgoing: List<OutgoingRequestView> = emptyList(),
     val pendingChallenges: List<PendingChallenge> = emptyList(),
+    val outgoingChallenges: List<OutgoingChallenge> = emptyList(),
     val groups: List<FriendGroupView> = emptyList(),
 )
 

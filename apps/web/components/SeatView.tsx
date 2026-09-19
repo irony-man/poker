@@ -93,6 +93,9 @@ export function SeatView({
   isDealer = false,
   showReady = false,
   canKick = false,
+  winPct,
+  focused = false,
+  onFocus,
 }: {
   player: PublicPlayer;
   isToAct: boolean;
@@ -119,6 +122,10 @@ export function SeatView({
   isDealer?: boolean;
   showReady?: boolean;
   canKick?: boolean;
+  /** Equity % among revealed hands (spectator / showdown). */
+  winPct?: number | null;
+  focused?: boolean;
+  onFocus?: () => void;
 }) {
   const rad = (angle * Math.PI) / 180;
   const rx = landscape ? 41 : compact ? 42 : 41;
@@ -211,6 +218,8 @@ export function SeatView({
     isDealer ? 'dealer' : null,
     isWinner ? 'winner' : null,
     handName ?? null,
+    winPct != null ? `${winPct}%` : null,
+    focused ? 'focused' : null,
   ]
     .filter(Boolean)
     .join(', ');
@@ -230,8 +239,22 @@ export function SeatView({
         style={{ left: `${x}%`, top: `${y}%` }}
         role="group"
         aria-label={seatAria}
+        onClick={onFocus}
+        onKeyDown={
+          onFocus
+            ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onFocus();
+                }
+              }
+            : undefined
+        }
+        tabIndex={onFocus ? 0 : undefined}
         className={`absolute -translate-x-1/2 -translate-y-1/2 ${
-          isToAct || isWinner || showAction || friendMenuOpen ? 'z-20' : 'z-10'
+          isToAct || isWinner || showAction || friendMenuOpen || focused ? 'z-20' : 'z-10'
+        } ${onFocus ? 'cursor-pointer' : ''} ${
+          focused ? 'rounded-lg ring-2 ring-amber-300/90 ring-offset-2 ring-offset-transparent' : ''
         }`}
       >
         {showAction && actionBurst && (
@@ -469,6 +492,14 @@ export function SeatView({
                 }`}
               >
                 {handName}
+                {winPct != null ? (
+                  <span className="ml-1.5 tabular-nums text-amber-200">{winPct}%</span>
+                ) : null}
+              </div>
+            )}
+            {!handName && winPct != null && !compact && (
+              <div className="relative z-[1] mb-0.5 rounded bg-black/70 px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-amber-200">
+                {winPct}%
               </div>
             )}
 
@@ -609,6 +640,14 @@ export function SeatView({
                 }`}
               >
                 {handName}
+                {winPct != null ? (
+                  <span className="ml-1 tabular-nums text-amber-200">{winPct}%</span>
+                ) : null}
+              </div>
+            )}
+            {!handName && winPct != null && compact && (
+              <div className="relative z-[1] mt-0.5 rounded bg-black/70 px-1 py-0.5 text-[11px] font-bold tabular-nums text-amber-200">
+                {winPct}%
               </div>
             )}
 

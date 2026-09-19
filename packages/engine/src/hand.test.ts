@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   applyAction,
   createEmptyTable,
+  muckHand,
   returnToWaiting,
+  showHand,
   sitDown,
   sitIn,
   sitOut,
@@ -158,6 +160,70 @@ describe('hand lifecycle', () => {
     expect(state.street).toBe('payout');
     expect(state.players.find((p) => p.userId === 'human-1')!.status).toBe('folded');
     expect(state.toAct).toBeNull();
+  });
+
+  it('contested showdown auto-reveals winners only', () => {
+    let state = createEmptyTable(config);
+    state = sitDown(state, 0, 'u1', 'Alice', 1000).state;
+    state = sitDown(state, 1, 'u2', 'Bob', 1000).state;
+    state = startHand(state, config, 'hand-show', fixedRng([11, 22, 33, 44, 55, 66, 77, 88])).state;
+
+    let guard = 0;
+    while (state.street !== 'payout' && state.toAct !== null && guard++ < 80) {
+      const seat = state.toAct;
+      const p = state.players[seat]!;
+      const toCall = state.currentBet - p.bet;
+      const r = applyAction(
+        state,
+        seat,
+        toCall > 0 ? { type: 'call', seq: state.actionSeq } : { type: 'check', seq: state.actionSeq },
+        config,
+      );
+      expect(r.ok).toBe(true);
+      state = r.state;
+    }
+    expect(state.street).toBe('payout');
+    const winnerSeats = new Set(state.winners.map((w) => w.seat));
+    for (const p of state.players) {
+      if (!p.holeCards || p.status === 'folded') continue;
+      if (winnerSeats.has(p.seat)) {
+        expect(p.revealed).toBe(true);
+      } else {
+        expect(p.revealed).toBe(false);
+      }
+    }
+  });
+
+  it('showHand and muckHand during payout', () => {
+    let state = setupTwoPlayers();
+    state = startHand(state, config, 'hand-1', fixedRng([1, 2, 3, 4])).state;
+    const actor = state.toAct!;
+    const other = actor === 0 ? 1 : 0;
+    state = applyAction(state, actor, { type: 'fold', seq: state.actionSeq }, config).state;
+    expect(state.street).toBe('payout');
+    expect(state.players[other]!.revealed).toBe(false);
+
+    const shown = showHand(state, other);
+    expect(shown.ok).toBe(true);
+    state = shown.state;
+    expect(state.players[other]!.revealed).toBe(true);
+    expect(state.showdownHands.some((h) => h.seat === other)).toBe(true);
+
+    // Cannot muck after show
+    expect(muckHand(state, other).ok).toBe(false);
+
+    // Fresh uncontested for muck
+    state = returnToWaiting(state);
+    state = startHand(state, config, 'hand-2', fixedRng([5, 6, 7, 8])).state;
+    const a2 = state.toAct!;
+    const o2 = a2 === 0 ? 1 : 0;
+    state = applyAction(state, a2, { type: 'fold', seq: state.actionSeq }, config).state;
+    const mucked = muckHand(state, o2);
+    expect(mucked.ok).toBe(true);
+    state = mucked.state;
+    expect(state.players[o2]!.mucked).toBe(true);
+    expect(state.players[o2]!.revealed).toBe(false);
+    expect(showHand(state, o2).ok).toBe(false);
   });
 
   it('sitting out skips hands but keeps seat and stack', () => {

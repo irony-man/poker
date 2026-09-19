@@ -15,6 +15,8 @@ export interface PublicPlayerView {
   hasCards: boolean;
   /** Only present when revealed at showdown. */
   holeCards: [string, string] | null;
+  /** True after voluntary muck during payout. */
+  mucked: boolean;
 }
 
 export interface PublicTableView {
@@ -42,6 +44,8 @@ export interface PrivateView {
   seat: number;
   holeCards: [string, string] | null;
   legal: ReturnType<typeof legalActions>;
+  /** Payout: player may still show or muck. */
+  canShowMuck: boolean;
 }
 
 function cardStr(c: Card): string {
@@ -67,6 +71,7 @@ export function toPublicView(tableId: string, state: HandState, config: TableCon
         p.revealed && p.holeCards
           ? [cardStr(p.holeCards[0]), cardStr(p.holeCards[1])]
           : null,
+      mucked: p.mucked,
     })),
     dealerButton: state.dealerButton,
     sbSeat: state.sbSeat,
@@ -85,9 +90,17 @@ export function toPublicView(tableId: string, state: HandState, config: TableCon
 
 export function toPrivateView(state: HandState, seat: number, config: TableConfig): PrivateView {
   const p = state.players[seat];
+  const canShowMuck =
+    state.street === 'payout' &&
+    !!p?.holeCards &&
+    p.status !== 'folded' &&
+    p.status !== 'empty' &&
+    !p.revealed &&
+    !p.mucked;
   return {
     seat,
     holeCards: p?.holeCards ? [cardStr(p.holeCards[0]), cardStr(p.holeCards[1])] : null,
     legal: legalActions(state, seat, config),
+    canShowMuck,
   };
 }

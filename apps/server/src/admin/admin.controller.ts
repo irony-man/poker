@@ -87,6 +87,7 @@ const PagesBody = z.object({
     contests: PageCopyBody,
     friends: PageCopyBody,
     solo: PageCopyBody,
+    chat: PageCopyBody,
     arcade: PageCopyBody,
     ludo: PageCopyBody,
     snakes: PageCopyBody,

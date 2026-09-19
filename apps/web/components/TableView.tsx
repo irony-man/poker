@@ -22,6 +22,7 @@ import { usePokerSocket } from '@/lib/ws';
 import { useSession } from '@/lib/store';
 import { useVoiceCall } from '@/hooks/useVoiceCall';
 import { useHandPresentation } from '@/hooks/useHandPresentation';
+import { useRevealedWinPct } from '@/hooks/useRevealedWinPct';
 import { useTableSounds } from '@/hooks/useTableSounds';
 import { seatAnglesForHero, useIsLandscapePhone, useIsNarrow } from '@/lib/tableLayout';
 import { loadSavedTableColorId } from '@/lib/tableColors';
@@ -103,6 +104,7 @@ export function TableView({
   const [chatOpen, setChatOpen] = useState(false);
   const [chatFocusRequestId, setChatFocusRequestId] = useState(0);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [focusedSeat, setFocusedSeat] = useState<number | null>(null);
   const playHotkeysRef = useRef<PlayHotkeyHandlers | null>(null);
   const { muted: sfxMuted, setMuted: setSfxMutedPref } = useSfxMuted();
   const autoSitSent = useRef(false);
@@ -196,6 +198,22 @@ export function TableView({
     showWinModal,
     youWon,
   } = useHandPresentation(table, userId, dismissedWinHandId);
+  const winPctBySeat = useRevealedWinPct(
+    table?.players,
+    table?.community,
+    Boolean(
+      table &&
+        (table.street === 'payout' ||
+          table.street === 'showdown' ||
+          table.players.some((p) => p.holeCards)),
+    ),
+  );
+  useEffect(() => {
+    if (!isSpectating) setFocusedSeat(null);
+  }, [isSpectating]);
+  useEffect(() => {
+    setFocusedSeat(null);
+  }, [table?.handId]);
   const betweenHands = table?.street === 'waiting' || table?.street === 'payout';
   const myStack = coerceMoney(myPlayer?.stack);
   const brokeAtTable =
@@ -612,6 +630,9 @@ export function TableView({
               : undefined,
             botGroupId,
             onBotGroupChange: botsAllowed ? setBotGroupId : undefined,
+            canShowMuck: Boolean(priv?.canShowMuck),
+            onShowHand: () => send({ type: 'show_hand', tableId, seat: mySeat! }),
+            onMuckHand: () => send({ type: 'muck_hand', tableId, seat: mySeat! }),
           }}
         />
   );
@@ -630,7 +651,8 @@ export function TableView({
         canReady ||
         canSitIn ||
         isSpectating ||
-        showDockReadyRoster
+        showDockReadyRoster ||
+        Boolean(priv?.canShowMuck)
       }
       actions={actionControls}
       voice={
@@ -809,6 +831,9 @@ export function TableView({
               highlightMode={highlightMode}
               winningCards={winningCards}
               canSit={!isSpectating && !isTournament}
+              focusedSeat={focusedSeat}
+              onFocusSeat={setFocusedSeat}
+              winPctBySeat={winPctBySeat}
               onSit={(seat) => {
                 send({
                   type: 'sit',
@@ -890,6 +915,15 @@ export function TableView({
                   p.userId !== userId &&
                   p.status !== 'empty' &&
                   !p.ready
+                }
+                winPct={
+                  p.holeCards && winPctBySeat.has(p.seat) ? winPctBySeat.get(p.seat)! : null
+                }
+                focused={isSpectating && focusedSeat === p.seat}
+                onFocus={
+                  isSpectating && p.status !== 'empty'
+                    ? () => setFocusedSeat(p.seat)
+                    : undefined
                 }
                 onSit={
                   isTournament

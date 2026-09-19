@@ -43,3 +43,6 @@ apps/android/gradle/.tmp/
 .zig-cache-global/
 .containers/
 .tmp-screenshots/
+__pycache__/
+*.pyc
+apps/fungpt/.venv/

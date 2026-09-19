@@ -9,6 +9,7 @@ Private No-Limit Texas Hold'em for casual home games.
 - **Server** (`apps/server`) — Express + native `ws`, Redis-optional KV, file/Postgres hand history
 - **Web** (`apps/web`) — Next.js 15, React 19, Tailwind, Framer Motion
 - **Android** (`apps/android`) — Jetpack Compose client (lobby, online WS table, offline engine)
+- **FunGPT sidecar** (`apps/fungpt`) — optional local BoostBot / BanterBot LLM for `/chat` and table banter
 
 ## Prerequisites
 
@@ -30,6 +31,31 @@ npm run dev:web
 ```
 
 Open http://localhost:3000 — sign up or sign in with a username and password, create a table, share the invite code.
+
+### FunGPT bot chat (optional)
+
+Lobby **Bots** (`/chat`) talks to FunGPT BoostBot (compliments) or BanterBot (roasts). Seated table bots can use the same sidecar for chat replies. Weights stay in FunGPT; this repo only wraps them.
+
+```bash
+# FunGPT Python env with torch + transformers (see FunGPT README).
+pip install -r apps/fungpt/requirements.txt
+
+# Terminal 3 — sidecar on :8000
+export FUNGPT_ROOT=/home/shivam/work/FunGPT
+npm run dev:fungpt
+```
+
+In `.env`:
+
+```
+BANTER_LLM_BASE_URL=http://127.0.0.1:8000
+BANTER_LLM_MODEL=banterbot
+BANTER_LLM_TIMEOUT_MS=8000
+```
+
+GPU (`device_map=auto`) is strongly preferred. CPU float32 works but is slow. When `BANTER_LLM_BASE_URL` is unset, table bots keep using local phrase templates and `/chat` returns unavailable.
+
+Do not add this sidecar to production Compose unless the host has GPU + local FunGPT weights.
 
 ### Contests (tournaments)
 
@@ -77,6 +103,12 @@ For a public URL (Vercel/Railway/Fly), you’ll need accounts + `NEXT_PUBLIC_API
 | `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` | unset | Google Search Console HTML tag content |
 | `NEXT_PUBLIC_BING_SITE_VERIFICATION` | unset | Bing Webmaster `msvalidate.01` content |
 | `NEXT_PUBLIC_YANDEX_VERIFICATION` | unset | Yandex site verification content |
+| `BANTER_LLM_BASE_URL` | unset | FunGPT sidecar origin (`http://127.0.0.1:8000`). Unset → template banter only |
+| `BANTER_LLM_MODEL` | `banterbot` | Sidecar model id (`banterbot` or `boostbot`) |
+| `BANTER_LLM_PATH` | `/v1/chat/completions` | Chat completions path |
+| `BANTER_LLM_TIMEOUT_MS` | `8000` | Table-banter LLM timeout |
+| `BOT_CHAT_TIMEOUT_MS` | `60000` | Lobby `/chat` LLM timeout |
+| `FUNGPT_ROOT` | `/home/shivam/work/FunGPT` | FunGPT repo with `LLM/weights/*` |
 
 ### Search consoles (external)
 

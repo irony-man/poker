@@ -19,6 +19,8 @@ import {
   resolveBotPersonalityId,
   resolveChatReplyBot,
   returnToWaiting,
+  showHand,
+  muckHand,
   sitDown,
   sitIn,
   sitOut,
@@ -52,6 +54,7 @@ import { avatarIdFromUserId, loadSavedAvatarId } from '@/lib/avatars';
 import { loadSavedTableColorId } from '@/lib/tableColors';
 import { coerceMoney, formatMoneyAmount } from '@/lib/currency';
 import { useHandPresentation } from '@/hooks/useHandPresentation';
+import { useRevealedWinPct } from '@/hooks/useRevealedWinPct';
 import { useTableSounds } from '@/hooks/useTableSounds';
 import { useSession, type ChatMessage, type PrivateView, type PublicTable } from '@/lib/store';
 import { seatAnglesForHero, useIsLandscapePhone, useIsNarrow } from '@/lib/tableLayout';
@@ -179,6 +182,12 @@ function announceEvents(
           at: Date.now(),
         });
       }
+    } else if (e.type === 'hand_shown') {
+      const name = state.players[e.seat]?.name ?? `Seat ${e.seat}`;
+      push({ userId: 'system', name, text: 'shows hand', at: Date.now() });
+    } else if (e.type === 'hand_mucked') {
+      const name = state.players[e.seat]?.name ?? `Seat ${e.seat}`;
+      push({ userId: 'system', name, text: 'mucks', at: Date.now() });
     } else if (e.type === 'blinds_posted') {
       const sb = state.players[e.sbSeat]?.name ?? 'SB';
       const bb = state.players[e.bbSeat]?.name ?? 'BB';
@@ -333,13 +342,6 @@ export function OfflineTableView({
         }, wait);
         botBanterTimersRef.current.add(timer);
       };
-
-      // Chat replies are local templates only. Other triggers may still try the API.
-      if (trigger.kind === 'chat_reply') {
-        const line = pickBotBanterLine(opts);
-        if (line) post(line);
-        return;
-      }
 
       void (async () => {
         const llmLine = await fetchBotBanterLine({
@@ -520,6 +522,40 @@ export function OfflineTableView({
 
 
   const betweenHands = state.street === 'waiting' || state.street === 'payout';
+
+  /** Bots auto-show winners / muck losers on payout. */
+  useEffect(() => {
+    if (!bootstrapped || state.street !== 'payout') return;
+    const winnerSeats = new Set(state.winners.map((w) => w.seat));
+    let next = state;
+    let changed = false;
+    const events: EngineEvent[] = [];
+    for (const p of next.players) {
+      if (!p.userId || !isBotUserId(p.userId)) continue;
+      if (!p.holeCards || p.revealed || p.mucked) continue;
+      if (p.status === 'folded' || p.status === 'empty') continue;
+      const result = winnerSeats.has(p.seat)
+        ? showHand(next, p.seat)
+        : muckHand(next, p.seat);
+      if (result.ok) {
+        next = result.state;
+        events.push(...result.events);
+        changed = true;
+      }
+    }
+    if (changed) {
+      syncChat(next, events);
+      setState(next);
+    }
+    // Only re-run when payout identity / reveal state changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    bootstrapped,
+    state.street,
+    state.handId,
+    state.version,
+    state.players.map((p) => `${p.seat}:${p.revealed}:${p.mucked}`).join('|'),
+  ]);
 
   useEffect(() => {
     if (!bootstrapped) return;
@@ -745,6 +781,22 @@ export function OfflineTableView({
     setState(result.state);
   };
 
+  const doShowHand = () => {
+    if (mySeat === undefined) return;
+    const result = showHand(state, mySeat);
+    if (!result.ok) return;
+    syncChat(result.state, result.events);
+    setState(result.state);
+  };
+
+  const doMuckHand = () => {
+    if (mySeat === undefined) return;
+    const result = muckHand(state, mySeat);
+    if (!result.ok) return;
+    syncChat(result.state, result.events);
+    setState(result.state);
+  };
+
   const doTopUp = () => {
     if (mySeat === undefined || !canTopUp) return;
     const result = topUp(state, mySeat, config.buyIn, config.buyIn);
@@ -792,6 +844,16 @@ export function OfflineTableView({
     showWinModal,
     youWon,
   } = useHandPresentation(publicTable, HUMAN_ID, dismissedWinHandId);
+  const winPctBySeat = useRevealedWinPct(
+    publicTable?.players,
+    publicTable?.community,
+    Boolean(
+      publicTable &&
+        (publicTable.street === 'payout' ||
+          publicTable.street === 'showdown' ||
+          publicTable.players.some((p) => p.holeCards)),
+    ),
+  );
 
   if (!publicTable || !bootstrapped) {
     return <p className="text-muted">Dealing offline table…</p>;
@@ -900,6 +962,9 @@ export function OfflineTableView({
             canTopUp,
             topUpLabel: 'Top up',
             onTopUp: doTopUp,
+            canShowMuck: Boolean(priv?.canShowMuck),
+            onShowHand: doShowHand,
+            onMuckHand: doMuckHand,
           }}
         />
   );
@@ -930,7 +995,7 @@ export function OfflineTableView({
       chatOpen={chatOpen}
       onChatOpenChange={setChatOpen}
       chatFocusRequestId={chatFocusRequestId}
-      actionsExpanded={!!isMyTurn || canStartHand || canSitIn}
+      actionsExpanded={!!isMyTurn || canStartHand || canSitIn || Boolean(priv?.canShowMuck)}
       actions={actionControls}
     >
       <div className="flex min-h-0 flex-1 flex-col">
@@ -980,6 +1045,7 @@ export function OfflineTableView({
               potTotal={potTotal}
               highlightMode={highlightMode}
               winningCards={winningCards}
+              winPctBySeat={winPctBySeat}
             />
           ) : (
             <>
@@ -1044,6 +1110,9 @@ export function OfflineTableView({
                 landscape={landscape}
                 isDealer={publicTable.dealerButton === p.seat}
                 showReady={betweenHands && !!p.ready}
+                winPct={
+                  p.holeCards && winPctBySeat.has(p.seat) ? winPctBySeat.get(p.seat)! : null
+                }
               />
             );
           })}

@@ -12,6 +12,8 @@ import {
   standUp,
   leaveSeat,
   startHand,
+  showHand,
+  muckHand,
   topUp,
   toPrivateView,
   toPublicView,
@@ -895,6 +897,7 @@ export class Room {
       this.scheduleBotAutoReady();
     }
     if (this.state.street === 'payout') {
+      this.applyBotShowMuck();
       if (this.state.handId && this.state.handId !== this.lastRecordedHandId) {
         this.lastRecordedHandId = this.state.handId;
         try {
@@ -1361,6 +1364,49 @@ export class Room {
     return { ok: true };
   }
 
+  doShowHand(userId: string, seat: number): { ok: boolean; error?: string } {
+    if (this.seatOf(userId) !== seat) return { ok: false, error: 'Not your seat' };
+    const result = showHand(this.state, seat);
+    if (!result.ok) return { ok: false, error: result.error };
+    this.state = result.state;
+    this.announceEngineEvents(result.events);
+    void this.afterStateChange();
+    return { ok: true };
+  }
+
+  doMuckHand(userId: string, seat: number): { ok: boolean; error?: string } {
+    if (this.seatOf(userId) !== seat) return { ok: false, error: 'Not your seat' };
+    const result = muckHand(this.state, seat);
+    if (!result.ok) return { ok: false, error: result.error };
+    this.state = result.state;
+    this.announceEngineEvents(result.events);
+    void this.afterStateChange();
+    return { ok: true };
+  }
+
+  /** Bots: show unrevealed winners; muck losers during payout. */
+  private applyBotShowMuck(): void {
+    if (this.state.street !== 'payout') return;
+    const winnerSeats = new Set(this.state.winners.map((w) => w.seat));
+    let changed = false;
+    for (const p of this.state.players) {
+      if (!p.userId || !isBotUserId(p.userId)) continue;
+      if (!p.holeCards || p.revealed || p.mucked) continue;
+      if (p.status === 'folded' || p.status === 'empty') continue;
+      const result = winnerSeats.has(p.seat)
+        ? showHand(this.state, p.seat)
+        : muckHand(this.state, p.seat);
+      if (result.ok) {
+        this.state = result.state;
+        this.announceEngineEvents(result.events);
+        changed = true;
+      }
+    }
+    if (changed) {
+      // Events already announced; broadcast happens in afterStateChange caller.
+    }
+  }
+
   /** Apply deferred sit-outs once the hand is over. */
   private applyPendingSitOuts(): void {
     if (this.pendingSitOutUserIds.size === 0) return;
@@ -1548,6 +1594,12 @@ export class Room {
             }
           }
         }
+      } else if (e.type === 'hand_shown') {
+        const name = this.state.players[e.seat]?.name ?? `Seat ${e.seat}`;
+        this.systemChat(name, 'shows hand');
+      } else if (e.type === 'hand_mucked') {
+        const name = this.state.players[e.seat]?.name ?? `Seat ${e.seat}`;
+        this.systemChat(name, 'mucks');
       } else if (e.type === 'blinds_posted') {
         const sb = this.state.players[e.sbSeat]?.name ?? `Seat ${e.sbSeat}`;
         const bb = this.state.players[e.bbSeat]?.name ?? `Seat ${e.bbSeat}`;
@@ -1630,9 +1682,7 @@ export class Room {
     };
 
     const line = pickBotBanterLine(opts);
-    // Chat replies are templates only; action/react/win may still use the LLM.
-    const templatesOnly = trigger.kind === 'chat_reply';
-    if (!templatesOnly && this.banterLlm?.isConfigured()) {
+    if (this.banterLlm?.isConfigured()) {
       void this.banterLlm
         .generateBanter({
           personalityId: style.id,

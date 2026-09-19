@@ -7,6 +7,7 @@ export type PageCopyKey =
   | 'contests'
   | 'friends'
   | 'solo'
+  | 'chat'
   | 'arcade'
   | 'ludo'
   | 'snakes'
@@ -33,6 +34,7 @@ export const PAGE_COPY_KEYS: PageCopyKey[] = [
   'contests',
   'friends',
   'solo',
+  'chat',
   'arcade',
   'ludo',
   'snakes',
@@ -50,6 +52,7 @@ export const PAGE_COPY_LABELS: Record<PageCopyKey, string> = {
   contests: 'Contests',
   friends: 'Friends',
   solo: 'Offline',
+  chat: 'Bots',
   arcade: 'Arcade',
   ludo: 'Ludo',
   snakes: 'Snakes & Ladders',
@@ -67,6 +70,7 @@ export const PAGE_COPY_PATHS: Record<PageCopyKey, string> = {
   contests: '/contests',
   friends: '/friends',
   solo: '/solo',
+  chat: '/chat',
   arcade: '/arcade',
   ludo: '/ludo',
   snakes: '/snakes',
@@ -80,7 +84,7 @@ export const PAGE_COPY_PATHS: Record<PageCopyKey, string> = {
 export const PAGE_COPY_GROUPS: { label: string; keys: PageCopyKey[] }[] = [
   {
     label: 'Lobby',
-    keys: ['host', 'join', 'public', 'contests', 'friends', 'solo'],
+    keys: ['host', 'join', 'public', 'contests', 'friends', 'solo', 'chat'],
   },
   {
     label: 'Arcade',
@@ -134,6 +138,13 @@ export const DEFAULT_PAGES_COPY: PagesCopy = {
       "Train against bots on this device with the same Hold'em rules as live tables, no connection or lobby, and a seat count you choose before the first deal.",
     image: '/home-offline.png',
     imageAlt: 'You versus a bot at a private practice table',
+  },
+  chat: {
+    title: 'Chat with Bots',
+    subtitle:
+      'Talk to BoostBot for sincere compliments or BanterBot for sharp roasts — FunGPT personalities, no table required.',
+    image: '/home-offline.png',
+    imageAlt: 'Chat with BoostBot and BanterBot',
   },
   arcade: {
     title: 'Arcade',

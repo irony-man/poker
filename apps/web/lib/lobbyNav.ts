@@ -7,7 +7,8 @@ export type LobbyHref =
   | '/public'
   | '/contests'
   | '/solo'
-  | '/friends';
+  | '/friends'
+  | '/chat';
 
 export const LOBBY_NAV: { href: LobbyHref; label: string }[] = [
   { href: '/play', label: 'Host' },
@@ -15,6 +16,7 @@ export const LOBBY_NAV: { href: LobbyHref; label: string }[] = [
   { href: '/public', label: 'Public Tables' },
   { href: '/contests', label: 'Contests' },
   { href: '/friends', label: 'Friends' },
+  { href: '/chat', label: 'Bots' },
   { href: '/solo', label: 'Offline' },
 ];
 
@@ -64,6 +66,9 @@ export function isLobbyNavActive(
   if (href === '/') return pathname === '/';
   if (href === '/friends') {
     return pathname === '/friends' || pathname.startsWith('/friends/');
+  }
+  if (href === '/chat') {
+    return pathname === '/chat' || pathname.startsWith('/chat/');
   }
   if (href === '/play' || href === '/play?mode=join') {
     if (!isPlayPath(pathname)) return false;

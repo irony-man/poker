@@ -91,6 +91,8 @@ export {
   type CourtpieceChatLine,
 } from './courtpiece';
 export { uploadOfflineHand, fetchMyHands, type UploadHandPayload, type MyHandRow } from './history';
+export { fetchBotBanterLine } from './botBanter';
+export { streamBotChat, type BotChatPersona, type BotChatTurn } from './botChat';
 export {
   fetchPublicSite,
   fetchPublicBotGroups,

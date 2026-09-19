@@ -13,11 +13,19 @@ function OpponentSeat({
   isToAct,
   isDealer,
   onSit,
+  focused,
+  onFocus,
+  winPct,
+  showCards,
 }: {
   player: PublicPlayer;
   isToAct: boolean;
   isDealer: boolean;
   onSit?: () => void;
+  focused?: boolean;
+  onFocus?: () => void;
+  winPct?: number | null;
+  showCards?: boolean;
 }) {
   const empty = player.status === 'empty';
   const folded = player.status === 'folded';
@@ -39,13 +47,13 @@ function OpponentSeat({
     );
   }
 
-  return (
-    <div className="flex min-w-0 flex-1 flex-col items-center gap-0.5">
+  const body = (
+    <>
       <div className="relative">
         <div
           className={`overflow-hidden rounded-full ${
             isToAct ? 'ring-2 ring-white ring-offset-2 ring-offset-transparent' : ''
-          }`}
+          } ${focused ? 'ring-2 ring-amber-300 ring-offset-2 ring-offset-transparent' : ''}`}
         >
           <PlayerAvatar
             avatarId={player.avatarId}
@@ -58,6 +66,11 @@ function OpponentSeat({
         {isDealer ? (
           <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-white text-[8px] font-black text-black">
             D
+          </span>
+        ) : null}
+        {winPct != null ? (
+          <span className="absolute -left-1 -top-1 rounded bg-black/75 px-1 py-0.5 text-[9px] font-bold tabular-nums text-amber-200">
+            {winPct}%
           </span>
         ) : null}
       </div>
@@ -75,6 +88,9 @@ function OpponentSeat({
       >
         {formatMoneyAmount(player.stack)}
       </span>
+      {showCards && player.holeCards ? (
+        <HoleCardFan cards={player.holeCards} compact />
+      ) : null}
       {player.bet > 0 ? (
         <span className="mt-0.5">
           <ChipDisc amount={player.bet} size={22} showValue />
@@ -82,8 +98,22 @@ function OpponentSeat({
       ) : (
         <span className="h-[22px]" />
       )}
-    </div>
+    </>
   );
+
+  if (onFocus) {
+    return (
+      <button
+        type="button"
+        onClick={onFocus}
+        className="flex min-w-0 flex-1 flex-col items-center gap-0.5"
+      >
+        {body}
+      </button>
+    );
+  }
+
+  return <div className="flex min-w-0 flex-1 flex-col items-center gap-0.5">{body}</div>;
 }
 
 export function StackedTableLayout({
@@ -96,6 +126,9 @@ export function StackedTableLayout({
   winningCards,
   onSit,
   canSit,
+  focusedSeat,
+  onFocusSeat,
+  winPctBySeat,
 }: {
   table: PublicTable;
   priv: PrivateView | null;
@@ -106,6 +139,9 @@ export function StackedTableLayout({
   winningCards?: Set<string>;
   onSit?: (seat: number) => void;
   canSit?: boolean;
+  focusedSeat?: number | null;
+  onFocusSeat?: (seat: number) => void;
+  winPctBySeat?: Map<number, number>;
 }) {
   const mySeat = table.players.find((p) => p.userId === userId)?.seat;
   const hero = mySeat !== undefined ? table.players[mySeat] : undefined;
@@ -119,6 +155,18 @@ export function StackedTableLayout({
   const showHeroHud = !spectating && mySeat !== undefined;
   const potAmount = Math.max(potTotal, table.pot);
   const sidePotCount = table.sidePots?.length ?? 0;
+
+  const focusPlayer =
+    spectating && focusedSeat != null
+      ? table.players.find((p) => p.seat === focusedSeat)
+      : undefined;
+  const focusHole = focusPlayer?.holeCards ?? null;
+  const focusHandName =
+    focusHole != null ? computeHeroHandName(focusHole, table.community) : null;
+  const focusWinPct =
+    focusedSeat != null && winPctBySeat?.has(focusedSeat)
+      ? winPctBySeat.get(focusedSeat)!
+      : null;
 
   return (
     <div className="absolute inset-0 flex min-h-0 flex-col overflow-hidden felt-surface px-3 pb-3 pt-2">
@@ -136,6 +184,16 @@ export function StackedTableLayout({
             onSit={
               canSit && p.status === 'empty' && onSit ? () => onSit(p.seat) : undefined
             }
+            focused={spectating && focusedSeat === p.seat}
+            onFocus={
+              spectating && p.status !== 'empty' && onFocusSeat
+                ? () => onFocusSeat(p.seat)
+                : undefined
+            }
+            winPct={
+              p.holeCards && winPctBySeat?.has(p.seat) ? winPctBySeat.get(p.seat)! : null
+            }
+            showCards={Boolean(p.holeCards)}
           />
         ))}
       </div>
@@ -196,6 +254,38 @@ export function StackedTableLayout({
             />
           ) : (
             <div className="h-[7.25rem]" />
+          )}
+        </div>
+      ) : spectating ? (
+        <div className="mt-2 flex shrink-0 flex-col items-center">
+          {focusPlayer ? (
+            <>
+              <p className="mb-0.5 max-w-full truncate text-xs font-semibold text-white">
+                {focusPlayer.name ?? `Seat ${focusPlayer.seat}`}
+                {focusWinPct != null ? (
+                  <span className="ml-2 tabular-nums text-amber-200">{focusWinPct}%</span>
+                ) : null}
+              </p>
+              {focusHandName ? (
+                <p className="table-label-on-felt mb-1 text-xs font-medium uppercase tracking-wide text-on-chrome/85">
+                  {focusHandName}
+                </p>
+              ) : null}
+              {focusHole ? (
+                <HoleCardFan
+                  cards={focusHole}
+                  large
+                  handId={table.handId}
+                  winningCards={highlightMode ? winningCards : null}
+                />
+              ) : (
+                <p className="mb-2 text-[11px] text-on-chrome/75">
+                  {focusPlayer.mucked ? 'Mucked' : 'Hand not shown'}
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="text-[11px] text-on-chrome/75">Tap a player to focus</p>
           )}
         </div>
       ) : (

@@ -540,4 +540,55 @@ describe('RoomManager', () => {
     expect(rooms.terminateIdleRooms(later)).toEqual([]);
     expect(rooms.get(meta.id)).toBeDefined();
   });
+
+  it('uses the LLM for chat_reply and falls back to templates on miss', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+    const kv = new MemoryKv();
+    const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-chat-llm-${Date.now()}`));
+    const rooms = new RoomManager(kv, history);
+    const fetchFn = vi.fn(async () =>
+      Response.json({
+        choices: [{ message: { content: 'Keep talking, I need the material.' } }],
+      }),
+    ) as unknown as typeof fetch;
+    const { BotBanterLlmService } = await import('./bot/bot-banter-llm.service.js');
+    rooms.setBanterLlm(
+      BotBanterLlmService.create({
+        baseUrl: 'http://llm.test',
+        model: 'banterbot',
+        fetchFn,
+      }),
+    );
+    const meta = rooms.create({
+      name: 'Banter',
+      hostUserId: 'host',
+      isPrivate: true,
+      config: { ...cashConfig() },
+    });
+    const room = rooms.get(meta.id)!;
+    const sent: Array<{ type?: string; userId?: string; text?: string }> = [];
+    room.attach({
+      userId: 'host',
+      name: 'Host',
+      avatarId: 0,
+      avatarUrl: null,
+      send: (m) => sent.push(m as { type?: string; userId?: string; text?: string }),
+    });
+    expect((await room.sit('host', 'Host', 0, 1000)).ok).toBe(true);
+    expect(room.addBot('host').ok).toBe(true);
+    const bot = room.state.players.find((p) => p.userId?.startsWith('bot:'));
+    expect(bot?.userId).toBeTruthy();
+    room.chat('host', 'Host', `@${bot!.name} hey`);
+    await vi.runAllTimersAsync();
+    const botLines = sent.filter((m) => m.type === 'chat' && m.userId === bot!.userId);
+    expect(botLines.some((m) => m.text === 'Keep talking, I need the material.')).toBe(true);
+    expect(fetchFn).toHaveBeenCalled();
+    const [, init] = (fetchFn as ReturnType<typeof vi.fn>).mock.calls[0]!;
+    const body = JSON.parse((init as RequestInit).body as string) as {
+      messages: Array<{ content: string }>;
+    };
+    expect(body.messages[1]?.content).toContain('hey');
+    vi.useRealTimers();
+  });
 });

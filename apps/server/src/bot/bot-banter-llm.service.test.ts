@@ -62,6 +62,33 @@ describe('BotBanterLlmService', () => {
     });
   });
 
+  it('asks for a brief reply on chat_reply', async () => {
+    const fetchFn = vi.fn(async () =>
+      Response.json({
+        choices: [{ message: { content: 'Noted.' } }],
+      }),
+    ) as unknown as typeof fetch;
+    const svc = BotBanterLlmService.create({
+      baseUrl: 'http://llm.test',
+      model: 'banterbot',
+      fetchFn,
+    });
+    const line = await svc.generateBanter({
+      personalityId: 'balanced',
+      botName: 'AceBot',
+      trigger: { kind: 'chat_reply' },
+      context: { actorName: 'Sam', message: 'nice hand' },
+    });
+    expect(line).toBe('Noted.');
+    const [, init] = (fetchFn as ReturnType<typeof vi.fn>).mock.calls[0]!;
+    const body = JSON.parse((init as RequestInit).body as string) as {
+      model: string;
+      messages: Array<{ content: string }>;
+    };
+    expect(body.model).toBe('banterbot');
+    expect(body.messages[1]?.content).toContain('nice hand');
+  });
+
   it('returns null on HTTP failure', async () => {
     const fetchFn = vi.fn(async () => new Response('nope', { status: 500 })) as unknown as typeof fetch;
     const svc = BotBanterLlmService.create({

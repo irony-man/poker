@@ -33,6 +33,7 @@ export type PageCopyKey =
   | 'contests'
   | 'friends'
   | 'solo'
+  | 'chat'
   | 'arcade'
   | 'ludo'
   | 'snakes'
@@ -291,6 +292,15 @@ export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
     imageAlt: 'Stack of red and white chips',
     imageFirst: true,
   },
+  {
+    title: 'Chat with Bots',
+    body: 'Talk to BoostBot for sincere compliments or BanterBot for sharp roasts — FunGPT personalities, no table required.',
+    cta: 'Open Chat',
+    href: '/chat',
+    image: '/home-offline.png',
+    imageAlt: 'Chat with BoostBot and BanterBot',
+    imageFirst: false,
+  },
 ];
 
 export const PAGE_COPY_KEYS: PageCopyKey[] = [
@@ -300,6 +310,7 @@ export const PAGE_COPY_KEYS: PageCopyKey[] = [
   'contests',
   'friends',
   'solo',
+  'chat',
   'arcade',
   'ludo',
   'snakes',
@@ -352,6 +363,13 @@ export const DEFAULT_PAGES_COPY: PagesCopy = {
       "Train against bots on this device with the same Hold'em rules as live tables, no connection or lobby, and a seat count you choose before the first deal.",
     image: '/home-offline.png',
     imageAlt: 'You versus a bot at a private practice table',
+  },
+  chat: {
+    title: 'Chat with Bots',
+    subtitle:
+      'Talk to BoostBot for sincere compliments or BanterBot for sharp roasts — FunGPT personalities, no table required.',
+    image: '/home-offline.png',
+    imageAlt: 'Chat with BoostBot and BanterBot',
   },
   arcade: {
     title: 'Arcade',
@@ -413,6 +431,7 @@ export const PAGE_COPY_LABELS: Record<PageCopyKey, string> = {
   contests: 'Contests (/contests)',
   friends: 'Friends (/friends)',
   solo: 'Offline setup (/solo)',
+  chat: 'Bots (/chat)',
   arcade: 'Arcade (/arcade)',
   ludo: 'Ludo (/ludo)',
   snakes: 'Snakes & Ladders (/snakes)',

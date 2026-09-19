@@ -150,6 +150,7 @@ describe('site config + runtime economy', () => {
     await seeded.init();
     expect(seeded.getPages('v1').host.title).toBe('Custom Classic Host');
     expect(seeded.getPages('v2').host.title).toBe('Custom Classic Host');
+    expect(seeded.getPages('v1').chat.title).toBe('Chat with Bots');
     expect(seeded.getHomeFeatures('v1')[0]!.title).toBe('Classic Contests');
     expect(seeded.getHomeFeatures('v2')[0]!.title).toBe('Classic Contests');
   });

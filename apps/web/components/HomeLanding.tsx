@@ -58,6 +58,15 @@ export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
     imageAlt: 'Stack of red and white chips',
     imageFirst: true,
   },
+  {
+    title: 'Chat with Bots',
+    body: 'Talk to BoostBot for sincere compliments or BanterBot for sharp roasts — FunGPT personalities, no table required.',
+    cta: 'Open Chat',
+    href: '/chat',
+    image: imageAssetUrl('home-offline.png'),
+    imageAlt: 'Chat with BoostBot and BanterBot',
+    imageFirst: false,
+  },
 ];
 
 export function HomeLanding() {

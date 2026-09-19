@@ -6,7 +6,7 @@ import type {
 } from '@poker/engine';
 
 const DEFAULT_PATH = '/v1/chat/completions';
-const DEFAULT_TIMEOUT_MS = 1500;
+const DEFAULT_TIMEOUT_MS = 8000;
 const MAX_LINE_CHARS = 160;
 
 export interface GenerateBanterInput {
@@ -38,6 +38,13 @@ const PERSONALITY_VOICE: Record<BotPersonalityId, string> = {
   lag: 'tricky LAG, talks about lines and pressure',
   humanoid: 'natural human poker chat, thoughtful',
 };
+
+function resolveBanterTimeoutMs(explicit?: number): number {
+  if (explicit != null && Number.isFinite(explicit) && explicit > 0) return explicit;
+  const env = Number(process.env.BANTER_LLM_TIMEOUT_MS);
+  if (Number.isFinite(env) && env > 0) return env;
+  return DEFAULT_TIMEOUT_MS;
+}
 
 /** Strip quotes/newlines and enforce length; null if unusable. */
 export function sanitizeBanterLine(raw: string | null | undefined): string | null {
@@ -122,9 +129,9 @@ export class BotBanterLlmService {
     const base = (config.baseUrl ?? process.env.BANTER_LLM_BASE_URL ?? '').replace(/\/$/, '');
     this.baseUrl = base || null;
     this.apiKey = (config.apiKey ?? process.env.BANTER_LLM_API_KEY)?.trim() || null;
-    this.model = config.model ?? process.env.BANTER_LLM_MODEL?.trim() ?? 'banter';
+    this.model = config.model ?? process.env.BANTER_LLM_MODEL?.trim() ?? 'banterbot';
     this.path = config.path ?? process.env.BANTER_LLM_PATH?.trim() ?? DEFAULT_PATH;
-    this.timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.timeoutMs = resolveBanterTimeoutMs(config.timeoutMs);
     this.fetchFn = config.fetchFn ?? fetch;
   }
 

@@ -616,6 +616,16 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
         if (!result.ok) send({ type: 'error', message: result.error ?? 'Sit in failed' });
         break;
       }
+      case 'show_hand': {
+        const result = r.doShowHand(userId, msg.seat);
+        if (!result.ok) send({ type: 'error', message: result.error ?? 'Show failed' });
+        break;
+      }
+      case 'muck_hand': {
+        const result = r.doMuckHand(userId, msg.seat);
+        if (!result.ok) send({ type: 'error', message: result.error ?? 'Muck failed' });
+        break;
+      }
       case 'top_up': {
         const result = await r.doTopUp(userId, msg.seat, msg.amount);
         if (!result.ok) send({ type: 'error', message: result.error ?? 'Top-up failed' });

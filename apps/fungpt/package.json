@@ -1,0 +1,10 @@
+{
+  "name": "@poker/fungpt",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "python3 -m uvicorn server:app --host 127.0.0.1 --port 8000 --reload",
+    "start": "python3 -m uvicorn server:app --host 127.0.0.1 --port 8000",
+    "test": "python3 -m unittest discover -s . -p 'test_*.py'"
+  }
+}

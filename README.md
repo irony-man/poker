@@ -54,6 +54,7 @@ Same pattern works with OpenRouter, Together, Fireworks, etc. (set `BANTER_LLM_B
 **Local BanterBot sidecar (dev or GPU host):**
 
 ```bash
+# Hugging Face weights use Git LFS (sudo apt install git-lfs && git lfs install)
 ./scripts/download-banterbot-weights.sh
 pip install -r apps/fungpt/requirements.txt
 # plus torch/transformers (see apps/fungpt/Dockerfile)

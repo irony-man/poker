@@ -97,6 +97,8 @@ Then `docker compose up -d` (or `./scripts/deploy-vm.sh`). No web rebuild.
 2. **BanterBot sidecar profile** (download weights once; GPU strongly preferred):
 
 ```bash
+sudo apt update && sudo apt install -y git-lfs
+git lfs install
 ./scripts/download-banterbot-weights.sh
 BANTER_LLM_BASE_URL=http://fungpt:8000
 BANTER_LLM_API_KEY=optional-secret

@@ -18,6 +18,7 @@ RUN pip install --no-cache-dir -r /app/requirements.txt \
   && pip install --no-cache-dir \
     "transformers==4.41.2" \
     "accelerate>=0.33" \
+    "einops>=0.7" \
     "sentencepiece>=0.2" \
     "protobuf>=4"
 

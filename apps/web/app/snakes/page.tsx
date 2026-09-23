@@ -90,7 +90,7 @@ export default function SnakesHostPage() {
     >
       <form onSubmit={onCreate}>
         <LobbySplitCard
-          imageSrc={resolvePublicImage(pageCopy.image ?? '/home-offline.png')}
+          imageSrc={resolvePublicImage(pageCopy.image ?? '/home-offline.webp')}
           imageAlt={pageCopy.imageAlt ?? 'Host Snakes & Ladders with no stakes'}
         >
           <ChoiceRow

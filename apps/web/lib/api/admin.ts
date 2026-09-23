@@ -61,11 +61,29 @@ export type BotPersonalityId =
   | 'lag'
   | 'humanoid';
 
+export interface BotGroupLabel {
+  id: string;
+  name: string;
+}
+
+/** Ordered picker rows (admin CRUD). */
+export type BotGroupLabels = BotGroupLabel[];
+
+export const DEFAULT_BOT_GROUP_LABELS: BotGroupLabels = [
+  { id: 'level', name: 'Level' },
+  { id: 'groups', name: 'Groups' },
+  { id: 'movies', name: 'Movies' },
+];
+
 export interface BotGroup {
   id: string;
   name: string;
   names: string[];
   isDefault: boolean;
+  /** Picker row this pack appears on. */
+  labelId: string;
+  /** Short blurb shown under the selected pack. */
+  description: string;
   /** Group style when a name has no override; null = auto (engine by name/hash). */
   defaultPersonality: BotPersonalityId | null;
   /** Per display-name style overrides. */
@@ -77,6 +95,10 @@ export interface PublicBotGroup {
   id: string;
   name: string;
   isDefault: boolean;
+  labelId?: string;
+  description?: string;
+  /** @deprecated Prefer labelId. */
+  kind?: string;
   nameCount: number;
   /** Display names used when seating bots (offline needs these client-side). */
   names?: string[];
@@ -300,18 +322,20 @@ export async function fetchAdminGames(sessionToken: string) {
 export async function fetchAdminBotGroups(sessionToken: string) {
   return authedFetch('/api/admin/bot-groups', { sessionToken }) as Promise<{
     groups: BotGroup[];
+    labels: BotGroupLabels;
   }>;
 }
 
 export async function patchAdminBotGroups(
   sessionToken: string,
   groups: BotGroup[],
-): Promise<{ groups: BotGroup[] }> {
+  labels?: BotGroupLabels,
+): Promise<{ groups: BotGroup[]; labels: BotGroupLabels }> {
   return authedFetch('/api/admin/bot-groups', {
     sessionToken,
     method: 'PATCH',
-    body: { groups },
-  }) as Promise<{ groups: BotGroup[] }>;
+    body: { groups, ...(labels ? { labels } : {}) },
+  }) as Promise<{ groups: BotGroup[]; labels: BotGroupLabels }>;
 }
 
 export async function fetchAdminSounds(sessionToken: string): Promise<TableSoundsConfig> {
@@ -327,6 +351,27 @@ export async function patchAdminSounds(
     method: 'PATCH',
     body,
   }) as Promise<TableSoundsConfig>;
+}
+
+export type AvatarPresetsConfig = {
+  urls: string[];
+};
+
+export async function fetchAdminAvatarPresets(
+  sessionToken: string,
+): Promise<AvatarPresetsConfig> {
+  return authedFetch('/api/admin/avatar-presets', { sessionToken }) as Promise<AvatarPresetsConfig>;
+}
+
+export async function patchAdminAvatarPresets(
+  sessionToken: string,
+  body: AvatarPresetsConfig,
+): Promise<AvatarPresetsConfig> {
+  return authedFetch('/api/admin/avatar-presets', {
+    sessionToken,
+    method: 'PATCH',
+    body,
+  }) as Promise<AvatarPresetsConfig>;
 }
 
 export async function requestAdminSoundUploadUrl(
@@ -355,7 +400,8 @@ export type SiteImagePurpose =
   | 'friends'
   | 'solo'
   | 'signIn'
-  | 'signUp';
+  | 'signUp'
+  | 'avatarPreset';
 
 export async function requestAdminImageUploadUrl(
   sessionToken: string,

@@ -22,12 +22,16 @@ export class SiteController {
         id: g.id,
         name: g.name,
         isDefault: g.isDefault,
+        labelId: g.labelId,
+        description: g.description,
         nameCount: g.names.length,
         names: g.names,
         defaultPersonality: g.defaultPersonality,
         namePersonalities: g.namePersonalities,
       })),
+      botGroupLabels: this.site.getBotGroupLabels(),
       sounds: this.site.getSounds(),
+      avatarPresets: this.site.getAvatarPresets(),
     };
   }
 }

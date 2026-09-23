@@ -29,7 +29,7 @@ export function AdminImageField({
           label="Image path or URL"
           value={image}
           onChange={(e) => onImage(e.target.value)}
-          placeholder="/host-table.png"
+          placeholder="/host-table.webp"
           maxLength={500}
         />
         <Button

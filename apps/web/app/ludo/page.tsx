@@ -90,7 +90,7 @@ export default function LudoHostPage() {
     >
       <form onSubmit={onCreate}>
         <LobbySplitCard
-          imageSrc={resolvePublicImage(pageCopy.image ?? '/home-offline.png')}
+          imageSrc={resolvePublicImage(pageCopy.image ?? '/home-offline.webp')}
           imageAlt={pageCopy.imageAlt ?? 'Host a Ludo side quest with no stakes'}
         >
           <ChoiceRow

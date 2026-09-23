@@ -1,4 +1,4 @@
-import type { ReactNode, TdHTMLAttributes, ThHTMLAttributes } from 'react';
+import type { HTMLAttributes, ReactNode, TdHTMLAttributes, ThHTMLAttributes } from 'react';
 import { FORM_LABEL_CLASS } from '@/components/ui/TextField';
 import Link from 'next/link';
 import { cn } from '@/lib/cn';
@@ -6,6 +6,29 @@ import { cn } from '@/lib/cn';
 export const LABEL_CLASS = FORM_LABEL_CLASS;
 
 export const ADMIN_SAVE_BTN = 'min-h-11 w-full sm:w-auto sm:min-w-[12rem]';
+
+export const ADMIN_TABLE_SHELL =
+  'overflow-x-auto overflow-hidden rounded-xl border border-sidebar/12';
+
+export const ADMIN_TABLE_HEAD_CELL = 'px-3 py-2.5';
+
+export const ADMIN_ROW_DIVIDER = 'border-b border-sidebar/6 last:border-0';
+
+export const ADMIN_ROW_INTERACTIVE =
+  'cursor-pointer transition hover:bg-sidebar/[0.03]';
+
+export const ADMIN_CELL_PRIMARY = 'font-medium text-primary';
+
+export const ADMIN_CELL_PRIMARY_DISPLAY =
+  'font-display text-sm font-semibold text-primary';
+
+export const ADMIN_CELL_SECONDARY = 'text-sm text-muted';
+
+export const ADMIN_CELL_MONO = 'font-mono text-xs text-primary';
+
+export const ADMIN_CELL_NUMBERS_MUTED = 'tabular-nums text-muted';
+
+export const ADMIN_CELL_NUMBERS_PRIMARY = 'tabular-nums text-primary';
 
 export function Section({
   id,
@@ -58,8 +81,8 @@ export function StatCard({
     </>
   );
   const className = cn(
-    'min-w-[7.5rem] flex-1 rounded-xl border border-sidebar/10 bg-white px-4 py-3 shadow-sm',
-    href && 'transition hover:border-sidebar/25',
+    'min-w-[7.5rem] flex-1 rounded-xl border border-sidebar/12 bg-raised px-4 py-3 shadow-sm',
+    href && 'transition hover:border-sidebar/25 hover:brightness-[0.98]',
   );
   if (href) {
     return (
@@ -79,8 +102,145 @@ export function Subhead({ children }: { children: ReactNode }) {
   );
 }
 
+export function DetailTitle({ children }: { children: ReactNode }) {
+  return (
+    <h3 className="font-display text-lg font-bold tracking-tight text-primary">
+      {children}
+    </h3>
+  );
+}
+
 export function EmptyState({ children }: { children: ReactNode }) {
   return <p className="admin-empty">{children}</p>;
+}
+
+export function AdminTableShell({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return <div className={cn(ADMIN_TABLE_SHELL, className)}>{children}</div>;
+}
+
+export function AdminTableHeadRow({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn('admin-table-head', ADMIN_TABLE_HEAD_CELL, className)}>
+      {children}
+    </div>
+  );
+}
+
+export function AdminTableBodyRow({
+  children,
+  className,
+  interactive,
+  active,
+}: {
+  children: ReactNode;
+  className?: string;
+  interactive?: boolean;
+  active?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        ADMIN_TABLE_HEAD_CELL,
+        ADMIN_ROW_DIVIDER,
+        interactive && ADMIN_ROW_INTERACTIVE,
+        active && 'bg-sidebar/[0.03]',
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function AdminExpandPanel({
+  children,
+  className,
+  id,
+}: {
+  children: ReactNode;
+  className?: string;
+  id?: string;
+}) {
+  return (
+    <div
+      id={id}
+      className={cn(
+        'border-t border-sidebar/8 bg-page/[0.55] px-3 py-3',
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function AdminInset({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return <div className={cn('surface-row', className)}>{children}</div>;
+}
+
+export function PanelBlock({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        'space-y-3 rounded-xl border border-sidebar/12 bg-page/[0.55] p-4',
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function AdminList({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return <ul className={cn('surface-list', className)}>{children}</ul>;
+}
+
+export function AdminListRow({
+  children,
+  className,
+  ...rest
+}: HTMLAttributes<HTMLLIElement>) {
+  return (
+    <li
+      className={cn(
+        'flex items-center gap-2 px-3 py-2 transition hover:bg-sidebar/[0.03]',
+        className,
+      )}
+      {...rest}
+    >
+      {children}
+    </li>
+  );
 }
 
 export function DataTable({
@@ -93,12 +253,12 @@ export function DataTable({
   empty?: ReactNode;
 }) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-sidebar/10">
+    <AdminTableShell>
       <table className="w-full text-left text-sm" style={minWidth ? { minWidth } : undefined}>
         {children}
       </table>
       {empty}
-    </div>
+    </AdminTableShell>
   );
 }
 
@@ -114,7 +274,7 @@ export function THead({ children }: { children: ReactNode }) {
 
 export function Th({ children, className = '', ...rest }: ThHTMLAttributes<HTMLTableCellElement>) {
   return (
-    <th className={`px-3 py-2.5 ${className}`} {...rest}>
+    <th className={cn(ADMIN_TABLE_HEAD_CELL, className)} {...rest}>
       {children}
     </th>
   );
@@ -122,7 +282,7 @@ export function Th({ children, className = '', ...rest }: ThHTMLAttributes<HTMLT
 
 export function Td({ children, className = '', ...rest }: TdHTMLAttributes<HTMLTableCellElement>) {
   return (
-    <td className={`px-3 py-2.5 ${className}`} {...rest}>
+    <td className={cn(ADMIN_TABLE_HEAD_CELL, className)} {...rest}>
       {children}
     </td>
   );
@@ -139,7 +299,11 @@ export function Tr({
 }) {
   return (
     <tr
-      className={`border-b border-sidebar/6 last:border-b-0 ${onClick ? 'cursor-pointer hover:bg-sidebar/[0.03]' : ''} ${className}`}
+      className={cn(
+        ADMIN_ROW_DIVIDER,
+        onClick && ADMIN_ROW_INTERACTIVE,
+        className,
+      )}
       onClick={onClick}
     >
       {children}
@@ -159,7 +323,7 @@ export function CheckboxRow({
   hint?: string;
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-sidebar/10 bg-page/[0.04] px-3 py-3 text-sm text-primary">
+    <label className="surface-row flex cursor-pointer items-center gap-3 py-3 text-sm text-primary">
       <input
         type="checkbox"
         className="h-4 w-4 accent-sidebar"
@@ -199,15 +363,15 @@ export function SplitPane({
   children: ReactNode;
 }) {
   return (
-    <div className="grid min-h-[32rem] overflow-hidden rounded-xl border border-sidebar/10 bg-white lg:grid-cols-[minmax(13.5rem,18rem)_minmax(0,1fr)]">
+    <div className="grid min-h-[32rem] overflow-hidden rounded-xl border border-sidebar/12 bg-raised lg:grid-cols-[minmax(13.5rem,18rem)_minmax(0,1fr)]">
       <div
-        className="flex flex-col gap-0.5 overflow-y-auto border-b border-sidebar/10 bg-page/[0.06] p-2 lg:max-h-[min(70vh,44rem)] lg:border-b-0 lg:border-r"
+        className="flex flex-col gap-0.5 overflow-y-auto border-b border-sidebar/12 bg-sidebar/[0.08] p-2 lg:max-h-[min(70vh,44rem)] lg:border-b-0 lg:border-r"
         role="listbox"
         aria-label={sidebarLabel}
       >
         {sidebar}
       </div>
-      <div className="min-w-0 bg-white p-4 sm:p-6">{children}</div>
+      <div className="min-w-0 bg-raised/80 p-4 sm:p-6">{children}</div>
     </div>
   );
 }
@@ -242,7 +406,7 @@ export function SplitItem({
       className={`w-full rounded-lg px-3 py-2.5 text-left transition ${
         selected
           ? 'bg-sidebar text-on-chrome shadow-[0_4px_12px_rgb(29_4_50/0.16)]'
-          : 'text-primary hover:bg-white/80'
+          : 'text-primary hover:bg-sidebar/[0.08]'
       }`}
     >
       <span className="flex items-center justify-between gap-2">

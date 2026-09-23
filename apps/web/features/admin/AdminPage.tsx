@@ -18,6 +18,7 @@ import {
   fetchAdminPages,
   fetchAdminRoomSettings,
   fetchAdminSounds,
+  fetchAdminAvatarPresets,
   fetchAdminUsers,
   fetchMe,
   patchAdminAnnouncement,
@@ -27,6 +28,7 @@ import {
   patchAdminPages,
   patchAdminRoomSettings,
   patchAdminSounds,
+  patchAdminAvatarPresets,
   requestAdminSoundUploadUrl,
   requestAdminImageUploadUrl,
   resetAdminUserChips,
@@ -37,6 +39,7 @@ import {
   type AdminTableRow,
   type AdminUserRow,
   type BotGroup,
+  type BotGroupLabels,
   type CopyTheme,
   type HomeFeaturesByTheme,
   type HomeLandingFeature,
@@ -46,6 +49,7 @@ import {
   type SiteImagePurpose,
   type TableSoundKind,
   type TableSoundsConfig,
+  type AvatarPresetsConfig,
   DEFAULT_TABLE_SOUND_URLS,
   TABLE_SOUND_KINDS,
   TABLE_SOUND_LABELS,
@@ -54,21 +58,27 @@ import {
 import { formatMoneyLabel } from '@/lib/currency';
 import { DEFAULT_HOME_FEATURES } from '@/components/HomeLanding';
 import { clonePagesCopy, PAGE_COPY_KEYS, type PageCopyKey, type PagesCopy } from '@/lib/pageCopy';
+import { DEFAULT_AVATAR_PRESET_URLS } from '@/lib/avatars';
+import { optimizeImageFile } from '@/lib/optimizeUploadImage';
 import { readStoredSession } from '@/lib/session';
 import { useSession } from '@/lib/store';
 import { useLobbySession } from '@/lib/useLobbySession';
 import {
-  DEFAULT_BOT_NAME_LIST,
   applyBotGroupsImport,
+  defaultBotGroupLabels,
+  defaultBotGroups,
   emptyBotGroup,
+  emptyBotGroupLabel,
   groupBulkText,
   normalizeAdminBotGroup,
   parseBotGroupsJson,
   parseBulkBotRoster,
   pruneNamePersonalities,
+  remapGroupsAfterLabelDelete,
   rosterToBulkText,
   serializeBotGroupsJson,
   slugBotGroupId,
+  slugBotGroupLabelId,
   MAX_BOT_GROUPS,
   type BotGroupsImportMode,
 } from './botRoster';
@@ -169,9 +179,9 @@ function AdminPageInner() {
   const soundUploadKindRef = useRef<TableSoundKind | null>(null);
   const soundFileInputRef = useRef<HTMLInputElement>(null);
   const imageFileInputRef = useRef<HTMLInputElement>(null);
-  const imageUploadTargetRef = useRef<{ type: 'home'; index: number } | { type: 'page' } | null>(
-    null,
-  );
+  const imageUploadTargetRef = useRef<
+    { type: 'home'; index: number } | { type: 'page' } | { type: 'avatarPreset'; index: number } | null
+  >(null);
   const [imageUploadDisabled, setImageUploadDisabled] = useState(false);
   const [uploadingImage, setUploadingImage] = useState<string | null>(null);
   const [homeCopyTheme, setHomeCopyTheme] = useState<CopyTheme>('v1');
@@ -179,19 +189,23 @@ function AdminPageInner() {
   const [homeFeaturesByTheme, setHomeFeaturesByTheme] =
     useState<HomeFeaturesByTheme>(defaultHomeBags);
   const [pagesByTheme, setPagesByTheme] = useState<PagesByTheme>(defaultPagesBags);
-  const [botGroups, setBotGroups] = useState<BotGroup[]>(() => {
-    const g = emptyBotGroup();
-    g.id = 'classic';
-    g.name = 'Classic';
-    g.isDefault = true;
-    return [g];
-  });
+  const [avatarPresets, setAvatarPresets] = useState<AvatarPresetsConfig>(() => ({
+    urls: [...DEFAULT_AVATAR_PRESET_URLS],
+  }));
+  const [uploadingAvatarPresetIndex, setUploadingAvatarPresetIndex] = useState<number | null>(
+    null,
+  );
+  const [botGroups, setBotGroups] = useState<BotGroup[]>(() => defaultBotGroups());
+  const [botGroupLabels, setBotGroupLabels] = useState<BotGroupLabels>(() =>
+    defaultBotGroupLabels(),
+  );
   const [botNameDrafts, setBotNameDrafts] = useState<Record<string, string>>(() => {
-    const g = emptyBotGroup();
-    g.id = 'classic';
-    return { classic: rosterToBulkText(g.names, g.namePersonalities) };
+    const groups = defaultBotGroups();
+    return Object.fromEntries(
+      groups.map((g) => [g.id, rosterToBulkText(g.names, g.namePersonalities)]),
+    );
   });
-  const [openBotGroup, setOpenBotGroup] = useState<string | null>('classic');
+  const [openBotGroup, setOpenBotGroup] = useState<string | null>('medium');
   const [botNameInput, setBotNameInput] = useState('');
   const [showBulkEdit, setShowBulkEdit] = useState(false);
   const [showJsonImport, setShowJsonImport] = useState(false);
@@ -249,7 +263,8 @@ function AdminPageInner() {
         return;
       }
       setIsAdmin(true);
-      const [overview, eco, games, userList, home, pages, rooms, bots, soundCfg] = await Promise.all([
+      const [overview, eco, games, userList, home, pages, rooms, bots, soundCfg, avatarCfg] =
+        await Promise.all([
         fetchAdminOverview(token),
         fetchAdminEconomy(token),
         fetchAdminGames(token),
@@ -259,6 +274,7 @@ function AdminPageInner() {
         fetchAdminRoomSettings(token),
         fetchAdminBotGroups(token),
         fetchAdminSounds(token),
+        fetchAdminAvatarPresets(token),
       ]);
       setAnnouncement(overview.announcement);
       setEconomy(eco);
@@ -269,20 +285,23 @@ function AdminPageInner() {
       });
       setHomeFeaturesByTheme(bagsFromHomeResponse(home));
       setPagesByTheme(bagsFromPagesResponse(pages));
-      const groups = (bots.groups?.length
-        ? bots.groups
-        : [
-            {
-              id: 'classic',
-              name: 'Classic',
-              names: DEFAULT_BOT_NAME_LIST,
-              isDefault: true,
-              defaultPersonality: null as BotPersonalityId | null,
-              namePersonalities: {} as Record<string, BotPersonalityId>,
-            },
-          ]
-      ).map(normalizeAdminBotGroup);
+      setAvatarPresets({
+        urls: [...DEFAULT_AVATAR_PRESET_URLS].map(
+          (fallback, i) => avatarCfg.urls[i]?.trim() || fallback,
+        ),
+      });
+      const groups = (bots.groups?.length ? bots.groups : defaultBotGroups()).map(
+        normalizeAdminBotGroup,
+      );
       setBotGroups(groups);
+      setBotGroupLabels(
+        Array.isArray(bots.labels) && bots.labels.length > 0
+          ? bots.labels.map((l) => ({
+              id: String(l.id ?? '').trim() || 'groups',
+              name: String(l.name ?? '').trim() || 'Groups',
+            }))
+          : defaultBotGroupLabels(),
+      );
       setBotNameDrafts(
         Object.fromEntries(
           groups.map((g) => [g.id, rosterToBulkText(g.names, g.namePersonalities)]),
@@ -384,6 +403,15 @@ function AdminPageInner() {
     });
   }
 
+  async function saveAvatarPresets() {
+    if (!token) return;
+    await withBusy('avatar-presets', async () => {
+      const next = await patchAdminAvatarPresets(token, avatarPresets);
+      setAvatarPresets({ urls: [...next.urls] });
+      flash('Profile presets saved');
+    });
+  }
+
   async function saveBotGroups(e: React.FormEvent) {
     e.preventDefault();
     if (!token) return;
@@ -411,8 +439,15 @@ function AdminPageInner() {
       if (!payload.some((g) => g.isDefault) && payload[0]) {
         payload[0] = { ...payload[0], isDefault: true };
       }
-      const res = await patchAdminBotGroups(token, payload);
+      const res = await patchAdminBotGroups(token, payload, botGroupLabels);
       setBotGroups(res.groups.map(normalizeAdminBotGroup));
+      if (res.labels) {
+        setBotGroupLabels(
+          Array.isArray(res.labels) && res.labels.length > 0
+            ? res.labels.map((l) => ({ id: l.id, name: l.name }))
+            : defaultBotGroupLabels(),
+        );
+      }
       setBotNameDrafts(
         Object.fromEntries(
           res.groups.map((g) => [
@@ -543,12 +578,40 @@ function AdminPageInner() {
   function addBotGroup() {
     setBotGroups((list) => {
       if (list.length >= MAX_BOT_GROUPS) return list;
-      const g = emptyBotGroup();
+      const g = emptyBotGroup(botGroupLabels[0]?.id ?? 'groups');
       if (list.length === 0) g.isDefault = true;
       setBotNameDrafts((m) => ({ ...m, [g.id]: rosterToBulkText(g.names, g.namePersonalities) }));
       setOpenBotGroup(g.id);
       return [...list, g];
     });
+  }
+
+  function addBotGroupLabel() {
+    setBotGroupLabels((list) => {
+      if (list.length >= 12) return list;
+      return [...list, emptyBotGroupLabel(list)];
+    });
+  }
+
+  function removeBotGroupLabel(id: string) {
+    setBotGroupLabels((list) => {
+      if (list.length <= 1) return list;
+      const remaining = list.filter((l) => l.id !== id);
+      setBotGroups((groups) => remapGroupsAfterLabelDelete(groups, id, remaining));
+      return remaining;
+    });
+  }
+
+  function renameBotGroupLabelId(fromId: string, rawNext: string) {
+    const nextId = slugBotGroupLabelId(rawNext, fromId);
+    if (nextId === fromId) return;
+    setBotGroupLabels((list) => {
+      if (list.some((l) => l.id === nextId && l.id !== fromId)) return list;
+      return list.map((l) => (l.id === fromId ? { ...l, id: nextId } : l));
+    });
+    setBotGroups((groups) =>
+      groups.map((g) => (g.labelId === fromId ? { ...g, labelId: nextId } : g)),
+    );
   }
 
   function removeBotGroup(id: string) {
@@ -652,13 +715,20 @@ function AdminPageInner() {
     setBotGroupNames(id, next);
   }
 
-  function applyImportedBotGroups(imported: BotGroup[], mode: BotGroupsImportMode) {
+  function applyImportedBotGroups(
+    imported: BotGroup[],
+    mode: BotGroupsImportMode,
+    labels?: BotGroupLabels,
+  ) {
     const applied = applyBotGroupsImport(botGroups, imported, mode);
     if (!applied.ok) {
       setError(applied.errors[0] ?? 'Import failed');
       return;
     }
     setBotGroups(applied.groups);
+    if (labels && labels.length > 0) {
+      setBotGroupLabels(labels.map((l) => ({ id: l.id, name: l.name })));
+    }
     setBotNameDrafts(
       Object.fromEntries(
         applied.groups.map((g) => [g.id, rosterToBulkText(g.names, g.namePersonalities)]),
@@ -692,11 +762,24 @@ function AdminPageInner() {
       });
       if (!ok) return;
     }
-    applyImportedBotGroups(parsed.groups, importMode);
+    applyImportedBotGroups(parsed.groups, importMode, parsed.labels);
+  }
+
+  async function resetBotGroupsToDefaults() {
+    const defaults = defaultBotGroups();
+    const ok = await confirm({
+      title: 'Reset bot groups to defaults?',
+      description: `This replaces your ${botGroups.length} group${botGroups.length === 1 ? '' : 's'} with ${defaults.length} built-in packs (Easy/Medium/Hard + table styles) and resets row labels. Save afterward to persist.`,
+      confirmLabel: 'Reset',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    setBotGroupLabels(defaultBotGroupLabels());
+    applyImportedBotGroups(defaults, 'replace');
   }
 
   async function exportBotGroupsJson() {
-    const text = serializeBotGroupsJson(botGroups);
+    const text = serializeBotGroupsJson(botGroups, botGroupLabels);
     try {
       await navigator.clipboard.writeText(text);
       flash('Bot groups JSON copied to clipboard');
@@ -772,23 +855,24 @@ function AdminPageInner() {
     imageFileInputRef.current?.click();
   }
 
+  function triggerAvatarPresetUpload(index: number) {
+    if (imageUploadDisabled || uploadingAvatarPresetIndex !== null) return;
+    imageUploadTargetRef.current = { type: 'avatarPreset', index };
+    imageFileInputRef.current?.click();
+  }
+
   async function uploadSiteImage(file: File, purpose: SiteImagePurpose): Promise<string> {
     if (!token) throw new Error('Sign in to upload');
-    if (file.size > 4 * 1024 * 1024) {
-      throw new Error('Image must be 4 MB or smaller');
-    }
-    const contentType = file.type as 'image/jpeg' | 'image/png' | 'image/webp';
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(contentType)) {
-      throw new Error('Use JPEG, PNG, or WebP');
-    }
+    const profile = purpose === 'avatarPreset' ? 'avatarPreset' : 'site';
+    const { blob, contentType, contentLength } = await optimizeImageFile(file, profile);
     const { uploadUrl, publicUrl } = await requestAdminImageUploadUrl(token, {
       purpose,
       contentType,
-      contentLength: file.size,
+      contentLength,
     });
     const putRes = await fetch(uploadUrl, {
       method: 'PUT',
-      body: file,
+      body: blob,
       headers: { 'Content-Type': contentType },
     });
     if (!putRes.ok) throw new Error('Upload to storage failed');
@@ -801,6 +885,32 @@ function AdminPageInner() {
     const target = imageUploadTargetRef.current;
     imageUploadTargetRef.current = null;
     if (!file || !target) return;
+    if (target.type === 'avatarPreset') {
+      setUploadingAvatarPresetIndex(target.index);
+      setError(null);
+      try {
+        const publicUrl = await uploadSiteImage(file, 'avatarPreset');
+        setAvatarPresets((prev) => {
+          const urls = [...prev.urls];
+          while (urls.length < DEFAULT_AVATAR_PRESET_URLS.length) {
+            urls.push(DEFAULT_AVATAR_PRESET_URLS[urls.length]!);
+          }
+          urls[target.index] = publicUrl;
+          return { urls };
+        });
+        flash('Avatar uploaded — save profile presets to publish');
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Could not upload image';
+        if (msg.includes('storage is not configured') || msg.includes('503')) {
+          setImageUploadDisabled(true);
+        }
+        setError(msg);
+      } finally {
+        setUploadingAvatarPresetIndex(null);
+        imageUploadTargetRef.current = null;
+      }
+      return;
+    }
     const purpose: SiteImagePurpose =
       target.type === 'home'
         ? 'home'
@@ -1103,6 +1213,20 @@ function AdminPageInner() {
             onUploadImage={() => triggerImageUpload({ type: 'page' })}
             imageUploadDisabled={imageUploadDisabled}
             uploadingImage={uploadingImage?.startsWith('page-') === true}
+            avatarPresets={avatarPresets}
+            onAvatarPresetUrl={(index, value) =>
+              setAvatarPresets((prev) => {
+                const urls = [...prev.urls];
+                while (urls.length < DEFAULT_AVATAR_PRESET_URLS.length) {
+                  urls.push(DEFAULT_AVATAR_PRESET_URLS[urls.length]!);
+                }
+                urls[index] = value;
+                return { urls };
+              })
+            }
+            onAvatarPresetUpload={triggerAvatarPresetUpload}
+            uploadingAvatarPresetIndex={uploadingAvatarPresetIndex}
+            onSaveAvatarPresets={() => void saveAvatarPresets()}
             onSave={(e) => void savePages(e)}
           />
         ) : null}
@@ -1110,6 +1234,7 @@ function AdminPageInner() {
         {tab === 'bots' ? (
           <BotsSection
             botGroups={botGroups}
+            labels={botGroupLabels}
             botNameDrafts={botNameDrafts}
             openBotGroup={openBotGroup}
             botNameInput={botNameInput}
@@ -1119,6 +1244,10 @@ function AdminPageInner() {
             importMode={importMode}
             busy={busy}
             busyKey={busyKey}
+            onLabels={setBotGroupLabels}
+            onAddLabel={addBotGroupLabel}
+            onRemoveLabel={removeBotGroupLabel}
+            onRenameLabelId={renameBotGroupLabelId}
             onSelectGroup={(id) => {
               setOpenBotGroup(id);
               setBotNameInput('');
@@ -1194,6 +1323,7 @@ function AdminPageInner() {
             onImportMode={setImportMode}
             onImportJson={() => void importBotGroupsFromJson()}
             onExportJson={() => void exportBotGroupsJson()}
+            onResetDefaults={() => void resetBotGroupsToDefaults()}
             onSave={(e) => void saveBotGroups(e)}
           />
         ) : null}

@@ -8,7 +8,7 @@ import {
   type TableSoundKind,
   type TableSoundsConfig,
 } from '@/lib/api';
-import { ADMIN_SAVE_BTN, CheckboxRow, SaveBar, Section } from '../ui';
+import { ADMIN_SAVE_BTN, AdminInset, CheckboxRow, SaveBar, Section } from '../ui';
 
 export function SoundsSection({
   sounds,
@@ -64,9 +64,9 @@ export function SoundsSection({
         />
         <div className="grid gap-3">
           {TABLE_SOUND_KINDS.map((kind) => (
-            <div
+            <AdminInset
               key={kind}
-              className="grid gap-2 rounded-xl border border-sidebar/8 bg-cream/60 p-3 sm:grid-cols-[8rem_1fr_auto] sm:items-end"
+              className="grid gap-2 sm:grid-cols-[8rem_1fr_auto] sm:items-end"
             >
               <div>
                 <span className={FORM_LABEL_CLASS}>{TABLE_SOUND_LABELS[kind]}</span>
@@ -98,7 +98,7 @@ export function SoundsSection({
                   Preview
                 </Button>
               </div>
-            </div>
+            </AdminInset>
           ))}
         </div>
         <SaveBar>

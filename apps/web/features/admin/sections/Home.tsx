@@ -4,14 +4,14 @@ import type { CopyTheme, HomeLandingFeature } from '@/lib/api';
 import { CopyThemeSwitcher } from '../CopyThemeSwitcher';
 import { AdminImageField } from '../AdminImageField';
 import { MAX_HOME_BLOCKS } from '../tabs';
-import { ADMIN_SAVE_BTN, SaveBar, Section } from '../ui';
+import { ADMIN_SAVE_BTN, PanelBlock, SaveBar, Section } from '../ui';
 
 export const BLANK_HOME_BLOCK: HomeLandingFeature = {
   title: 'New feature',
   body: 'Describe this feature for players landing on the home page.',
   cta: 'Learn more',
   href: '/',
-  image: '/home-host.png',
+  image: '/home-host.webp',
   imageAlt: 'POKR feature illustration',
   imageFirst: true,
 };
@@ -77,10 +77,7 @@ export function HomeSection({
         {homeFeatures.map((feature, index) => {
           const open = openBlocks[index] ?? false;
           return (
-            <div
-              key={index}
-              className="overflow-hidden rounded-xl border border-sidebar/12 bg-page/[0.03]"
-            >
+            <PanelBlock key={index} className="space-y-0 overflow-hidden p-0">
               <div className="flex flex-wrap items-center gap-2 border-b border-sidebar/8 px-3 py-2.5 sm:px-4">
                 <button
                   type="button"
@@ -184,7 +181,7 @@ export function HomeSection({
                   </label>
                 </div>
               ) : null}
-            </div>
+            </PanelBlock>
           );
         })}
         <SaveBar hint={`${homeFeatures.length}/${MAX_HOME_BLOCKS} blocks · ${lookLabel}`}>

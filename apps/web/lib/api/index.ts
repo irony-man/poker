@@ -96,6 +96,7 @@ export { streamBotChat, type BotChatPersona, type BotChatTurn } from './botChat'
 export {
   fetchPublicSite,
   fetchPublicBotGroups,
+  fetchPublicBotGroupsWithLabels,
   type SiteAnnouncement,
   type SiteEconomy,
   type HomeLandingFeature,
@@ -105,6 +106,9 @@ export {
   type PageCopy,
   type PageCopyKey,
   type PagesCopy,
+  type PublicBotGroupsResult,
+  type AvatarPresetsConfig,
+  DEFAULT_AVATAR_PRESET_URLS,
 } from './site';
 export {
   TABLE_SOUND_KINDS,
@@ -137,6 +141,8 @@ export {
   patchAdminBotGroups,
   fetchAdminSounds,
   patchAdminSounds,
+  fetchAdminAvatarPresets,
+  patchAdminAvatarPresets,
   requestAdminSoundUploadUrl,
   requestAdminImageUploadUrl,
   fetchAdminHands,
@@ -147,7 +153,10 @@ export {
   type AdminRoomSettings,
   type BotPersonalityId,
   type BotGroup,
+  type BotGroupLabel,
+  type BotGroupLabels,
   type PublicBotGroup,
+  DEFAULT_BOT_GROUP_LABELS,
   type AdminHandSummary,
   type AdminHandsPage,
   type AdminHandDetail,

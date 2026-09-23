@@ -126,6 +126,25 @@ describe('site config + runtime economy', () => {
     expect(reloaded.getPages().host.imageAlt).toBe('Custom host art');
   });
 
+  it('persists avatar preset overrides and ignores invalid URLs', async () => {
+    const defaults = site.getAvatarPresets();
+    expect(defaults.urls).toHaveLength(8);
+
+    const custom = 'https://cdn.example.com/uploads/images/avatarPreset/custom.png';
+    const urls = [...defaults.urls];
+    urls[0] = custom;
+    urls[1] = 'not-a-valid-url!!!';
+    await site.setAvatarPresets({ urls });
+
+    const saved = site.getAvatarPresets();
+    expect(saved.urls[0]).toBe(custom);
+    expect(saved.urls[1]).toBe(defaults.urls[1]);
+
+    const reloaded = new SiteConfigStore(dir);
+    await reloaded.init();
+    expect(reloaded.getAvatarPresets().urls[0]).toBe(custom);
+  });
+
   it('seeds arcade copy from classic when by-theme keys are missing', async () => {
     await writeFile(
       path.join(dir, 'site-config.json'),
@@ -139,7 +158,7 @@ describe('site config + runtime economy', () => {
             body: 'Classic body',
             cta: 'Go',
             href: '/contests',
-            image: '/home-knockout.png',
+            image: '/home-knockout.webp',
             imageAlt: 'alt',
             imageFirst: true,
           },
@@ -202,27 +221,57 @@ describe('site config + runtime economy', () => {
 
   it('defaults and persists bot name groups', async () => {
     const groups = site.getBotGroups();
-    expect(groups.length).toBeGreaterThanOrEqual(1);
+    expect(groups.length).toBeGreaterThanOrEqual(3);
     expect(groups.some((g) => g.isDefault)).toBe(true);
+    expect(groups.find((g) => g.isDefault)?.id).toBe('medium');
+    expect(groups.filter((g) => g.labelId === 'level').map((g) => g.id).sort()).toEqual([
+      'easy',
+      'hard',
+      'medium',
+    ]);
+    expect(site.getBotGroupLabels()).toEqual([
+      { id: 'level', name: 'Level' },
+      { id: 'groups', name: 'Groups' },
+      { id: 'movies', name: 'Movies' },
+    ]);
     expect(site.getBotNamePool().length).toBeGreaterThan(0);
 
-    await site.setBotGroups([
-      {
-        id: 'friends',
-        name: 'Friendly table',
-        names: ['Buddy', 'Pal', 'Mate'],
-        isDefault: true,
-        defaultPersonality: 'passive',
-        namePersonalities: { Buddy: 'aggro' },
-      },
-      {
-        id: 'villains',
-        name: 'Villains',
-        names: ['BluffKing', 'RiverGod'],
-        isDefault: false,
-        defaultPersonality: 'maniac',
-        namePersonalities: {},
-      },
+    await site.setBotGroups(
+      [
+        {
+          id: 'friends',
+          name: 'Friendly table',
+          names: ['Buddy', 'Pal', 'Mate'],
+          isDefault: true,
+          labelId: 'groups',
+          description: 'Friendly crew',
+          defaultPersonality: 'passive',
+          namePersonalities: { Buddy: 'aggro' },
+        },
+        {
+          id: 'villains',
+          name: 'Villains',
+          names: ['BluffKing', 'RiverGod'],
+          isDefault: false,
+          labelId: 'groups',
+          description: '',
+          defaultPersonality: 'maniac',
+          namePersonalities: {},
+        },
+      ],
+      [
+        { id: 'level', name: 'Difficulty' },
+        { id: 'groups', name: 'Packs' },
+        { id: 'movies', name: 'Cinema' },
+      ],
+    );
+    const after = site.getBotGroups();
+    expect(after).toHaveLength(2);
+    expect(after.map((g) => g.id).sort()).toEqual(['friends', 'villains']);
+    expect(site.getBotGroupLabels()).toEqual([
+      { id: 'level', name: 'Difficulty' },
+      { id: 'groups', name: 'Packs' },
+      { id: 'movies', name: 'Cinema' },
     ]);
     expect(site.getBotNamePool()).toEqual(['Buddy', 'Pal', 'Mate']);
     expect(site.getBotNamePool('villains')).toEqual(['BluffKing', 'RiverGod']);
@@ -235,6 +284,11 @@ describe('site config + runtime economy', () => {
     expect(reloaded.getBotGroups()).toHaveLength(2);
     expect(reloaded.getBotNamePool('friends')[0]).toBe('Buddy');
     expect(reloaded.getBotSeatingConfig('friends').namePersonalities.Buddy).toBe('aggro');
+    expect(reloaded.getBotGroupLabels()).toEqual([
+      { id: 'level', name: 'Difficulty' },
+      { id: 'groups', name: 'Packs' },
+      { id: 'movies', name: 'Cinema' },
+    ]);
   });
 });
 

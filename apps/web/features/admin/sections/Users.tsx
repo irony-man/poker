@@ -7,7 +7,19 @@ import { Button } from '@/components/ui/Button';
 import { FORM_LABEL_CLASS, TextField } from '@/components/ui/TextField';
 import type { AdminUserRow, SiteEconomy } from '@/lib/api';
 import { formatMoneyLabel } from '@/lib/currency';
-import { EmptyState, Section } from '../ui';
+import { cn } from '@/lib/cn';
+import {
+  ADMIN_CELL_NUMBERS_MUTED,
+  ADMIN_CELL_PRIMARY,
+  ADMIN_CELL_PRIMARY_DISPLAY,
+  AdminExpandPanel,
+  AdminInset,
+  AdminTableBodyRow,
+  AdminTableHeadRow,
+  AdminTableShell,
+  EmptyState,
+  Section,
+} from '../ui';
 
 const ROW_GRID =
   'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[minmax(0,1.45fr)_minmax(5.75rem,0.85fr)_minmax(6.5rem,0.9fr)_minmax(7rem,0.8fr)_auto] sm:gap-3';
@@ -69,7 +81,7 @@ function CurrencyAdjust({
   disabled: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-sidebar/10 bg-cream px-3.5 py-3">
+    <AdminInset className="py-3">
       <p className={FORM_LABEL_CLASS}>{label}</p>
       <div className="mt-1.5">
         <MoneyAmount
@@ -110,7 +122,7 @@ function CurrencyAdjust({
       >
         {resetBusy ? 'Resetting…' : resetLabel}
       </button>
-    </div>
+    </AdminInset>
   );
 }
 
@@ -177,17 +189,15 @@ export function UsersSection({
       </form>
       <p className="text-xs tabular-nums text-muted sm:hidden">{resultLabel}</p>
 
-      <div className="overflow-hidden rounded-xl border border-sidebar/10">
+      <AdminTableShell>
         {users.length > 0 ? (
-          <div
-            className={`${ROW_GRID} admin-table-head hidden px-3.5 py-2.5 sm:grid`}
-          >
+          <AdminTableHeadRow className={`${ROW_GRID} hidden sm:grid`}>
             <span>User</span>
             <span>Chips</span>
             <span>Whuffies</span>
             <span>Joined</span>
             <span className="sr-only">Actions</span>
-          </div>
+          </AdminTableHeadRow>
         ) : null}
 
         <ul>
@@ -204,10 +214,10 @@ export function UsersSection({
 
             return (
               <li key={u.id} className="border-b border-sidebar/6 last:border-0">
-                <div
-                  className={`${ROW_GRID} px-3.5 py-2.5 ${
-                    open ? 'bg-page/[0.06]' : 'bg-transparent hover:bg-page/[0.04]'
-                  }`}
+                <AdminTableBodyRow
+                  className={ROW_GRID}
+                  interactive
+                  active={open}
                 >
                   <div className="flex min-w-0 items-center gap-2.5">
                     <PlayerAvatar
@@ -218,7 +228,7 @@ export function UsersSection({
                     />
                     <div className="min-w-0">
                       <div className="flex min-w-0 items-center gap-1.5">
-                        <p className="truncate font-display text-sm font-semibold text-primary">
+                        <p className={cn('truncate', ADMIN_CELL_PRIMARY_DISPLAY)}>
                           {u.username}
                         </p>
                         {isSelf ? (
@@ -239,17 +249,17 @@ export function UsersSection({
                       amount={u.chipBalance}
                       showChips
                       chipsClassName="!h-4 sm:!h-4"
-                      className="text-sm font-medium text-primary"
+                      className={ADMIN_CELL_PRIMARY}
                     />
                   </div>
                   <div className="hidden sm:block">
                     <MoneyAmount
                       amount={u.whuffieBalance}
                       showWhuffies
-                      className="text-sm font-medium text-primary"
+                      className={ADMIN_CELL_PRIMARY}
                     />
                   </div>
-                  <p className="hidden text-sm tabular-nums text-muted sm:block">{joined}</p>
+                  <p className={cn('hidden sm:block', ADMIN_CELL_NUMBERS_MUTED)}>{joined}</p>
 
                   <Button
                     variant="ghost"
@@ -262,10 +272,10 @@ export function UsersSection({
                     {open ? 'Done' : 'Adjust'}
                     <Chevron open={open} />
                   </Button>
-                </div>
+                </AdminTableBodyRow>
 
                 {open ? (
-                  <div id={panelId} className="border-t border-sidebar/8 bg-page/[0.04] px-3.5 py-3.5">
+                  <AdminExpandPanel id={panelId}>
                     <div className="grid gap-3 sm:grid-cols-2">
                       <CurrencyAdjust
                         label="Chips"
@@ -311,7 +321,7 @@ export function UsersSection({
                         </button>
                       </div>
                     ) : null}
-                  </div>
+                  </AdminExpandPanel>
                 ) : null}
               </li>
             );
@@ -322,7 +332,7 @@ export function UsersSection({
             </li>
           ) : null}
         </ul>
-      </div>
+      </AdminTableShell>
     </Section>
   );
 }

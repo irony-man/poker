@@ -624,7 +624,7 @@ export function FriendsPanel({
 
   return (
     <LobbySplitCard
-      imageSrc={resolvePublicImage(imageSrc || imageAssetUrl('home-host.png'))}
+      imageSrc={resolvePublicImage(imageSrc || imageAssetUrl('home-host.webp'))}
       imageAlt={imageAlt || 'Invite friends to your table'}
       mediaHeader={playerSearch}
     >

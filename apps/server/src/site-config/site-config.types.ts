@@ -1,4 +1,14 @@
 import {
+  DEFAULT_BOT_GROUP_DEFS,
+  DEFAULT_BOT_GROUP_LABEL_DEFS,
+  MAX_BOT_GROUP_DESCRIPTION_LEN,
+  MAX_BOT_GROUP_LABELS,
+  MAX_BOT_GROUP_LABEL_ID_LEN,
+  MAX_BOT_GROUP_LABEL_NAME_LEN,
+  resolveBotGroupLabelId,
+  type BotGroupLabelDef,
+} from '@poker/engine';
+import {
   defaultEconomy,
   type EconomySnapshot,
   REFILL_GRANT,
@@ -7,6 +17,8 @@ import {
   STARTING_WHUFFIE_GRANT,
 } from '../wallet/wallet.constants.js';
 import { assetUrl } from '../assets.js';
+
+export type { BotGroupLabelDef };
 
 export interface SiteAnnouncement {
   enabled: boolean;
@@ -96,6 +108,10 @@ export interface BotGroup {
   names: string[];
   /** Exactly one group should be default; used when no group id is chosen. */
   isDefault: boolean;
+  /** Picker row this pack appears on (`BotGroupLabel.id`). */
+  labelId: string;
+  /** Short blurb shown under the selected pack in host / offline pickers. */
+  description: string;
   /**
    * Group-wide style when a name has no per-name override.
    * `null` = engine auto (built-in roster names, else stable hash).
@@ -138,7 +154,7 @@ export const DEFAULT_BOT_DISPLAY_NAMES: string[] = [
   'Humanoid',
 ];
 
-/** Seed styles for the default Classic pack (mirrors engine `BOT_NAME_PERSONALITIES`). */
+/** Seed styles for the Medium / Mixed Field packs (mirrors engine `BOT_NAME_PERSONALITIES`). */
 export const DEFAULT_BOT_NAME_PERSONALITIES: Record<string, BotPersonalityId> = {
   AceBot: 'aggro',
   RiverRat: 'caller',
@@ -153,16 +169,16 @@ export const DEFAULT_BOT_NAME_PERSONALITIES: Record<string, BotPersonalityId> = 
   Humanoid: 'humanoid',
 };
 
-export const DEFAULT_BOT_GROUPS: BotGroup[] = [
-  {
-    id: 'classic',
-    name: 'Classic',
-    names: [...DEFAULT_BOT_DISPLAY_NAMES],
-    isDefault: true,
-    defaultPersonality: null,
-    namePersonalities: { ...DEFAULT_BOT_NAME_PERSONALITIES },
-  },
-];
+export const DEFAULT_BOT_GROUPS: BotGroup[] = DEFAULT_BOT_GROUP_DEFS.map((g) => ({
+  id: g.id,
+  name: g.name,
+  labelId: g.labelId,
+  description: g.description,
+  names: [...g.names],
+  isDefault: g.isDefault,
+  defaultPersonality: g.defaultPersonality,
+  namePersonalities: { ...g.namePersonalities },
+}));
 
 /** Table SFX kinds played during a hand (admin-editable URLs). */
 export type TableSoundKind =
@@ -214,6 +230,25 @@ export interface TableSoundsConfig {
   urls: Partial<Record<TableSoundKind, string>>;
 }
 
+/** Built-in profile picture presets (sign-up / profile picker). */
+export const AVATAR_PRESET_COUNT = 8;
+export const MAX_AVATAR_PRESET_URL_LEN = 512;
+
+export interface AvatarPresetsConfig {
+  /** Exactly eight image paths or URLs (index 0–7). */
+  urls: string[];
+}
+
+export function defaultAvatarPresetUrls(): string[] {
+  return Array.from({ length: AVATAR_PRESET_COUNT }, (_, i) =>
+    assetUrl(`/avatars/avatar-${i}.webp`),
+  );
+}
+
+export function defaultAvatarPresets(): AvatarPresetsConfig {
+  return { urls: defaultAvatarPresetUrls() };
+}
+
 /** Classic vs Arcade content bags. Independent of table felt color. */
 export type CopyTheme = 'v1' | 'v2';
 
@@ -231,7 +266,87 @@ export interface SiteConfigPayload {
   homeFeaturesByTheme: HomeFeaturesByTheme;
   rooms: RoomSettings;
   botGroups: BotGroup[];
+  /** Picker section titles on host / offline (Level vs Groups rows). */
+  botGroupLabels: BotGroupLabels;
   sounds: TableSoundsConfig;
+  avatarPresets: AvatarPresetsConfig;
+}
+
+/** Ordered picker rows; packs reference a row via `BotGroup.labelId`. */
+export type BotGroupLabels = BotGroupLabelDef[];
+
+export const MAX_BOT_GROUP_LABEL_LEN = MAX_BOT_GROUP_LABEL_NAME_LEN;
+
+export const DEFAULT_BOT_GROUP_LABELS: BotGroupLabels = DEFAULT_BOT_GROUP_LABEL_DEFS.map(
+  (l) => ({ ...l }),
+);
+
+function slugLabelId(raw: string, fallback: string): string {
+  const s = raw
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, MAX_BOT_GROUP_LABEL_ID_LEN);
+  return s.length > 0 ? s : fallback;
+}
+
+function normalizeOneBotGroupLabel(
+  raw: unknown,
+  index: number,
+  usedIds: Set<string>,
+): BotGroupLabelDef | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const o = raw as Record<string, unknown>;
+  const fallback = `label-${index + 1}`;
+  const idRaw = typeof o.id === 'string' ? o.id.trim() : '';
+  let id = slugLabelId(idRaw || fallback, fallback);
+  let n = 2;
+  while (usedIds.has(id)) {
+    id = slugLabelId(`${idRaw || fallback}-${n++}`, `${fallback}-${n}`);
+  }
+  usedIds.add(id);
+  const nameRaw = typeof o.name === 'string' ? o.name.trim() : '';
+  const name = (nameRaw || id).slice(0, MAX_BOT_GROUP_LABEL_NAME_LEN);
+  return { id, name };
+}
+
+/**
+ * Accepts an array of `{ id, name }`, or the legacy
+ * `{ level, groups, movies }` object.
+ */
+export function normalizeBotGroupLabels(raw: unknown): BotGroupLabels {
+  if (Array.isArray(raw)) {
+    const usedIds = new Set<string>();
+    const out: BotGroupLabelDef[] = [];
+    const max = Math.min(raw.length, MAX_BOT_GROUP_LABELS);
+    for (let i = 0; i < max; i++) {
+      const label = normalizeOneBotGroupLabel(raw[i], i, usedIds);
+      if (label) out.push(label);
+    }
+    return out.length > 0 ? out : DEFAULT_BOT_GROUP_LABELS.map((l) => ({ ...l }));
+  }
+
+  if (raw && typeof raw === 'object') {
+    const o = raw as Record<string, unknown>;
+    // Legacy fixed three-row shape
+    if ('level' in o || 'groups' in o || 'movies' in o) {
+      const legacy: BotGroupLabelDef[] = [];
+      for (const [id, fallbackName] of [
+        ['level', 'Level'],
+        ['groups', 'Groups'],
+        ['movies', 'Movies'],
+      ] as const) {
+        const name =
+          typeof o[id] === 'string' && (o[id] as string).trim()
+            ? (o[id] as string).trim().slice(0, MAX_BOT_GROUP_LABEL_NAME_LEN)
+            : fallbackName;
+        legacy.push({ id, name });
+      }
+      return legacy;
+    }
+  }
+
+  return DEFAULT_BOT_GROUP_LABELS.map((l) => ({ ...l }));
 }
 
 export const MAX_HOME_FEATURES = 12;
@@ -241,7 +356,7 @@ export const BLANK_HOME_FEATURE: HomeLandingFeature = {
   body: 'Describe this feature for players landing on the home page.',
   cta: 'Learn more',
   href: '/',
-  image: '/home-host.png',
+  image: '/home-host.webp',
   imageAlt: 'POKR feature illustration',
   imageFirst: true,
 };
@@ -252,7 +367,7 @@ export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
     body: "Knockout tables with no buy-in, where you play until your stack is gone, and fixed-hand games where you choose how many deals run before anyone looks at a card and buy in again whenever you need more chips.",
     cta: 'Browse Contests',
     href: '/contests',
-    image: '/home-knockout.png',
+    image: '/home-knockout.webp',
     imageAlt: 'Stylish player holding pocket cards at a green felt table',
     imageFirst: true,
   },
@@ -270,7 +385,7 @@ export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
     body: 'Add friends by username, gather them into groups for the different circles you play with, and pull a group straight to a table when it is time to deal.',
     cta: 'Play with Friends',
     href: '/friends',
-    image: '/home-host.png',
+    image: '/home-host.webp',
     imageAlt: 'Gloved hand holding a branded chip token',
     imageFirst: true,
   },
@@ -279,7 +394,7 @@ export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
     body: 'When you only want one opponent, open your friends list, choose the person, and send a challenge that leaves the table to the two of you and the board between you.',
     cta: 'Challenge a Friend',
     href: '/friends',
-    image: '/home-challenge.png',
+    image: '/home-challenge.webp',
     imageAlt: 'Two players in a heads-up challenge',
     imageFirst: false,
   },
@@ -288,7 +403,7 @@ export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
     body: "Play Hold'em against bots with no connection. Practice lines and timing offline, then jump into live modes when you're ready.",
     cta: 'Offline',
     href: '/solo',
-    image: '/home-offline.png',
+    image: '/home-offline.webp',
     imageAlt: 'Stack of red and white chips',
     imageFirst: true,
   },
@@ -297,7 +412,7 @@ export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
     body: 'Talk to BanterBot for sharp roasts — FunGPT personality, no table required.',
     cta: 'Open Chat',
     href: '/chat',
-    image: '/home-offline.png',
+    image: '/home-offline.webp',
     imageAlt: 'Chat with BanterBot',
     imageFirst: false,
   },
@@ -326,96 +441,96 @@ export const DEFAULT_PAGES_COPY: PagesCopy = {
     title: 'Create a table',
     subtitle:
       "Set stakes and seats, choose starting bots, and open a private Hold'em room with a code you pick or we generate.",
-    image: '/host-table.png',
+    image: '/host-table.webp',
     imageAlt: 'Host a private table for your group',
   },
   join: {
     title: 'Join a Table',
     subtitle:
       'Enter the invite code you were sent to take a seat or watch — private table, contest, or an arcade game.',
-    image: '/join-table.png',
+    image: '/join-table.webp',
     imageAlt: 'Enter a table with an invite code',
   },
   public: {
     title: 'Public tables',
     subtitle:
       "Open Hold'em at the stakes you choose; sit down when a seat is free or spectate if you would rather watch.",
-    image: '/public-tables.png',
+    image: '/public-tables.webp',
     imageAlt: 'Open public ring games ready to join',
   },
   contests: {
     title: 'Host Contests',
     subtitle:
       'Host a room for friends in a Knockout freezeout or a fixed run of hands, set the max table size, invite people, and start when the seats look right.',
-    image: '/home-knockout.png',
+    image: '/home-knockout.webp',
     imageAlt: 'Multi-seat tournament table ready to fill',
   },
   friends: {
     title: 'Community and Social',
     subtitle:
       'Find people by username, build groups for the tables you play together, invite a group to sit down, or challenge a friend to heads-up.',
-    image: '/home-host.png',
+    image: '/home-host.webp',
     imageAlt: 'Invite friends to your table',
   },
   solo: {
     title: 'Offline Arena',
     subtitle:
       "Train against bots on this device with the same Hold'em rules as live tables, no connection or lobby, and a seat count you choose before the first deal.",
-    image: '/home-offline.png',
+    image: '/home-offline.webp',
     imageAlt: 'You versus a bot at a private practice table',
   },
   chat: {
     title: 'Chat with Bots',
     subtitle:
       'Talk to BanterBot for sharp roasts — FunGPT personality, no table required.',
-    image: '/home-offline.png',
+    image: '/home-offline.webp',
     imageAlt: 'Chat with BanterBot',
   },
   arcade: {
     title: 'Arcade',
     subtitle:
       'Side quests with no stakes — Ludo, Snakes & Ladders, Memory Match, and Court Piece. Pick a board and share a code.',
-    image: '/home-ludo.png',
+    image: '/home-ludo.webp',
     imageAlt: 'Arcade side quests on POKR',
   },
   ludo: {
     title: 'Ludo',
     subtitle:
       'A side quest — race four tokens home with friends or bots. No stakes, no wallet, just a 2–4 player board and a code you share.',
-    image: '/home-ludo.png',
+    image: '/home-ludo.webp',
     imageAlt: 'Host a Ludo side quest with no stakes',
   },
   snakes: {
     title: 'Snakes & Ladders',
     subtitle:
       'Climb ladders, dodge snakes, and race to 100. Dice luck, optional bots, and a code you share — no stakes.',
-    image: '/home-offline.png',
+    image: '/home-offline.webp',
     imageAlt: 'Host Snakes & Ladders with no stakes',
   },
   memory: {
     title: 'Memory Match',
     subtitle:
       'Flip cards, find pairs, and outscore the table on a 4×4 or 6×6 grid. Friends or bots, no stakes.',
-    image: '/home-offline.png',
+    image: '/home-offline.webp',
     imageAlt: 'Host Memory Match with no stakes',
   },
   courtpiece: {
     title: 'Court Piece',
     subtitle:
       'Trump, tricks, and team play — Classic or Hokm with friends or bots. No stakes, just a code you share.',
-    image: '/home-offline.png',
+    image: '/home-offline.webp',
     imageAlt: 'Host Court Piece with no stakes',
   },
   signIn: {
     title: 'Sign in',
     subtitle: 'Sign in with your username',
-    image: '/home-challenge.png',
+    image: '/home-challenge.webp',
     imageAlt: 'Sit down and sign in to play',
   },
   signUp: {
     title: 'Create account',
     subtitle: 'Create a username and password',
-    image: '/home-knockout.png',
+    image: '/home-knockout.webp',
     imageAlt: 'Join the table — create your account',
   },
   homeAuthFooter: {
@@ -479,7 +594,9 @@ export function defaultSiteConfig(): SiteConfigPayload {
     },
     rooms: { inactivityMinutes: DEFAULT_ROOM_INACTIVITY_MINUTES },
     botGroups: DEFAULT_BOT_GROUPS.map((g) => cloneBotGroup(g)),
+    botGroupLabels: DEFAULT_BOT_GROUP_LABELS.map((l) => ({ ...l })),
     sounds: defaultTableSounds(),
+    avatarPresets: defaultAvatarPresets(),
   };
 }
 
@@ -489,6 +606,8 @@ function cloneBotGroup(g: BotGroup): BotGroup {
     name: g.name,
     names: [...g.names],
     isDefault: g.isDefault,
+    labelId: g.labelId,
+    description: g.description,
     defaultPersonality: g.defaultPersonality,
     namePersonalities: { ...g.namePersonalities },
   };
@@ -566,11 +685,23 @@ export function normalizeBotGroup(raw: unknown, index: number): BotGroup | null 
       if (seed) namePersonalities[n] = seed;
     }
   }
+  const labelId = resolveBotGroupLabelId(
+    id,
+    name,
+    typeof o.labelId === 'string' ? o.labelId : null,
+    typeof o.kind === 'string' ? o.kind : null,
+  );
+  const description =
+    typeof o.description === 'string'
+      ? o.description.trim().slice(0, MAX_BOT_GROUP_DESCRIPTION_LEN)
+      : '';
   return {
     id,
     name,
     names,
     isDefault: Boolean(o.isDefault),
+    labelId,
+    description,
     defaultPersonality,
     namePersonalities,
   };
@@ -798,6 +929,31 @@ function isAllowedSoundUrl(value: string): boolean {
   }
 }
 
+/** Merge overrides with defaults; invalid entries keep the default for that index. */
+export function normalizeAvatarPresets(raw: unknown): AvatarPresetsConfig {
+  const defaults = defaultAvatarPresetUrls();
+  const urls = [...defaults];
+  let src: unknown[] | null = null;
+  if (Array.isArray(raw)) {
+    src = raw;
+  } else if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    const list = (raw as Record<string, unknown>).urls;
+    if (Array.isArray(list)) src = list;
+  }
+  if (src) {
+    for (let i = 0; i < AVATAR_PRESET_COUNT && i < src.length; i++) {
+      const v = src[i];
+      if (typeof v !== 'string') continue;
+      const trimmed = v.trim().slice(0, MAX_AVATAR_PRESET_URL_LEN);
+      if (trimmed === '') continue;
+      if (isAllowedSoundUrl(trimmed)) {
+        urls[i] = trimmed;
+      }
+    }
+  }
+  return { urls };
+}
+
 /** Merge overrides with defaults; empty string keeps that kind disabled. */
 export function normalizeTableSounds(raw: unknown): TableSoundsConfig {
   const defaults = defaultTableSounds();
@@ -863,7 +1019,12 @@ export function normalizeSiteConfig(raw: unknown): SiteConfigPayload {
   const botGroups =
     o.botGroups !== undefined ? normalizeBotGroups(o.botGroups) : defaults.botGroups;
 
+  const botGroupLabels = normalizeBotGroupLabels(o.botGroupLabels);
+
   const sounds = o.sounds !== undefined ? normalizeTableSounds(o.sounds) : defaults.sounds;
+
+  const avatarPresets =
+    o.avatarPresets !== undefined ? normalizeAvatarPresets(o.avatarPresets) : defaults.avatarPresets;
 
   return {
     announcement,
@@ -874,6 +1035,8 @@ export function normalizeSiteConfig(raw: unknown): SiteConfigPayload {
     pagesByTheme,
     rooms,
     botGroups,
+    botGroupLabels,
     sounds,
+    avatarPresets,
   };
 }

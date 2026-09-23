@@ -51,7 +51,7 @@ function PlayPageInner() {
     >
       <LobbySplitCard
         imageSrc={resolvePublicImage(
-          pageCopy.image ?? (mode === 'join' ? '/join-table.png' : '/host-table.png'),
+          pageCopy.image ?? (mode === 'join' ? '/join-table.webp' : '/host-table.webp'),
         )}
         imageAlt={
           pageCopy.imageAlt ??

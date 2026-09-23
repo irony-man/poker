@@ -1,9 +1,9 @@
 import {
-  clearStoredSession,
   readStoredSession,
   writeStoredSession,
   type StoredSession,
 } from '@/lib/session';
+import { expireSession } from '@/lib/sessionAuth';
 import { useSession } from '@/lib/store';
 
 /** Apply a play session into zustand + localStorage. */
@@ -33,8 +33,7 @@ export async function ensurePlaySession(): Promise<StoredSession> {
   return stored;
 }
 
-/** Clear local auth after a fatal session failure. */
+/** Clear local auth after a fatal session failure (play UI handles sign-in prompt). */
 export function wipePlaySession(): void {
-  clearStoredSession();
-  useSession.getState().clearSession();
+  expireSession({ redirect: false });
 }

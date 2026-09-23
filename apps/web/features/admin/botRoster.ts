@@ -1,5 +1,14 @@
-import { BOT_PERSONALITY_IDS, type BotPersonalityId } from '@poker/engine';
-import type { BotGroup } from '@/lib/api';
+import {
+  BOT_PERSONALITY_IDS,
+  DEFAULT_BOT_GROUP_DEFS,
+  DEFAULT_BOT_GROUP_LABEL_DEFS,
+  MAX_BOT_GROUP_DESCRIPTION_LEN,
+  MAX_BOT_GROUP_LABELS,
+  resolveBotGroupLabelId,
+  type BotPersonalityId,
+} from '@poker/engine';
+import type { BotGroup, BotGroupLabel, BotGroupLabels } from '@/lib/api';
+import { DEFAULT_BOT_GROUP_LABELS } from '@/lib/api';
 
 export const MAX_BOT_GROUPS = 20;
 
@@ -9,6 +18,24 @@ export const DEFAULT_BOT_NAMES =
 export const DEFAULT_BOT_NAME_LIST = DEFAULT_BOT_NAMES.split('\n').map(
   (line) => line.split(',')[0]!.trim(),
 );
+
+/** Site defaults (Easy/Medium/Hard + table styles) for admin reset. */
+export function defaultBotGroups(): BotGroup[] {
+  return DEFAULT_BOT_GROUP_DEFS.map((g) => ({
+    id: g.id,
+    name: g.name,
+    labelId: g.labelId,
+    description: g.description,
+    names: [...g.names],
+    isDefault: g.isDefault,
+    defaultPersonality: g.defaultPersonality,
+    namePersonalities: { ...g.namePersonalities },
+  }));
+}
+
+export function defaultBotGroupLabels(): BotGroupLabels {
+  return DEFAULT_BOT_GROUP_LABEL_DEFS.map((l) => ({ ...l }));
+}
 
 export const PERSONALITY_LABELS: Record<BotPersonalityId, string> = {
   balanced: 'Balanced',
@@ -58,6 +85,13 @@ export function normalizeAdminBotGroup(g: BotGroup): BotGroup {
     name: g.name,
     names,
     isDefault: Boolean(g.isDefault),
+    labelId: resolveBotGroupLabelId(
+      g.id,
+      g.name,
+      g.labelId,
+      (g as BotGroup & { kind?: string }).kind,
+    ),
+    description: (g.description ?? '').trim().slice(0, MAX_BOT_GROUP_DESCRIPTION_LEN),
     defaultPersonality: g.defaultPersonality ?? null,
     namePersonalities: pruneNamePersonalities(names, g.namePersonalities),
   };
@@ -96,67 +130,60 @@ export function parseBulkBotRoster(text: string): BulkBotRosterResult {
     let namePart: string;
     let stylePart: string | null = null;
 
-    if (firstComma >= 0) {
+    if (firstComma === -1) {
+      namePart = raw;
+    } else {
       namePart = raw.slice(0, firstComma).trim();
       stylePart = raw.slice(firstComma + 1).trim();
-      if (stylePart.includes(',')) {
-        errors.push(`Line ${lineNo}: use one personality after the comma (valid: ${validHint})`);
-        continue;
-      }
-    } else {
-      namePart = raw;
     }
 
     if (!namePart) {
-      errors.push(`Line ${lineNo}: missing display name before the comma`);
+      errors.push(`Line ${lineNo}: missing name`);
       continue;
     }
-    if (namePart.length > 24) {
-      errors.push(`Line ${lineNo}: name longer than 24 characters ("${namePart.slice(0, 24)}…")`);
+    if (namePart.length > MAX_BOT_DISPLAY_NAME_LEN) {
+      errors.push(`Line ${lineNo}: name longer than ${MAX_BOT_DISPLAY_NAME_LEN} characters`);
       continue;
     }
-
-    if (stylePart !== null) {
-      if (!stylePart) {
-        errors.push(
-          `Line ${lineNo}: missing personality after comma for "${namePart}" (valid: ${validHint})`,
-        );
-        continue;
-      }
-      const styleId = resolvePersonalityToken(stylePart);
-      if (!styleId) {
-        errors.push(
-          `Line ${lineNo}: unknown personality "${stylePart}" for "${namePart}" (valid: ${validHint})`,
-        );
-        continue;
-      }
-      namePersonalities[namePart] = styleId;
-    }
-
     const key = namePart.toLowerCase();
     if (seen.has(key)) {
       errors.push(`Line ${lineNo}: duplicate name "${namePart}"`);
       continue;
     }
+    if (names.length >= MAX_BOT_NAMES_PER_GROUP) {
+      errors.push(`Too many names (max ${MAX_BOT_NAMES_PER_GROUP})`);
+      break;
+    }
     seen.add(key);
     names.push(namePart);
 
-    if (names.length > 40) {
-      errors.push('Too many names (max 40)');
-      break;
+    if (stylePart) {
+      const styleId = resolvePersonalityToken(stylePart);
+      if (!styleId) {
+        errors.push(
+          `Line ${lineNo}: unknown style "${stylePart}" (valid: ${validHint})`,
+        );
+      } else {
+        namePersonalities[namePart] = styleId;
+      }
     }
   }
 
-  if (names.length === 0 && errors.length === 0) {
-    errors.push('Add at least one bot name (one per line; optional ", style")');
+  if (names.length === 0) {
+    errors.push('Add at least one bot name');
   }
 
   if (errors.length > 0) return { ok: false, errors };
   return { ok: true, names, namePersonalities };
 }
 
-export function groupBulkText(group: BotGroup, drafts: Record<string, string>): string {
-  return drafts[group.id] ?? rosterToBulkText(group.names, group.namePersonalities);
+export function groupBulkText(
+  group: BotGroup,
+  drafts: Record<string, string>,
+): string {
+  const draft = drafts[group.id];
+  if (typeof draft === 'string') return draft;
+  return rosterToBulkText(group.names, group.namePersonalities);
 }
 
 export function slugBotGroupId(raw: string, fallback: string): string {
@@ -168,7 +195,16 @@ export function slugBotGroupId(raw: string, fallback: string): string {
   return s.length > 0 ? s : fallback;
 }
 
-export function emptyBotGroup(): BotGroup {
+export function slugBotGroupLabelId(raw: string, fallback: string): string {
+  const s = raw
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 32);
+  return s.length > 0 ? s : fallback;
+}
+
+export function emptyBotGroup(labelId = 'groups'): BotGroup {
   const parsed = parseBulkBotRoster(DEFAULT_BOT_NAMES);
   const names = parsed.ok ? parsed.names : DEFAULT_BOT_NAME_LIST;
   const namePersonalities = parsed.ok ? parsed.namePersonalities : {};
@@ -177,9 +213,22 @@ export function emptyBotGroup(): BotGroup {
     name: 'New group',
     names,
     isDefault: false,
+    labelId,
+    description: '',
     defaultPersonality: null,
     namePersonalities,
   };
+}
+
+export function emptyBotGroupLabel(existing: BotGroupLabels): BotGroupLabel {
+  let n = existing.length + 1;
+  let id = `label-${n}`;
+  const used = new Set(existing.map((l) => l.id));
+  while (used.has(id)) {
+    n += 1;
+    id = `label-${n}`;
+  }
+  return { id, name: `Label ${n}` };
 }
 
 export const MAX_BOT_GROUP_NAME_LEN = 48;
@@ -189,7 +238,7 @@ export const MAX_BOT_NAMES_PER_GROUP = 40;
 export type BotGroupsImportMode = 'merge' | 'replace';
 
 export type ParseBotGroupsJsonResult =
-  | { ok: true; groups: BotGroup[] }
+  | { ok: true; groups: BotGroup[]; labels?: BotGroupLabels }
   | { ok: false; errors: string[] };
 
 export type ApplyBotGroupsImportResult =
@@ -327,19 +376,89 @@ function parseOneImportedGroup(raw: unknown, index: number, errors: string[]): B
     errors,
   );
 
+  const labelIdRaw = typeof o.labelId === 'string' ? o.labelId.trim() : '';
+  const kindRaw = typeof o.kind === 'string' ? o.kind.trim() : '';
+  const labelId = resolveBotGroupLabelId(id, name, labelIdRaw || null, kindRaw || null);
+
+  const description =
+    typeof o.description === 'string'
+      ? o.description.trim().slice(0, MAX_BOT_GROUP_DESCRIPTION_LEN)
+      : '';
+
   return {
     id,
     name,
     names,
     isDefault: Boolean(o.isDefault),
+    labelId,
+    description,
     defaultPersonality,
     namePersonalities,
   };
 }
 
+function parseImportedLabels(raw: unknown, errors: string[]): BotGroupLabels | undefined {
+  if (raw == null) return undefined;
+
+  if (Array.isArray(raw)) {
+    if (raw.length === 0) {
+      errors.push('labels: array is empty — include at least one label');
+      return undefined;
+    }
+    if (raw.length > MAX_BOT_GROUP_LABELS) {
+      errors.push(`labels: too many labels (max ${MAX_BOT_GROUP_LABELS})`);
+      return undefined;
+    }
+    const used = new Set<string>();
+    const out: BotGroupLabel[] = [];
+    for (let i = 0; i < raw.length; i++) {
+      const item = raw[i];
+      if (!item || typeof item !== 'object' || Array.isArray(item)) {
+        errors.push(`labels[${i}]: expected { id, name }`);
+        continue;
+      }
+      const o = item as Record<string, unknown>;
+      const fallback = `label-${i + 1}`;
+      const idRaw = typeof o.id === 'string' ? o.id.trim() : '';
+      const id = slugBotGroupLabelId(idRaw || fallback, fallback);
+      if (used.has(id)) {
+        errors.push(`labels[${i}]: duplicate id "${id}"`);
+        continue;
+      }
+      used.add(id);
+      const nameRaw = typeof o.name === 'string' ? o.name.trim() : '';
+      const name = (nameRaw || id).slice(0, 32);
+      out.push({ id, name });
+    }
+    return out.length > 0 ? out : undefined;
+  }
+
+  if (typeof raw === 'object') {
+    const o = raw as Record<string, unknown>;
+    if ('level' in o || 'groups' in o || 'movies' in o) {
+      const legacy: BotGroupLabel[] = [];
+      for (const [id, fallback] of [
+        ['level', 'Level'],
+        ['groups', 'Groups'],
+        ['movies', 'Movies'],
+      ] as const) {
+        const name =
+          typeof o[id] === 'string' && (o[id] as string).trim()
+            ? (o[id] as string).trim().slice(0, 32)
+            : fallback;
+        legacy.push({ id, name });
+      }
+      return legacy;
+    }
+  }
+
+  errors.push('labels: must be an array of { id, name } (or legacy { level, groups, movies })');
+  return undefined;
+}
+
 /**
  * Parse pasted bot-group JSON. Accepts a group array, `{ groups: [...] }`,
- * or a single group object.
+ * `{ labels, groups }`, or a single group object.
  */
 export function parseBotGroupsJson(text: string): ParseBotGroupsJsonResult {
   const trimmed = text.trim();
@@ -355,24 +474,34 @@ export function parseBotGroupsJson(text: string): ParseBotGroupsJsonResult {
   }
 
   let list: unknown[];
+  let labels: BotGroupLabels | undefined;
+  const errors: string[] = [];
+
   if (Array.isArray(parsed)) {
     list = parsed;
   } else if (parsed && typeof parsed === 'object') {
     const o = parsed as Record<string, unknown>;
     if (Array.isArray(o.groups)) {
       list = o.groups;
+      if (o.labels != null) {
+        labels = parseImportedLabels(o.labels, errors);
+      }
     } else if ('names' in o || 'id' in o || 'name' in o) {
       list = [parsed];
     } else {
       return {
         ok: false,
-        errors: ['JSON must be an array of groups, { "groups": [...] }, or one group object'],
+        errors: [
+          'JSON must be an array of groups, { "labels", "groups": [...] }, or one group object',
+        ],
       };
     }
   } else {
     return {
       ok: false,
-      errors: ['JSON must be an array of groups, { "groups": [...] }, or one group object'],
+      errors: [
+        'JSON must be an array of groups, { "labels", "groups": [...] }, or one group object',
+      ],
     };
   }
 
@@ -386,7 +515,6 @@ export function parseBotGroupsJson(text: string): ParseBotGroupsJsonResult {
     };
   }
 
-  const errors: string[] = [];
   const groups: BotGroup[] = [];
   const usedIds = new Set<string>();
 
@@ -405,23 +533,31 @@ export function parseBotGroupsJson(text: string): ParseBotGroupsJsonResult {
   if (groups.length === 0) {
     return { ok: false, errors: ['No valid groups found in JSON'] };
   }
-  return { ok: true, groups };
+  return labels ? { ok: true, groups, labels } : { ok: true, groups };
 }
 
-/** Serialize groups for clipboard export (pretty-printed). */
-export function serializeBotGroupsJson(groups: BotGroup[]): string {
-  return `${JSON.stringify(
-    groups.map((g) => ({
+/** Serialize groups (+ optional labels) for clipboard export (pretty-printed). */
+export function serializeBotGroupsJson(
+  groups: BotGroup[],
+  labels?: BotGroupLabels,
+): string {
+  const payload = {
+    labels: (labels ?? DEFAULT_BOT_GROUP_LABELS).map((l) => ({
+      id: l.id,
+      name: l.name,
+    })),
+    groups: groups.map((g) => ({
       id: g.id,
       name: g.name,
+      labelId: resolveBotGroupLabelId(g.id, g.name, g.labelId),
+      description: g.description ?? '',
       isDefault: g.isDefault,
       defaultPersonality: g.defaultPersonality,
       names: g.names,
       namePersonalities: g.namePersonalities,
     })),
-    null,
-    2,
-  )}\n`;
+  };
+  return `${JSON.stringify(payload, null, 2)}\n`;
 }
 
 /**
@@ -434,63 +570,60 @@ export function applyBotGroupsImport(
   mode: BotGroupsImportMode,
 ): ApplyBotGroupsImportResult {
   if (imported.length === 0) {
-    return { ok: false, errors: ['Nothing to import'] };
+    return { ok: false, errors: ['Import list is empty'] };
   }
-
   if (mode === 'replace') {
     if (imported.length > MAX_BOT_GROUPS) {
       return {
         ok: false,
-        errors: [`Import has ${imported.length} groups (max ${MAX_BOT_GROUPS})`],
+        errors: [`Too many groups (max ${MAX_BOT_GROUPS}; got ${imported.length})`],
       };
     }
     return {
       ok: true,
-      groups: ensureOneDefault(imported.map((g) => normalizeAdminBotGroup(g))),
+      groups: ensureOneDefault(imported.map(normalizeAdminBotGroup)),
       added: imported.length,
-      replaced: 0,
+      replaced: existing.length,
     };
   }
 
   const byId = new Map(existing.map((g) => [g.id, g]));
   let added = 0;
   let replaced = 0;
-  for (const g of imported) {
-    if (byId.has(g.id)) replaced += 1;
-    else added += 1;
-    byId.set(g.id, normalizeAdminBotGroup(g));
-  }
-
-  const importedIds = new Set(imported.map((g) => g.id));
-  const next: BotGroup[] = [];
-  for (const g of existing) {
-    const updated = byId.get(g.id);
-    if (updated) next.push(updated);
-  }
-  for (const g of imported) {
-    if (!existing.some((e) => e.id === g.id)) {
-      next.push(byId.get(g.id)!);
+  for (const raw of imported) {
+    const next = normalizeAdminBotGroup(raw);
+    if (byId.has(next.id)) {
+      const prev = byId.get(next.id)!;
+      byId.set(next.id, {
+        ...next,
+        isDefault: next.isDefault || prev.isDefault,
+      });
+      replaced += 1;
+    } else {
+      byId.set(next.id, next);
+      added += 1;
     }
   }
-
-  if (next.length > MAX_BOT_GROUPS) {
+  const merged = [...byId.values()];
+  if (merged.length > MAX_BOT_GROUPS) {
     return {
       ok: false,
       errors: [
-        `Merge would create ${next.length} groups (max ${MAX_BOT_GROUPS}). Remove some first or use Replace.`,
+        `Merge would exceed ${MAX_BOT_GROUPS} groups (would be ${merged.length}). Remove some first or use Replace.`,
       ],
     };
   }
+  return { ok: true, groups: ensureOneDefault(merged), added, replaced };
+}
 
-  // If any imported group claims default, prefer the first such imported id;
-  // otherwise keep the existing default when still present.
-  const importedDefault = imported.find((g) => g.isDefault);
-  let groups: BotGroup[];
-  if (importedDefault && importedIds.has(importedDefault.id)) {
-    groups = next.map((g) => ({ ...g, isDefault: g.id === importedDefault.id }));
-  } else {
-    groups = ensureOneDefault(next);
-  }
-
-  return { ok: true, groups, added, replaced };
+/** Remap packs off a deleted label onto the first remaining label. */
+export function remapGroupsAfterLabelDelete(
+  groups: BotGroup[],
+  deletedLabelId: string,
+  remaining: BotGroupLabels,
+): BotGroup[] {
+  const fallback = remaining[0]?.id ?? 'groups';
+  return groups.map((g) =>
+    g.labelId === deletedLabelId ? { ...g, labelId: fallback } : g,
+  );
 }

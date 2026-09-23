@@ -53,7 +53,7 @@ export function PublicTablesPanel({
 
   return (
     <LobbySplitCard
-      imageSrc={resolvePublicImage(imageSrc || '/public-tables.png')}
+      imageSrc={resolvePublicImage(imageSrc || '/public-tables.webp')}
       imageAlt={imageAlt || 'Open public ring games ready to join'}
     >
       <p className="text-sm font-medium text-muted">

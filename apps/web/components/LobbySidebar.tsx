@@ -111,7 +111,7 @@ export function LobbySidebar({
     <aside className="lobby-sidebar sidebar-rail">
       <Link href="/" className="group sidebar-brand">
         <Image
-          src={imageAssetUrl('pokr-logo.png')}
+          src={imageAssetUrl('pokr-logo.webp')}
           alt="POKR"
           width={160}
           height={48}

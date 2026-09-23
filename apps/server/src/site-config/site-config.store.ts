@@ -7,15 +7,18 @@ import {
   cloneHomeFeatures,
   clonePagesCopy,
   defaultSiteConfig,
+  normalizeBotGroupLabels,
   normalizeBotGroups,
   normalizeHomeFeatures,
   normalizePagesCopy,
   normalizeRoomSettings,
+  normalizeAvatarPresets,
   normalizeSiteConfig,
   normalizeTableSounds,
   resolveBotNamePool,
   resolveBotSeatingConfig,
   type BotGroup,
+  type BotGroupLabels,
   type BotSeatingConfig,
   type CopyTheme,
   type HomeFeaturesByTheme,
@@ -23,6 +26,7 @@ import {
   type PagesByTheme,
   type PagesCopy,
   type RoomSettings,
+  type AvatarPresetsConfig,
   type SiteAnnouncement,
   type SiteConfigPayload,
   type TableSoundsConfig,
@@ -123,13 +127,17 @@ export class SiteConfigStore {
         name: g.name,
         names: [...g.names],
         isDefault: g.isDefault,
+        labelId: g.labelId,
+        description: g.description,
         defaultPersonality: g.defaultPersonality,
         namePersonalities: { ...g.namePersonalities },
       })),
+      botGroupLabels: this.cache.botGroupLabels.map((l) => ({ ...l })),
       sounds: {
         enabled: this.cache.sounds.enabled,
         urls: { ...this.cache.sounds.urls },
       },
+      avatarPresets: { urls: [...this.cache.avatarPresets.urls] },
     };
   }
 
@@ -183,9 +191,15 @@ export class SiteConfigStore {
       name: g.name,
       names: [...g.names],
       isDefault: g.isDefault,
+      labelId: g.labelId,
+      description: g.description,
       defaultPersonality: g.defaultPersonality,
       namePersonalities: { ...g.namePersonalities },
     }));
+  }
+
+  getBotGroupLabels(): BotGroupLabels {
+    return this.cache.botGroupLabels.map((l) => ({ ...l }));
   }
 
   getSounds(): TableSoundsConfig {
@@ -193,6 +207,10 @@ export class SiteConfigStore {
       enabled: this.cache.sounds.enabled,
       urls: { ...this.cache.sounds.urls },
     };
+  }
+
+  getAvatarPresets(): AvatarPresetsConfig {
+    return { urls: [...this.cache.avatarPresets.urls] };
   }
 
   /** Display-name pool for seating; uses default group when id is missing. */
@@ -270,14 +288,20 @@ export class SiteConfigStore {
     return this.getRoomSettings();
   }
 
-  async setBotGroups(groups: BotGroup[]): Promise<BotGroup[]> {
+  async setBotGroups(
+    groups: BotGroup[],
+    labels?: BotGroupLabels | null,
+  ): Promise<{ groups: BotGroup[]; labels: BotGroupLabels }> {
     await this.ensureLoaded();
     this.cache = {
       ...this.cache,
       botGroups: normalizeBotGroups(groups),
+      ...(labels !== undefined && labels !== null
+        ? { botGroupLabels: normalizeBotGroupLabels(labels) }
+        : {}),
     };
     await this.serialized(() => this.persist());
-    return this.getBotGroups();
+    return { groups: this.getBotGroups(), labels: this.getBotGroupLabels() };
   }
 
   async setSounds(next: TableSoundsConfig): Promise<TableSoundsConfig> {
@@ -288,5 +312,15 @@ export class SiteConfigStore {
     };
     await this.serialized(() => this.persist());
     return this.getSounds();
+  }
+
+  async setAvatarPresets(next: AvatarPresetsConfig): Promise<AvatarPresetsConfig> {
+    await this.ensureLoaded();
+    this.cache = {
+      ...this.cache,
+      avatarPresets: normalizeAvatarPresets(next),
+    };
+    await this.serialized(() => this.persist());
+    return this.getAvatarPresets();
   }
 }

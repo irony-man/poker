@@ -217,7 +217,7 @@ function CardBack({ size }: { size: CardSize }) {
       <div className={`absolute inset-0 flex items-center justify-center ${logoPad}`}>
         {/* eslint-disable-next-line @next/next/no-img-element -- static public brand asset */}
         <img
-          src="/purple-logo.png"
+          src="/purple-logo.webp"
           alt=""
           width={80}
           height={40}

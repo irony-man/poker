@@ -1,3 +1,5 @@
+import { expireSession } from '@/lib/sessionAuth';
+
 function stripTrailingSlash(url: string): string {
   return url.replace(/\/$/, '');
 }
@@ -78,6 +80,14 @@ export async function parseError(res: Response, fallback: string): Promise<strin
   return fallback;
 }
 
+/** Throw after optional session expiry on 401. */
+export async function failFromResponse(res: Response, fallback: string): Promise<never> {
+  if (res.status === 401) expireSession();
+  throw new Error(
+    await parseError(res, res.status === 401 ? 'Sign in required' : fallback),
+  );
+}
+
 export async function authedFetch(
   path: string,
   options: AuthOptions & { method?: string; body?: unknown },
@@ -87,10 +97,6 @@ export async function authedFetch(
     headers: sessionHeaders(options.sessionToken),
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
   });
-  if (!res.ok) {
-    throw new Error(
-      await parseError(res, res.status === 401 ? 'Sign in required' : 'Request failed'),
-    );
-  }
+  if (!res.ok) await failFromResponse(res, 'Request failed');
   return res.json();
 }

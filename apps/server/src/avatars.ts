@@ -1,4 +1,4 @@
-/** Matches web `/public/avatars/avatar-0.png` … `avatar-7.png`. */
+/** Matches web `/public/avatars/avatar-0.webp` … `avatar-7.webp`. */
 export const AVATAR_PRESET_COUNT = 8;
 
 export function clampAvatarId(id: number | undefined | null, fallback = 0): number {

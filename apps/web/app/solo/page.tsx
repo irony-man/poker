@@ -8,12 +8,14 @@ import {
   type OfflineSessionSnapshot,
 } from '@/lib/offlineSession';
 import { ChoiceRow } from '@/components/ChoiceRow';
+import { BotGroupPicker } from '@/components/BotGroupPicker';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { resolvePublicImage } from '@/lib/assets';
 import { Button } from '@/components/ui/Button';
-import { fetchPublicBotGroups, type PublicBotGroup } from '@/lib/api';
+import { fetchPublicBotGroupsWithLabels, type BotGroupLabels, type PublicBotGroup } from '@/lib/api';
+import { DEFAULT_BOT_GROUP_LABELS } from '@/lib/api';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { useLobbySession } from '@/lib/useLobbySession';
 import { usePageCopy } from '@/lib/usePageCopy';
@@ -27,6 +29,9 @@ export default function SoloPage() {
   const pageCopy = usePageCopy('solo');
   const [offlineSeats, setOfflineSeats] = useState(6);
   const [botGroups, setBotGroups] = useState<PublicBotGroup[]>([]);
+  const [botGroupLabels, setBotGroupLabels] = useState<BotGroupLabels>([
+    ...DEFAULT_BOT_GROUP_LABELS,
+  ]);
   const [botGroupId, setBotGroupId] = useState<string | null>(null);
   const [savedSession, setSavedSession] = useState<OfflineSessionSnapshot | null>(null);
 
@@ -36,9 +41,10 @@ export default function SoloPage() {
 
   useEffect(() => {
     let cancelled = false;
-    void fetchPublicBotGroups().then((groups) => {
+    void fetchPublicBotGroupsWithLabels().then(({ groups, labels }) => {
       if (cancelled) return;
       setBotGroups(groups);
+      setBotGroupLabels(labels);
       setBotGroupId((cur) => {
         if (cur && groups.some((g) => g.id === cur)) return cur;
         return groups.find((g) => g.isDefault)?.id ?? groups[0]?.id ?? null;
@@ -94,7 +100,7 @@ export default function SoloPage() {
     >
       <form onSubmit={onOffline}>
         <LobbySplitCard
-          imageSrc={resolvePublicImage(pageCopy.image ?? '/home-offline.png')}
+          imageSrc={resolvePublicImage(pageCopy.image ?? '/home-offline.webp')}
           imageAlt={pageCopy.imageAlt ?? 'You versus a bot at a private practice table'}
         >
           <div className="min-w-0 space-y-4">
@@ -114,21 +120,12 @@ export default function SoloPage() {
               </p>
             </div>
             {botGroups.length > 0 ? (
-              <ChoiceRow
-                label="Level"
+              <BotGroupPicker
+                groups={botGroups}
+                labels={botGroupLabels}
                 name="offline-bot-group"
-                selected={botGroupId ?? botGroups[0]!.id}
-                options={botGroups.map((g) => g.id)}
+                selectedId={botGroupId ?? botGroups[0]!.id}
                 onSelect={setBotGroupId}
-                format={(id) => {
-                  const g = botGroups.find((x) => x.id === id);
-                  if (!g) return id;
-                  return (
-                    <span className="inline-flex flex-col items-start leading-tight">
-                      {g.name}
-                    </span>
-                  );
-                }}
               />
             ) : null}
           </div>

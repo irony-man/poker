@@ -14,6 +14,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { SoundUploadUrlBodySchema, SiteImageUploadUrlBodySchema } from '@poker/protocol';
+import { resolveBotGroupLabelId } from '@poker/engine';
 import { z } from 'zod';
 import { AuthService } from '../auth/auth.service.js';
 import type { User } from '../auth/auth.types.js';
@@ -27,6 +28,7 @@ import { PresenceService } from '../presence/presence.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 import { RoomsService } from '../rooms/rooms.service.js';
 import { SiteConfigService } from '../site-config/site-config.service.js';
+import { normalizeBotGroupLabels } from '../site-config/site-config.types.js';
 import {
   ALLOWED_SITE_IMAGE_CONTENT_TYPES,
   ALLOWED_SOUND_CONTENT_TYPES,
@@ -118,12 +120,32 @@ const BotGroupBody = z.object({
   name: z.string().min(1).max(48),
   names: z.array(z.string().min(1).max(24)).min(1).max(40),
   isDefault: z.boolean().optional(),
+  labelId: z.string().min(1).max(32).optional(),
+  /** @deprecated Prefer labelId; still accepted for older clients. */
+  kind: z.string().min(1).max(32).optional(),
+  description: z.string().max(120).optional(),
   defaultPersonality: BotPersonalityIdSchema.nullable().optional(),
   namePersonalities: z.record(BotPersonalityIdSchema).optional(),
 });
 
+const BotGroupLabelBody = z.object({
+  id: z.string().min(1).max(32),
+  name: z.string().min(1).max(32),
+});
+
 const BotGroupsBody = z.object({
   groups: z.array(BotGroupBody).min(1).max(20),
+  labels: z
+    .union([
+      z.array(BotGroupLabelBody).min(1).max(12),
+      // Legacy fixed three-row shape
+      z.object({
+        level: z.string().min(1).max(32),
+        groups: z.string().min(1).max(32),
+        movies: z.string().min(1).max(32).optional(),
+      }),
+    ])
+    .optional(),
 });
 
 const TableSoundKindSchema = z.enum([
@@ -143,6 +165,10 @@ const TableSoundKindSchema = z.enum([
 const SoundsBody = z.object({
   enabled: z.boolean(),
   urls: z.record(TableSoundKindSchema, z.string().max(512)).optional(),
+});
+
+const AvatarPresetsBody = z.object({
+  urls: z.array(z.string().max(512)).length(8),
 });
 
 @Controller('api/admin')
@@ -268,7 +294,10 @@ export class AdminController {
 
   @Get('bot-groups')
   getBotGroups() {
-    return { groups: this.site.getBotGroups() };
+    return {
+      groups: this.site.getBotGroups(),
+      labels: this.site.getBotGroupLabels(),
+    };
   }
 
   @Patch('bot-groups')
@@ -277,17 +306,23 @@ export class AdminController {
     if (!parsed.success) {
       throw new BadRequestException({ error: parsed.error.message });
     }
-    const groups = await this.site.setBotGroups(
-      parsed.data.groups.map((g, i) => ({
-        id: g.id ?? `group-${i + 1}`,
+    const groups = parsed.data.groups.map((g, i) => {
+      const id = g.id ?? `group-${i + 1}`;
+      return {
+        id,
         name: g.name,
         names: g.names,
         isDefault: Boolean(g.isDefault),
+        labelId: resolveBotGroupLabelId(id, g.name, g.labelId, g.kind),
+        description: (g.description ?? '').trim().slice(0, 120),
         defaultPersonality: g.defaultPersonality ?? null,
         namePersonalities: g.namePersonalities ?? {},
-      })),
+      };
+    });
+    return this.site.setBotGroups(
+      groups,
+      parsed.data.labels ? normalizeBotGroupLabels(parsed.data.labels) : null,
     );
-    return { groups };
   }
 
   @Get('sounds')
@@ -305,6 +340,20 @@ export class AdminController {
       enabled: parsed.data.enabled,
       urls: parsed.data.urls ?? {},
     });
+  }
+
+  @Get('avatar-presets')
+  getAvatarPresets() {
+    return this.site.getAvatarPresets();
+  }
+
+  @Patch('avatar-presets')
+  async patchAvatarPresets(@Body() body: unknown) {
+    const parsed = AvatarPresetsBody.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({ error: parsed.error.message });
+    }
+    return this.site.setAvatarPresets({ urls: parsed.data.urls });
   }
 
   @Post('sounds/upload-url')

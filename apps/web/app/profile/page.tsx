@@ -19,6 +19,7 @@ import {
   type MeProfile,
 } from '@/lib/api';
 import { saveAvatarId } from '@/lib/avatars';
+import { optimizeImageFile } from '@/lib/optimizeUploadImage';
 import {
   TABLE_COLOR_PRESETS,
   clampTableColorId,
@@ -266,25 +267,17 @@ function ProfilePageInner() {
 
   const uploadAvatar = async (file: File) => {
     if (!token || !profile || savingAvatar) return;
-    if (file.size > 2 * 1024 * 1024) {
-      setError('Image must be 2 MB or smaller');
-      return;
-    }
-    const contentType = file.type as 'image/jpeg' | 'image/png' | 'image/webp';
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(contentType)) {
-      setError('Use JPEG, PNG, or WebP');
-      return;
-    }
     setSavingAvatar(true);
     setError(null);
     try {
+      const { blob, contentType, contentLength } = await optimizeImageFile(file, 'avatar');
       const { uploadUrl, publicUrl } = await requestAvatarUploadUrl(token, {
         contentType,
-        contentLength: file.size,
+        contentLength,
       });
       const putRes = await fetch(uploadUrl, {
         method: 'PUT',
-        body: file,
+        body: blob,
         headers: { 'Content-Type': contentType },
       });
       if (!putRes.ok) throw new Error('Upload failed');

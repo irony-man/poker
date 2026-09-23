@@ -5,7 +5,23 @@ import { Button } from '@/components/ui/Button';
 import { PlayingCard } from '@/components/PlayingCard';
 import { fetchAdminHand, fetchAdminHands, type AdminHandSummary } from '@/lib/api';
 import { formatMoneyAmount } from '@/lib/currency';
-import { DataTable, EmptyState, SaveBar, Section, Subhead, Td, Th, THead, Tr } from '../ui';
+import {
+  ADMIN_CELL_MONO,
+  ADMIN_CELL_PRIMARY,
+  ADMIN_CELL_SECONDARY,
+  ADMIN_ROW_DIVIDER,
+  AdminExpandPanel,
+  AdminInset,
+  DataTable,
+  EmptyState,
+  SaveBar,
+  Section,
+  Subhead,
+  Td,
+  Th,
+  THead,
+  Tr,
+} from '../ui';
 
 const RANK_CHAR: Record<number, string> = {
   14: 'A',
@@ -319,9 +335,9 @@ export function HandsSection({ token }: { token: string }) {
           {items.map((hand) => (
             <Fragment key={hand.id}>
               <Tr onClick={() => void toggleExpand(hand)}>
-                <Td className="tabular-nums text-muted">{formatWhen(hand.startedAt)}</Td>
-                <Td className="capitalize text-muted">{hand.source}</Td>
-                <Td className="font-mono text-xs text-primary">
+                <Td className={`tabular-nums ${ADMIN_CELL_SECONDARY}`}>{formatWhen(hand.startedAt)}</Td>
+                <Td className={`capitalize ${ADMIN_CELL_SECONDARY}`}>{hand.source}</Td>
+                <Td className={ADMIN_CELL_MONO}>
                   {hand.tableId}
                   {hand.contestId ? (
                     <span className="mt-0.5 block text-[10px] text-muted">
@@ -329,12 +345,13 @@ export function HandsSection({ token }: { token: string }) {
                     </span>
                   ) : null}
                 </Td>
-                <Td className="text-muted">{hand.playerNames.join(', ') || '—'}</Td>
-                <Td className="text-primary">{winnerLine(hand)}</Td>
+                <Td className={ADMIN_CELL_SECONDARY}>{hand.playerNames.join(', ') || '—'}</Td>
+                <Td className={ADMIN_CELL_PRIMARY}>{winnerLine(hand)}</Td>
               </Tr>
               {expandedId === hand.id ? (
-                <tr className="border-b border-sidebar/6 bg-page/20">
-                  <Td colSpan={5} className="px-3 py-3">
+                <tr className={ADMIN_ROW_DIVIDER}>
+                  <Td colSpan={5} className="p-0">
+                    <AdminExpandPanel>
                     {detailLoading ? (
                       <p className="text-sm text-muted">Loading…</p>
                     ) : detail ? (
@@ -352,10 +369,8 @@ export function HandsSection({ token }: { token: string }) {
                               detail.players.map((p) => {
                                 const won = detail.winnerSeats.includes(p.seat);
                                 return (
-                                  <li
-                                    key={p.seat}
-                                    className="flex items-center gap-3 rounded-lg border border-sidebar/10 bg-cream/80 px-3 py-2"
-                                  >
+                                  <li key={p.seat}>
+                                    <AdminInset className="flex items-center gap-3 py-2">
                                     <div className="min-w-0 flex-1">
                                       <p className="truncate text-sm font-medium text-primary">
                                         {p.name}
@@ -368,6 +383,7 @@ export function HandsSection({ token }: { token: string }) {
                                       <p className="text-[10px] text-muted">Seat {p.seat}</p>
                                     </div>
                                     <CardRow codes={p.holeCards} highlight={won} />
+                                    </AdminInset>
                                   </li>
                                 );
                               })
@@ -382,6 +398,7 @@ export function HandsSection({ token }: { token: string }) {
                     ) : (
                       <p className="text-sm text-muted">No detail</p>
                     )}
+                    </AdminExpandPanel>
                   </Td>
                 </tr>
               ) : null}

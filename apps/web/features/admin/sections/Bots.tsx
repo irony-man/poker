@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { BOT_PERSONALITY_IDS } from '@poker/engine';
 import { Button } from '@/components/ui/Button';
 import { SelectField, TextAreaField, TextField } from '@/components/ui/TextField';
-import type { BotGroup } from '@/lib/api';
+import type { BotGroup, BotGroupLabels } from '@/lib/api';
 import {
   DEFAULT_BOT_NAMES,
   MAX_BOT_GROUPS,
@@ -15,8 +15,13 @@ import {
 import { FORM_LABEL_CLASS } from '@/components/ui/TextField';
 import {
   ADMIN_SAVE_BTN,
+  AdminInset,
+  AdminList,
+  AdminListRow,
+  AdminTableShell,
   DetailHeader,
   EmptyPane,
+  PanelBlock,
   SaveBar,
   Section,
   SplitItem,
@@ -25,6 +30,7 @@ import {
 
 export function BotsSection({
   botGroups,
+  labels,
   botNameDrafts,
   openBotGroup,
   botNameInput,
@@ -34,6 +40,10 @@ export function BotsSection({
   importMode,
   busy,
   busyKey,
+  onLabels,
+  onAddLabel,
+  onRemoveLabel,
+  onRenameLabelId,
   onSelectGroup,
   onAddGroup,
   onRemoveGroup,
@@ -51,9 +61,11 @@ export function BotsSection({
   onImportMode,
   onImportJson,
   onExportJson,
+  onResetDefaults,
   onSave,
 }: {
   botGroups: BotGroup[];
+  labels: BotGroupLabels;
   botNameDrafts: Record<string, string>;
   openBotGroup: string | null;
   botNameInput: string;
@@ -63,6 +75,10 @@ export function BotsSection({
   importMode: BotGroupsImportMode;
   busy: boolean;
   busyKey: string | null;
+  onLabels: (labels: BotGroupLabels) => void;
+  onAddLabel: () => void;
+  onRemoveLabel: (id: string) => void;
+  onRenameLabelId: (fromId: string, rawNext: string) => void;
   onSelectGroup: (id: string) => void;
   onAddGroup: () => void;
   onRemoveGroup: (id: string) => void;
@@ -80,6 +96,7 @@ export function BotsSection({
   onImportMode: (mode: BotGroupsImportMode) => void;
   onImportJson: () => void;
   onExportJson: () => void;
+  onResetDefaults: () => void;
   onSave: (e: React.FormEvent) => void;
 }) {
   const group = botGroups.find((g) => g.id === openBotGroup) ?? botGroups[0] ?? null;
@@ -91,7 +108,7 @@ export function BotsSection({
   return (
     <Section
       title="Bot groups"
-      description="Name packs and playing styles hosts use when seating bots. Pick a group default style and optional per-name overrides."
+      description="Name packs and playing styles hosts use when seating bots. Edit picker row labels and add, rename, or remove packs."
       action={
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs tabular-nums text-muted">
@@ -104,6 +121,14 @@ export function BotsSection({
             className="min-h-9 px-4 text-xs"
           >
             Export JSON
+          </Button>
+          <Button
+            variant="ghost"
+            disabled={busy}
+            onClick={onResetDefaults}
+            className="min-h-9 px-4 text-xs"
+          >
+            Reset to defaults
           </Button>
           <Button
             variant="ghost"
@@ -125,15 +150,90 @@ export function BotsSection({
       }
     >
       <form onSubmit={onSave} className="space-y-4">
+        <PanelBlock>
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <span className={FORM_LABEL_CLASS}>Picker row labels</span>
+              <p className="mt-0.5 text-xs text-muted">
+                Each label is a chip row on host / offline. Packs pick which row via Label below.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={busy || labels.length >= 12}
+              onClick={onAddLabel}
+              className="min-h-9 px-4 text-xs"
+            >
+              Add label
+            </Button>
+          </div>
+          <ul className="space-y-2">
+            {labels.map((label, index) => (
+              <li key={label.id}>
+                <AdminInset className="flex flex-wrap items-end gap-2 py-2">
+                <div className="min-w-[8rem] flex-1">
+                  <TextField
+                    label={index === 0 ? 'Display name' : undefined}
+                    value={label.name}
+                    onChange={(e) =>
+                      onLabels(
+                        labels.map((l) =>
+                          l.id === label.id ? { ...l, name: e.target.value } : l,
+                        ),
+                      )
+                    }
+                    maxLength={32}
+                    disabled={busy}
+                    required
+                    aria-label={`Label name for ${label.id}`}
+                  />
+                </div>
+                <p className="mb-2 text-xs text-muted">
+                  Key{' '}
+                  <code className="rounded bg-sidebar/5 px-1.5 py-0.5 font-mono text-[11px] text-primary">
+                    {label.id}
+                  </code>
+                  <button
+                    type="button"
+                    className="link-sidebar ml-2"
+                    disabled={busy}
+                    onClick={() => {
+                      const next = window.prompt(
+                        'Stable id (letters, numbers, - _)',
+                        label.id,
+                      );
+                      if (next != null) onRenameLabelId(label.id, next);
+                    }}
+                  >
+                    Change
+                  </button>
+                </p>
+                <Button
+                  type="button"
+                  variant="dangerQuiet"
+                  disabled={busy || labels.length <= 1}
+                  onClick={() => onRemoveLabel(label.id)}
+                  className="mb-1.5 min-h-9 px-3 text-xs"
+                >
+                  Remove
+                </Button>
+                </AdminInset>
+              </li>
+            ))}
+          </ul>
+        </PanelBlock>
         {showJsonImport ? (
-          <div className="space-y-3 rounded-xl border border-sidebar/12 bg-page/[0.03] p-4">
+          <PanelBlock>
             <div>
               <span className={FORM_LABEL_CLASS}>Paste bot group JSON</span>
               <p className="mt-0.5 text-xs text-muted">
                 Accepts an array,{' '}
-                <code className="font-mono text-[11px]">{'{ "groups": [...] }'}</code>, or one
-                group object. Merge updates matching ids and appends new ones; Replace swaps the
-                whole list. Save afterward to persist.
+                <code className="font-mono text-[11px]">{'{ "labels": [...], "groups": [...] }'}</code>
+                , or one group object. Labels are picker rows; each group has a{' '}
+                <code className="font-mono text-[11px]">labelId</code> and optional{' '}
+                <code className="font-mono text-[11px]">description</code>. Merge updates matching
+                ids and appends new ones; Replace swaps the whole list. Save afterward to persist.
               </p>
             </div>
             <TextAreaField
@@ -145,7 +245,7 @@ export function BotsSection({
                   ? 'border-danger/40 focus:border-danger/50 focus:ring-danger/15'
                   : ''
               }`}
-              placeholder={`[\n  {\n    "id": "tight-table",\n    "name": "Tight Table",\n    "isDefault": false,\n    "defaultPersonality": null,\n    "names": ["StoneWall", "FoldBot"],\n    "namePersonalities": { "StoneWall": "nit", "FoldBot": "nit" }\n  }\n]`}
+              placeholder={`{\n  "labels": [{ "id": "groups", "name": "Groups" }],\n  "groups": [{\n    "id": "tight-table",\n    "name": "Tight Table",\n    "labelId": "groups",\n    "description": "Nits and ABC regs",\n    "isDefault": false,\n    "defaultPersonality": null,\n    "names": ["StoneWall", "FoldBot"],\n    "namePersonalities": { "StoneWall": "nit", "FoldBot": "nit" }\n  }]\n}`}
               aria-label="Bot groups JSON"
               aria-invalid={Boolean(importPreview && !importPreview.ok && importJsonText.trim())}
             />
@@ -191,7 +291,7 @@ export function BotsSection({
                 ) : null}
               </ul>
             ) : null}
-          </div>
+          </PanelBlock>
         ) : null}
 
         <SplitPane
@@ -200,12 +300,13 @@ export function BotsSection({
             const draft = groupBulkText(g, botNameDrafts);
             const parsed = parseBulkBotRoster(draft);
             const nameCount = parsed.ok ? parsed.names.length : g.names.length;
+            const rowName = labels.find((l) => l.id === g.labelId)?.name ?? g.labelId;
             return (
               <SplitItem
                 key={g.id}
                 selected={group?.id === g.id}
                 title={g.name || 'Untitled'}
-                meta={`${nameCount} name${nameCount === 1 ? '' : 's'}`}
+                meta={`${rowName} · ${nameCount} name${nameCount === 1 ? '' : 's'}`}
                 badge={g.isDefault ? 'Default' : undefined}
                 onSelect={() => onSelectGroup(g.id)}
               />
@@ -215,6 +316,7 @@ export function BotsSection({
           {group ? (
             <BotGroupEditor
               group={group}
+              labels={labels}
               botNameDrafts={botNameDrafts}
               botNameInput={botNameInput}
               showBulkEdit={showBulkEdit}
@@ -255,6 +357,7 @@ export function BotsSection({
 
 function BotGroupEditor({
   group,
+  labels,
   botNameDrafts,
   botNameInput,
   showBulkEdit,
@@ -272,6 +375,7 @@ function BotGroupEditor({
   onRemoveGroup,
 }: {
   group: BotGroup;
+  labels: BotGroupLabels;
   botNameDrafts: Record<string, string>;
   botNameInput: string;
   showBulkEdit: boolean;
@@ -293,6 +397,9 @@ function BotGroupEditor({
   const bulkErrors = showBulkEdit && !parsed.ok ? parsed.errors : [];
   const names = parsed.ok ? parsed.names : group.names;
   const displayPersonalities = parsed.ok ? parsed.namePersonalities : group.namePersonalities;
+  const labelValue = labels.some((l) => l.id === group.labelId)
+    ? group.labelId
+    : labels[0]?.id ?? group.labelId;
 
   return (
     <div className="space-y-5">
@@ -358,7 +465,30 @@ function BotGroupEditor({
         }
       />
 
-      <div className="max-w-md">
+      <TextField
+        label="Description"
+        value={group.description ?? ''}
+        onChange={(e) => onUpdateGroup(group.id, { description: e.target.value })}
+        maxLength={120}
+        disabled={busy}
+        placeholder="Short blurb shown under this pack in the picker"
+        help="Shown to hosts and offline players when this pack is selected."
+      />
+
+      <div className="grid max-w-md gap-4 sm:grid-cols-2">
+        <SelectField
+          label="Label"
+          value={labelValue}
+          onChange={(e) => onUpdateGroup(group.id, { labelId: e.target.value })}
+          disabled={busy || labels.length === 0}
+          help="Which picker row this pack appears on."
+        >
+          {labels.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.name}
+            </option>
+          ))}
+        </SelectField>
         <SelectField
           label="Default style"
           value={group.defaultPersonality ?? ''}
@@ -424,20 +554,17 @@ function BotGroupEditor({
             ) : null}
           </div>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-sidebar/10">
-            <ul>
+          <AdminTableShell>
+            <AdminList className="rounded-none border-0">
               {names.map((n) => (
-                <li
-                  key={n}
-                  className="flex items-center gap-2 border-b border-sidebar/8 px-3 py-2 last:border-b-0"
-                >
-                  <span className="font-row-label">
+                <AdminListRow key={n}>
+                  <span className="font-row-label min-w-0 flex-1">
                     {n}
                   </span>
                   <select
                     value={displayPersonalities[n] ?? ''}
                     onChange={(e) => onNamePersonality(group.id, n, e.target.value)}
-                    className="min-h-8 max-w-[11rem] rounded-md border border-sidebar/15 bg-page/[0.04] px-2 text-xs text-primary"
+                    className="min-h-8 max-w-[11rem] rounded-md border border-sidebar/20 bg-white/90 px-2 text-xs text-primary"
                     aria-label={`Style for ${n}`}
                     disabled={busy}
                   >
@@ -461,13 +588,13 @@ function BotGroupEditor({
                   >
                     ×
                   </button>
-                </li>
+                </AdminListRow>
               ))}
               {names.length === 0 ? (
                 <li className="admin-empty">No names yet.</li>
               ) : null}
-            </ul>
-            <div className="flex flex-col gap-2 border-t border-sidebar/10 bg-page/[0.04] px-3 py-2.5 sm:flex-row sm:items-center">
+            </AdminList>
+            <div className="flex flex-col gap-2 border-t border-sidebar/8 bg-page/[0.55] px-3 py-2.5 sm:flex-row sm:items-center">
               <TextField
                 value={botNameInput}
                 onChange={(e) => onNameInput(e.target.value.slice(0, 24))}
@@ -492,7 +619,7 @@ function BotGroupEditor({
                 Add name
               </Button>
             </div>
-          </div>
+          </AdminTableShell>
         )}
       </div>
     </div>

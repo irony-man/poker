@@ -56,7 +56,7 @@ function SignInForm() {
       </div>
       <form onSubmit={onSubmit}>
         <LobbySplitCard
-          imageSrc={resolvePublicImage(pageCopy.image ?? '/home-challenge.png')}
+          imageSrc={resolvePublicImage(pageCopy.image ?? '/home-challenge.webp')}
           imageAlt={pageCopy.imageAlt ?? 'Sit down and sign in to play'}
         >
           <TextField

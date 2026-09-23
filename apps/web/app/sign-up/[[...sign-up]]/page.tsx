@@ -59,7 +59,7 @@ function SignUpForm() {
       </div>
       <form onSubmit={onSubmit}>
         <LobbySplitCard
-          imageSrc={resolvePublicImage(pageCopy.image ?? '/home-knockout.png')}
+          imageSrc={resolvePublicImage(pageCopy.image ?? '/home-knockout.webp')}
           imageAlt={pageCopy.imageAlt ?? 'Join the table — create your account'}
         >
           <TextField

@@ -1,7 +1,19 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import type { AdminContestRow, AdminTableRow } from '@/lib/api';
-import { DataTable, EmptyState, Section, Subhead, Td, Th, THead, Tr } from '../ui';
+import {
+  ADMIN_CELL_NUMBERS_MUTED,
+  ADMIN_CELL_PRIMARY,
+  ADMIN_CELL_SECONDARY,
+  DataTable,
+  EmptyState,
+  Section,
+  Subhead,
+  Td,
+  Th,
+  THead,
+  Tr,
+} from '../ui';
 
 function OpenLink({ href }: { href: string }) {
   return (
@@ -52,14 +64,14 @@ export function GamesSection({
           <tbody>
             {tables.map((t) => (
               <Tr key={t.tableId}>
-                <Td className="font-medium text-primary">{t.name}</Td>
-                <Td className="tabular-nums text-muted">
+                <Td className={ADMIN_CELL_PRIMARY}>{t.name}</Td>
+                <Td className={ADMIN_CELL_NUMBERS_MUTED}>
                   {t.seatedCount}/{t.maxSeats}
                 </Td>
-                <Td className="text-muted">
+                <Td className={ADMIN_CELL_SECONDARY}>
                   {t.contestId ? 'Contest table' : t.playMoney ? 'Private (play)' : 'Private'}
                 </Td>
-                <Td className="text-muted">
+                <Td className={ADMIN_CELL_SECONDARY}>
                   {t.handInProgress ? (t.street ? t.street : 'In hand') : t.idle ? 'Idle' : 'Waiting'}
                 </Td>
                 <Td>
@@ -91,16 +103,16 @@ export function GamesSection({
               const active = c.activePlayers ?? null;
               return (
                 <Tr key={c.id}>
-                  <Td className="font-medium text-primary">
+                  <Td className={ADMIN_CELL_PRIMARY}>
                     {c.name}
                     {c.isPrivate ? (
                       <span className="ml-1.5 text-xs font-normal text-muted">private</span>
                     ) : null}
                   </Td>
-                  <Td className="capitalize text-muted">
+                  <Td className={`capitalize ${ADMIN_CELL_SECONDARY}`}>
                     {c.status} · {c.mode}
                   </Td>
-                  <Td className="text-muted">
+                  <Td className={ADMIN_CELL_SECONDARY}>
                     {c.entrants.length}/{c.fieldSize} registered
                     {active != null ? ` · ${active} still in` : ''}
                     {atTable != null && c.status === 'running' ? ` · ${atTable} at table` : ''}

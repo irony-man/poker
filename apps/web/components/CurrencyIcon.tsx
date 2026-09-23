@@ -48,12 +48,12 @@ export function CurrencyIcon({
   );
 }
 
-/** Chip stack mark shown before bankroll amounts (public/chips-stack.png). */
+/** Chip stack mark shown before bankroll amounts (public/chips-stack.webp). */
 export function ChipsImage({ className = '' }: { className?: string }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element -- static public asset
     <img
-      src="/chips-stack.png"
+      src="/chips-stack.webp"
       alt=""
       width={64}
       height={43}

@@ -3,12 +3,14 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChoiceRow } from '@/components/ChoiceRow';
+import { BotGroupPicker } from '@/components/BotGroupPicker';
 import { FriendInvitePicker } from '@/components/FriendInvitePicker';
 import { MoneyAmount } from '@/components/CurrencyIcon';
 import { Button } from '@/components/ui/Button';
 import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
 import { TextField } from '@/components/ui/TextField';
-import { createTable, fetchPublicBotGroups, type PublicBotGroup } from '@/lib/api';
+import { createTable, fetchPublicBotGroupsWithLabels, type BotGroupLabels, type PublicBotGroup } from '@/lib/api';
+import { DEFAULT_BOT_GROUP_LABELS } from '@/lib/api';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { DEFAULT_STAKE_ID, STAKE_PRESETS, stakeById } from '@poker/protocol';
 
@@ -29,6 +31,9 @@ export function HostTableForm({
   const [maxSeats, setMaxSeats] = useState(6);
   const [botCount, setBotCount] = useState(0);
   const [botGroups, setBotGroups] = useState<PublicBotGroup[]>([]);
+  const [botGroupLabels, setBotGroupLabels] = useState<BotGroupLabels>([
+    ...DEFAULT_BOT_GROUP_LABELS,
+  ]);
   const [botGroupId, setBotGroupId] = useState<string | null>(null);
   const [hostStakeId, setHostStakeId] = useState(DEFAULT_STAKE_ID);
   const [customRoomCode, setCustomRoomCode] = useState('');
@@ -48,9 +53,10 @@ export function HostTableForm({
 
   useEffect(() => {
     let cancelled = false;
-    void fetchPublicBotGroups().then((groups) => {
+    void fetchPublicBotGroupsWithLabels().then(({ groups, labels }) => {
       if (cancelled) return;
       setBotGroups(groups);
+      setBotGroupLabels(labels);
       setBotGroupId((cur) => {
         if (cur && groups.some((g) => g.id === cur)) return cur;
         return groups.find((g) => g.isDefault)?.id ?? groups[0]?.id ?? null;
@@ -159,22 +165,13 @@ export function HostTableForm({
           optionClassName="min-h-11 min-w-11 px-3"
         />
         {botCount > 0 && botGroups.length > 0 ? (
-          <ChoiceRow
-            label="Bot names"
+          <BotGroupPicker
+            groups={botGroups}
+            labels={botGroupLabels}
             name="host-bot-group"
-            selected={botGroupId ?? botGroups[0]!.id}
-            options={botGroups.map((g) => g.id)}
+            selectedId={botGroupId ?? botGroups[0]!.id}
             onSelect={setBotGroupId}
             disabled={disabled || busy}
-            format={(id) => {
-              const g = botGroups.find((x) => x.id === id);
-              if (!g) return id;
-              return (
-                <span className="inline-flex flex-col items-start leading-tight">
-                  {g.name}
-                </span>
-              );
-            }}
           />
         ) : null}
         <TextField

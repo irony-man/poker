@@ -640,6 +640,7 @@ export const SiteImagePurposeSchema = z.enum([
   'solo',
   'signIn',
   'signUp',
+  'avatarPreset',
 ]);
 
 export const SiteImageUploadUrlBodySchema = z.object({

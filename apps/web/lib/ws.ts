@@ -25,7 +25,8 @@ import type {
 import { WS_URL, refreshTicket } from '@/lib/api';
 import { emitSocketMessage } from './socketMessages';
 import { isSeatActionLabel } from '@/lib/seatAction';
-import { clearStoredSession, readStoredSession, writeStoredSession } from './session';
+import { expireSession } from './sessionAuth';
+import { readStoredSession, writeStoredSession } from './session';
 import { useSession, type PrivateView, type PublicTable } from './store';
 
 const RECONNECT_DELAY_MS = 2_000;
@@ -261,8 +262,7 @@ function dispatchMessage(msg: { type?: string; [key: string]: unknown }): void {
         code,
       );
       if (code === 'account_deleted') {
-        clearStoredSession();
-        s.clearSession();
+        expireSession();
       }
       if (code === 'bad_auth') {
         void recoverBadAuth();
@@ -283,9 +283,7 @@ async function recoverBadAuth(): Promise<void> {
     const stored = readStoredSession();
     const sessionToken = stored?.sessionToken ?? useSession.getState().sessionToken;
     if (!sessionToken) {
-      clearStoredSession();
-      useSession.getState().clearSession();
-      useSession.getState().setConnection('closed');
+      expireSession();
       return;
     }
     const fresh = await refreshTicket(sessionToken);
@@ -319,10 +317,7 @@ async function recoverBadAuth(): Promise<void> {
       connectShared();
     }
   } catch {
-    clearStoredSession();
-    useSession.getState().clearSession();
-    useSession.getState().setConnection('closed');
-    useSession.getState().setError('Session expired — sign in again', 'bad_auth');
+    expireSession();
   } finally {
     recoveringAuth = false;
   }

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { BotGroup } from '@/lib/api';
 import {
   applyBotGroupsImport,
+  defaultBotGroups,
   parseBotGroupsJson,
   serializeBotGroupsJson,
 } from './botRoster';
@@ -11,6 +12,8 @@ const classic: BotGroup = {
   name: 'Classic',
   names: ['AceBot', 'FoldBot'],
   isDefault: true,
+  labelId: 'groups',
+  description: 'Classic mixed table',
   defaultPersonality: null,
   namePersonalities: { AceBot: 'aggro', FoldBot: 'nit' },
 };
@@ -22,6 +25,8 @@ describe('parseBotGroupsJson', () => {
         {
           id: 'tight-table',
           name: 'Tight Table',
+          labelId: 'groups',
+          description: 'Nits',
           isDefault: false,
           defaultPersonality: null,
           names: ['StoneWall', 'LockBox'],
@@ -33,8 +38,72 @@ describe('parseBotGroupsJson', () => {
     if (!res.ok) return;
     expect(res.groups).toHaveLength(1);
     expect(res.groups[0]!.id).toBe('tight-table');
+    expect(res.groups[0]!.labelId).toBe('groups');
+    expect(res.groups[0]!.description).toBe('Nits');
     expect(res.groups[0]!.namePersonalities.StoneWall).toBe('nit');
     expect(res.groups[0]!.isDefault).toBe(false);
+  });
+
+  it('parses labels array + movies labelId from wrapped JSON', () => {
+    const res = parseBotGroupsJson(
+      JSON.stringify({
+        labels: [
+          { id: 'level', name: 'Level' },
+          { id: 'groups', name: 'Groups' },
+          { id: 'movies', name: 'Movies' },
+        ],
+        groups: [
+          {
+            id: 'rounders',
+            name: 'Rounders',
+            labelId: 'movies',
+            description: 'Poker movie icons',
+            names: ['MikeMcDermott'],
+            namePersonalities: { MikeMcDermott: 'humanoid' },
+          },
+        ],
+      }),
+    );
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.labels?.find((l) => l.id === 'movies')?.name).toBe('Movies');
+    expect(res.groups[0]!.labelId).toBe('movies');
+    expect(res.groups[0]!.description).toBe('Poker movie icons');
+  });
+
+  it('maps legacy kind + object labels', () => {
+    const res = parseBotGroupsJson(
+      JSON.stringify({
+        labels: { level: 'Level', groups: 'Groups', movies: 'Cinema' },
+        groups: [
+          {
+            id: 'rounders',
+            name: 'Rounders',
+            kind: 'movies',
+            names: ['MikeMcDermott'],
+            namePersonalities: { MikeMcDermott: 'humanoid' },
+          },
+        ],
+      }),
+    );
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.labels?.find((l) => l.id === 'movies')?.name).toBe('Cinema');
+    expect(res.groups[0]!.labelId).toBe('movies');
+  });
+
+  it('infers level labelId for Easy/Medium/Hard when omitted', () => {
+    const res = parseBotGroupsJson(
+      JSON.stringify({
+        id: 'easy',
+        name: 'Easy',
+        names: ['SoftCall'],
+        namePersonalities: { SoftCall: 'caller' },
+      }),
+    );
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.groups[0]!.labelId).toBe('level');
   });
 
   it('accepts { groups: [...] } and a single object', () => {
@@ -97,6 +166,8 @@ describe('applyBotGroupsImport', () => {
         name: 'Classic Updated',
         names: ['AceBot'],
         isDefault: true,
+        labelId: 'groups',
+        description: '',
         defaultPersonality: null,
         namePersonalities: { AceBot: 'balanced' },
       },
@@ -105,6 +176,8 @@ describe('applyBotGroupsImport', () => {
         name: 'Chaos Crew',
         names: ['AllInAnnie'],
         isDefault: false,
+        labelId: 'groups',
+        description: '',
         defaultPersonality: 'maniac',
         namePersonalities: {},
       },
@@ -127,6 +200,8 @@ describe('applyBotGroupsImport', () => {
         name: 'Chaos Crew',
         names: ['AllInAnnie'],
         isDefault: false,
+        labelId: 'groups',
+        description: '',
         defaultPersonality: 'maniac',
         namePersonalities: {},
       },
@@ -145,6 +220,8 @@ describe('applyBotGroupsImport', () => {
         name: 'Soft School',
         names: ['CallCart'],
         isDefault: true,
+        labelId: 'groups',
+        description: 'Soft players',
         defaultPersonality: 'passive',
         namePersonalities: { CallCart: 'caller' },
       },
@@ -158,12 +235,31 @@ describe('applyBotGroupsImport', () => {
 });
 
 describe('serializeBotGroupsJson', () => {
-  it('round-trips through parse', () => {
-    const text = serializeBotGroupsJson([classic]);
+  it('round-trips through parse including labelId and description', () => {
+    const text = serializeBotGroupsJson([classic], [
+      { id: 'level', name: 'Level' },
+      { id: 'groups', name: 'Groups' },
+    ]);
     const res = parseBotGroupsJson(text);
     expect(res.ok).toBe(true);
     if (!res.ok) return;
     expect(res.groups[0]!.id).toBe('classic');
+    expect(res.groups[0]!.labelId).toBe('groups');
+    expect(res.groups[0]!.description).toBe('Classic mixed table');
     expect(res.groups[0]!.namePersonalities.AceBot).toBe('aggro');
+    expect(res.labels?.map((l) => l.id)).toEqual(['level', 'groups']);
+  });
+});
+
+describe('defaultBotGroups', () => {
+  it('matches curated Easy/Medium/Hard defaults', () => {
+    const groups = defaultBotGroups();
+    expect(groups.find((g) => g.isDefault)?.id).toBe('medium');
+    expect(groups.filter((g) => g.labelId === 'level').map((g) => g.id).sort()).toEqual([
+      'easy',
+      'hard',
+      'medium',
+    ]);
+    expect(groups.find((g) => g.id === 'easy')?.description).toMatch(/soft/i);
   });
 });

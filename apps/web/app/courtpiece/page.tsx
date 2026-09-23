@@ -97,7 +97,7 @@ export default function CourtpieceHostPage() {
     >
       <form onSubmit={onCreate}>
         <LobbySplitCard
-          imageSrc={resolvePublicImage(pageCopy.image ?? '/home-offline.png')}
+          imageSrc={resolvePublicImage(pageCopy.image ?? '/home-offline.webp')}
           imageAlt={pageCopy.imageAlt ?? 'Host Court Piece with no stakes'}
         >
           <ChoiceRow

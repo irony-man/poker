@@ -7,6 +7,7 @@ import type { EconomySnapshot } from '../wallet/wallet.constants.js';
 import { SiteConfigStore } from './site-config.store.js';
 import type {
   BotGroup,
+  BotGroupLabels,
   BotSeatingConfig,
   CopyTheme,
   HomeFeaturesByTheme,
@@ -14,6 +15,7 @@ import type {
   PagesByTheme,
   PagesCopy,
   RoomSettings,
+  AvatarPresetsConfig,
   SiteAnnouncement,
   SiteConfigPayload,
   TableSoundsConfig,
@@ -77,8 +79,16 @@ export class SiteConfigService implements OnModuleInit {
     return this.store.getBotGroups();
   }
 
+  getBotGroupLabels(): BotGroupLabels {
+    return this.store.getBotGroupLabels();
+  }
+
   getSounds(): TableSoundsConfig {
     return this.store.getSounds();
+  }
+
+  getAvatarPresets(): AvatarPresetsConfig {
+    return this.store.getAvatarPresets();
   }
 
   getBotNamePool(groupId?: string | null): string[] {
@@ -117,11 +127,18 @@ export class SiteConfigService implements OnModuleInit {
     return this.store.setRoomSettings(partial);
   }
 
-  setBotGroups(groups: BotGroup[]): Promise<BotGroup[]> {
-    return this.store.setBotGroups(groups);
+  setBotGroups(
+    groups: BotGroup[],
+    labels?: BotGroupLabels | null,
+  ): Promise<{ groups: BotGroup[]; labels: BotGroupLabels }> {
+    return this.store.setBotGroups(groups, labels);
   }
 
   setSounds(next: TableSoundsConfig): Promise<TableSoundsConfig> {
     return this.store.setSounds(next);
+  }
+
+  setAvatarPresets(next: AvatarPresetsConfig): Promise<AvatarPresetsConfig> {
+    return this.store.setAvatarPresets(next);
   }
 }

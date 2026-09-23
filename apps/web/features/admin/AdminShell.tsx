@@ -52,7 +52,7 @@ function AdminNav({
                   className={cn(
                     'nav-sidebar-item py-2',
                     active
-                      ? 'nav-sidebar-item-active bg-brass/15 text-brass'
+                      ? 'nav-sidebar-item-active bg-on-chrome/15 text-on-chrome'
                       : 'text-on-chrome/80 hover:bg-on-chrome/12 hover:text-on-chrome',
                   )}
                 >
@@ -75,14 +75,14 @@ function AdminBrand({ onClick }: { onClick?: () => void }) {
       className="group sidebar-brand"
     >
       <Image
-        src={imageAssetUrl('pokr-logo.png')}
+        src={imageAssetUrl('pokr-logo.webp')}
         alt="POKR"
         width={160}
         height={48}
         className="h-11 w-auto object-contain object-left mix-blend-screen"
         priority
       />
-      <p className="mt-2 font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-brass">
+      <p className="mt-2 font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-on-chrome/90">
         Admin
       </p>
     </Link>

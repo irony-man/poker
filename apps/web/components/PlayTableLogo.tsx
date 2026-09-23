@@ -11,7 +11,7 @@ export function PlayTableLogo() {
 
   return (
     <Image
-      src={onDark ? imageAssetUrl('pokr-logo.png') : '/purple-logo.png'}
+      src={onDark ? imageAssetUrl('pokr-logo.webp') : '/purple-logo.webp'}
       alt="POKR"
       width={140}
       height={40}

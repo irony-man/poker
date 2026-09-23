@@ -93,7 +93,7 @@ export default function MemoryHostPage() {
     >
       <form onSubmit={onCreate}>
         <LobbySplitCard
-          imageSrc={resolvePublicImage(pageCopy.image ?? '/home-offline.png')}
+          imageSrc={resolvePublicImage(pageCopy.image ?? '/home-offline.webp')}
           imageAlt={pageCopy.imageAlt ?? 'Host Memory Match with no stakes'}
         >
           <ChoiceRow

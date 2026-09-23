@@ -7,7 +7,7 @@ import {
   clampKeyboardShortcuts,
   type KeyboardShortcuts,
 } from '@/lib/keyboardShortcuts';
-import { apiBase, parseError, sessionHeaders } from './client';
+import { apiBase, failFromResponse, parseError, sessionHeaders } from './client';
 
 export interface MeProfile {
   id: string;
@@ -103,7 +103,7 @@ export async function refreshTicket(sessionToken: string): Promise<{
     headers: sessionHeaders(sessionToken),
     body: JSON.stringify({}),
   });
-  if (!res.ok) throw new Error(await parseError(res, 'Session expired'));
+  if (!res.ok) await failFromResponse(res, 'Session expired');
   return res.json();
 }
 
@@ -112,7 +112,7 @@ export async function fetchMe(sessionToken: string): Promise<MeProfile> {
     method: 'GET',
     headers: sessionHeaders(sessionToken),
   });
-  if (!res.ok) throw new Error(await parseError(res, 'Could not load profile'));
+  if (!res.ok) await failFromResponse(res, 'Could not load profile');
   return normalizeMe((await res.json()) as MeProfile);
 }
 
@@ -133,7 +133,7 @@ export async function updateMe(
     headers: sessionHeaders(sessionToken),
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await parseError(res, 'Could not update profile'));
+  if (!res.ok) await failFromResponse(res, 'Could not update profile');
   return normalizeMe((await res.json()) as MeProfile);
 }
 
@@ -146,6 +146,6 @@ export async function requestAvatarUploadUrl(
     headers: sessionHeaders(sessionToken),
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await parseError(res, 'Could not start avatar upload'));
+  if (!res.ok) await failFromResponse(res, 'Could not start avatar upload');
   return res.json() as Promise<{ uploadUrl: string; publicUrl: string; expiresIn: number }>;
 }

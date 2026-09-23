@@ -27,6 +27,7 @@ import { loadSavedTableLayout, saveTableLayout } from '@/lib/tableLayoutPref';
 import { loadSavedUiTheme, saveUiTheme } from '@/lib/uiTheme';
 import { attachPlayFullscreen } from '@/lib/mobileFullscreen';
 import { ConfirmProvider } from '@/components/ConfirmPopover';
+import { AvatarPresetsLoader } from '@/components/AvatarPresetsLoader';
 import { SiteAnnouncementBanner } from '@/components/SiteAnnouncement';
 import { SkipLink } from '@/components/SkipLink';
 import { useSessionSocket } from '@/lib/ws';
@@ -230,6 +231,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
 
   return (
     <ConfirmProvider>
+      <AvatarPresetsLoader />
       <OnlineFriendsProvider signedIn={signedIn}>
         <div className="lobby-shell">
           <SkipLink />
@@ -247,7 +249,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
               <div className="flex items-center justify-between gap-3 px-3 py-2.5">
                 <Link href="/" className="flex min-w-0 flex-1 items-center">
                   <Image
-                    src={imageAssetUrl('pokr-logo.png')}
+                    src={imageAssetUrl('pokr-logo.webp')}
                     alt="POKR"
                     width={120}
                     height={36}

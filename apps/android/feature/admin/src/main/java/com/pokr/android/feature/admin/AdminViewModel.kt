@@ -1,6 +1,8 @@
 package com.pokr.android.feature.admin
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -23,7 +25,10 @@ import com.pokr.android.core.model.TableSoundsConfig
 import com.pokr.android.core.network.PokrApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.ByteArrayOutputStream
 import javax.inject.Inject
+import kotlin.math.max
+import kotlin.math.min
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -320,6 +325,37 @@ class AdminViewModel @Inject constructor(
         }
     }
 
+    private fun optimizeImageBytes(uri: Uri, maxEdge: Int = 1920): Pair<ByteArray, String> {
+        val decoded =
+            appContext.contentResolver.openInputStream(uri)?.use { stream ->
+                BitmapFactory.decodeStream(stream)
+            } ?: error("Could not read image")
+        try {
+            val w = decoded.width
+            val h = decoded.height
+            val scale = min(1f, maxEdge.toFloat() / max(w, h).toFloat())
+            val scaled =
+                if (scale < 1f) {
+                    val nw = max(1, (w * scale).toInt())
+                    val nh = max(1, (h * scale).toInt())
+                    Bitmap.createScaledBitmap(decoded, nw, nh, true).also {
+                        if (it !== decoded) decoded.recycle()
+                    }
+                } else {
+                    decoded
+                }
+            val out = ByteArrayOutputStream()
+            if (!scaled.compress(Bitmap.CompressFormat.WEBP_LOSSY, 82, out)) {
+                error("Could not compress image")
+            }
+            if (scaled !== decoded) scaled.recycle() else decoded.recycle()
+            return out.toByteArray() to "image/webp"
+        } catch (err: Throwable) {
+            decoded.recycle()
+            throw err
+        }
+    }
+
     private suspend fun putUpload(
         uri: Uri,
         purpose: String,
@@ -328,11 +364,18 @@ class AdminViewModel @Inject constructor(
     ) {
         _uiState.update { it.copy(uploading = true, error = null) }
         runCatching {
-            val bytes = withContext(Dispatchers.IO) {
-                appContext.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-            } ?: error("Could not read file")
-            val contentType = appContext.contentResolver.getType(uri)
-                ?: if (purpose == "sound") "audio/mpeg" else "image/jpeg"
+            val (bytes, contentType) =
+                withContext(Dispatchers.IO) {
+                    if (purpose == "sound") {
+                        val raw =
+                            appContext.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                                ?: error("Could not read file")
+                        val type = appContext.contentResolver.getType(uri) ?: "audio/mpeg"
+                        raw to type
+                    } else {
+                        optimizeImageBytes(uri)
+                    }
+                }
             val signed = if (purpose == "sound") {
                 api.requestAdminSoundUploadUrl(
                     AdminUploadUrlBody(

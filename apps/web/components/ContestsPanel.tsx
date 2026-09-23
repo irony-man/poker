@@ -230,7 +230,7 @@ export function ContestsPanel({
 
   return (
     <LobbySplitCard
-      imageSrc={resolvePublicImage(imageSrc || '/home-knockout.png')}
+      imageSrc={resolvePublicImage(imageSrc || '/home-knockout.webp')}
       imageAlt={imageAlt || 'Multi-seat tournament table ready to fill'}
       alignTop
     >

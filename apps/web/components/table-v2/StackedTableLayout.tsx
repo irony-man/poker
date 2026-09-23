@@ -280,7 +280,7 @@ export function StackedTableLayout({
                 />
               ) : (
                 <p className="mb-2 text-[11px] text-on-chrome/75">
-                  {focusPlayer.mucked ? 'Mucked' : 'Hand not shown'}
+                  Hand not shown
                 </p>
               )}
             </>

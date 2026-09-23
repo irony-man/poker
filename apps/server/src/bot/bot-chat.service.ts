@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import type { Response } from 'express';
 import {
-  PERSONA_MODEL,
   PERSONA_SYSTEM_PROMPT,
+  resolvePersonaModel,
   type BotChatPersona,
 } from './bot-chat.prompts.js';
 import type { BotChatMessage } from './bot-chat.parse.js';
@@ -98,7 +98,7 @@ export class BotChatService {
         method: 'POST',
         headers: this.headers(),
         body: JSON.stringify({
-          model: PERSONA_MODEL[persona],
+          model: resolvePersonaModel(persona),
           temperature: 0.8,
           max_tokens: 256,
           messages: withPersonaSystem(persona, messages),
@@ -149,7 +149,7 @@ export class BotChatService {
         method: 'POST',
         headers: this.headers(),
         body: JSON.stringify({
-          model: PERSONA_MODEL[persona],
+          model: resolvePersonaModel(persona),
           temperature: 0.8,
           max_tokens: 256,
           stream: true,

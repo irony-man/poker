@@ -19,8 +19,6 @@ export interface PlayerState {
   holeCards: [Card, Card] | null;
   /** Shown at showdown / voluntary show. */
   revealed: boolean;
-  /** Explicitly mucked during payout (cannot show after). */
-  mucked: boolean;
 }
 
 export type ActionType = 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'allin';
@@ -75,8 +73,6 @@ export type EngineEvent =
   | { type: 'action'; seat: number; action: ActionType; amount: number }
   | { type: 'turn'; seat: number }
   | { type: 'hand_ended'; winners: PotAward[] }
-  | { type: 'hand_shown'; seat: number }
-  | { type: 'hand_mucked'; seat: number }
   | { type: 'error'; message: string };
 
 export interface ApplyResult {
@@ -115,7 +111,6 @@ export function createEmptyTable(config: TableConfig): HandState {
       status: 'empty',
       holeCards: null,
       revealed: false,
-      mucked: false,
     });
   }
   return {
@@ -217,7 +212,6 @@ export function sitDown(
   p.committed = 0;
   p.holeCards = null;
   p.revealed = false;
-  p.mucked = false;
   s.version += 1;
   return { state: s, events, ok: true };
 }
@@ -357,7 +351,6 @@ function resetHandFields(state: HandState, handId: string, config: TableConfig):
     p.committed = 0;
     p.holeCards = null;
     p.revealed = false;
-    p.mucked = false;
     if (p.status !== 'empty' && p.userId && p.stack > 0) {
       if (p.status !== 'sittingOut') p.status = 'active';
     } else if (p.status !== 'empty' && p.stack === 0) {
@@ -547,10 +540,9 @@ function goToShowdown(state: HandState, events: EngineEvent[]): ApplyResult {
   const living = livingPlayers(state);
   const ranks = new Map<number, number>();
   const bestCardsBySeat = new Map<number, string[]>();
-  const handNameBySeat = new Map<number, string>();
 
   if (living.length === 1) {
-    // Award without reveal — winner may voluntary-show on payout
+    // Award without reveal
     const winner = living[0]!;
     state.winners = [{ seat: winner.seat, amount: state.pot }];
     state.showdownHands = [];
@@ -564,6 +556,7 @@ function goToShowdown(state: HandState, events: EngineEvent[]): ApplyResult {
 
   for (const p of living) {
     if (!p.holeCards) continue;
+    p.revealed = true;
     const seven = [...p.holeCards, ...state.community];
     const best = evaluateBestHand(seven);
     ranks.set(p.seat, best.rank);
@@ -571,8 +564,13 @@ function goToShowdown(state: HandState, events: EngineEvent[]): ApplyResult {
       p.seat,
       best.cards.map((c) => cardToString(c)),
     );
-    handNameBySeat.set(p.seat, HAND_CATEGORY_NAMES[categoryOf(best.rank)]);
   }
+
+  state.showdownHands = [...ranks.entries()].map(([seat, rank]) => ({
+    seat,
+    handName: HAND_CATEGORY_NAMES[categoryOf(rank)],
+    cards: bestCardsBySeat.get(seat) ?? [],
+  }));
 
   const contributions = state.players
     .filter((p) => p.committed > 0)
@@ -584,98 +582,20 @@ function goToShowdown(state: HandState, events: EngineEvent[]): ApplyResult {
 
   state.sidePots = buildSidePots(contributions);
   const awards = awardPots(state.sidePots, ranks, state.dealerButton, state.players.length);
-  state.winners = awards.map((w) => ({
-    ...w,
-    handName: handNameBySeat.get(w.seat) ?? 'High Card',
-  }));
+  state.winners = awards.map((w) => {
+    const handName =
+      state.showdownHands.find((h) => h.seat === w.seat)?.handName ?? 'High Card';
+    return { ...w, handName };
+  });
 
   for (const w of state.winners) {
     state.players[w.seat]!.stack += w.amount;
   }
   state.pot = 0;
-
-  // Auto-reveal pot winners only; other living players may show/muck on payout
-  const winnerSeats = new Set(state.winners.map((w) => w.seat));
-  state.showdownHands = [];
-  for (const p of living) {
-    if (!p.holeCards || !winnerSeats.has(p.seat)) continue;
-    p.revealed = true;
-    state.showdownHands.push({
-      seat: p.seat,
-      handName: handNameBySeat.get(p.seat) ?? 'High Card',
-      cards: bestCardsBySeat.get(p.seat) ?? [],
-    });
-  }
-
   state.street = 'payout';
   events.push({ type: 'hand_ended', winners: state.winners });
   state.version += 1;
   return { state, events, ok: true };
-}
-
-function canShowOrMuck(state: HandState, seat: number): string | null {
-  if (state.street !== 'payout') return 'Show/muck only during payout';
-  const p = state.players[seat];
-  if (!p || !p.holeCards) return 'No hole cards';
-  if (p.status === 'folded' || p.status === 'empty') return 'Seat not in hand';
-  if (p.revealed) return 'Already shown';
-  if (p.mucked) return 'Already mucked';
-  return null;
-}
-
-function buildShowdownEntry(
-  state: HandState,
-  seat: number,
-): { seat: number; handName: string; cards: string[] } | null {
-  const p = state.players[seat];
-  if (!p?.holeCards) return null;
-  const hole = p.holeCards;
-  const seven = [...hole, ...state.community];
-  if (seven.length < 5) {
-    const pair = hole[0].rank === hole[1].rank;
-    return {
-      seat,
-      handName: pair ? 'One Pair' : 'High Card',
-      cards: [cardToString(hole[0]), cardToString(hole[1])],
-    };
-  }
-  const best = evaluateBestHand(seven);
-  return {
-    seat,
-    handName: HAND_CATEGORY_NAMES[categoryOf(best.rank)],
-    cards: best.cards.map((c) => cardToString(c)),
-  };
-}
-
-/** Voluntary show during payout. */
-export function showHand(state: HandState, seat: number): ApplyResult {
-  const err = canShowOrMuck(state, seat);
-  if (err) return { state, events: [], ok: false, error: err };
-  const s = cloneState(state);
-  const p = s.players[seat]!;
-  p.revealed = true;
-  p.mucked = false;
-  const entry = buildShowdownEntry(s, seat);
-  if (entry) {
-    const ix = s.showdownHands.findIndex((h) => h.seat === seat);
-    if (ix >= 0) s.showdownHands[ix] = entry;
-    else s.showdownHands.push(entry);
-  }
-  s.version += 1;
-  return { state: s, events: [{ type: 'hand_shown', seat }], ok: true };
-}
-
-/** Voluntary muck during payout (cards stay server-side, not public). */
-export function muckHand(state: HandState, seat: number): ApplyResult {
-  const err = canShowOrMuck(state, seat);
-  if (err) return { state, events: [], ok: false, error: err };
-  const s = cloneState(state);
-  const p = s.players[seat]!;
-  p.revealed = false;
-  p.mucked = true;
-  s.showdownHands = s.showdownHands.filter((h) => h.seat !== seat);
-  s.version += 1;
-  return { state: s, events: [{ type: 'hand_mucked', seat }], ok: true };
 }
 
 function nextActor(state: HandState, from: number): number | null {
@@ -857,7 +777,6 @@ export function returnToWaiting(state: HandState): HandState {
     p.committed = 0;
     p.holeCards = null;
     p.revealed = false;
-    p.mucked = false;
     if (p.status !== 'empty' && p.userId) {
       if (p.status !== 'sittingOut') {
         p.status = p.stack > 0 ? 'seated' : 'sittingOut';

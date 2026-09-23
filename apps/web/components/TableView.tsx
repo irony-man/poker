@@ -630,9 +630,6 @@ export function TableView({
               : undefined,
             botGroupId,
             onBotGroupChange: botsAllowed ? setBotGroupId : undefined,
-            canShowMuck: Boolean(priv?.canShowMuck),
-            onShowHand: () => send({ type: 'show_hand', tableId, seat: mySeat! }),
-            onMuckHand: () => send({ type: 'muck_hand', tableId, seat: mySeat! }),
           }}
         />
   );
@@ -651,8 +648,7 @@ export function TableView({
         canReady ||
         canSitIn ||
         isSpectating ||
-        showDockReadyRoster ||
-        Boolean(priv?.canShowMuck)
+        showDockReadyRoster
       }
       actions={actionControls}
       voice={

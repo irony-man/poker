@@ -294,11 +294,11 @@ export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
   },
   {
     title: 'Chat with Bots',
-    body: 'Talk to BoostBot for sincere compliments or BanterBot for sharp roasts — FunGPT personalities, no table required.',
+    body: 'Talk to BanterBot for sharp roasts — FunGPT personality, no table required.',
     cta: 'Open Chat',
     href: '/chat',
     image: '/home-offline.png',
-    imageAlt: 'Chat with BoostBot and BanterBot',
+    imageAlt: 'Chat with BanterBot',
     imageFirst: false,
   },
 ];
@@ -367,9 +367,9 @@ export const DEFAULT_PAGES_COPY: PagesCopy = {
   chat: {
     title: 'Chat with Bots',
     subtitle:
-      'Talk to BoostBot for sincere compliments or BanterBot for sharp roasts — FunGPT personalities, no table required.',
+      'Talk to BanterBot for sharp roasts — FunGPT personality, no table required.',
     image: '/home-offline.png',
-    imageAlt: 'Chat with BoostBot and BanterBot',
+    imageAlt: 'Chat with BanterBot',
   },
   arcade: {
     title: 'Arcade',

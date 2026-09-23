@@ -23,9 +23,12 @@ export function parseBotChatBody(raw: unknown): { ok: true; value: ParsedBotChat
     return { ok: false, error: 'Invalid body' };
   }
   const body = raw as Record<string, unknown>;
-  const personaRaw = typeof body.persona === 'string' ? body.persona.trim() : '';
+  const personaRaw =
+    typeof body.persona === 'string' && body.persona.trim()
+      ? body.persona.trim()
+      : 'banter';
   if (!isBotChatPersona(personaRaw)) {
-    return { ok: false, error: 'persona must be boost or banter' };
+    return { ok: false, error: 'persona must be banter' };
   }
   if (!Array.isArray(body.messages)) {
     return { ok: false, error: 'messages must be an array' };

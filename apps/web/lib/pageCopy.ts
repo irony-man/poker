@@ -142,9 +142,9 @@ export const DEFAULT_PAGES_COPY: PagesCopy = {
   chat: {
     title: 'Chat with Bots',
     subtitle:
-      'Talk to BoostBot for sincere compliments or BanterBot for sharp roasts — FunGPT personalities, no table required.',
+      'Talk to BanterBot for sharp roasts — FunGPT personality, no table required.',
     image: '/home-offline.png',
-    imageAlt: 'Chat with BoostBot and BanterBot',
+    imageAlt: 'Chat with BanterBot',
   },
   arcade: {
     title: 'Arcade',

@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "python3 -m uvicorn server:app --host 127.0.0.1 --port 8000 --reload",
-    "start": "python3 -m uvicorn server:app --host 127.0.0.1 --port 8000",
-    "test": "python3 -m unittest discover -s . -p 'test_*.py'"
+    "dev": "sh -c 'export FUNGPT_ROOT=\"${FUNGPT_ROOT:-/home/shivam/work/FunGPT}\"; export PYTHONPATH=\"$FUNGPT_ROOT/.python-local/local/lib/python3.12/dist-packages${PYTHONPATH:+:$PYTHONPATH}\"; exec ./.venv/bin/python -m uvicorn server:app --host 127.0.0.1 --port 8000 --reload'",
+    "start": "sh -c 'export FUNGPT_ROOT=\"${FUNGPT_ROOT:-/home/shivam/work/FunGPT}\"; export PYTHONPATH=\"$FUNGPT_ROOT/.python-local/local/lib/python3.12/dist-packages${PYTHONPATH:+:$PYTHONPATH}\"; exec ./.venv/bin/python -m uvicorn server:app --host 0.0.0.0 --port 8000'",
+    "test": "sh -c 'export FUNGPT_ROOT=\"${FUNGPT_ROOT:-/home/shivam/work/FunGPT}\"; export PYTHONPATH=\"$FUNGPT_ROOT/.python-local/local/lib/python3.12/dist-packages${PYTHONPATH:+:$PYTHONPATH}\"; exec ./.venv/bin/python -m unittest discover -s . -p \"test_*.py\"'"
   }
 }

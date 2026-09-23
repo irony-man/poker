@@ -1,5 +1,7 @@
 # Production Compose: Nest + Next. DB is external (Supabase) via DATABASE_URL in `.env`.
 # Optional local Postgres: docker compose --profile local-db up -d postgres
+# Optional FunGPT sidecar: docker compose --profile fungpt up -d --build
+#   (mount FunGPT weights via FUNGPT_ROOT; prefer GPU. For Oracle CPU VMs use a hosted API instead.)
 
 services:
   postgres:
@@ -20,6 +22,36 @@ services:
       retries: 10
       start_period: 5s
     restart: unless-stopped
+
+  fungpt:
+    profiles: ["fungpt"]
+    build:
+      context: .
+      dockerfile: apps/fungpt/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      FUNGPT_ROOT: /models
+      FUNGPT_API_KEY: ${BANTER_LLM_API_KEY:-}
+      FUNGPT_HOST: 0.0.0.0
+      FUNGPT_PORT: "8000"
+    volumes:
+      # Host path to FunGPT checkout (must include LLM/weights/BanterBot_1_8b-chat).
+      # Required when using --profile fungpt; unused otherwise (Compose still interpolates this path).
+      - ${FUNGPT_ROOT:-./data/fungpt}:/models:ro
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
 
   server:
     build:
@@ -43,6 +75,14 @@ services:
       S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:-}
       SUPABASE_REGION: ${SUPABASE_REGION:-}
       REDIS_URL: ${REDIS_URL:-}
+      # OpenAI-compatible LLM (hosted API or FunGPT sidecar). Unset → template banter; /chat unavailable.
+      BANTER_LLM_BASE_URL: ${BANTER_LLM_BASE_URL:-}
+      BANTER_LLM_API_KEY: ${BANTER_LLM_API_KEY:-}
+      BANTER_LLM_MODEL: ${BANTER_LLM_MODEL:-}
+      BANTER_LLM_PATH: ${BANTER_LLM_PATH:-/v1/chat/completions}
+      BANTER_LLM_TIMEOUT_MS: ${BANTER_LLM_TIMEOUT_MS:-8000}
+      BOT_CHAT_TIMEOUT_MS: ${BOT_CHAT_TIMEOUT_MS:-60000}
+      BOT_CHAT_MODEL: ${BOT_CHAT_MODEL:-}
     volumes:
       - poker-data:/app/data
     restart: unless-stopped

@@ -6,11 +6,13 @@ from prompt import deltas_from_accumulated, messages_to_prompt, resolve_model
 
 class ResolveModelTests(unittest.TestCase):
     def test_aliases(self):
-        self.assertEqual(resolve_model("boost"), "boostbot")
+        self.assertEqual(resolve_model("banter"), "banterbot")
         self.assertEqual(resolve_model("BanterBot"), "banterbot")
         self.assertEqual(resolve_model(None), "banterbot")
 
     def test_unknown(self):
+        with self.assertRaises(ValueError):
+            resolve_model("boostbot")
         with self.assertRaises(ValueError):
             resolve_model("gpt-4")
 
@@ -19,11 +21,11 @@ class PromptTests(unittest.TestCase):
     def test_system_and_user(self):
         prompt = messages_to_prompt(
             [
-                {"role": "system", "content": "You are BoostBot."},
+                {"role": "system", "content": "You are BanterBot."},
                 {"role": "user", "content": "Hi"},
             ]
         )
-        self.assertIn("<|im_start|>system\nYou are BoostBot.<|im_end|>", prompt)
+        self.assertIn("<|im_start|>system\nYou are BanterBot.<|im_end|>", prompt)
         self.assertTrue(prompt.endswith("<|im_start|>user\nHi<|im_end|>\n<|im_start|>assistant\n"))
 
     def test_history_turns(self):
@@ -47,7 +49,7 @@ class PromptTests(unittest.TestCase):
             ]
         )
         self.assertIn("AceBot at a cash table", prompt)
-        self.assertNotIn("Compliment Master", prompt)
+        self.assertNotIn("Roast Master", prompt)
 
 
 class FormatTests(unittest.TestCase):
@@ -58,7 +60,7 @@ class FormatTests(unittest.TestCase):
         self.assertEqual(payload["choices"][0]["message"]["content"], "Nice raise.")
 
     def test_chunk_and_sse(self):
-        chunk = chat_completion_chunk("Hi", "boostbot", chunk_id="chatcmpl-test")
+        chunk = chat_completion_chunk("Hi", "banterbot", chunk_id="chatcmpl-test")
         self.assertEqual(chunk["choices"][0]["delta"]["content"], "Hi")
         line = sse_line(chunk)
         self.assertTrue(line.startswith("data: "))

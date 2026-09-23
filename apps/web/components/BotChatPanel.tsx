@@ -2,17 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
-import { streamBotChat, type BotChatPersona, type BotChatTurn } from '@/lib/api/botChat';
+import { streamBotChat, type BotChatTurn } from '@/lib/api/botChat';
 import { cn } from '@/lib/cn';
 import { readStoredSession } from '@/lib/session';
 
-const PERSONAS: { id: BotChatPersona; name: string }[] = [
-  { id: 'boost', name: 'BoostBot' },
-  { id: 'banter', name: 'BanterBot' },
-];
-
 export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
-  const [persona, setPersona] = useState<BotChatPersona>('boost');
   const [messages, setMessages] = useState<BotChatTurn[]>([]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
@@ -30,17 +24,6 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
   useEffect(() => {
     return () => abortRef.current?.abort();
   }, []);
-
-  const switchPersona = (next: BotChatPersona) => {
-    if (next === persona) return;
-    abortRef.current?.abort();
-    abortRef.current = null;
-    setPersona(next);
-    setMessages([]);
-    setError(null);
-    setBusy(false);
-    queueMicrotask(() => inputRef.current?.focus());
-  };
 
   const clear = () => {
     abortRef.current?.abort();
@@ -71,7 +54,6 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
     try {
       const full = await streamBotChat({
         sessionToken: session.sessionToken,
-        persona,
         messages: history,
         signal: ac.signal,
         onDelta: (delta) => {
@@ -108,41 +90,12 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
     }
   };
 
-  const emptyHint =
-    persona === 'boost'
-      ? 'BoostBot is ready to hype you up. Say anything.'
-      : 'BanterBot is ready to roast you. Bring a take.';
-
   return (
     <div className="glass-sheet flex min-h-[28rem] flex-col overflow-hidden rounded-2xl border border-sidebar/12 shadow-[0_12px_32px_rgb(29_4_50/0.08)] sm:min-h-[32rem] lg:h-[min(70vh,42rem)]">
-      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-sidebar/10 px-4 py-3">
-        <div
-          className="flex rounded-full border border-sidebar/15 bg-page/40 p-0.5"
-          role="tablist"
-          aria-label="Bot persona"
-        >
-          {PERSONAS.map((p) => {
-            const active = persona === p.id;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                disabled={disabled}
-                onClick={() => switchPersona(p.id)}
-                className={cn(
-                  'rounded-full px-3.5 py-1.5 text-[11px] font-display font-bold uppercase tracking-[0.12em] transition',
-                  active
-                    ? 'bg-sidebar text-on-chrome shadow-[0_4px_12px_rgb(29_4_50/0.18)]'
-                    : 'text-muted hover:text-sidebar',
-                )}
-              >
-                {p.name}
-              </button>
-            );
-          })}
-        </div>
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-sidebar/10 px-4 py-3">
+        <h2 className="font-display text-sm font-bold uppercase tracking-[0.16em] text-primary">
+          BanterBot
+        </h2>
         <Button type="button" variant="ghost" size="sm" onClick={clear} disabled={busy && !messages.length}>
           Clear
         </Button>
@@ -156,8 +109,10 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
       >
         {messages.length === 0 ? (
           <li className="flex h-full min-h-[12rem] flex-col items-center justify-center px-4 text-center">
-            <p className="font-heading-sub">{PERSONAS.find((p) => p.id === persona)?.name}</p>
-            <p className="mt-1 max-w-[18rem] text-xs leading-relaxed text-muted">{emptyHint}</p>
+            <p className="font-heading-sub">BanterBot</p>
+            <p className="mt-1 max-w-[18rem] text-xs leading-relaxed text-muted">
+              BanterBot is ready to roast you. Bring a take.
+            </p>
           </li>
         ) : (
           messages.map((m, i) => {
@@ -174,7 +129,7 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
                 )}
               >
                 <p className="font-display text-[10px] font-bold uppercase tracking-[0.12em] opacity-70">
-                  {isUser ? 'You' : PERSONAS.find((p) => p.id === persona)?.name}
+                  {isUser ? 'You' : 'BanterBot'}
                 </p>
                 <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-snug">
                   {pending ? '…' : m.content}

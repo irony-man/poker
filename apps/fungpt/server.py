@@ -7,10 +7,11 @@ import queue
 import threading
 from typing import Any, AsyncIterator, Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from auth import configured_api_key, require_api_key
 from format import chat_completion_chunk, chat_completion_response, sse_line
 from models import complete, generate_deltas, model_available
 from prompt import messages_to_prompt, resolve_model
@@ -41,10 +42,14 @@ def health() -> dict[str, Any]:
     except ImportError:
         device = "unknown"
     models = {
-        "boostbot": model_available("boostbot"),
         "banterbot": model_available("banterbot"),
     }
-    return {"ok": True, "device": device, "models": models}
+    return {
+        "ok": True,
+        "device": device,
+        "models": models,
+        "auth": bool(configured_api_key()),
+    }
 
 
 def _gen_args(body: ChatCompletionRequest) -> dict[str, Any]:
@@ -55,7 +60,7 @@ def _gen_args(body: ChatCompletionRequest) -> dict[str, Any]:
     }
 
 
-@app.post("/v1/chat/completions")
+@app.post("/v1/chat/completions", dependencies=[Depends(require_api_key)])
 async def chat_completions(body: ChatCompletionRequest):
     try:
         model_id = resolve_model(body.model)

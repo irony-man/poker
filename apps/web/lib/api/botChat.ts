@@ -1,6 +1,6 @@
 import { apiBase, parseError, sessionHeaders } from '@/lib/api/client';
 
-export type BotChatPersona = 'boost' | 'banter';
+export type BotChatPersona = 'banter';
 
 export type BotChatRole = 'user' | 'assistant';
 
@@ -11,16 +11,17 @@ export interface BotChatTurn {
 
 export async function streamBotChat(opts: {
   sessionToken: string;
-  persona: BotChatPersona;
   messages: BotChatTurn[];
   onDelta: (delta: string) => void;
   signal?: AbortSignal;
+  /** Always BanterBot; kept optional for callers. */
+  persona?: BotChatPersona;
 }): Promise<string> {
   const res = await fetch(`${apiBase()}/api/bot-chat`, {
     method: 'POST',
     headers: sessionHeaders(opts.sessionToken),
     body: JSON.stringify({
-      persona: opts.persona,
+      persona: opts.persona ?? 'banter',
       messages: opts.messages,
       stream: true,
     }),

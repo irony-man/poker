@@ -129,7 +129,8 @@ export class BotBanterLlmService {
     const base = (config.baseUrl ?? process.env.BANTER_LLM_BASE_URL ?? '').replace(/\/$/, '');
     this.baseUrl = base || null;
     this.apiKey = (config.apiKey ?? process.env.BANTER_LLM_API_KEY)?.trim() || null;
-    this.model = config.model ?? process.env.BANTER_LLM_MODEL?.trim() ?? 'banterbot';
+    this.model =
+      (config.model ?? process.env.BANTER_LLM_MODEL)?.trim() || 'banterbot';
     this.path = config.path ?? process.env.BANTER_LLM_PATH?.trim() ?? DEFAULT_PATH;
     this.timeoutMs = resolveBanterTimeoutMs(config.timeoutMs);
     this.fetchFn = config.fetchFn ?? fetch;

@@ -78,3 +78,30 @@ git pull origin main
 - `.env` stays on the VM only (gitignored). Never commit secrets.
 - `NEXT_PUBLIC_*` are baked at **image build**; change them in VM `.env`, then redeploy with `--build`.
 - `API_REWRITE_TARGET=http://server:4000` must stay set so Next `/api` does not loop on `https://pokr.site`.
+
+## Bot chat / LLM on the VM
+
+Default deploy (Nest + Next) does **not** start FunGPT. To enable lobby `/chat` and LLM table banter:
+
+1. **Hosted API (recommended on Oracle CPU):** set in `~/poker/.env`:
+
+```bash
+BANTER_LLM_BASE_URL=https://api.openai.com
+BANTER_LLM_API_KEY=sk-...
+BANTER_LLM_MODEL=gpt-4o-mini
+BOT_CHAT_MODEL=gpt-4o-mini
+```
+
+Then `docker compose up -d` (or `./scripts/deploy-vm.sh`). No web rebuild.
+
+2. **FunGPT sidecar profile** (needs FunGPT weights on disk; GPU strongly preferred):
+
+```bash
+FUNGPT_ROOT=/path/to/FunGPT
+BANTER_LLM_BASE_URL=http://fungpt:8000
+BANTER_LLM_API_KEY=optional-secret
+BANTER_LLM_MODEL=banterbot
+docker compose --profile fungpt up -d --build
+```
+
+If the LLM is down, table bots fall back to templates; `/chat` returns 503.

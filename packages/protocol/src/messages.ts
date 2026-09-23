@@ -54,16 +54,6 @@ export const ClientMessageSchema = z.discriminatedUnion('type', [
     seat: z.number().int().min(0).max(9),
   }),
   z.object({
-    type: z.literal('show_hand'),
-    tableId: z.string().min(1),
-    seat: z.number().int().min(0).max(9),
-  }),
-  z.object({
-    type: z.literal('muck_hand'),
-    tableId: z.string().min(1),
-    seat: z.number().int().min(0).max(9),
-  }),
-  z.object({
     type: z.literal('top_up'),
     tableId: z.string().min(1),
     seat: z.number().int().min(0).max(9),

@@ -46,3 +46,4 @@ apps/android/gradle/.tmp/
 __pycache__/
 *.pyc
 apps/fungpt/.venv/
+

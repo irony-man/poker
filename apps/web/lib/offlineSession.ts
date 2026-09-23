@@ -106,7 +106,6 @@ function parsePlayer(value: unknown, seat: number): PlayerState | null {
     status: status as PlayerState['status'],
     holeCards: hole,
     revealed: value.revealed === true,
-    mucked: value.mucked === true,
   };
 }
 

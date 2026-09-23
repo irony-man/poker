@@ -9,14 +9,11 @@ ASSISTANT_TURN = "<|im_start|>assistant\n{assistant}<|im_end|>\n"
 QUERY_TAIL = "<|im_start|>user\n{user}<|im_end|>\n<|im_start|>assistant\n"
 
 MODEL_ALIASES = {
-    "boost": "boostbot",
-    "boostbot": "boostbot",
     "banter": "banterbot",
     "banterbot": "banterbot",
 }
 
 MODEL_REL_PATHS = {
-    "boostbot": "LLM/weights/BoostBot_1_8b-chat",
     "banterbot": "LLM/weights/BanterBot_1_8b-chat",
 }
 
@@ -24,7 +21,7 @@ MODEL_REL_PATHS = {
 def resolve_model(name: str | None) -> str:
     key = (name or "banterbot").strip().lower()
     if key not in MODEL_ALIASES:
-        raise ValueError(f"Unknown model {name!r}; expected boostbot or banterbot")
+        raise ValueError(f"Unknown model {name!r}; expected banterbot")
     return MODEL_ALIASES[key]
 
 

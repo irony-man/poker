@@ -1,3 +1,4 @@
+import os
 import unittest
 from unittest.mock import patch
 
@@ -12,14 +13,19 @@ except ImportError:
 
 @unittest.skipUnless(HAS_FASTAPI, "fastapi not installed")
 class ServerTests(unittest.TestCase):
+    def setUp(self):
+        os.environ.pop("FUNGPT_API_KEY", None)
+        os.environ.pop("BANTER_LLM_API_KEY", None)
+
     def test_health(self):
         client = TestClient(app)
         res = client.get("/health")
         self.assertEqual(res.status_code, 200)
         body = res.json()
         self.assertTrue(body["ok"])
-        self.assertIn("boostbot", body["models"])
         self.assertIn("banterbot", body["models"])
+        self.assertNotIn("boostbot", body["models"])
+        self.assertFalse(body["auth"])
 
     @patch("server.complete", return_value="Nice raise.")
     @patch("server.model_available", return_value=True)
@@ -51,6 +57,23 @@ class ServerTests(unittest.TestCase):
             json={"model": "gpt-4", "messages": [{"role": "user", "content": "Hi"}]},
         )
         self.assertEqual(res.status_code, 400)
+
+    @patch("server.complete", return_value="ok")
+    @patch("server.model_available", return_value=True)
+    def test_api_key_required_when_configured(self, _available, _complete):
+        os.environ["FUNGPT_API_KEY"] = "secret"
+        client = TestClient(app)
+        denied = client.post(
+            "/v1/chat/completions",
+            json={"model": "banterbot", "messages": [{"role": "user", "content": "Hi"}]},
+        )
+        self.assertEqual(denied.status_code, 401)
+        ok = client.post(
+            "/v1/chat/completions",
+            headers={"Authorization": "Bearer secret"},
+            json={"model": "banterbot", "messages": [{"role": "user", "content": "Hi"}]},
+        )
+        self.assertEqual(ok.status_code, 200)
 
 
 if __name__ == "__main__":

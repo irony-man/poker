@@ -72,10 +72,6 @@ export type ActionTableTools = {
   botGroups?: { id: string; name: string }[];
   botGroupId?: string | null;
   onBotGroupChange?: (id: string) => void;
-  /** Payout: voluntary show / muck. */
-  canShowMuck?: boolean;
-  onShowHand?: () => void;
-  onMuckHand?: () => void;
 };
 
 function hasTableTools(t: ActionTableTools | undefined): boolean {
@@ -90,8 +86,7 @@ function hasTableTools(t: ActionTableTools | undefined): boolean {
       t.needChips ||
       t.canSitAndPlay ||
       t.canAddBot ||
-      t.canRemoveBots ||
-      t.canShowMuck,
+      t.canRemoveBots,
   );
 }
 
@@ -165,29 +160,6 @@ function TableToolsPanel({
       <p className="px-1 text-center text-[10px] font-medium leading-snug text-sidebar/75">
         {copy}
       </p>
-      {tools.canShowMuck && (tools.onShowHand || tools.onMuckHand) ? (
-        <div className="flex flex-wrap items-center justify-center gap-1.5">
-          {tools.onShowHand ? (
-            <Button
-              type="button"
-              onClick={tools.onShowHand}
-              className="min-h-9 px-4 text-[11px] font-display font-bold uppercase tracking-wide"
-            >
-              Show hand
-            </Button>
-          ) : null}
-          {tools.onMuckHand ? (
-            <Button
-              type="button"
-              variant="soft"
-              onClick={tools.onMuckHand}
-              className="min-h-9 px-4 text-[11px] font-display font-bold uppercase tracking-wide"
-            >
-              Muck
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
       {tools.readyPlayers && tools.readyPlayers.length > 0 ? (
         <ReadyPlayersRoster
           players={tools.readyPlayers}

@@ -51,13 +51,13 @@ BOT_CHAT_TIMEOUT_MS=60000
 
 Same pattern works with OpenRouter, Together, Fireworks, etc. (set `BANTER_LLM_BASE_URL` + model id for that host).
 
-**Local FunGPT weights (dev or GPU host):**
+**Local BanterBot sidecar (dev or GPU host):**
 
 ```bash
-# FunGPT Python env with torch + transformers (see FunGPT README).
+./scripts/download-banterbot-weights.sh
 pip install -r apps/fungpt/requirements.txt
+# plus torch/transformers (see apps/fungpt/Dockerfile)
 
-export FUNGPT_ROOT=/home/shivam/work/FunGPT
 npm run dev:fungpt
 
 # In .env:
@@ -66,14 +66,16 @@ BANTER_LLM_MODEL=banterbot
 # or omit BOT_CHAT_MODEL / BANTER_LLM_MODEL to default to banterbot
 ```
 
-**Compose sidecar** (optional profile; mounts `FUNGPT_ROOT`):
+**Compose sidecar** (optional profile; mounts `apps/fungpt/weights`):
 
 ```bash
+./scripts/download-banterbot-weights.sh
+
 # .env
-FUNGPT_ROOT=/path/to/FunGPT
 BANTER_LLM_BASE_URL=http://fungpt:8000
 BANTER_LLM_API_KEY=optional-shared-secret
 BANTER_LLM_MODEL=banterbot
+# BANTERBOT_WEIGHTS_ROOT=/custom/path/to/weights  # optional
 
 docker compose --profile fungpt up -d --build
 ```
@@ -133,7 +135,8 @@ For a public URL (Vercel/Railway/Fly), you’ll need accounts + `NEXT_PUBLIC_API
 | `BANTER_LLM_PATH` | `/v1/chat/completions` | Chat completions path |
 | `BANTER_LLM_TIMEOUT_MS` | `8000` | Table-banter LLM timeout |
 | `BOT_CHAT_TIMEOUT_MS` | `60000` | Lobby `/chat` LLM timeout |
-| `FUNGPT_ROOT` | `./data/fungpt` | FunGPT checkout for `--profile fungpt` volume mount |
+| `BANTERBOT_WEIGHTS_ROOT` | `./apps/fungpt/weights` | Host dir mounted into sidecar (`BanterBot_1_8b-chat/` inside) |
+| `BANTERBOT_WEIGHTS_DIR` | sidecar default path | Override checkpoint dir inside the sidecar process (Compose sets this) |
 
 ### Search consoles (external)
 

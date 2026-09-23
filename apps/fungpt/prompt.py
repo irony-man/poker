@@ -13,10 +13,6 @@ MODEL_ALIASES = {
     "banterbot": "banterbot",
 }
 
-MODEL_REL_PATHS = {
-    "banterbot": "LLM/weights/BanterBot_1_8b-chat",
-}
-
 
 def resolve_model(name: str | None) -> str:
     key = (name or "banterbot").strip().lower()

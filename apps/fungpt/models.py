@@ -1,29 +1,32 @@
-"""Lazy FunGPT InternLM loaders. Weights stay under FUNGPT_ROOT."""
+"""Lazy BanterBot InternLM loaders."""
 
 from __future__ import annotations
 
 import os
-import sys
 import threading
-import types
 from pathlib import Path
 from typing import Any, Iterable
 
-from prompt import MODEL_REL_PATHS, deltas_from_accumulated, resolve_model
+from loader.internlm_chat import InternLM
+from prompt import deltas_from_accumulated, resolve_model
 
-DEFAULT_FUNGPT_ROOT = "/home/shivam/work/FunGPT"
+APP_ROOT = Path(__file__).resolve().parent
+DEFAULT_BANTERBOT_WEIGHTS = APP_ROOT / "weights" / "BanterBot_1_8b-chat"
 
 _lock = threading.Lock()
 _models: dict[str, Any] = {}
 
 
-def fungpt_root() -> Path:
-    return Path(os.environ.get("FUNGPT_ROOT", DEFAULT_FUNGPT_ROOT)).expanduser().resolve()
+def banterbot_weights_dir() -> Path:
+    override = (os.environ.get("BANTERBOT_WEIGHTS_DIR") or "").strip()
+    if override:
+        return Path(override).expanduser().resolve()
+    return DEFAULT_BANTERBOT_WEIGHTS
 
 
 def model_dir(model_id: str) -> Path:
-    resolved = resolve_model(model_id)
-    return fungpt_root() / MODEL_REL_PATHS[resolved]
+    resolve_model(model_id)
+    return banterbot_weights_dir()
 
 
 def model_available(model_id: str) -> bool:
@@ -33,34 +36,6 @@ def model_available(model_id: str) -> bool:
     return any(path.glob("*.safetensors")) or any(path.glob("*.bin"))
 
 
-def _ensure_streamlit_stub() -> None:
-    """FunGPT's GenerationConfig module imports streamlit even for offline use."""
-    if "streamlit" in sys.modules:
-        return
-    try:
-        import streamlit  # noqa: F401
-    except ImportError:
-        stub = types.ModuleType("streamlit")
-        stub.sidebar = types.SimpleNamespace(
-            subheader=lambda *a, **k: None,
-            checkbox=lambda *a, **k: False,
-            slider=lambda *a, **k: 0,
-            selectbox=lambda *a, **k: None,
-            button=lambda *a, **k: False,
-        )
-        sys.modules["streamlit"] = stub
-
-
-def _internlm_class():
-    root = str(fungpt_root())
-    if root not in sys.path:
-        sys.path.insert(0, root)
-    _ensure_streamlit_stub()
-    from LLM.models.internlm2_5_7b_chat import InternLM  # type: ignore
-
-    return InternLM
-
-
 def get_model(model_id: str):
     resolved = resolve_model(model_id)
     with _lock:
@@ -68,7 +43,6 @@ def get_model(model_id: str):
         if cached is not None:
             return cached
         path = model_dir(resolved)
-        InternLM = _internlm_class()
         llm = InternLM(model_path=str(path))
         _models[resolved] = llm
         return llm

@@ -94,10 +94,10 @@ BOT_CHAT_MODEL=gpt-4o-mini
 
 Then `docker compose up -d` (or `./scripts/deploy-vm.sh`). No web rebuild.
 
-2. **FunGPT sidecar profile** (needs FunGPT weights on disk; GPU strongly preferred):
+2. **BanterBot sidecar profile** (download weights once; GPU strongly preferred):
 
 ```bash
-FUNGPT_ROOT=/path/to/FunGPT
+./scripts/download-banterbot-weights.sh
 BANTER_LLM_BASE_URL=http://fungpt:8000
 BANTER_LLM_API_KEY=optional-secret
 BANTER_LLM_MODEL=banterbot

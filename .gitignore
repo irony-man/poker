@@ -46,4 +46,6 @@ apps/android/gradle/.tmp/
 __pycache__/
 *.pyc
 apps/fungpt/.venv/
+apps/fungpt/weights/*
+!apps/fungpt/weights/.gitkeep
 

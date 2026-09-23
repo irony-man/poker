@@ -1,4 +1,4 @@
-# FunGPT OpenAI-compatible sidecar. Mount FunGPT repo (with LLM/weights) at FUNGPT_ROOT.
+# BanterBot OpenAI-compatible sidecar. Mount weights at /app/weights (see BANTERBOT_WEIGHTS_DIR).
 # Prefer a GPU host. CPU works but is slow for 1.8B InternLM.
 #
 # For CUDA hosts, rebuild FROM pytorch/pytorch:2.4.1-cuda12.1-cudnn9-runtime and
@@ -13,16 +13,17 @@ RUN apt-get update \
 
 COPY apps/fungpt/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt \
+  && pip install --no-cache-dir "torch==2.4.1" \
+    --index-url https://download.pytorch.org/whl/cpu \
   && pip install --no-cache-dir \
-    "torch==2.4.1" \
     "transformers==4.41.2" \
     "accelerate>=0.33" \
-    --index-url https://download.pytorch.org/whl/cpu \
-  && pip install --no-cache-dir "sentencepiece>=0.2" "protobuf>=4"
+    "sentencepiece>=0.2" \
+    "protobuf>=4"
 
 COPY apps/fungpt/ /app/
 
-ENV FUNGPT_ROOT=/models
+ENV BANTERBOT_WEIGHTS_DIR=/app/weights/BanterBot_1_8b-chat
 ENV FUNGPT_HOST=0.0.0.0
 ENV FUNGPT_PORT=8000
 ENV PYTHONUNBUFFERED=1

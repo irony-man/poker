@@ -1,7 +1,7 @@
 # Production Compose: Nest + Next. DB is external (Supabase) via DATABASE_URL in `.env`.
 # Optional local Postgres: docker compose --profile local-db up -d postgres
 # Optional FunGPT sidecar: docker compose --profile fungpt up -d --build
-#   (mount FunGPT weights via FUNGPT_ROOT; prefer GPU. For Oracle CPU VMs use a hosted API instead.)
+#   (run ./scripts/download-banterbot-weights.sh first; prefer GPU. Oracle CPU: use hosted API instead.)
 
 services:
   postgres:
@@ -31,14 +31,12 @@ services:
     ports:
       - "8000:8000"
     environment:
-      FUNGPT_ROOT: /models
+      BANTERBOT_WEIGHTS_DIR: /app/weights/BanterBot_1_8b-chat
       FUNGPT_API_KEY: ${BANTER_LLM_API_KEY:-}
       FUNGPT_HOST: 0.0.0.0
       FUNGPT_PORT: "8000"
     volumes:
-      # Host path to FunGPT checkout (must include LLM/weights/BanterBot_1_8b-chat).
-      # Required when using --profile fungpt; unused otherwise (Compose still interpolates this path).
-      - ${FUNGPT_ROOT:-./data/fungpt}:/models:ro
+      - ${BANTERBOT_WEIGHTS_ROOT:-./apps/fungpt/weights}:/app/weights:ro
     restart: unless-stopped
     healthcheck:
       test:

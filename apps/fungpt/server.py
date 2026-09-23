@@ -70,7 +70,10 @@ async def chat_completions(body: ChatCompletionRequest):
     if not model_available(model_id):
         raise HTTPException(
             status_code=503,
-            detail=f"Weights for {model_id} are not available under FUNGPT_ROOT",
+            detail=(
+                f"Weights for {model_id} are not available "
+                "(run ./scripts/download-banterbot-weights.sh or set BANTERBOT_WEIGHTS_DIR)"
+            ),
         )
 
     prompt = messages_to_prompt([m.model_dump() for m in body.messages])

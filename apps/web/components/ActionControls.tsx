@@ -18,6 +18,7 @@ function waitingCopy(opts: {
   connection?: string;
   isTournament?: boolean;
   contestOver?: boolean;
+  youWonHand?: boolean;
 }): string {
   if (opts.connection && opts.connection !== 'open') {
     return opts.connection === 'connecting' ? 'Reconnecting…' : 'Disconnected — actions paused';
@@ -28,6 +29,7 @@ function waitingCopy(opts: {
     return 'Waiting for players…';
   }
   if (opts.street === 'payout' || opts.street === 'showdown') {
+    if (opts.youWonHand) return 'You won — start next when ready';
     return 'Hand complete — start next when ready';
   }
   if (!opts.isTurn) return 'Waiting for your turn…';
@@ -61,6 +63,8 @@ export type ActionTableTools = {
   onTopUp?: () => void;
   needChips?: boolean;
   onNeedChips?: () => void;
+  /** Offline: human won the current hand (between-hand dock copy). */
+  youWonHand?: boolean;
   canSitAndPlay?: boolean;
   onSitAndPlay?: () => void;
   canAddBot?: boolean;
@@ -517,6 +521,7 @@ export function ActionControls({
       connection,
       isTournament,
       contestOver,
+      youWonHand: tableTools?.youWonHand,
     });
     // Between-hand / sit tools beat the spinner when connection is live and tools exist.
     if (connectionOpen && hasTableTools(tableTools) && tableTools) {

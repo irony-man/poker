@@ -35,7 +35,12 @@ export type WalletReason =
   | 'admin_reset';
 
 /** Reasons for Whuffie (rating) mutations — not spent at tables. */
-export type WhuffieReason = 'signup_grant' | 'contest_prize' | 'admin_credit' | 'admin_reset';
+export type WhuffieReason =
+  | 'signup_grant'
+  | 'contest_prize'
+  | 'offline_win'
+  | 'admin_credit'
+  | 'admin_reset';
 
 export class WalletError extends Error {
   constructor(

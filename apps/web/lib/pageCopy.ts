@@ -140,9 +140,8 @@ export const DEFAULT_PAGES_COPY: PagesCopy = {
     imageAlt: 'You versus a bot at a private practice table',
   },
   chat: {
-    title: 'BanterBot',
-    subtitle:
-      'Sharp roasts on demand — switch between Cohere API and FunGPT LLM in the chat panel.',
+    title: 'Chat with BanterBot',
+    subtitle: 'Get roasted on poker, life, or whatever you just did.',
     image: '/home-offline.webp',
     imageAlt: 'Chat with BanterBot',
   },

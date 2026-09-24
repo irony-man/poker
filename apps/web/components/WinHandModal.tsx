@@ -210,9 +210,17 @@ export function WinHandModal({
   onSitIn,
   onDismiss,
   onNeedChips,
+  whuffiesEarned = null,
+  whuffiesTeaser,
+  whuffieSignInHint = false,
 }: {
   winners: WinLine[];
   youWon: boolean;
+  /** Whuffies credited this hand (signed-in offline win). */
+  whuffiesEarned?: number | null;
+  /** Configured Whuffies for guests (teaser before sign-in). */
+  whuffiesTeaser?: number;
+  whuffieSignInHint?: boolean;
   canStartNext: boolean;
   readyCount?: number;
   readyTotal?: number;
@@ -242,6 +250,13 @@ export function WinHandModal({
     initialFocusRef: closeRef,
     onClose: onDismiss,
   });
+
+  const whuffieAmount =
+    whuffiesEarned != null && whuffiesEarned > 0
+      ? whuffiesEarned
+      : whuffiesTeaser != null && whuffiesTeaser > 0
+        ? whuffiesTeaser
+        : null;
 
   let primary: ReactNode;
   if (canStartNext) {
@@ -315,6 +330,20 @@ export function WinHandModal({
             >
               {youWon ? 'You won' : 'Winner'}
             </h2>
+            {youWon && whuffieAmount != null ? (
+              <div className="mt-2 flex flex-col items-center gap-1">
+                <MoneyAmount
+                  amount={whuffieAmount}
+                  prefix="+"
+                  showWhuffies
+                  compact
+                  className="font-mono text-base font-semibold text-brass-dim sm:text-lg"
+                />
+                {whuffieSignInHint ? (
+                  <p className="text-[11px] text-muted sm:text-xs">Sign in to claim Whuffies</p>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-3 py-3 sm:space-y-4 sm:px-5 sm:py-5">

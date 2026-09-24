@@ -14,7 +14,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { SoundUploadUrlBodySchema, SiteImageUploadUrlBodySchema } from '@poker/protocol';
-import { resolveBotGroupLabelId } from '@poker/engine';
 import { z } from 'zod';
 import { AuthService } from '../auth/auth.service.js';
 import type { User } from '../auth/auth.types.js';
@@ -28,7 +27,7 @@ import { PresenceService } from '../presence/presence.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 import { RoomsService } from '../rooms/rooms.service.js';
 import { SiteConfigService } from '../site-config/site-config.service.js';
-import { normalizeBotGroupLabels } from '../site-config/site-config.types.js';
+import { normalizeBotGroup, normalizeBotGroupLabels } from '../site-config/site-config.types.js';
 import {
   ALLOWED_SITE_IMAGE_CONTENT_TYPES,
   ALLOWED_SOUND_CONTENT_TYPES,
@@ -130,6 +129,7 @@ const BotGroupBody = z.object({
   description: z.string().max(120).optional(),
   defaultPersonality: BotPersonalityIdSchema.nullable().optional(),
   namePersonalities: z.record(BotPersonalityIdSchema).optional(),
+  winWhuffies: z.number().int().min(0).max(100_000).optional(),
 });
 
 const BotGroupLabelBody = z.object({
@@ -325,19 +325,11 @@ export class AdminController {
     if (!parsed.success) {
       throw new BadRequestException({ error: parsed.error.message });
     }
-    const groups = parsed.data.groups.map((g, i) => {
-      const id = g.id ?? `group-${i + 1}`;
-      return {
-        id,
-        name: g.name,
-        names: g.names,
-        isDefault: Boolean(g.isDefault),
-        labelId: resolveBotGroupLabelId(id, g.name, g.labelId, g.kind),
-        description: (g.description ?? '').trim().slice(0, 120),
-        defaultPersonality: g.defaultPersonality ?? null,
-        namePersonalities: g.namePersonalities ?? {},
-      };
-    });
+    const groups = parsed.data.groups
+      .map((g, i) =>
+        normalizeBotGroup({ ...g, id: g.id ?? `group-${i + 1}` }, i),
+      )
+      .filter((g): g is NonNullable<typeof g> => g != null);
     return this.site.setBotGroups(
       groups,
       parsed.data.labels ? normalizeBotGroupLabels(parsed.data.labels) : null,

@@ -88,6 +88,8 @@ export interface BotGroup {
   defaultPersonality: BotPersonalityId | null;
   /** Per display-name style overrides. */
   namePersonalities: Record<string, BotPersonalityId>;
+  /** Whuffies for winning an offline hand vs this pack (0 = disabled). */
+  winWhuffies: number;
 }
 
 /** Public list of bot groups for host / table / offline. */
@@ -104,6 +106,7 @@ export interface PublicBotGroup {
   names?: string[];
   defaultPersonality?: BotPersonalityId | null;
   namePersonalities?: Record<string, BotPersonalityId>;
+  winWhuffies?: number;
 }
 
 export async function fetchAdminHomeFeatures(sessionToken: string) {

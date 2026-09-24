@@ -119,6 +119,8 @@ export interface BotGroup {
   defaultPersonality: BotPersonalityId | null;
   /** Per display-name style overrides (keys match `names`). */
   namePersonalities: Record<string, BotPersonalityId>;
+  /** Whuffies for a signed-in player who wins an offline hand vs this pack. 0 = disabled. */
+  winWhuffies: number;
 }
 
 /** Name pool + styles used when seating bots from a group. */
@@ -138,6 +140,7 @@ export const MAX_BOT_GROUPS = 20;
 export const MAX_BOT_NAMES_PER_GROUP = 40;
 export const MAX_BOT_GROUP_NAME_LEN = 48;
 export const MAX_BOT_DISPLAY_NAME_LEN = 24;
+export const MAX_BOT_GROUP_WIN_WHUFFIES = 100_000;
 
 /** Matches engine DEFAULT_BOT_NAMES; fallback when config is empty. */
 export const DEFAULT_BOT_DISPLAY_NAMES: string[] = [
@@ -178,6 +181,7 @@ export const DEFAULT_BOT_GROUPS: BotGroup[] = DEFAULT_BOT_GROUP_DEFS.map((g) => 
   isDefault: g.isDefault,
   defaultPersonality: g.defaultPersonality,
   namePersonalities: { ...g.namePersonalities },
+  winWhuffies: 0,
 }));
 
 /** Table SFX kinds played during a hand (admin-editable URLs). */
@@ -639,7 +643,15 @@ function cloneBotGroup(g: BotGroup): BotGroup {
     description: g.description,
     defaultPersonality: g.defaultPersonality,
     namePersonalities: { ...g.namePersonalities },
+    winWhuffies: g.winWhuffies,
   };
+}
+
+function normalizeWinWhuffies(raw: unknown): number {
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) return 0;
+  const n = Math.floor(raw);
+  if (n <= 0) return 0;
+  return Math.min(n, MAX_BOT_GROUP_WIN_WHUFFIES);
 }
 
 function normalizeNamePersonalities(
@@ -724,6 +736,7 @@ export function normalizeBotGroup(raw: unknown, index: number): BotGroup | null 
     typeof o.description === 'string'
       ? o.description.trim().slice(0, MAX_BOT_GROUP_DESCRIPTION_LEN)
       : '';
+  const winWhuffies = normalizeWinWhuffies(o.winWhuffies);
   return {
     id,
     name,
@@ -733,6 +746,7 @@ export function normalizeBotGroup(raw: unknown, index: number): BotGroup | null 
     description,
     defaultPersonality,
     namePersonalities,
+    winWhuffies,
   };
 }
 
@@ -790,6 +804,11 @@ export function resolveBotSeatingConfig(
     defaultPersonality: g.defaultPersonality,
     namePersonalities: { ...g.namePersonalities },
   };
+}
+
+/** Whuffies awarded for winning an offline hand vs bots in this pack (0 if disabled). */
+export function resolveBotWinWhuffies(groups: BotGroup[], groupId?: string | null): number {
+  return pickBotGroup(groups, groupId).winWhuffies;
 }
 
 function clonePages(pages: PagesCopy): PagesCopy {

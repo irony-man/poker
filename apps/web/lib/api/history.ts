@@ -7,8 +7,16 @@ export type UploadHandPayload = {
   endedAt: number;
   contestId?: string | null;
   source: 'offline';
+  botGroupId?: string | null;
   result: unknown;
   chat?: Array<{ at: number; userId: string; name: string; text: string; kind?: string }>;
+};
+
+export type UploadHandResponse = {
+  ok: true;
+  inserted: boolean;
+  whuffiesAwarded?: number;
+  whuffieBalance?: number;
 };
 
 export async function uploadOfflineHand(sessionToken: string, body: UploadHandPayload) {
@@ -16,7 +24,7 @@ export async function uploadOfflineHand(sessionToken: string, body: UploadHandPa
     sessionToken,
     method: 'POST',
     body,
-  }) as Promise<{ ok: true; inserted: boolean }>;
+  }) as Promise<UploadHandResponse>;
 }
 
 export type MyHandRow = {

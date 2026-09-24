@@ -16,12 +16,13 @@ export default function ChatPage() {
 
   return (
     <LobbyPageShell
-      title={pageCopy.title}
-      subtitle={pageCopy.subtitle}
+      // title={pageCopy.title}
+      // subtitle={pageCopy.subtitle}
       signedIn={signedIn}
       requireAuth
+      fillHeight
     >
-      <div className="bot-chat-page mx-auto w-full max-w-2xl">
+      <div className="bot-chat-page">
         <BotChatPanel disabled={!signedIn} />
       </div>
     </LobbyPageShell>

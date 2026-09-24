@@ -475,6 +475,24 @@ function BotGroupEditor({
         help="Shown to hosts and offline players when this pack is selected."
       />
 
+      <TextField
+        label="Offline win Whuffies"
+        type="number"
+        min={0}
+        max={100_000}
+        value={String(group.winWhuffies ?? 0)}
+        onChange={(e) => {
+          const n = Math.floor(Number(e.target.value));
+          onUpdateGroup(group.id, {
+            winWhuffies: Number.isFinite(n)
+              ? Math.max(0, Math.min(100_000, n))
+              : 0,
+          });
+        }}
+        disabled={busy}
+        help="Whuffies credited when a signed-in player wins an offline hand vs this bot pack. 0 = off."
+      />
+
       <div className="grid max-w-md gap-4 sm:grid-cols-2">
         <SelectField
           label="Label"

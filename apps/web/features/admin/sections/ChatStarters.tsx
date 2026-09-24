@@ -32,7 +32,7 @@ export function ChatStartersSection({
   return (
     <Section
       title="Bot chat starters"
-      description="Suggested prompts on /chat (“Try saying”). Empty lines are ignored when you save."
+      description="Suggested prompts on /chat (“Starters”). Empty lines are ignored when you save."
     >
       <form onSubmit={onSave} className="space-y-4">
         {starters.length === 0 ? (

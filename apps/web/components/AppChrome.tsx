@@ -30,6 +30,7 @@ import { ConfirmProvider } from '@/components/ConfirmPopover';
 import { AvatarPresetsLoader } from '@/components/AvatarPresetsLoader';
 import { SiteAnnouncementBanner } from '@/components/SiteAnnouncement';
 import { SkipLink } from '@/components/SkipLink';
+import { BotChatFab } from '@/components/BotChatFab';
 import { useSessionSocket } from '@/lib/ws';
 
 function PersonIcon() {
@@ -101,6 +102,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const immersive = tablePlay;
   const isAdminRoute = pathname === '/admin' || pathname.startsWith('/admin/');
   const isHome = pathname === '/';
+  const isBotChat = pathname === '/chat';
 
   useEffect(() => {
     if (!tablePlay) return;
@@ -223,7 +225,10 @@ export function AppChrome({ children }: { children: ReactNode }) {
     return (
       <ConfirmProvider>
         <OnlineFriendsProvider signedIn={signedIn}>
-          <div className="lobby-shell">{children}</div>
+          <div className="lobby-shell">
+            {children}
+            <BotChatFab />
+          </div>
         </OnlineFriendsProvider>
       </ConfirmProvider>
     );
@@ -267,13 +272,17 @@ export function AppChrome({ children }: { children: ReactNode }) {
 
             <main
               id="main-content"
-              className={`flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain pb-4 md:pb-0 ${
-                isHome
-                  ? 'px-5 py-6 sm:px-10 sm:py-8 lg:px-14 lg:py-10 xl:px-20'
-                  : 'px-4 py-4 sm:px-8 sm:py-5 lg:px-12'
-              }`}
+              className={
+                isBotChat
+                  ? 'flex min-h-0 flex-1 flex-col overflow-hidden p-0'
+                  : `flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain pb-4 md:pb-0 ${
+                      isHome
+                        ? 'px-5 py-6 sm:px-10 sm:py-8 lg:px-14 lg:py-10 xl:px-20'
+                        : 'px-4 py-4 sm:px-8 sm:py-5 lg:px-12'
+                    }`
+              }
             >
-              <SiteAnnouncementBanner />
+              {!isBotChat ? <SiteAnnouncementBanner /> : null}
               {children}
             </main>
 
@@ -281,6 +290,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
               <LobbyBottomNav />
             </Suspense>
           </div>
+          <BotChatFab />
         </div>
       </OnlineFriendsProvider>
     </ConfirmProvider>

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { authHref } from '@/lib/authRedirect';
 import { StatusChip } from '@/components/ui/StatusChip';
+import { cn } from '@/lib/cn';
 
 export function LobbyPageShell({
   title,
@@ -12,6 +13,7 @@ export function LobbyPageShell({
   requireAuth = true,
   signedIn,
   error,
+  fillHeight = false,
   children,
 }: {
   title?: string;
@@ -20,13 +22,15 @@ export function LobbyPageShell({
   requireAuth?: boolean;
   signedIn: boolean;
   error?: string | null;
+  /** Grow to fill lobby main (e.g. full-height chat). */
+  fillHeight?: boolean;
   children: ReactNode;
 }) {
   const pathname = usePathname();
 
   return (
-    <div className="lobby-page-intro">
-      <header className="mb-4 w-full shrink-0 sm:mb-5">
+    <div className={cn('lobby-page-intro', fillHeight && 'lobby-page-fill h-full min-h-0')}>
+      <header className={cn("w-full shrink-0", title && subtitle ? "mb-4 sm:mb-5" : "mb-0")}>
         {title && (
           <h1 className="font-title-page">
             {title}
@@ -62,7 +66,9 @@ export function LobbyPageShell({
           {error}
         </StatusChip>
       )}
-      <div className="min-h-0 w-full">{children}</div>
+      <div className={cn('min-h-0 w-full', fillHeight && 'flex min-h-0 flex-1 flex-col')}>
+        {children}
+      </div>
     </div>
   );
 }

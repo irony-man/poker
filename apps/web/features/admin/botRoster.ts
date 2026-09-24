@@ -30,6 +30,7 @@ export function defaultBotGroups(): BotGroup[] {
     isDefault: g.isDefault,
     defaultPersonality: g.defaultPersonality,
     namePersonalities: { ...g.namePersonalities },
+    winWhuffies: 0,
   }));
 }
 
@@ -94,6 +95,7 @@ export function normalizeAdminBotGroup(g: BotGroup): BotGroup {
     description: (g.description ?? '').trim().slice(0, MAX_BOT_GROUP_DESCRIPTION_LEN),
     defaultPersonality: g.defaultPersonality ?? null,
     namePersonalities: pruneNamePersonalities(names, g.namePersonalities),
+    winWhuffies: Math.max(0, Math.min(100_000, Math.floor(g.winWhuffies ?? 0))),
   };
 }
 
@@ -217,6 +219,7 @@ export function emptyBotGroup(labelId = 'groups'): BotGroup {
     description: '',
     defaultPersonality: null,
     namePersonalities,
+    winWhuffies: 0,
   };
 }
 
@@ -385,6 +388,15 @@ function parseOneImportedGroup(raw: unknown, index: number, errors: string[]): B
       ? o.description.trim().slice(0, MAX_BOT_GROUP_DESCRIPTION_LEN)
       : '';
 
+  let winWhuffies = 0;
+  if (o.winWhuffies != null) {
+    if (typeof o.winWhuffies !== 'number' || !Number.isFinite(o.winWhuffies)) {
+      errors.push(`${label}: "winWhuffies" must be a non-negative number`);
+    } else {
+      winWhuffies = Math.max(0, Math.min(100_000, Math.floor(o.winWhuffies)));
+    }
+  }
+
   return {
     id,
     name,
@@ -394,6 +406,7 @@ function parseOneImportedGroup(raw: unknown, index: number, errors: string[]): B
     description,
     defaultPersonality,
     namePersonalities,
+    winWhuffies,
   };
 }
 
@@ -553,6 +566,7 @@ export function serializeBotGroupsJson(
       description: g.description ?? '',
       isDefault: g.isDefault,
       defaultPersonality: g.defaultPersonality,
+      winWhuffies: g.winWhuffies,
       names: g.names,
       namePersonalities: g.namePersonalities,
     })),

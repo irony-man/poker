@@ -2,7 +2,9 @@ import { apiBase, parseError, sessionHeaders } from '@/lib/api/client';
 
 export type BotChatPersona = 'banter';
 
-export type BotChatLlmProvider = 'cohere' | 'fungpt';
+export type BotChatLlmProvider = 'cohere' | 'boost';
+
+export const BOT_CHAT_UI_PROVIDERS: readonly BotChatLlmProvider[] = ['cohere', 'boost'] as const;
 
 export type BotChatRole = 'user' | 'assistant';
 
@@ -12,8 +14,18 @@ export interface BotChatTurn {
 }
 
 export const BOT_CHAT_LLM_PROVIDER_LABELS: Record<BotChatLlmProvider, string> = {
-  cohere: 'Fast GPT',
-  fungpt: 'Slow GPT',
+  cohere: 'Quick roast',
+  boost: 'Boost bot',
+};
+
+export const BOT_CHAT_ASSISTANT_LABELS: Record<BotChatLlmProvider, string> = {
+  cohere: 'BanterBot',
+  boost: 'Boost bot',
+};
+
+export const BOT_CHAT_ASSISTANT_EMOJI: Record<BotChatLlmProvider, string> = {
+  cohere: '🔥',
+  boost: '⚡',
 };
 
 export const BOT_CHAT_STARTER_PROMPTS: readonly string[] = [
@@ -32,7 +44,7 @@ export const BOT_CHAT_THREADS_STORAGE_KEY = 'poker.banterbot.threads';
 export type BotChatThreadsByProvider = Record<BotChatLlmProvider, BotChatTurn[]>;
 
 export function emptyBotChatThreads(): BotChatThreadsByProvider {
-  return { cohere: [], fungpt: [] };
+  return { cohere: [], boost: [] };
 }
 
 export function readStoredBotChatThreads(): BotChatThreadsByProvider {
@@ -42,8 +54,11 @@ export function readStoredBotChatThreads(): BotChatThreadsByProvider {
     if (!raw) return emptyBotChatThreads();
     const parsed = JSON.parse(raw) as Partial<Record<string, unknown>>;
     const cohere = normalizeTurns(parsed.cohere);
-    const fungpt = normalizeTurns(parsed.fungpt);
-    return { cohere, fungpt };
+    const boost =
+      normalizeTurns(parsed.boost).length > 0
+        ? normalizeTurns(parsed.boost)
+        : normalizeTurns(parsed.fungpt);
+    return { cohere, boost };
   } catch {
     return emptyBotChatThreads();
   }
@@ -84,14 +99,17 @@ export async function fetchBotChatProviders(sessionToken: string): Promise<{
     return { providers: [], default: null, starters: [...BOT_CHAT_STARTER_PROMPTS] };
   }
   const data = (await res.json()) as {
-    providers?: BotChatLlmProvider[];
-    default?: BotChatLlmProvider | null;
+    providers?: string[];
+    default?: string | null;
     starters?: unknown;
   };
   const providers = (data.providers ?? []).filter(
-    (p): p is BotChatLlmProvider => p === 'cohere' || p === 'fungpt',
+    (p): p is BotChatLlmProvider => p === 'cohere' || p === 'boost',
   );
-  const def = data.default === 'cohere' || data.default === 'fungpt' ? data.default : null;
+  const defRaw = data.default;
+  let def: BotChatLlmProvider | null = null;
+  if (defRaw === 'cohere' || defRaw === 'boost') def = defRaw;
+  else if (defRaw === 'fungpt') def = 'boost';
   const starters = normalizeStarterList(data.starters);
   return { providers, default: def, starters };
 }

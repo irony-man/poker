@@ -18,6 +18,7 @@ export const UploadHandBodySchema = z.object({
   endedAt: z.number().int().nonnegative(),
   contestId: z.string().min(1).max(80).nullable().optional(),
   source: z.literal('offline').default('offline'),
+  botGroupId: z.string().min(1).max(64).optional(),
   result: z.unknown(),
   chat: z.array(HandChatLineSchema).max(500).optional(),
 });

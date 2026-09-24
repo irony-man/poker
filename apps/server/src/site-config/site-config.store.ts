@@ -132,6 +132,7 @@ export class SiteConfigStore {
         description: g.description,
         defaultPersonality: g.defaultPersonality,
         namePersonalities: { ...g.namePersonalities },
+        winWhuffies: g.winWhuffies,
       })),
       botGroupLabels: this.cache.botGroupLabels.map((l) => ({ ...l })),
       sounds: {
@@ -197,6 +198,7 @@ export class SiteConfigStore {
       description: g.description,
       defaultPersonality: g.defaultPersonality,
       namePersonalities: { ...g.namePersonalities },
+      winWhuffies: g.winWhuffies,
     }));
   }
 

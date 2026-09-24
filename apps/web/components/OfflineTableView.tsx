@@ -200,6 +200,7 @@ export function OfflineTableView({
   botStyles,
   resume = false,
   botGroupId = null,
+  winWhuffies = 0,
 }: {
   config: TableConfig;
   playerName: string;
@@ -210,6 +211,8 @@ export function OfflineTableView({
   /** Restore the last localStorage snapshot instead of a fresh table. */
   resume?: boolean;
   botGroupId?: string | null;
+  /** Whuffies configured for this bot pack (offline win reward). */
+  winWhuffies?: number;
 }) {
   const router = useRouter();
   const pushChat = useSession((s) => s.pushChat);
@@ -224,6 +227,10 @@ export function OfflineTableView({
   const [bootstrapped, setBootstrapped] = useState(false);
   const [turnEndsAt, setTurnEndsAt] = useState<number | null>(null);
   const [dismissedWinHandId, setDismissedWinHandId] = useState<string | null>(null);
+  const [whuffiesAwardedForHand, setWhuffiesAwardedForHand] = useState<{
+    handId: string;
+    amount: number;
+  } | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatFocusRequestId, setChatFocusRequestId] = useState(0);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -350,21 +357,29 @@ export function OfflineTableView({
     [botStyles, recordChat],
   );
 
-  const persistCompletedHand = useCallback((next: HandState) => {
-    if (!next.handId || recordedHandsRef.current.has(next.handId)) return;
-    if (!readStoredSession()?.sessionToken) return;
-    recordedHandsRef.current.add(next.handId);
-    const payload = {
-      tableId: tableIdRef.current,
-      handId: next.handId,
-      startedAt: handStartedAtRef.current || Date.now(),
-      endedAt: Date.now(),
-      source: 'offline' as const,
-      result: buildOfflineHandResult(next, handActionsRef.current, handChatRef.current),
-      chat: handChatRef.current,
-    };
-    void submitOfflineHand(payload);
-  }, []);
+  const persistCompletedHand = useCallback(
+    (next: HandState) => {
+      if (!next.handId || recordedHandsRef.current.has(next.handId)) return;
+      if (!readStoredSession()?.sessionToken) return;
+      recordedHandsRef.current.add(next.handId);
+      const payload = {
+        tableId: tableIdRef.current,
+        handId: next.handId,
+        startedAt: handStartedAtRef.current || Date.now(),
+        endedAt: Date.now(),
+        source: 'offline' as const,
+        botGroupId: botGroupId ?? undefined,
+        result: buildOfflineHandResult(next, handActionsRef.current, handChatRef.current),
+        chat: handChatRef.current,
+      };
+      void submitOfflineHand(payload).then((res) => {
+        if (res?.whuffiesAwarded != null && res.whuffiesAwarded > 0) {
+          setWhuffiesAwardedForHand({ handId: next.handId!, amount: res.whuffiesAwarded });
+        }
+      });
+    },
+    [botGroupId],
+  );
 
   const syncChat = useCallback(
     (next: HandState, events: EngineEvent[]) => {
@@ -719,6 +734,7 @@ export function OfflineTableView({
     handActionsRef.current = [];
     handChatRef.current = [];
     handStartedAtRef.current = Date.now();
+    setWhuffiesAwardedForHand(null);
     const result = startHand(s, config, `off-${Date.now()}`, randomBytes);
     if (!result.ok) return;
     syncChat(result.state, result.events);
@@ -786,6 +802,16 @@ export function OfflineTableView({
     showWinModal,
     youWon,
   } = useHandPresentation(publicTable, HUMAN_ID, dismissedWinHandId);
+  const signedIn = !!readStoredSession()?.sessionToken;
+  const whuffiesEarned =
+    youWon &&
+    whuffiesAwardedForHand != null &&
+    whuffiesAwardedForHand.handId === publicTable?.handId &&
+    whuffiesAwardedForHand.amount > 0
+      ? whuffiesAwardedForHand.amount
+      : null;
+  const whuffiesTeaser =
+    !signedIn && youWon && winWhuffies > 0 ? winWhuffies : undefined;
   const winPctBySeat = useRevealedWinPct(
     publicTable?.players,
     publicTable?.community,
@@ -904,6 +930,7 @@ export function OfflineTableView({
             canTopUp,
             topUpLabel: 'Top up',
             onTopUp: doTopUp,
+            youWonHand: youWon && publicTable.street === 'payout',
           }}
         />
   );
@@ -1066,6 +1093,9 @@ export function OfflineTableView({
       {showWinModal && publicTable && (
         <WinHandModal
           youWon={youWon}
+          whuffiesEarned={whuffiesEarned}
+          whuffiesTeaser={whuffiesTeaser}
+          whuffieSignInHint={!signedIn && !!whuffiesTeaser}
           canStartNext={
             myPlayer?.status !== 'sittingOut' &&
             myPlayer?.status !== 'empty' &&

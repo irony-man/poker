@@ -38,7 +38,7 @@ describe('BotChatService', () => {
       fetchFn: vi.fn() as unknown as typeof fetch,
     });
     expect(svc.isConfigured()).toBe(false);
-    await expect(svc.complete('banter', [{ role: 'user', content: 'hi' }], 'fungpt')).resolves.toBeNull();
+    await expect(svc.complete('banter', [{ role: 'user', content: 'hi' }], 'cohere')).resolves.toBeNull();
   });
 
   it('posts BanterBot persona + history to chat completions', async () => {
@@ -54,12 +54,13 @@ describe('BotChatService', () => {
       const svc = BotChatService.create({
         baseUrl: 'http://llm.test',
         apiKey: 'secret',
+        model: 'banterbot',
         fetchFn,
       });
       const text = await svc.complete(
         'banter',
         [{ role: 'user', content: 'I shipped a feature' }],
-        'fungpt',
+        'cohere',
       );
       expect(text).toBe('Keep talking, I need the material.');
       expect(fetchFn).toHaveBeenCalledOnce();
@@ -129,7 +130,7 @@ describe('BotChatService', () => {
         baseUrl: 'http://api.openai.test',
         fetchFn,
       });
-      await svc.complete('banter', [{ role: 'user', content: 'hi' }], 'fungpt');
+      await svc.complete('banter', [{ role: 'user', content: 'hi' }], 'cohere');
       const body = JSON.parse(
         ((fetchFn as ReturnType<typeof vi.fn>).mock.calls[0]![1] as RequestInit).body as string,
       ) as { model: string };

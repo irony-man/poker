@@ -4,9 +4,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppleEmoji } from '@/components/AppleEmoji';
 import { Button } from '@/components/ui/Button';
 import { StatusChip } from '@/components/ui/StatusChip';
+import { PlayerAvatar } from '@/components/PlayerAvatar';
 import {
+  BOT_CHAT_ASSISTANT_EMOJI,
+  BOT_CHAT_ASSISTANT_LABELS,
   BOT_CHAT_LLM_PROVIDER_LABELS,
   BOT_CHAT_LLM_STORAGE_KEY,
+  BOT_CHAT_UI_PROVIDERS,
   BOT_CHAT_STARTER_PROMPTS,
   emptyBotChatThreads,
   fetchBotChatProviders,
@@ -17,13 +21,40 @@ import {
   type BotChatThreadsByProvider,
   type BotChatTurn,
 } from '@/lib/api/botChat';
+import { loadSavedAvatarId } from '@/lib/avatars';
 import { cn } from '@/lib/cn';
 import { readStoredSession } from '@/lib/session';
+import { useSession } from '@/lib/store';
+
+const MESSAGE_AVATAR_SIZE = 36;
+
+function BotChatAssistantAvatar({
+  provider,
+  size = MESSAGE_AVATAR_SIZE,
+}: {
+  provider: BotChatLlmProvider;
+  size?: number;
+}) {
+  const label = BOT_CHAT_ASSISTANT_LABELS[provider];
+  const emoji = BOT_CHAT_ASSISTANT_EMOJI[provider];
+  return (
+    <div
+      className="bot-chat-assistant-avatar flex shrink-0 items-center justify-center rounded-full"
+      style={{ width: size, height: size }}
+      title={label}
+      aria-hidden
+    >
+      <AppleEmoji emoji={emoji} size={Math.round(size * 0.52)} decorative />
+    </div>
+  );
+}
 
 function readStoredProvider(): BotChatLlmProvider | null {
   if (typeof window === 'undefined') return null;
   const raw = localStorage.getItem(BOT_CHAT_LLM_STORAGE_KEY);
-  return raw === 'cohere' || raw === 'fungpt' ? raw : null;
+  if (raw === 'cohere' || raw === 'boost') return raw;
+  if (raw === 'fungpt') return 'boost';
+  return null;
 }
 
 type ProviderUiState = {
@@ -40,12 +71,12 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
   const [threadsHydrated, setThreadsHydrated] = useState(false);
   const [uiByProvider, setUiByProvider] = useState<Record<BotChatLlmProvider, ProviderUiState>>({
     cohere: emptyProviderUi(),
-    fungpt: emptyProviderUi(),
+    boost: emptyProviderUi(),
   });
   const [busyProvider, setBusyProvider] = useState<BotChatLlmProvider | null>(null);
   const [availableProviders, setAvailableProviders] = useState<BotChatLlmProvider[]>([
     'cohere',
-    'fungpt',
+    'boost',
   ]);
   const [llmProvider, setLlmProvider] = useState<BotChatLlmProvider>(
     () => readStoredProvider() ?? 'cohere',
@@ -54,6 +85,14 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
   const scroller = useRef<HTMLUListElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const userId = useSession((s) => s.userId);
+  const displayName = useSession((s) => s.name);
+  const [avatarId, setAvatarId] = useState(0);
+
+  useEffect(() => {
+    if (disabled) return;
+    setAvatarId(loadSavedAvatarId());
+  }, [disabled, userId]);
 
   const messages = threads[llmProvider];
   const draft = uiByProvider[llmProvider].draft;
@@ -79,6 +118,16 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
   useEffect(() => {
     return () => abortRef.current?.abort();
   }, []);
+
+  const anyThreadBusy = busyProvider !== null;
+
+  useEffect(() => {
+    if (disabled || anyThreadBusy) return;
+    const id = window.requestAnimationFrame(() => {
+      inputRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [disabled, anyThreadBusy, llmProvider]);
 
   useEffect(() => {
     const session = readStoredSession();
@@ -185,22 +234,17 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
   const send = () => void sendMessage(draft);
 
   const empty = messages.length === 0 && !busy;
-  const anyThreadBusy = busyProvider !== null;
 
   return (
-    <div className="chat-panel-shell bot-chat-panel relative flex h-[min(78vh,44rem)] max-h-[44rem] flex-col overflow-hidden rounded-2xl border border-sidebar/12 shadow-[0_16px_48px_rgb(29_4_50/0.12)]">
-      <header className="glass-sheet shrink-0 border-b border-sidebar/10 px-4 py-3.5 backdrop-blur-sm sm:px-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="font-kicker-sidebar text-[10px] uppercase tracking-[0.18em] text-muted">
-              Reply backend
-            </p>
-            <div
-              className="mt-2 flex max-w-md rounded-xl border border-sidebar/12 bg-sidebar/[0.04] p-1"
-              role="group"
-              aria-label="Chat model backend"
-            >
-              {(['cohere', 'fungpt'] as const).map((id) => {
+    <div className="chat-panel-shell bot-chat-panel relative flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent">
+      <header className="bot-chat-surface shrink-0 border-b border-sidebar/15 px-3 py-2.5 sm:px-4">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div
+            className="flex min-w-0 flex-1 rounded-xl border border-sidebar/12 bg-sidebar/[0.04] p-1"
+            role="group"
+            aria-label="BanterBot mode"
+          >
+              {BOT_CHAT_UI_PROVIDERS.map((id) => {
                 const on = llmProvider === id;
                 const available = availableProviders.includes(id);
                 const threadCount = threads[id].length;
@@ -209,18 +253,15 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
                     key={id}
                     type="button"
                     disabled={disabled || anyThreadBusy || !available}
-                    title={
-                      available
-                        ? undefined
-                        : `${BOT_CHAT_LLM_PROVIDER_LABELS[id]} is not configured on the server`
-                    }
+                    title={available ? undefined : 'This mode is unavailable right now'}
+                    aria-pressed={on}
                     onClick={() => setLlmProvider(id)}
                     className={cn(
-                      'relative flex-1 rounded-lg px-2 py-2 text-xs font-display font-semibold uppercase tracking-[0.08em] transition sm:text-[11px]',
+                      'relative flex-1 rounded-lg px-2 py-2.5 text-xs font-display font-semibold uppercase tracking-[0.08em] transition sm:text-xs',
                       on
                         ? 'bg-sidebar text-on-chrome shadow-[0_4px_12px_rgb(29_4_50/0.2)]'
-                        : 'text-muted hover:text-primary',
-                      !available && 'cursor-not-allowed opacity-35',
+                        : 'text-primary hover:bg-sidebar/[0.06]',
+                      !available && 'cursor-not-allowed opacity-45',
                     )}
                   >
                     {BOT_CHAT_LLM_PROVIDER_LABELS[id]}
@@ -233,23 +274,14 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
                   </button>
                 );
               })}
-            </div>
-            <p className="mt-2 text-xs leading-relaxed text-muted">
-              Active:{' '}
-              <span className="font-semibold text-sidebar">
-                {BOT_CHAT_LLM_PROVIDER_LABELS[llmProvider]}
-              </span>
-              {llmProvider === 'cohere' ? ' · hosted, low latency' : ' · local BanterBot model'}
-              <span className="text-muted"> · separate thread per backend</span>
-            </p>
           </div>
           <button
             type="button"
             onClick={clear}
             disabled={busy || messages.length === 0}
-            className="glass-sheet shrink-0 rounded-full border border-sidebar/15 px-3 py-1.5 text-[10px] font-display font-semibold uppercase tracking-wider text-muted shadow-[0_2px_8px_rgb(29_4_50/0.06)] transition hover:border-sidebar/30 hover:text-sidebar disabled:opacity-40"
+            className="bot-chat-surface shrink-0 rounded-full border border-sidebar/20 px-3 py-2 text-xs font-display font-semibold uppercase tracking-wider text-primary transition hover:border-sidebar/35 disabled:opacity-40"
           >
-            Clear
+            Clear chat
           </button>
         </div>
       </header>
@@ -258,34 +290,41 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
         ref={scroller}
         className="flex min-h-0 flex-1 flex-col space-y-3 overflow-y-auto px-3 py-4 sm:px-5"
         aria-live="polite"
-        aria-label="Bot conversation"
+        aria-relevant="additions"
+        aria-label="Messages with BanterBot"
+        role="log"
       >
         {empty ? (
-          <li className="flex list-none flex-1 flex-col items-center justify-center gap-4 px-2 py-4 text-center sm:gap-5 sm:py-6">
-            <div className="glass-sheet flex h-14 w-14 items-center justify-center rounded-2xl border border-sidebar/10 shadow-[0_6px_18px_rgb(29_4_50/0.08)]">
-              <AppleEmoji emoji="🔥" size={32} decorative />
-            </div>
+          <li className="flex list-none flex-1 flex-col items-center justify-center gap-3 px-2 py-3 text-center sm:gap-4 sm:py-5">
+            <BotChatAssistantAvatar provider={llmProvider} size={48} />
             <div className="max-w-sm">
-              <p className="font-heading-sub">Ready when you are</p>
-              <p className="mt-1.5 text-sm leading-relaxed text-muted">
-                Tap a starter below or write your own. Cohere and FunGPT each keep their own
-                conversation.
+              <p className="font-heading-sub">Your move</p>
+              <p className="mt-1 text-sm leading-relaxed text-muted">
+                Pick a starter below or type something worth a roast.
               </p>
             </div>
-            <div className="w-full max-w-lg space-y-2.5">
-              <p className="font-kicker-sidebar text-[10px] uppercase tracking-[0.14em] text-muted">
-                Try saying
+            <div
+              className="w-full max-w-lg space-y-2.5"
+              role="group"
+              aria-labelledby="bot-chat-starters-heading"
+            >
+              <p
+                id="bot-chat-starters-heading"
+                className="text-sm font-display font-semibold uppercase tracking-[0.1em] text-primary"
+              >
+                Starters
               </p>
-              <div className="flex flex-col gap-2 sm:grid sm:grid-cols-2">
+              <div className="flex flex-col gap-2.5 sm:grid sm:grid-cols-2">
                 {starters.map((prompt) => (
                   <button
                     key={prompt}
                     type="button"
                     disabled={disabled || anyThreadBusy}
                     onClick={() => void sendMessage(prompt)}
-                    className="glass-sheet rounded-xl border border-sidebar/10 px-3.5 py-2.5 text-left text-sm leading-snug text-primary shadow-[0_2px_10px_rgb(29_4_50/0.05)] transition hover:border-sidebar/22 hover:shadow-[0_4px_14px_rgb(29_4_50/0.08)] disabled:opacity-50"
+                    className="bot-chat-starter-pill flex items-start gap-2.5 rounded-xl px-3 py-3 text-left text-sm font-medium leading-snug"
                   >
-                    {prompt}
+                    <BotChatAssistantAvatar provider={llmProvider} size={28} />
+                    <span className="min-w-0 flex-1 pt-0.5">{prompt}</span>
                   </button>
                 ))}
               </div>
@@ -295,32 +334,57 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
           messages.map((m, i) => {
             const isUser = m.role === 'user';
             const pending = !isUser && busy && i === messages.length - 1 && !m.content;
+            const speaker = isUser ? 'You' : BOT_CHAT_ASSISTANT_LABELS[llmProvider];
             return (
               <li
                 key={`${llmProvider}-${m.role}-${i}`}
                 className={cn(
-                  'max-w-[min(100%,22rem)] list-none rounded-2xl px-3.5 py-2.5',
-                  isUser
-                    ? 'ml-auto bg-sidebar text-on-chrome shadow-[0_6px_16px_rgb(29_4_50/0.18)]'
-                    : 'glass-sheet mr-auto border border-sidebar/8 shadow-[0_2px_10px_rgb(29_4_50/0.05)]',
+                  'bot-chat-message-row list-none',
+                  isUser ? 'bot-chat-message-row--user' : 'bot-chat-message-row--assistant',
                 )}
               >
-                <p
+                {isUser ? (
+                  <PlayerAvatar
+                    avatarId={avatarId}
+                    userId={userId}
+                    size={MESSAGE_AVATAR_SIZE}
+                    className="bot-chat-user-avatar ring-2 ring-sidebar/20"
+                    title={displayName || 'You'}
+                  />
+                ) : (
+                  <BotChatAssistantAvatar provider={llmProvider} />
+                )}
+                <article
                   className={cn(
-                    'font-display text-[10px] font-bold uppercase tracking-[0.12em]',
-                    isUser ? 'text-on-chrome/75' : 'text-sidebar',
+                    'bot-chat-message-bubble min-w-0',
+                    isUser
+                      ? 'bot-chat-message-bubble--user'
+                      : 'bot-chat-message-bubble--assistant bot-chat-bubble-assistant border',
                   )}
                 >
-                  {isUser ? 'You' : 'BanterBot'}
-                </p>
-                <p
-                  className={cn(
-                    'mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed',
-                    isUser ? 'text-on-chrome' : 'text-primary',
-                  )}
-                >
-                  {pending ? '…' : m.content}
-                </p>
+                  <p
+                    className={cn(
+                      'font-display text-[11px] font-bold uppercase tracking-[0.1em]',
+                      isUser ? 'text-on-chrome/85' : 'text-muted',
+                    )}
+                  >
+                    {speaker}
+                  </p>
+                  <p
+                    className={cn(
+                      'mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed',
+                      isUser ? 'text-on-chrome' : 'text-primary',
+                    )}
+                  >
+                    {pending ? (
+                      <span aria-busy="true" aria-label="BanterBot is typing">
+                        …
+                      </span>
+                    ) : (
+                      m.content
+                    )}
+                  </p>
+                </article>
               </li>
             );
           })
@@ -336,26 +400,34 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
       ) : null}
 
       {!empty ? (
-        <div className="shrink-0 border-t border-sidebar/8 px-3 py-2 sm:px-5">
-          <div className="flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="shrink-0 border-t border-sidebar/15 px-3 py-2 sm:px-5">
+          <div
+            className="flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            role="group"
+            aria-label="Quick starters"
+          >
             {starters.slice(0, 4).map((prompt) => (
               <button
                 key={`foot-${prompt}`}
                 type="button"
                 disabled={disabled || anyThreadBusy}
                 onClick={() => void sendMessage(prompt)}
-                className="shrink-0 rounded-full border border-sidebar/12 bg-white/80 px-3 py-1 text-[11px] font-medium text-sidebar hover:border-sidebar/25 hover:bg-white disabled:opacity-50"
+                className="bot-chat-starter-pill bot-chat-starter-pill--chip flex shrink-0 items-center gap-2 rounded-full py-2 pl-2 pr-3.5 text-xs font-medium"
               >
-                {prompt.length > 36 ? `${prompt.slice(0, 34)}…` : prompt}
+                <BotChatAssistantAvatar provider={llmProvider} size={26} />
+                <span className="max-w-[14rem] truncate">
+                  {prompt.length > 36 ? `${prompt.slice(0, 34)}…` : prompt}
+                </span>
               </button>
             ))}
           </div>
         </div>
       ) : null}
 
-      <div className="glass-sheet shrink-0 border-t border-sidebar/10 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5 backdrop-blur-sm sm:px-4">
+      <div className="bot-chat-surface shrink-0 border-t border-sidebar/15 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5 sm:px-4">
         <form
-          className="glass-sheet flex items-end gap-2 rounded-2xl border border-sidebar/12 p-1.5 pl-3 shadow-[0_4px_16px_rgb(29_4_50/0.06)]"
+          className="bot-chat-composer"
+          aria-label="Send a message to BanterBot"
           onSubmit={(e) => {
             e.preventDefault();
             send();
@@ -366,8 +438,9 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
             value={draft}
             disabled={disabled || anyThreadBusy}
             rows={1}
-            placeholder={disabled ? 'Sign in to chat' : 'Roast me…'}
-            className="max-h-28 min-h-[2.5rem] min-w-0 flex-1 resize-none bg-transparent py-2 text-sm font-body text-primary outline-none placeholder:text-muted disabled:opacity-60"
+            placeholder={disabled ? 'Sign in to chat' : llmProvider === 'cohere' ? 'Roast me…' : 'Boost me…'}
+            aria-label={llmProvider === 'cohere' ? 'Message to BanterBot' : 'Message to BoostBot'}
+            className="max-h-28 min-h-[2.75rem] min-w-0 flex-1 resize-none border-0 bg-transparent py-2 text-base font-body text-primary shadow-none placeholder:text-muted disabled:opacity-60 sm:text-sm"
             onChange={(e) => patchUi(llmProvider, { draft: e.target.value })}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {

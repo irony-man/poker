@@ -10,6 +10,10 @@ import { UploadHandBodySchema } from '@poker/protocol';
 import type { User } from '../auth/auth.types.js';
 import { isBotUserId } from '../bot.js';
 import { CurrentUser, SessionAuthGuard } from '../common/session-auth.guard.js';
+import { resolveBotWinWhuffies } from '../site-config/site-config.types.js';
+import { SiteConfigService } from '../site-config/site-config.service.js';
+import { WalletService } from '../wallet/wallet.service.js';
+import { isOfflineSoloVsBots, userWonOfflineHand } from './offline-win-reward.js';
 import { playerUserIdsFromResult } from './history.store.js';
 import { HistoryService } from './history.service.js';
 
@@ -36,7 +40,11 @@ function rewriteOfflineIdentity(value: unknown, userId: string, name: string): u
 
 @Controller('api/history')
 export class HistoryController {
-  constructor(private readonly history: HistoryService) {}
+  constructor(
+    private readonly history: HistoryService,
+    private readonly site: SiteConfigService,
+    private readonly wallet: WalletService,
+  ) {}
 
   @Post('hands')
   @UseGuards(SessionAuthGuard)
@@ -84,6 +92,9 @@ export class HistoryController {
       result,
     });
 
+    let whuffiesAwarded: number | undefined;
+    let whuffieBalance: number | undefined;
+
     if (inserted) {
       const resultChat = Array.isArray((result as { chat?: unknown }).chat)
         ? ((result as { chat: typeof chat }).chat ?? [])
@@ -105,8 +116,29 @@ export class HistoryController {
           source: 'offline',
         });
       }
+
+      const winWhuffies = resolveBotWinWhuffies(this.site.getBotGroups(), d.botGroupId);
+      if (
+        winWhuffies > 0 &&
+        userWonOfflineHand(result, user.id) &&
+        isOfflineSoloVsBots(result, user.id)
+      ) {
+        const credited = await this.wallet.creditWhuffies(
+          user.id,
+          winWhuffies,
+          'offline_win',
+          d.tableId,
+        );
+        whuffiesAwarded = winWhuffies;
+        whuffieBalance = credited.balance;
+      }
     }
 
-    return { ok: true, inserted };
+    return {
+      ok: true as const,
+      inserted,
+      ...(whuffiesAwarded != null ? { whuffiesAwarded } : {}),
+      ...(whuffieBalance != null ? { whuffieBalance } : {}),
+    };
   }
 }

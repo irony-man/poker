@@ -1,6 +1,7 @@
 import type { EngineEvent, HandState } from '@poker/engine';
-import { uploadOfflineHand, type UploadHandPayload } from './api/history';
+import { uploadOfflineHand, type UploadHandPayload, type UploadHandResponse } from './api/history';
 import { readStoredSession } from './session';
+import { useSession } from './store';
 
 const QUEUE_KEY = 'felt-offline-hand-queue';
 const MAX_QUEUE = 40;
@@ -54,13 +55,23 @@ export function buildOfflineHandResult(
   };
 }
 
-export async function submitOfflineHand(payload: UploadHandPayload): Promise<void> {
+function applyUploadResponse(res: UploadHandResponse): UploadHandResponse {
+  if (typeof res.whuffieBalance === 'number') {
+    useSession.getState().setWhuffieBalance(res.whuffieBalance);
+  }
+  return res;
+}
+
+export async function submitOfflineHand(
+  payload: UploadHandPayload,
+): Promise<UploadHandResponse | null> {
   const session = readStoredSession();
-  if (!session?.sessionToken) return;
+  if (!session?.sessionToken) return null;
   try {
-    await uploadOfflineHand(session.sessionToken, payload);
+    return applyUploadResponse(await uploadOfflineHand(session.sessionToken, payload));
   } catch {
     enqueueOfflineHand(payload);
+    return null;
   }
 }
 
@@ -72,7 +83,7 @@ export async function flushOfflineHandQueue(): Promise<void> {
   const remaining: UploadHandPayload[] = [];
   for (const item of items) {
     try {
-      await uploadOfflineHand(session.sessionToken, item);
+      applyUploadResponse(await uploadOfflineHand(session.sessionToken, item));
     } catch {
       remaining.push(item);
     }

@@ -18,6 +18,7 @@ function OfflineInner() {
     defaultPersonality: import('@/lib/api').BotPersonalityId | null;
     namePersonalities: Record<string, import('@/lib/api').BotPersonalityId>;
   } | null>(null);
+  const [winWhuffies, setWinWhuffies] = useState(0);
   const [namesReady, setNamesReady] = useState(false);
 
   useEffect(() => {
@@ -39,6 +40,7 @@ function OfflineInner() {
               }
             : null,
         );
+        setWinWhuffies(Math.max(0, Math.floor(g?.winWhuffies ?? 0)));
       })
       .finally(() => {
         if (!cancelled) setNamesReady(true);
@@ -71,6 +73,7 @@ function OfflineInner() {
       botStyles={botStyles}
       resume={resume}
       botGroupId={botGroup}
+      winWhuffies={winWhuffies}
     />
   );
 }

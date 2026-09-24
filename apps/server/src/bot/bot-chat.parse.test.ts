@@ -15,13 +15,27 @@ describe('parseBotChatBody', () => {
     expect(parsed.value.messages).toHaveLength(20);
   });
 
-  it('accepts llmProvider cohere or fungpt', () => {
+  it('accepts llmProvider cohere or boost', () => {
     const cohere = parseBotChatBody({
       messages: [{ role: 'user', content: 'hi' }],
       llmProvider: 'cohere',
     });
     expect(cohere.ok).toBe(true);
     if (cohere.ok) expect(cohere.value.llmProvider).toBe('cohere');
+
+    const boost = parseBotChatBody({
+      messages: [{ role: 'user', content: 'hi' }],
+      llmProvider: 'boost',
+    });
+    expect(boost.ok).toBe(true);
+    if (boost.ok) expect(boost.value.llmProvider).toBe('boost');
+
+    const legacy = parseBotChatBody({
+      messages: [{ role: 'user', content: 'hi' }],
+      llmProvider: 'fungpt',
+    });
+    expect(legacy.ok).toBe(true);
+    if (legacy.ok) expect(legacy.value.llmProvider).toBe('boost');
 
     expect(
       parseBotChatBody({

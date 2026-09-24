@@ -8,6 +8,7 @@ data class PublicBotGroup(
     val name: String = "",
     val isDefault: Boolean = false,
     val nameCount: Int = 0,
+    val winWhuffies: Int = 0,
 )
 
 @Serializable

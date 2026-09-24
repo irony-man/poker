@@ -1,13 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import type { Response as ExpressResponse } from 'express';
 import {
+  listAvailableBotChatProviders,
   providerConfigError,
   providerPrefersNonStream,
   resolveProviderConfig,
   type BotChatLlmProvider,
   type BotChatRuntimeConfig,
 } from './bot-chat.providers.js';
-import { PERSONA_SYSTEM_PROMPT, type BotChatPersona } from './bot-chat.prompts.js';
+import {
+  BOOST_SYSTEM_PROMPT,
+  PERSONA_SYSTEM_PROMPT,
+  type BotChatPersona,
+} from './bot-chat.prompts.js';
 import type { BotChatMessage } from './bot-chat.parse.js';
 
 const DEFAULT_PATH = '/v1/chat/completions';
@@ -18,6 +23,8 @@ export interface BotChatLlmConfig {
   baseUrl: string;
   apiKey?: string;
   path?: string;
+  model?: string;
+  provider?: BotChatLlmProvider;
   timeoutMs?: number;
   fetchFn?: typeof fetch;
 }
@@ -123,8 +130,14 @@ export function clipBotChatReply(raw: string | null | undefined): string | null 
   return `${text.slice(0, MAX_REPLY_CHARS - 1).trimEnd()}…`;
 }
 
-function withPersonaSystem(persona: BotChatPersona, messages: BotChatMessage[]): BotChatMessage[] {
-  const system: BotChatMessage = { role: 'system', content: PERSONA_SYSTEM_PROMPT[persona] };
+function withPersonaSystem(
+  persona: BotChatPersona,
+  provider: BotChatLlmProvider,
+  messages: BotChatMessage[],
+): BotChatMessage[] {
+  const systemContent =
+    provider === 'boost' ? BOOST_SYSTEM_PROMPT : PERSONA_SYSTEM_PROMPT[persona];
+  const system: BotChatMessage = { role: 'system', content: systemContent };
   const rest = messages.filter((m) => m.role !== 'system');
   return [system, ...rest];
 }
@@ -149,11 +162,14 @@ export class BotChatService {
     svc.applyConfig(config);
     if (config.baseUrl) {
       svc.runtimeOverride = {
-        provider: 'fungpt',
+        provider: config.provider ?? 'cohere',
         baseUrl: config.baseUrl.replace(/\/$/, ''),
         apiKey: config.apiKey?.trim() || null,
         path: config.path?.trim() || DEFAULT_PATH,
-        model: process.env.BANTER_LLM_MODEL?.trim() || 'banterbot',
+        model:
+          config.model?.trim() ||
+          process.env.BANTER_LLM_MODEL?.trim() ||
+          'banterbot',
       };
     }
     return svc;
@@ -180,11 +196,8 @@ export class BotChatService {
   }
 
   listProviders(): BotChatLlmProvider[] {
-    if (this.runtimeOverride) return ['fungpt'];
-    const out: BotChatLlmProvider[] = [];
-    if (providerConfigError('cohere') === null) out.push('cohere');
-    if (providerConfigError('fungpt') === null) out.push('fungpt');
-    return out;
+    if (this.runtimeOverride) return [this.runtimeOverride.provider];
+    return listAvailableBotChatProviders();
   }
 
   private headers(cfg: BotChatRuntimeConfig): Record<string, string> {
@@ -224,7 +237,7 @@ export class BotChatService {
           model: cfg.model,
           temperature: 0.8,
           max_tokens: 256,
-          messages: withPersonaSystem(persona, messages),
+          messages: withPersonaSystem(persona, provider, messages),
         }),
         signal: ac.signal,
       });
@@ -304,7 +317,7 @@ export class BotChatService {
           temperature: 0.8,
           max_tokens: 256,
           stream: true,
-          messages: withPersonaSystem(persona, messages),
+          messages: withPersonaSystem(persona, provider, messages),
         }),
         signal: ac.signal,
       });

@@ -62,7 +62,7 @@ export function parseBotChatBody(raw: unknown): { ok: true; value: ParsedBotChat
   const llmProvider = providerRaw ?? defaultBotChatProvider();
   if (body.llmProvider != null || body.provider != null) {
     if (!providerRaw) {
-      return { ok: false, error: 'llmProvider must be cohere or fungpt' };
+      return { ok: false, error: 'llmProvider must be cohere or boost' };
     }
   }
 

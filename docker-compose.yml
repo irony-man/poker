@@ -32,7 +32,9 @@ services:
       - "8000:8000"
     environment:
       BANTERBOT_WEIGHTS_DIR: /app/weights/BanterBot_1_8b-chat
-      FUNGPT_API_KEY: ${BANTER_LLM_API_KEY:-}
+      # Keep in sync with server + auth.py (either var; not BOT_CHAT_LLM_API_KEY / Cohere).
+      FUNGPT_API_KEY: ${FUNGPT_API_KEY:-${BANTER_LLM_API_KEY:-}}
+      BANTER_LLM_API_KEY: ${BANTER_LLM_API_KEY:-${FUNGPT_API_KEY:-}}
       FUNGPT_HOST: 0.0.0.0
       FUNGPT_PORT: "8000"
     volumes:
@@ -75,7 +77,7 @@ services:
       REDIS_URL: ${REDIS_URL:-}
       # OpenAI-compatible LLM (hosted API or FunGPT sidecar). Unset → template banter; /chat unavailable.
       BANTER_LLM_BASE_URL: ${BANTER_LLM_BASE_URL:-}
-      BANTER_LLM_API_KEY: ${BANTER_LLM_API_KEY:-}
+      BANTER_LLM_API_KEY: ${BANTER_LLM_API_KEY:-${FUNGPT_API_KEY:-}}
       FUNGPT_API_KEY: ${FUNGPT_API_KEY:-${BANTER_LLM_API_KEY:-}}
       BANTER_LLM_MODEL: ${BANTER_LLM_MODEL:-}
       BANTER_LLM_PATH: ${BANTER_LLM_PATH:-/v1/chat/completions}

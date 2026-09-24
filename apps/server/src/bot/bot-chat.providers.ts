@@ -18,10 +18,10 @@ export interface BotChatRuntimeConfig {
 
 const DEFAULT_PATH = '/v1/chat/completions';
 
-/** Bearer token for FunGPT / table banter (must match sidecar `FUNGPT_API_KEY`). */
+/** Bearer for FunGPT — same precedence as `apps/fungpt/auth.py` (`FUNGPT_API_KEY` then `BANTER_LLM_API_KEY`). */
 export function resolveSidecarApiKey(): string | null {
   const key =
-    process.env.BANTER_LLM_API_KEY?.trim() || process.env.FUNGPT_API_KEY?.trim() || '';
+    process.env.FUNGPT_API_KEY?.trim() || process.env.BANTER_LLM_API_KEY?.trim() || '';
   return key || null;
 }
 

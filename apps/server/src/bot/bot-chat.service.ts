@@ -53,7 +53,7 @@ async function readUpstreamError(res: globalThis.Response): Promise<string> {
       const detail = json.detail;
       const detailText = Array.isArray(detail) ? detail.join('; ') : detail;
       if (detailText === 'Missing Bearer token' || detailText === 'Invalid API key') {
-        return `${detailText} — set BANTER_LLM_API_KEY on the server to match FUNGPT_API_KEY on the FunGPT sidecar (Cohere uses BOT_CHAT_LLM_API_KEY separately).`;
+        return `${detailText} — use one shared sidecar secret in .env (FUNGPT_API_KEY or BANTER_LLM_API_KEY, not your Cohere key), then recreate server and fungpt: docker compose --profile fungpt up -d --force-recreate server fungpt`;
       }
       if (detailText) return detailText;
     } catch {

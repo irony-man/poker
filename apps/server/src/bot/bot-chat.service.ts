@@ -33,6 +33,15 @@ function llmUrl(baseUrl: string, path: string): string {
   return `${baseUrl}${p}`;
 }
 
+function resolveChatPath(baseUrl: string, explicitPath?: string): string {
+  const trimmed = explicitPath?.trim();
+  if (trimmed) return trimmed;
+  const envChatPath = process.env.BOT_CHAT_LLM_PATH?.trim();
+  if (envChatPath) return envChatPath;
+  if (baseUrl.includes('cohere.ai/compatibility')) return '/chat/completions';
+  return process.env.BANTER_LLM_PATH?.trim() ?? DEFAULT_PATH;
+}
+
 export function clipBotChatReply(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const text = raw.replace(/\s+\n/g, '\n').trim();
@@ -70,10 +79,19 @@ export class BotChatService {
   }
 
   private applyConfig(config: Partial<BotChatLlmConfig>): void {
-    const base = (config.baseUrl ?? process.env.BANTER_LLM_BASE_URL ?? '').replace(/\/$/, '');
+    const envChatBase = process.env.BOT_CHAT_LLM_BASE_URL?.trim();
+    const envBanterBase = process.env.BANTER_LLM_BASE_URL?.trim();
+    const base = (
+      config.baseUrl ??
+      envChatBase ??
+      envBanterBase ??
+      ''
+    ).replace(/\/$/, '');
     this.baseUrl = base || null;
-    this.apiKey = (config.apiKey ?? process.env.BANTER_LLM_API_KEY)?.trim() || null;
-    this.path = config.path ?? process.env.BANTER_LLM_PATH?.trim() ?? DEFAULT_PATH;
+    this.apiKey =
+      (config.apiKey ?? process.env.BOT_CHAT_LLM_API_KEY ?? process.env.BANTER_LLM_API_KEY)?.trim() ||
+      null;
+    this.path = base ? resolveChatPath(base, config.path) : DEFAULT_PATH;
     this.timeoutMs = resolveTimeoutMs(config);
     this.fetchFn = config.fetchFn ?? fetch;
   }

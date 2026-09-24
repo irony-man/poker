@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { resolvePersonaModel } from './bot-chat.prompts.js';
 
-const KEYS = ['BOT_CHAT_MODEL', 'BANTER_LLM_MODEL'] as const;
+const KEYS = ['BOT_CHAT_MODEL', 'BANTER_LLM_MODEL', 'BOT_CHAT_LLM_BASE_URL'] as const;
 
 afterEach(() => {
   for (const key of KEYS) delete process.env[key];
@@ -21,5 +21,11 @@ describe('resolvePersonaModel', () => {
     process.env.BANTER_LLM_MODEL = 'table-model';
     process.env.BOT_CHAT_MODEL = 'lobby-model';
     expect(resolvePersonaModel()).toBe('lobby-model');
+  });
+
+  it('defaults to Cohere model when BOT_CHAT_LLM_BASE_URL is set', () => {
+    process.env.BOT_CHAT_LLM_BASE_URL = 'https://api.cohere.ai/compatibility/v1';
+    process.env.BANTER_LLM_MODEL = 'banterbot';
+    expect(resolvePersonaModel()).toBe('command-r-plus-08-2024');
   });
 });

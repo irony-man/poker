@@ -34,7 +34,7 @@ Open http://localhost:3000 — sign up or sign in with a username and password, 
 
 ### Bot chat / table banter LLM (optional)
 
-Lobby **Bots** (`/chat`) and seated-bot table banter call an OpenAI-compatible `/v1/chat/completions` endpoint. When unset, table bots use phrase templates and `/chat` returns unavailable.
+Lobby **Bots** (`/chat`) and seated-bot table banter use OpenAI-compatible chat completions. You can point **lobby chat** and **table banter** at different hosts (e.g. Cohere for `/chat`, FunGPT for table lines). When unset, table bots use phrase templates and `/chat` returns unavailable.
 
 **Recommended for the Oracle VM (no GPU):** a hosted API. Nest already sends the BanterBot system prompt; only the model id changes.
 
@@ -67,16 +67,27 @@ BANTER_LLM_MODEL=banterbot
 # or omit BOT_CHAT_MODEL / BANTER_LLM_MODEL to default to banterbot
 ```
 
+**Cohere for lobby `/chat` + FunGPT for table banter** (recommended on CPU VM):
+
+```bash
+# .env — restart server only (no web rebuild)
+BOT_CHAT_LLM_BASE_URL=https://api.cohere.ai/compatibility/v1
+BOT_CHAT_LLM_API_KEY=your-cohere-api-key
+BOT_CHAT_MODEL=command-r-plus-08-2024
+
+BANTER_LLM_BASE_URL=http://fungpt:8000
+BANTER_LLM_MODEL=banterbot
+BANTER_LLM_TIMEOUT_MS=20000
+```
+
 **Compose sidecar** (optional profile; mounts `apps/fungpt/weights`):
 
 ```bash
 ./scripts/download-banterbot-weights.sh
 
-# .env
+# .env (table banter)
 BANTER_LLM_BASE_URL=http://fungpt:8000
-BANTER_LLM_API_KEY=optional-shared-secret
 BANTER_LLM_MODEL=banterbot
-# BANTERBOT_WEIGHTS_ROOT=/custom/path/to/weights  # optional
 
 docker compose --profile fungpt up -d --build
 ```
@@ -129,10 +140,13 @@ For a public URL (Vercel/Railway/Fly), you’ll need accounts + `NEXT_PUBLIC_API
 | `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` | unset | Google Search Console HTML tag content |
 | `NEXT_PUBLIC_BING_SITE_VERIFICATION` | unset | Bing Webmaster `msvalidate.01` content |
 | `NEXT_PUBLIC_YANDEX_VERIFICATION` | unset | Yandex site verification content |
-| `BANTER_LLM_BASE_URL` | unset | OpenAI-compatible LLM origin. Unset → template banter only |
-| `BANTER_LLM_API_KEY` | unset | Bearer token for hosted API or FunGPT sidecar |
-| `BANTER_LLM_MODEL` | unset | Table banter + lobby BanterBot model id (FunGPT default: `banterbot`) |
-| `BOT_CHAT_MODEL` | unset | Lobby `/chat` model override (falls back to `BANTER_LLM_MODEL`) |
+| `BANTER_LLM_BASE_URL` | unset | Table banter LLM (e.g. `http://fungpt:8000`). Unset → template banter only |
+| `BANTER_LLM_API_KEY` | unset | Bearer for table banter / FunGPT sidecar auth |
+| `BANTER_LLM_MODEL` | unset | Table banter model id (FunGPT default: `banterbot`) |
+| `BOT_CHAT_LLM_BASE_URL` | unset | Lobby `/chat` only (e.g. Cohere compatibility API). Falls back to `BANTER_LLM_BASE_URL` |
+| `BOT_CHAT_LLM_API_KEY` | unset | Lobby `/chat` API key (falls back to `BANTER_LLM_API_KEY`) |
+| `BOT_CHAT_MODEL` | unset | Lobby model id (Cohere default when `BOT_CHAT_LLM_BASE_URL` set: `command-r-plus-08-2024`) |
+| `BOT_CHAT_LLM_PATH` | auto | `/chat/completions` for Cohere; else `/v1/chat/completions` |
 | `BANTER_LLM_PATH` | `/v1/chat/completions` | Chat completions path |
 | `BANTER_LLM_TIMEOUT_MS` | `8000` | Table-banter LLM timeout |
 | `BOT_CHAT_TIMEOUT_MS` | `60000` | Lobby `/chat` LLM timeout |

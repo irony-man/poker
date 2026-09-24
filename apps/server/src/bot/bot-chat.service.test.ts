@@ -61,6 +61,43 @@ describe('BotChatService', () => {
     }
   });
 
+  it('uses BOT_CHAT_LLM_* for lobby chat when set (separate from table banter)', async () => {
+    const prev = {
+      chatBase: process.env.BOT_CHAT_LLM_BASE_URL,
+      chatKey: process.env.BOT_CHAT_LLM_API_KEY,
+      banterBase: process.env.BANTER_LLM_BASE_URL,
+    };
+    process.env.BOT_CHAT_LLM_BASE_URL = 'https://api.cohere.ai/compatibility/v1';
+    process.env.BOT_CHAT_LLM_API_KEY = 'cohere-key';
+    process.env.BANTER_LLM_BASE_URL = 'http://fungpt:8000';
+    process.env.BOT_CHAT_MODEL = 'command-r-plus-08-2024';
+    try {
+      const fetchFn = vi.fn(async () =>
+        Response.json({ choices: [{ message: { content: 'Fast.' } }] }),
+      ) as unknown as typeof fetch;
+      const svc = BotChatService.create({ fetchFn });
+      const text = await svc.complete('banter', [{ role: 'user', content: 'hi' }]);
+      expect(text).toBe('Fast.');
+      const [url, init] = (fetchFn as ReturnType<typeof vi.fn>).mock.calls[0]!;
+      expect(url).toBe('https://api.cohere.ai/compatibility/v1/chat/completions');
+      expect((init as RequestInit).headers).toMatchObject({
+        Authorization: 'Bearer cohere-key',
+      });
+    } finally {
+      for (const [k, v] of Object.entries(prev)) {
+        const key =
+          k === 'chatBase'
+            ? 'BOT_CHAT_LLM_BASE_URL'
+            : k === 'chatKey'
+              ? 'BOT_CHAT_LLM_API_KEY'
+              : 'BANTER_LLM_BASE_URL';
+        if (v === undefined) delete process.env[key];
+        else process.env[key] = v;
+      }
+      delete process.env.BOT_CHAT_MODEL;
+    }
+  });
+
   it('uses BANTER_LLM_MODEL for hosted OpenAI-style APIs', async () => {
     process.env.BANTER_LLM_MODEL = 'gpt-4o-mini';
     try {

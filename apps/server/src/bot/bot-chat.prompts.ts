@@ -10,16 +10,18 @@ export function isBotChatPersona(value: string | null | undefined): value is Bot
 
 export const DEFAULT_BANTER_MODEL = 'banterbot';
 
+/** Default Cohere model when lobby chat uses `BOT_CHAT_LLM_BASE_URL` without `BOT_CHAT_MODEL`. */
+export const DEFAULT_COHERE_CHAT_MODEL = 'command-r-plus-08-2024';
+
 /**
  * Resolve the OpenAI `model` id for lobby BanterBot chat.
- * Precedence: `BOT_CHAT_MODEL` → `BANTER_LLM_MODEL` → FunGPT `banterbot`.
+ * Precedence: `BOT_CHAT_MODEL` → (hosted chat URL → Cohere default) → `BANTER_LLM_MODEL` → `banterbot`.
  */
 export function resolvePersonaModel(_persona: BotChatPersona = 'banter'): string {
-  return (
-    process.env.BOT_CHAT_MODEL?.trim() ||
-    process.env.BANTER_LLM_MODEL?.trim() ||
-    DEFAULT_BANTER_MODEL
-  );
+  const explicit = process.env.BOT_CHAT_MODEL?.trim();
+  if (explicit) return explicit;
+  if (process.env.BOT_CHAT_LLM_BASE_URL?.trim()) return DEFAULT_COHERE_CHAT_MODEL;
+  return process.env.BANTER_LLM_MODEL?.trim() || DEFAULT_BANTER_MODEL;
 }
 
 export const BANTER_SYSTEM_PROMPT = `

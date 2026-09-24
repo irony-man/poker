@@ -38,7 +38,7 @@ describe('BotChatService', () => {
       fetchFn: vi.fn() as unknown as typeof fetch,
     });
     expect(svc.isConfigured()).toBe(false);
-    await expect(svc.complete('banter', [{ role: 'user', content: 'hi' }])).resolves.toBeNull();
+    await expect(svc.complete('banter', [{ role: 'user', content: 'hi' }], 'fungpt')).resolves.toBeNull();
   });
 
   it('posts BanterBot persona + history to chat completions', async () => {
@@ -56,9 +56,11 @@ describe('BotChatService', () => {
         apiKey: 'secret',
         fetchFn,
       });
-      const text = await svc.complete('banter', [
-        { role: 'user', content: 'I shipped a feature' },
-      ]);
+      const text = await svc.complete(
+        'banter',
+        [{ role: 'user', content: 'I shipped a feature' }],
+        'fungpt',
+      );
       expect(text).toBe('Keep talking, I need the material.');
       expect(fetchFn).toHaveBeenCalledOnce();
       const [url, init] = (fetchFn as ReturnType<typeof vi.fn>).mock.calls[0]!;
@@ -95,7 +97,7 @@ describe('BotChatService', () => {
         Response.json({ choices: [{ message: { content: 'Fast.' } }] }),
       ) as unknown as typeof fetch;
       const svc = BotChatService.create({ fetchFn });
-      const text = await svc.complete('banter', [{ role: 'user', content: 'hi' }]);
+      const text = await svc.complete('banter', [{ role: 'user', content: 'hi' }], 'cohere');
       expect(text).toBe('Fast.');
       const [url, init] = (fetchFn as ReturnType<typeof vi.fn>).mock.calls[0]!;
       expect(url).toBe('https://api.cohere.ai/compatibility/v1/chat/completions');
@@ -127,11 +129,11 @@ describe('BotChatService', () => {
         baseUrl: 'http://api.openai.test',
         fetchFn,
       });
-      await svc.complete('banter', [{ role: 'user', content: 'hi' }]);
+      await svc.complete('banter', [{ role: 'user', content: 'hi' }], 'fungpt');
       const body = JSON.parse(
         ((fetchFn as ReturnType<typeof vi.fn>).mock.calls[0]![1] as RequestInit).body as string,
       ) as { model: string };
-      expect(body.model).toBe('gpt-4o-mini');
+      expect(body.model).toBe('banterbot');
     } finally {
       delete process.env.BANTER_LLM_MODEL;
     }

@@ -2,6 +2,8 @@ import { apiBase, parseError, sessionHeaders } from '@/lib/api/client';
 
 export type BotChatPersona = 'banter';
 
+export type BotChatLlmProvider = 'cohere' | 'fungpt';
+
 export type BotChatRole = 'user' | 'assistant';
 
 export interface BotChatTurn {
@@ -9,13 +11,41 @@ export interface BotChatTurn {
   content: string;
 }
 
+export const BOT_CHAT_LLM_PROVIDER_LABELS: Record<BotChatLlmProvider, string> = {
+  cohere: 'Cohere',
+  fungpt: 'FunGPT',
+};
+
+export const BOT_CHAT_LLM_STORAGE_KEY = 'poker.banterbot.llmProvider';
+
+export async function fetchBotChatProviders(sessionToken: string): Promise<{
+  providers: BotChatLlmProvider[];
+  default: BotChatLlmProvider | null;
+}> {
+  const res = await fetch(`${apiBase()}/api/bot-chat/providers`, {
+    headers: sessionHeaders(sessionToken),
+  });
+  if (!res.ok) {
+    return { providers: [], default: null };
+  }
+  const data = (await res.json()) as {
+    providers?: BotChatLlmProvider[];
+    default?: BotChatLlmProvider | null;
+  };
+  const providers = (data.providers ?? []).filter(
+    (p): p is BotChatLlmProvider => p === 'cohere' || p === 'fungpt',
+  );
+  const def = data.default === 'cohere' || data.default === 'fungpt' ? data.default : null;
+  return { providers, default: def };
+}
+
 export async function streamBotChat(opts: {
   sessionToken: string;
   messages: BotChatTurn[];
   onDelta: (delta: string) => void;
   signal?: AbortSignal;
-  /** Always BanterBot; kept optional for callers. */
   persona?: BotChatPersona;
+  llmProvider: BotChatLlmProvider;
 }): Promise<string> {
   const res = await fetch(`${apiBase()}/api/bot-chat`, {
     method: 'POST',
@@ -23,7 +53,7 @@ export async function streamBotChat(opts: {
     body: JSON.stringify({
       persona: opts.persona ?? 'banter',
       messages: opts.messages,
-      // Non-stream: reliable through Next.js /api rewrite (SSE is often buffered).
+      llmProvider: opts.llmProvider,
       stream: false,
     }),
     signal: opts.signal,

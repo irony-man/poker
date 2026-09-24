@@ -1,10 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import type { Response as ExpressResponse } from 'express';
 import {
-  PERSONA_SYSTEM_PROMPT,
-  resolvePersonaModel,
-  type BotChatPersona,
-} from './bot-chat.prompts.js';
+  providerConfigError,
+  providerPrefersNonStream,
+  resolveProviderConfig,
+  type BotChatLlmProvider,
+  type BotChatRuntimeConfig,
+} from './bot-chat.providers.js';
+import { PERSONA_SYSTEM_PROMPT, type BotChatPersona } from './bot-chat.prompts.js';
 import type { BotChatMessage } from './bot-chat.parse.js';
 
 const DEFAULT_PATH = '/v1/chat/completions';
@@ -31,20 +34,6 @@ function resolveTimeoutMs(config: Partial<BotChatLlmConfig>): number {
 function llmUrl(baseUrl: string, path: string): string {
   const p = path.startsWith('/') ? path : `/${path}`;
   return `${baseUrl}${p}`;
-}
-
-function resolveChatPath(baseUrl: string, explicitPath?: string): string {
-  let path =
-    explicitPath?.trim() ||
-    process.env.BOT_CHAT_LLM_PATH?.trim() ||
-    (baseUrl.includes('cohere.ai/compatibility') ? '/chat/completions' : '') ||
-    process.env.BANTER_LLM_PATH?.trim() ||
-    DEFAULT_PATH;
-  // Avoid .../compatibility/v1/v1/chat/completions when BANTER_LLM_PATH leaked into chat.
-  if (baseUrl.includes('cohere.ai/compatibility') && path.startsWith('/v1/')) {
-    path = path.replace(/^\/v1/, '') || '/chat/completions';
-  }
-  return path;
 }
 
 async function readUpstreamError(res: globalThis.Response): Promise<string> {
@@ -139,11 +128,10 @@ function withPersonaSystem(persona: BotChatPersona, messages: BotChatMessage[]):
  */
 @Injectable()
 export class BotChatService {
-  private baseUrl: string | null;
-  private apiKey: string | null;
-  private path: string;
   private timeoutMs: number;
   private fetchFn: typeof fetch;
+  /** Test override (BotChatService.create). */
+  private runtimeOverride: BotChatRuntimeConfig | null = null;
 
   constructor() {
     this.applyConfig({});
@@ -152,75 +140,81 @@ export class BotChatService {
   static create(config: BotChatLlmConfig): BotChatService {
     const svc = new BotChatService();
     svc.applyConfig(config);
+    if (config.baseUrl) {
+      svc.runtimeOverride = {
+        provider: 'fungpt',
+        baseUrl: config.baseUrl.replace(/\/$/, ''),
+        apiKey: config.apiKey?.trim() || null,
+        path: config.path?.trim() || DEFAULT_PATH,
+        model: process.env.BANTER_LLM_MODEL?.trim() || 'banterbot',
+      };
+    }
     return svc;
   }
 
   private applyConfig(config: Partial<BotChatLlmConfig>): void {
-    const envChatBase = process.env.BOT_CHAT_LLM_BASE_URL?.trim();
-    const envBanterBase = process.env.BANTER_LLM_BASE_URL?.trim();
-    const base = (
-      config.baseUrl ??
-      envChatBase ??
-      envBanterBase ??
-      ''
-    ).replace(/\/$/, '');
-    this.baseUrl = base || null;
-    this.apiKey =
-      (config.apiKey ?? process.env.BOT_CHAT_LLM_API_KEY ?? process.env.BANTER_LLM_API_KEY)?.trim() ||
-      null;
-    this.path = base ? resolveChatPath(base, config.path) : DEFAULT_PATH;
     this.timeoutMs = resolveTimeoutMs(config);
     this.fetchFn = config.fetchFn ?? fetch;
   }
 
+  private runtime(provider: BotChatLlmProvider): BotChatRuntimeConfig | null {
+    if (this.runtimeOverride) return this.runtimeOverride;
+    return resolveProviderConfig(provider);
+  }
+
   isConfigured(): boolean {
-    return this.configurationError() === null;
+    return this.listProviders().length > 0;
   }
 
   /** Human-readable misconfiguration (shown in API 503). */
-  configurationError(): string | null {
-    if (!this.baseUrl) {
-      return 'Bot chat is not configured (set BOT_CHAT_LLM_BASE_URL for Cohere, or BANTER_LLM_BASE_URL)';
-    }
-    const hosted =
-      !this.baseUrl.includes('127.0.0.1') &&
-      !this.baseUrl.includes('localhost') &&
-      !this.baseUrl.includes('fungpt:');
-    if (hosted && !this.apiKey) {
-      return 'Bot chat API key missing (set BOT_CHAT_LLM_API_KEY)';
-    }
-    return null;
+  configurationError(provider: BotChatLlmProvider): string | null {
+    if (this.runtimeOverride) return null;
+    return providerConfigError(provider);
   }
 
-  private headers(): Record<string, string> {
+  listProviders(): BotChatLlmProvider[] {
+    if (this.runtimeOverride) return ['fungpt'];
+    const out: BotChatLlmProvider[] = [];
+    if (providerConfigError('cohere') === null) out.push('cohere');
+    if (providerConfigError('fungpt') === null) out.push('fungpt');
+    return out;
+  }
+
+  private headers(cfg: BotChatRuntimeConfig): Record<string, string> {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (this.apiKey) headers.Authorization = `Bearer ${this.apiKey}`;
+    if (cfg.apiKey) headers.Authorization = `Bearer ${cfg.apiKey}`;
     return headers;
   }
 
-  async complete(persona: BotChatPersona, messages: BotChatMessage[]): Promise<string | null> {
-    const result = await this.completeDetailed(persona, messages);
+  async complete(
+    persona: BotChatPersona,
+    messages: BotChatMessage[],
+    provider: BotChatLlmProvider,
+  ): Promise<string | null> {
+    const result = await this.completeDetailed(persona, messages, provider);
     return result.text;
   }
 
   async completeDetailed(
     persona: BotChatPersona,
     messages: BotChatMessage[],
+    provider: BotChatLlmProvider,
   ): Promise<BotChatCompletionResult> {
-    const configErr = this.configurationError();
+    const configErr = this.configurationError(provider);
     if (configErr) return { text: null, error: configErr };
-    if (!this.baseUrl) {
+    const cfg = this.runtime(provider);
+    if (!cfg) {
       return { text: null, error: 'Bot chat is not configured' };
     }
-    const url = llmUrl(this.baseUrl, this.path);
+    const url = llmUrl(cfg.baseUrl, cfg.path);
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), this.timeoutMs);
     try {
       const res = await this.fetchFn(url, {
         method: 'POST',
-        headers: this.headers(),
+        headers: this.headers(cfg),
         body: JSON.stringify({
-          model: resolvePersonaModel(persona),
+          model: cfg.model,
           temperature: 0.8,
           max_tokens: 256,
           messages: withPersonaSystem(persona, messages),
@@ -251,6 +245,7 @@ export class BotChatService {
     res: ExpressResponse,
     persona: BotChatPersona,
     messages: BotChatMessage[],
+    provider: BotChatLlmProvider,
   ): Promise<void> {
     res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -264,7 +259,7 @@ export class BotChatService {
       res.write(`data: ${data}\n\n`);
     };
 
-    const configErr = this.configurationError();
+    const configErr = this.configurationError(provider);
     if (configErr) {
       writeEvent({ error: configErr });
       writeEvent('[DONE]');
@@ -272,9 +267,17 @@ export class BotChatService {
       return;
     }
 
+    const cfg = this.runtime(provider);
+    if (!cfg) {
+      writeEvent({ error: 'Bot chat is not configured' });
+      writeEvent('[DONE]');
+      res.end();
+      return;
+    }
+
     // Hosted APIs (Cohere): avoid upstream SSE — Next /api rewrites often buffer event streams.
-    if (this.baseUrl && !this.baseUrl.includes('fungpt:') && !this.baseUrl.includes('127.0.0.1')) {
-      const { text, error } = await this.completeDetailed(persona, messages);
+    if (providerPrefersNonStream(cfg.baseUrl)) {
+      const { text, error } = await this.completeDetailed(persona, messages, provider);
       if (text) writeEvent({ delta: text });
       else writeEvent({ error: error ?? 'Bot chat is not available' });
       writeEvent('[DONE]');
@@ -282,15 +285,15 @@ export class BotChatService {
       return;
     }
 
-    const url = llmUrl(this.baseUrl!, this.path);
+    const url = llmUrl(cfg.baseUrl, cfg.path);
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), this.timeoutMs);
     try {
       const upstream = await this.fetchFn(url, {
         method: 'POST',
-        headers: this.headers(),
+        headers: this.headers(cfg),
         body: JSON.stringify({
-          model: resolvePersonaModel(persona),
+          model: cfg.model,
           temperature: 0.8,
           max_tokens: 256,
           stream: true,
@@ -362,7 +365,7 @@ export class BotChatService {
         }
       }
       if (!assembled.trim()) {
-        const fallback = await this.complete(persona, messages);
+        const fallback = await this.complete(persona, messages, provider);
         if (fallback) {
           writeEvent({ delta: fallback });
           writeEvent('[DONE]');

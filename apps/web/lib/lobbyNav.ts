@@ -16,7 +16,7 @@ export const LOBBY_NAV: { href: LobbyHref; label: string }[] = [
   { href: '/public', label: 'Public Tables' },
   { href: '/contests', label: 'Contests' },
   { href: '/friends', label: 'Friends' },
-  { href: '/chat', label: 'Bots' },
+  // /chat (Bots) — route stays live; hidden from nav until BanterBot chat is ready for everyone.
   { href: '/solo', label: 'Offline' },
 ];
 

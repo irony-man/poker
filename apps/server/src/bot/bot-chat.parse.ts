@@ -1,3 +1,8 @@
+import {
+  defaultBotChatProvider,
+  parseBotChatProvider,
+  type BotChatLlmProvider,
+} from './bot-chat.providers.js';
 import { isBotChatPersona, type BotChatPersona } from './bot-chat.prompts.js';
 
 export const MAX_BOT_CHAT_TURNS = 20;
@@ -14,6 +19,7 @@ export interface ParsedBotChatBody {
   persona: BotChatPersona;
   messages: BotChatMessage[];
   stream: boolean;
+  llmProvider: BotChatLlmProvider;
 }
 
 const ROLES = new Set<string>(['system', 'user', 'assistant']);
@@ -52,12 +58,21 @@ export function parseBotChatBody(raw: unknown): { ok: true; value: ParsedBotChat
     return { ok: false, error: 'messages must include a user turn' };
   }
 
+  const providerRaw = parseBotChatProvider(body.llmProvider ?? body.provider);
+  const llmProvider = providerRaw ?? defaultBotChatProvider();
+  if (body.llmProvider != null || body.provider != null) {
+    if (!providerRaw) {
+      return { ok: false, error: 'llmProvider must be cohere or fungpt' };
+    }
+  }
+
   return {
     ok: true,
     value: {
       persona: personaRaw,
       messages: clipped,
       stream: body.stream === true,
+      llmProvider,
     },
   };
 }

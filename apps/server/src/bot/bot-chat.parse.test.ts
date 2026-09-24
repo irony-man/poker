@@ -15,6 +15,22 @@ describe('parseBotChatBody', () => {
     expect(parsed.value.messages).toHaveLength(20);
   });
 
+  it('accepts llmProvider cohere or fungpt', () => {
+    const cohere = parseBotChatBody({
+      messages: [{ role: 'user', content: 'hi' }],
+      llmProvider: 'cohere',
+    });
+    expect(cohere.ok).toBe(true);
+    if (cohere.ok) expect(cohere.value.llmProvider).toBe('cohere');
+
+    expect(
+      parseBotChatBody({
+        messages: [{ role: 'user', content: 'hi' }],
+        llmProvider: 'openai',
+      }).ok,
+    ).toBe(false);
+  });
+
   it('defaults persona to banter when omitted', () => {
     const parsed = parseBotChatBody({
       messages: [{ role: 'user', content: 'hi' }],

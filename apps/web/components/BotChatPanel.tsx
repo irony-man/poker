@@ -2,15 +2,35 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
-import { streamBotChat, type BotChatTurn } from '@/lib/api/botChat';
+import {
+  BOT_CHAT_LLM_PROVIDER_LABELS,
+  BOT_CHAT_LLM_STORAGE_KEY,
+  fetchBotChatProviders,
+  streamBotChat,
+  type BotChatLlmProvider,
+  type BotChatTurn,
+} from '@/lib/api/botChat';
 import { cn } from '@/lib/cn';
 import { readStoredSession } from '@/lib/session';
+
+function readStoredProvider(): BotChatLlmProvider | null {
+  if (typeof window === 'undefined') return null;
+  const raw = localStorage.getItem(BOT_CHAT_LLM_STORAGE_KEY);
+  return raw === 'cohere' || raw === 'fungpt' ? raw : null;
+}
 
 export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
   const [messages, setMessages] = useState<BotChatTurn[]>([]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [availableProviders, setAvailableProviders] = useState<BotChatLlmProvider[]>([
+    'cohere',
+    'fungpt',
+  ]);
+  const [llmProvider, setLlmProvider] = useState<BotChatLlmProvider>(
+    () => readStoredProvider() ?? 'cohere',
+  );
   const scroller = useRef<HTMLUListElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -24,6 +44,27 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
   useEffect(() => {
     return () => abortRef.current?.abort();
   }, []);
+
+  useEffect(() => {
+    const session = readStoredSession();
+    if (!session?.sessionToken) return;
+    void fetchBotChatProviders(session.sessionToken).then(({ providers, default: def }) => {
+      if (providers.length === 0) return;
+      setAvailableProviders(providers);
+      const stored = readStoredProvider();
+      if (stored && providers.includes(stored)) {
+        setLlmProvider(stored);
+        return;
+      }
+      if (def && providers.includes(def)) setLlmProvider(def);
+      else setLlmProvider(providers[0]!);
+    });
+  }, [disabled]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(BOT_CHAT_LLM_STORAGE_KEY, llmProvider);
+  }, [llmProvider]);
 
   const clear = () => {
     abortRef.current?.abort();
@@ -55,6 +96,7 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
       const full = await streamBotChat({
         sessionToken: session.sessionToken,
         messages: history,
+        llmProvider,
         signal: ac.signal,
         onDelta: (delta) => {
           setMessages((cur) => {
@@ -92,13 +134,43 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
 
   return (
     <div className="glass-sheet flex min-h-[28rem] flex-col overflow-hidden rounded-2xl border border-sidebar/12 shadow-[0_12px_32px_rgb(29_4_50/0.08)] sm:min-h-[32rem] lg:h-[min(70vh,42rem)]">
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-sidebar/10 px-4 py-3">
-        <h2 className="font-display text-sm font-bold uppercase tracking-[0.16em] text-primary">
-          BanterBot
-        </h2>
-        <Button type="button" variant="ghost" size="sm" onClick={clear} disabled={busy && !messages.length}>
-          Clear
-        </Button>
+      <header className="flex shrink-0 flex-col gap-2 border-b border-sidebar/10 px-4 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-display text-sm font-bold uppercase tracking-[0.16em] text-primary">
+            BanterBot
+          </h2>
+          <Button type="button" variant="ghost" size="sm" onClick={clear} disabled={busy && !messages.length}>
+            Clear
+          </Button>
+        </div>
+        <div
+          className="flex rounded-lg border border-sidebar/12 bg-white/50 p-0.5"
+          role="group"
+          aria-label="Chat model backend"
+        >
+          {(['cohere', 'fungpt'] as const).map((id) => {
+            const on = llmProvider === id;
+            const available = availableProviders.includes(id);
+            return (
+              <button
+                key={id}
+                type="button"
+                disabled={disabled || busy || !available}
+                title={available ? undefined : `${BOT_CHAT_LLM_PROVIDER_LABELS[id]} is not configured on the server`}
+                onClick={() => setLlmProvider(id)}
+                className={cn(
+                  'flex-1 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors',
+                  on
+                    ? 'bg-sidebar text-on-chrome shadow-sm'
+                    : 'text-muted hover:text-primary',
+                  !available && 'cursor-not-allowed opacity-40',
+                )}
+              >
+                {BOT_CHAT_LLM_PROVIDER_LABELS[id]}
+              </button>
+            );
+          })}
+        </div>
       </header>
 
       <ul

@@ -92,7 +92,15 @@ export {
 } from './courtpiece';
 export { uploadOfflineHand, fetchMyHands, type UploadHandPayload, type MyHandRow } from './history';
 export { fetchBotBanterLine } from './botBanter';
-export { streamBotChat, type BotChatPersona, type BotChatTurn } from './botChat';
+export {
+  streamBotChat,
+  fetchBotChatProviders,
+  BOT_CHAT_LLM_PROVIDER_LABELS,
+  BOT_CHAT_LLM_STORAGE_KEY,
+  type BotChatLlmProvider,
+  type BotChatPersona,
+  type BotChatTurn,
+} from './botChat';
 export {
   fetchPublicSite,
   fetchPublicBotGroups,

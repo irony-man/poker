@@ -5,11 +5,15 @@ import type { User } from '../auth/auth.types.js';
 import { CurrentUser, SessionAuthGuard } from '../common/session-auth.guard.js';
 import { defaultBotChatProvider } from './bot-chat.providers.js';
 import { parseBotChatBody } from './bot-chat.parse.js';
+import { SiteConfigService } from '../site-config/site-config.service.js';
 import { BotChatService } from './bot-chat.service.js';
 
 @Controller('api/bot-chat')
 export class BotChatController {
-  constructor(private readonly chat: BotChatService) {}
+  constructor(
+    private readonly chat: BotChatService,
+    private readonly site: SiteConfigService,
+  ) {}
 
   @Get('providers')
   @UseGuards(SessionAuthGuard)
@@ -19,6 +23,7 @@ export class BotChatController {
     return {
       providers,
       default: providers.includes(preferred) ? preferred : (providers[0] ?? null),
+      starters: this.site.getBotChatStarters(),
     };
   }
 

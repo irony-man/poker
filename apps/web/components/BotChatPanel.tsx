@@ -50,6 +50,7 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
   const [llmProvider, setLlmProvider] = useState<BotChatLlmProvider>(
     () => readStoredProvider() ?? 'cohere',
   );
+  const [starters, setStarters] = useState<string[]>(() => [...BOT_CHAT_STARTER_PROMPTS]);
   const scroller = useRef<HTMLUListElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -82,7 +83,8 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
   useEffect(() => {
     const session = readStoredSession();
     if (!session?.sessionToken) return;
-    void fetchBotChatProviders(session.sessionToken).then(({ providers, default: def }) => {
+    void fetchBotChatProviders(session.sessionToken).then(({ providers, default: def, starters: next }) => {
+      if (next.length > 0) setStarters(next);
       if (providers.length === 0) return;
       setAvailableProviders(providers);
       const stored = readStoredProvider();
@@ -275,7 +277,7 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
                 Try saying
               </p>
               <div className="flex flex-col gap-2 sm:grid sm:grid-cols-2">
-                {BOT_CHAT_STARTER_PROMPTS.map((prompt) => (
+                {starters.map((prompt) => (
                   <button
                     key={prompt}
                     type="button"
@@ -336,7 +338,7 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
       {!empty ? (
         <div className="shrink-0 border-t border-sidebar/8 px-3 py-2 sm:px-5">
           <div className="flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {BOT_CHAT_STARTER_PROMPTS.slice(0, 4).map((prompt) => (
+            {starters.slice(0, 4).map((prompt) => (
               <button
                 key={`foot-${prompt}`}
                 type="button"

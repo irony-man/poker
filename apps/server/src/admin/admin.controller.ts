@@ -42,6 +42,10 @@ const AnnouncementBody = z.object({
   text: z.string().max(2000),
 });
 
+const BotChatStartersBody = z.object({
+  starters: z.array(z.string().max(500)).min(1).max(20),
+});
+
 const EconomyBody = z.object({
   startingChipGrant: z.number().int().positive().optional(),
   refillThreshold: z.number().int().positive().optional(),
@@ -216,6 +220,21 @@ export class AdminController {
       throw new BadRequestException({ error: parsed.error.message });
     }
     return this.site.setAnnouncement(parsed.data);
+  }
+
+  @Get('bot-chat-starters')
+  getBotChatStarters() {
+    return { starters: this.site.getBotChatStarters() };
+  }
+
+  @Patch('bot-chat-starters')
+  async patchBotChatStarters(@Body() body: unknown) {
+    const parsed = BotChatStartersBody.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({ error: parsed.error.message });
+    }
+    const starters = await this.site.setBotChatStarters(parsed.data.starters);
+    return { starters };
   }
 
   @Get('economy')

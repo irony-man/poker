@@ -249,6 +249,33 @@ export function defaultAvatarPresets(): AvatarPresetsConfig {
   return { urls: defaultAvatarPresetUrls() };
 }
 
+/** Lobby `/chat` “Try saying” starter prompts (admin-editable). */
+export const MAX_BOT_CHAT_STARTERS = 20;
+export const MAX_BOT_CHAT_STARTER_CHARS = 500;
+
+export const DEFAULT_BOT_CHAT_STARTERS: readonly string[] = [
+  'I slow-played pocket aces and still lost.',
+  'Is open-limping ever defensible?',
+  'I pushed code to prod without testing.',
+  'Rate my bluff: I had seven-high.',
+  'I called a river bet with middle pair. Again.',
+] as const;
+
+export function normalizeBotChatStarters(raw: unknown): string[] {
+  if (!Array.isArray(raw)) {
+    return [...DEFAULT_BOT_CHAT_STARTERS];
+  }
+  const out: string[] = [];
+  for (const item of raw) {
+    if (typeof item !== 'string') continue;
+    const text = item.trim().slice(0, MAX_BOT_CHAT_STARTER_CHARS);
+    if (!text) continue;
+    out.push(text);
+    if (out.length >= MAX_BOT_CHAT_STARTERS) break;
+  }
+  return out.length > 0 ? out : [...DEFAULT_BOT_CHAT_STARTERS];
+}
+
 /** Classic vs Arcade content bags. Independent of table felt color. */
 export type CopyTheme = 'v1' | 'v2';
 
@@ -270,6 +297,7 @@ export interface SiteConfigPayload {
   botGroupLabels: BotGroupLabels;
   sounds: TableSoundsConfig;
   avatarPresets: AvatarPresetsConfig;
+  botChatStarters: string[];
 }
 
 /** Ordered picker rows; packs reference a row via `BotGroup.labelId`. */
@@ -597,6 +625,7 @@ export function defaultSiteConfig(): SiteConfigPayload {
     botGroupLabels: DEFAULT_BOT_GROUP_LABELS.map((l) => ({ ...l })),
     sounds: defaultTableSounds(),
     avatarPresets: defaultAvatarPresets(),
+    botChatStarters: [...DEFAULT_BOT_CHAT_STARTERS],
   };
 }
 
@@ -1026,6 +1055,11 @@ export function normalizeSiteConfig(raw: unknown): SiteConfigPayload {
   const avatarPresets =
     o.avatarPresets !== undefined ? normalizeAvatarPresets(o.avatarPresets) : defaults.avatarPresets;
 
+  const botChatStarters =
+    o.botChatStarters !== undefined
+      ? normalizeBotChatStarters(o.botChatStarters)
+      : defaults.botChatStarters;
+
   return {
     announcement,
     economy,
@@ -1038,5 +1072,6 @@ export function normalizeSiteConfig(raw: unknown): SiteConfigPayload {
     botGroupLabels,
     sounds,
     avatarPresets,
+    botChatStarters,
   };
 }

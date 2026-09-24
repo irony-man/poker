@@ -19,9 +19,11 @@ import {
   fetchAdminRoomSettings,
   fetchAdminSounds,
   fetchAdminAvatarPresets,
+  fetchAdminBotChatStarters,
   fetchAdminUsers,
   fetchMe,
   patchAdminAnnouncement,
+  patchAdminBotChatStarters,
   patchAdminBotGroups,
   patchAdminEconomy,
   patchAdminHomeFeatures,
@@ -94,6 +96,8 @@ import { EconomySection } from './sections/Economy';
 import { SoundsSection } from './sections/Sounds';
 import { GamesSection } from './sections/Games';
 import { HandsSection } from './sections/Hands';
+import { ChatStartersSection } from './sections/ChatStarters';
+import { BOT_CHAT_STARTER_PROMPTS } from '@/lib/api/botChat';
 
 function cloneHomeBag(list: HomeLandingFeature[]): HomeLandingFeature[] {
   return list.map((f) => ({ ...f }));
@@ -164,6 +168,9 @@ function AdminPageInner() {
     enabled: false,
     text: '',
   });
+  const [botChatStarters, setBotChatStarters] = useState<string[]>(() => [
+    ...BOT_CHAT_STARTER_PROMPTS,
+  ]);
   const [economy, setEconomy] = useState<SiteEconomy>({
     startingChipGrant: 25000,
     refillThreshold: 1000,
@@ -263,7 +270,7 @@ function AdminPageInner() {
         return;
       }
       setIsAdmin(true);
-      const [overview, eco, games, userList, home, pages, rooms, bots, soundCfg, avatarCfg] =
+      const [overview, eco, games, userList, home, pages, rooms, bots, soundCfg, avatarCfg, chatStarters] =
         await Promise.all([
         fetchAdminOverview(token),
         fetchAdminEconomy(token),
@@ -275,8 +282,12 @@ function AdminPageInner() {
         fetchAdminBotGroups(token),
         fetchAdminSounds(token),
         fetchAdminAvatarPresets(token),
+        fetchAdminBotChatStarters(token),
       ]);
       setAnnouncement(overview.announcement);
+      setBotChatStarters(
+        chatStarters.starters?.length ? chatStarters.starters : [...BOT_CHAT_STARTER_PROMPTS],
+      );
       setEconomy(eco);
       setRoomSettings(rooms);
       setSounds({
@@ -347,6 +358,21 @@ function AdminPageInner() {
       const next = await patchAdminAnnouncement(token, announcement);
       setAnnouncement(next);
       flash('Site banner saved');
+    });
+  }
+
+  async function saveBotChatStarters(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token) return;
+    const cleaned = botChatStarters.map((s) => s.trim()).filter(Boolean);
+    if (cleaned.length === 0) {
+      setError('Add at least one non-empty starter');
+      return;
+    }
+    await withBusy('chat-starters', async () => {
+      const next = await patchAdminBotChatStarters(token, cleaned);
+      setBotChatStarters(next.starters);
+      flash('Bot chat starters saved');
     });
   }
 
@@ -1188,6 +1214,22 @@ function AdminPageInner() {
                 : null
             }
             onSave={(e) => void saveHomeFeatures(e)}
+          />
+        ) : null}
+
+        {tab === 'chat' ? (
+          <ChatStartersSection
+            starters={botChatStarters}
+            busy={busyKey !== null}
+            busyKey={busyKey}
+            onChange={(index, value) =>
+              setBotChatStarters((list) => list.map((s, i) => (i === index ? value : s)))
+            }
+            onAdd={() => setBotChatStarters((list) => [...list, ''])}
+            onRemove={(index) =>
+              setBotChatStarters((list) => list.filter((_, i) => i !== index))
+            }
+            onSave={(e) => void saveBotChatStarters(e)}
           />
         ) : null}
 

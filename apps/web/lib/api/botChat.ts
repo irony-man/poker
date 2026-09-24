@@ -12,8 +12,8 @@ export interface BotChatTurn {
 }
 
 export const BOT_CHAT_LLM_PROVIDER_LABELS: Record<BotChatLlmProvider, string> = {
-  cohere: 'Cohere API',
-  fungpt: 'FunGPT LLM',
+  cohere: 'Fast GPT',
+  fungpt: 'Slow GPT',
 };
 
 export const BOT_CHAT_STARTER_PROMPTS: readonly string[] = [
@@ -75,22 +75,36 @@ export function writeStoredBotChatThreads(threads: BotChatThreadsByProvider): vo
 export async function fetchBotChatProviders(sessionToken: string): Promise<{
   providers: BotChatLlmProvider[];
   default: BotChatLlmProvider | null;
+  starters: string[];
 }> {
   const res = await fetch(`${apiBase()}/api/bot-chat/providers`, {
     headers: sessionHeaders(sessionToken),
   });
   if (!res.ok) {
-    return { providers: [], default: null };
+    return { providers: [], default: null, starters: [...BOT_CHAT_STARTER_PROMPTS] };
   }
   const data = (await res.json()) as {
     providers?: BotChatLlmProvider[];
     default?: BotChatLlmProvider | null;
+    starters?: unknown;
   };
   const providers = (data.providers ?? []).filter(
     (p): p is BotChatLlmProvider => p === 'cohere' || p === 'fungpt',
   );
   const def = data.default === 'cohere' || data.default === 'fungpt' ? data.default : null;
-  return { providers, default: def };
+  const starters = normalizeStarterList(data.starters);
+  return { providers, default: def, starters };
+}
+
+function normalizeStarterList(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [...BOT_CHAT_STARTER_PROMPTS];
+  const out: string[] = [];
+  for (const item of raw) {
+    if (typeof item !== 'string') continue;
+    const t = item.trim();
+    if (t) out.push(t);
+  }
+  return out.length > 0 ? out : [...BOT_CHAT_STARTER_PROMPTS];
 }
 
 export async function streamBotChat(opts: {

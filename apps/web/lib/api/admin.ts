@@ -179,6 +179,26 @@ export async function patchAdminAnnouncement(
   }) as Promise<SiteAnnouncement>;
 }
 
+export const MAX_BOT_CHAT_STARTERS = 20;
+export const MAX_BOT_CHAT_STARTER_CHARS = 500;
+
+export async function fetchAdminBotChatStarters(sessionToken: string) {
+  return authedFetch('/api/admin/bot-chat-starters', { sessionToken }) as Promise<{
+    starters: string[];
+  }>;
+}
+
+export async function patchAdminBotChatStarters(
+  sessionToken: string,
+  starters: string[],
+): Promise<{ starters: string[] }> {
+  return authedFetch('/api/admin/bot-chat-starters', {
+    sessionToken,
+    method: 'PATCH',
+    body: { starters },
+  }) as Promise<{ starters: string[] }>;
+}
+
 export async function fetchAdminEconomy(sessionToken: string) {
   return authedFetch('/api/admin/economy', { sessionToken }) as Promise<SiteEconomy>;
 }

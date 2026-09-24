@@ -3,6 +3,7 @@ export type AdminTab =
   | 'content'
   | 'home'
   | 'pages'
+  | 'chat'
   | 'bots'
   | 'economy'
   | 'sounds'
@@ -14,6 +15,7 @@ export const ADMIN_TABS: AdminTab[] = [
   'content',
   'home',
   'pages',
+  'chat',
   'bots',
   'economy',
   'sounds',
@@ -26,6 +28,7 @@ export const TABS: { id: AdminTab; label: string }[] = [
   { id: 'content', label: 'Banner' },
   { id: 'home', label: 'Home page' },
   { id: 'pages', label: 'Pages' },
+  { id: 'chat', label: 'Bot chat' },
   { id: 'bots', label: 'Bot groups' },
   { id: 'economy', label: 'Economy' },
   { id: 'sounds', label: 'Sounds' },
@@ -47,6 +50,7 @@ export const ADMIN_NAV: { label: string; items: { id: AdminTab; label: string }[
       { id: 'content', label: 'Banner' },
       { id: 'home', label: 'Home page' },
       { id: 'pages', label: 'Pages' },
+      { id: 'chat', label: 'Bot chat' },
       { id: 'sounds', label: 'Sounds' },
     ],
   },

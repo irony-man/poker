@@ -14,6 +14,7 @@ import {
   normalizeRoomSettings,
   normalizeAvatarPresets,
   normalizeSiteConfig,
+  normalizeBotChatStarters,
   normalizeTableSounds,
   resolveBotNamePool,
   resolveBotSeatingConfig,
@@ -138,6 +139,7 @@ export class SiteConfigStore {
         urls: { ...this.cache.sounds.urls },
       },
       avatarPresets: { urls: [...this.cache.avatarPresets.urls] },
+      botChatStarters: [...this.cache.botChatStarters],
     };
   }
 
@@ -211,6 +213,10 @@ export class SiteConfigStore {
 
   getAvatarPresets(): AvatarPresetsConfig {
     return { urls: [...this.cache.avatarPresets.urls] };
+  }
+
+  getBotChatStarters(): string[] {
+    return [...this.cache.botChatStarters];
   }
 
   /** Display-name pool for seating; uses default group when id is missing. */
@@ -322,5 +328,15 @@ export class SiteConfigStore {
     };
     await this.serialized(() => this.persist());
     return this.getAvatarPresets();
+  }
+
+  async setBotChatStarters(starters: string[]): Promise<string[]> {
+    await this.ensureLoaded();
+    this.cache = {
+      ...this.cache,
+      botChatStarters: normalizeBotChatStarters(starters),
+    };
+    await this.serialized(() => this.persist());
+    return this.getBotChatStarters();
   }
 }

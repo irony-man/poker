@@ -91,6 +91,10 @@ export class SiteConfigService implements OnModuleInit {
     return this.store.getAvatarPresets();
   }
 
+  getBotChatStarters(): string[] {
+    return this.store.getBotChatStarters();
+  }
+
   getBotNamePool(groupId?: string | null): string[] {
     return this.store.getBotNamePool(groupId);
   }
@@ -140,5 +144,9 @@ export class SiteConfigService implements OnModuleInit {
 
   setAvatarPresets(next: AvatarPresetsConfig): Promise<AvatarPresetsConfig> {
     return this.store.setAvatarPresets(next);
+  }
+
+  setBotChatStarters(starters: string[]): Promise<string[]> {
+    return this.store.setBotChatStarters(starters);
   }
 }

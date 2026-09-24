@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Response } from 'express';
+import type { Response as ExpressResponse } from 'express';
 import {
   PERSONA_SYSTEM_PROMPT,
   resolvePersonaModel,
@@ -47,7 +47,7 @@ function resolveChatPath(baseUrl: string, explicitPath?: string): string {
   return path;
 }
 
-async function readUpstreamError(res: Response): Promise<string> {
+async function readUpstreamError(res: globalThis.Response): Promise<string> {
   try {
     const raw = await res.text();
     if (!raw) return `LLM request failed (${res.status})`;
@@ -248,7 +248,7 @@ export class BotChatService {
   }
 
   async streamTo(
-    res: Response,
+    res: ExpressResponse,
     persona: BotChatPersona,
     messages: BotChatMessage[],
   ): Promise<void> {

@@ -21,7 +21,9 @@ export default function ChatPage() {
       signedIn={signedIn}
       requireAuth
     >
-      <BotChatPanel disabled={!signedIn} />
+      <div className="bot-chat-page mx-auto w-full max-w-2xl">
+        <BotChatPanel disabled={!signedIn} />
+      </div>
     </LobbyPageShell>
   );
 }

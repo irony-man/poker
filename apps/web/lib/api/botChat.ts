@@ -12,9 +12,17 @@ export interface BotChatTurn {
 }
 
 export const BOT_CHAT_LLM_PROVIDER_LABELS: Record<BotChatLlmProvider, string> = {
-  cohere: 'Cohere',
-  fungpt: 'FunGPT',
+  cohere: 'Cohere API',
+  fungpt: 'FunGPT LLM',
 };
+
+export const BOT_CHAT_STARTER_PROMPTS: readonly string[] = [
+  'I slow-played pocket aces and still lost.',
+  'Is open-limping ever defensible?',
+  'I pushed code to prod without testing.',
+  'Rate my bluff: I had seven-high.',
+  'I called a river bet with middle pair. Again.',
+];
 
 export const BOT_CHAT_LLM_STORAGE_KEY = 'poker.banterbot.llmProvider';
 

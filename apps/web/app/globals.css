@@ -625,6 +625,10 @@ body > * {
     animation: lobby-fade-up 0.55s var(--ease-out) both;
   }
 
+  .bot-chat-page {
+    @apply w-full pb-[max(0.5rem,env(safe-area-inset-bottom))];
+  }
+
   .sidebar-rail {
     @apply hidden h-full min-h-0 md:flex md:w-60 md:shrink-0 md:flex-col;
   }

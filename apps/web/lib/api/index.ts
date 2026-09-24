@@ -97,6 +97,7 @@ export {
   fetchBotChatProviders,
   BOT_CHAT_LLM_PROVIDER_LABELS,
   BOT_CHAT_LLM_STORAGE_KEY,
+  BOT_CHAT_STARTER_PROMPTS,
   type BotChatLlmProvider,
   type BotChatPersona,
   type BotChatTurn,

@@ -23,8 +23,9 @@ export class BotChatController {
       res.status(400).json({ error: parsed.error });
       return;
     }
-    if (!this.chat.isConfigured()) {
-      res.status(503).json({ error: 'Bot chat is not available' });
+    const configErr = this.chat.configurationError();
+    if (configErr) {
+      res.status(503).json({ error: configErr });
       return;
     }
 

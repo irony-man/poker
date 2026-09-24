@@ -34,12 +34,55 @@ function llmUrl(baseUrl: string, path: string): string {
 }
 
 function resolveChatPath(baseUrl: string, explicitPath?: string): string {
-  const trimmed = explicitPath?.trim();
-  if (trimmed) return trimmed;
-  const envChatPath = process.env.BOT_CHAT_LLM_PATH?.trim();
-  if (envChatPath) return envChatPath;
-  if (baseUrl.includes('cohere.ai/compatibility')) return '/chat/completions';
-  return process.env.BANTER_LLM_PATH?.trim() ?? DEFAULT_PATH;
+  let path =
+    explicitPath?.trim() ||
+    process.env.BOT_CHAT_LLM_PATH?.trim() ||
+    (baseUrl.includes('cohere.ai/compatibility') ? '/chat/completions' : '') ||
+    process.env.BANTER_LLM_PATH?.trim() ||
+    DEFAULT_PATH;
+  // Avoid .../compatibility/v1/v1/chat/completions when BANTER_LLM_PATH leaked into chat.
+  if (baseUrl.includes('cohere.ai/compatibility') && path.startsWith('/v1/')) {
+    path = path.replace(/^\/v1/, '') || '/chat/completions';
+  }
+  return path;
+}
+
+async function readUpstreamError(res: Response): Promise<string> {
+  try {
+    const raw = await res.text();
+    if (!raw) return `LLM request failed (${res.status})`;
+    try {
+      const json = JSON.parse(raw) as {
+        error?: { message?: string } | string;
+        message?: string;
+      };
+      const err = json.error;
+      if (typeof err === 'string') return err;
+      if (err?.message) return err.message;
+      if (json.message) return json.message;
+    } catch {
+      /* plain text body */
+    }
+    return raw.slice(0, 240);
+  } catch {
+    return `LLM request failed (${res.status})`;
+  }
+}
+
+function streamTextDelta(parsed: {
+  choices?: Array<{
+    delta?: { content?: string };
+    text?: string;
+    message?: { content?: string };
+  }>;
+}): string | undefined {
+  const choice = parsed.choices?.[0];
+  const fromDelta = choice?.delta?.content;
+  if (fromDelta) return fromDelta;
+  if (typeof choice?.text === 'string') return choice.text;
+  const msg = choice?.message?.content;
+  if (typeof msg === 'string' && msg) return msg;
+  return undefined;
 }
 
 export function clipBotChatReply(raw: string | null | undefined): string | null {
@@ -97,7 +140,22 @@ export class BotChatService {
   }
 
   isConfigured(): boolean {
-    return Boolean(this.baseUrl);
+    return this.configurationError() === null;
+  }
+
+  /** Human-readable misconfiguration (shown in API 503). */
+  configurationError(): string | null {
+    if (!this.baseUrl) {
+      return 'Bot chat is not configured (set BOT_CHAT_LLM_BASE_URL for Cohere, or BANTER_LLM_BASE_URL)';
+    }
+    const hosted =
+      !this.baseUrl.includes('127.0.0.1') &&
+      !this.baseUrl.includes('localhost') &&
+      !this.baseUrl.includes('fungpt:');
+    if (hosted && !this.apiKey) {
+      return 'Bot chat API key missing (set BOT_CHAT_LLM_API_KEY)';
+    }
+    return null;
   }
 
   private headers(): Record<string, string> {
@@ -123,12 +181,16 @@ export class BotChatService {
         }),
         signal: ac.signal,
       });
-      if (!res.ok) return null;
+      if (!res.ok) {
+        console.warn('[bot-chat] LLM error:', await readUpstreamError(res));
+        return null;
+      }
       const data = (await res.json()) as {
         choices?: Array<{ message?: { content?: string } }>;
       };
       return clipBotChatReply(data.choices?.[0]?.message?.content);
-    } catch {
+    } catch (err) {
+      console.warn('[bot-chat] LLM request failed:', err);
       return null;
     } finally {
       clearTimeout(timer);
@@ -152,8 +214,9 @@ export class BotChatService {
       res.write(`data: ${data}\n\n`);
     };
 
-    if (!this.baseUrl) {
-      writeEvent({ error: 'Bot chat is not available' });
+    const configErr = this.configurationError();
+    if (configErr) {
+      writeEvent({ error: configErr });
       writeEvent('[DONE]');
       res.end();
       return;
@@ -175,8 +238,14 @@ export class BotChatService {
         }),
         signal: ac.signal,
       });
-      if (!upstream.ok || !upstream.body) {
-        writeEvent({ error: 'Bot chat is not available' });
+      if (!upstream.ok) {
+        writeEvent({ error: await readUpstreamError(upstream) });
+        writeEvent('[DONE]');
+        res.end();
+        return;
+      }
+      if (!upstream.body) {
+        writeEvent({ error: 'Bot chat is not available (empty LLM response)' });
         writeEvent('[DONE]');
         res.end();
         return;
@@ -199,7 +268,11 @@ export class BotChatService {
           if (!data || data === '[DONE]') continue;
           let parsed: {
             error?: { message?: string } | string;
-            choices?: Array<{ delta?: { content?: string } }>;
+            choices?: Array<{
+              delta?: { content?: string };
+              text?: string;
+              message?: { content?: string };
+            }>;
           };
           try {
             parsed = JSON.parse(data) as typeof parsed;
@@ -214,7 +287,7 @@ export class BotChatService {
             res.end();
             return;
           }
-          const delta = parsed.choices?.[0]?.delta?.content;
+          const delta = streamTextDelta(parsed);
           if (!delta) continue;
           const next = assembled + delta;
           if (next.length > MAX_REPLY_CHARS) {
@@ -227,6 +300,19 @@ export class BotChatService {
           assembled = next;
           writeEvent({ delta });
         }
+      }
+      if (!assembled.trim()) {
+        const fallback = await this.complete(persona, messages);
+        if (fallback) {
+          writeEvent({ delta: fallback });
+          writeEvent('[DONE]');
+          res.end();
+          return;
+        }
+        writeEvent({ error: 'Bot chat is not available (LLM returned no text)' });
+        writeEvent('[DONE]');
+        res.end();
+        return;
       }
       writeEvent('[DONE]');
       res.end();

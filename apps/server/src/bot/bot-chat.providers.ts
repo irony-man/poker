@@ -18,6 +18,13 @@ export interface BotChatRuntimeConfig {
 
 const DEFAULT_PATH = '/v1/chat/completions';
 
+/** Bearer token for FunGPT / table banter (must match sidecar `FUNGPT_API_KEY`). */
+export function resolveSidecarApiKey(): string | null {
+  const key =
+    process.env.BANTER_LLM_API_KEY?.trim() || process.env.FUNGPT_API_KEY?.trim() || '';
+  return key || null;
+}
+
 function resolveChatPath(baseUrl: string, explicitPath?: string): string {
   let path =
     explicitPath?.trim() ||
@@ -93,7 +100,7 @@ export function resolveProviderConfig(
   return {
     provider,
     baseUrl,
-    apiKey: (process.env.BANTER_LLM_API_KEY ?? '').trim() || null,
+    apiKey: resolveSidecarApiKey(),
     path: resolveChatPath(baseUrl, process.env.BANTER_LLM_PATH?.trim()),
     model: resolvePersonaModelForProvider('banter', 'fungpt'),
   };

@@ -44,11 +44,18 @@ async function readUpstreamError(res: globalThis.Response): Promise<string> {
       const json = JSON.parse(raw) as {
         error?: { message?: string } | string;
         message?: string;
+        detail?: string | string[];
       };
       const err = json.error;
       if (typeof err === 'string') return err;
       if (err?.message) return err.message;
       if (json.message) return json.message;
+      const detail = json.detail;
+      const detailText = Array.isArray(detail) ? detail.join('; ') : detail;
+      if (detailText === 'Missing Bearer token' || detailText === 'Invalid API key') {
+        return `${detailText} — set BANTER_LLM_API_KEY on the server to match FUNGPT_API_KEY on the FunGPT sidecar (Cohere uses BOT_CHAT_LLM_API_KEY separately).`;
+      }
+      if (detailText) return detailText;
     } catch {
       /* plain text body */
     }

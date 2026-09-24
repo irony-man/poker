@@ -26,6 +26,52 @@ export const BOT_CHAT_STARTER_PROMPTS: readonly string[] = [
 
 export const BOT_CHAT_LLM_STORAGE_KEY = 'poker.banterbot.llmProvider';
 
+/** Per-backend thread persistence (sessionStorage). */
+export const BOT_CHAT_THREADS_STORAGE_KEY = 'poker.banterbot.threads';
+
+export type BotChatThreadsByProvider = Record<BotChatLlmProvider, BotChatTurn[]>;
+
+export function emptyBotChatThreads(): BotChatThreadsByProvider {
+  return { cohere: [], fungpt: [] };
+}
+
+export function readStoredBotChatThreads(): BotChatThreadsByProvider {
+  if (typeof window === 'undefined') return emptyBotChatThreads();
+  try {
+    const raw = sessionStorage.getItem(BOT_CHAT_THREADS_STORAGE_KEY);
+    if (!raw) return emptyBotChatThreads();
+    const parsed = JSON.parse(raw) as Partial<Record<string, unknown>>;
+    const cohere = normalizeTurns(parsed.cohere);
+    const fungpt = normalizeTurns(parsed.fungpt);
+    return { cohere, fungpt };
+  } catch {
+    return emptyBotChatThreads();
+  }
+}
+
+function normalizeTurns(value: unknown): BotChatTurn[] {
+  if (!Array.isArray(value)) return [];
+  const out: BotChatTurn[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== 'object') continue;
+    const role = (item as { role?: unknown }).role;
+    const content = (item as { content?: unknown }).content;
+    if ((role === 'user' || role === 'assistant') && typeof content === 'string') {
+      out.push({ role, content });
+    }
+  }
+  return out;
+}
+
+export function writeStoredBotChatThreads(threads: BotChatThreadsByProvider): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(BOT_CHAT_THREADS_STORAGE_KEY, JSON.stringify(threads));
+  } catch {
+    /* quota / private mode */
+  }
+}
+
 export async function fetchBotChatProviders(sessionToken: string): Promise<{
   providers: BotChatLlmProvider[];
   default: BotChatLlmProvider | null;

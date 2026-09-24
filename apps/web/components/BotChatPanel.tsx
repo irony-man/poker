@@ -8,9 +8,13 @@ import {
   BOT_CHAT_LLM_PROVIDER_LABELS,
   BOT_CHAT_LLM_STORAGE_KEY,
   BOT_CHAT_STARTER_PROMPTS,
+  emptyBotChatThreads,
   fetchBotChatProviders,
+  readStoredBotChatThreads,
   streamBotChat,
+  writeStoredBotChatThreads,
   type BotChatLlmProvider,
+  type BotChatThreadsByProvider,
   type BotChatTurn,
 } from '@/lib/api/botChat';
 import { cn } from '@/lib/cn';
@@ -22,11 +26,23 @@ function readStoredProvider(): BotChatLlmProvider | null {
   return raw === 'cohere' || raw === 'fungpt' ? raw : null;
 }
 
+type ProviderUiState = {
+  draft: string;
+  error: string | null;
+};
+
+function emptyProviderUi(): ProviderUiState {
+  return { draft: '', error: null };
+}
+
 export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
-  const [messages, setMessages] = useState<BotChatTurn[]>([]);
-  const [draft, setDraft] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [threads, setThreads] = useState<BotChatThreadsByProvider>(() => emptyBotChatThreads());
+  const [threadsHydrated, setThreadsHydrated] = useState(false);
+  const [uiByProvider, setUiByProvider] = useState<Record<BotChatLlmProvider, ProviderUiState>>({
+    cohere: emptyProviderUi(),
+    fungpt: emptyProviderUi(),
+  });
+  const [busyProvider, setBusyProvider] = useState<BotChatLlmProvider | null>(null);
   const [availableProviders, setAvailableProviders] = useState<BotChatLlmProvider[]>([
     'cohere',
     'fungpt',
@@ -38,11 +54,26 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
+  const messages = threads[llmProvider];
+  const draft = uiByProvider[llmProvider].draft;
+  const error = uiByProvider[llmProvider].error;
+  const busy = busyProvider === llmProvider;
+
+  useEffect(() => {
+    setThreads(readStoredBotChatThreads());
+    setThreadsHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!threadsHydrated) return;
+    writeStoredBotChatThreads(threads);
+  }, [threads, threadsHydrated]);
+
   useEffect(() => {
     const el = scroller.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
-  }, [messages]);
+  }, [messages, llmProvider]);
 
   useEffect(() => {
     return () => abortRef.current?.abort();
@@ -69,30 +100,41 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
     localStorage.setItem(BOT_CHAT_LLM_STORAGE_KEY, llmProvider);
   }, [llmProvider]);
 
+  const patchUi = useCallback((provider: BotChatLlmProvider, patch: Partial<ProviderUiState>) => {
+    setUiByProvider((cur) => ({ ...cur, [provider]: { ...cur[provider], ...patch } }));
+  }, []);
+
+  const patchThread = useCallback(
+    (provider: BotChatLlmProvider, updater: (cur: BotChatTurn[]) => BotChatTurn[]) => {
+      setThreads((cur) => ({ ...cur, [provider]: updater(cur[provider]) }));
+    },
+    [],
+  );
+
   const clear = () => {
     abortRef.current?.abort();
     abortRef.current = null;
-    setMessages([]);
-    setError(null);
-    setBusy(false);
+    patchThread(llmProvider, () => []);
+    patchUi(llmProvider, { error: null });
+    setBusyProvider((p) => (p === llmProvider ? null : p));
     queueMicrotask(() => inputRef.current?.focus());
   };
 
   const sendMessage = useCallback(
     async (rawText: string) => {
       const text = rawText.trim();
-      if (!text || busy || disabled) return;
+      const provider = llmProvider;
+      if (!text || busyProvider !== null || disabled) return;
       const session = readStoredSession();
       if (!session?.sessionToken) {
-        setError('Sign in required');
+        patchUi(provider, { error: 'Sign in required' });
         return;
       }
 
-      const history = [...messages, { role: 'user' as const, content: text }];
-      setDraft('');
-      setError(null);
-      setBusy(true);
-      setMessages([...history, { role: 'assistant', content: '' }]);
+      const history = [...threads[provider], { role: 'user' as const, content: text }];
+      patchUi(provider, { draft: '', error: null });
+      setBusyProvider(provider);
+      patchThread(provider, () => [...history, { role: 'assistant', content: '' }]);
 
       const ac = new AbortController();
       abortRef.current = ac;
@@ -100,10 +142,10 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
         const full = await streamBotChat({
           sessionToken: session.sessionToken,
           messages: history,
-          llmProvider,
+          llmProvider: provider,
           signal: ac.signal,
           onDelta: (delta) => {
-            setMessages((cur) => {
+            patchThread(provider, (cur) => {
               if (cur.length === 0) return cur;
               const next = [...cur];
               const last = next[next.length - 1];
@@ -113,7 +155,7 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
             });
           },
         });
-        setMessages((cur) => {
+        patchThread(provider, (cur) => {
           if (cur.length === 0) return cur;
           const next = [...cur];
           next[next.length - 1] = { role: 'assistant', content: full };
@@ -122,8 +164,8 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
       } catch (err) {
         if (ac.signal.aborted) return;
         const message = err instanceof Error ? err.message : 'Bot chat is not available';
-        setError(message);
-        setMessages((cur) => {
+        patchUi(provider, { error: message });
+        patchThread(provider, (cur) => {
           const last = cur[cur.length - 1];
           if (last?.role === 'assistant' && !last.content.trim()) {
             return cur.slice(0, -1);
@@ -132,18 +174,19 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
         });
       } finally {
         if (abortRef.current === ac) abortRef.current = null;
-        setBusy(false);
+        setBusyProvider((p) => (p === provider ? null : p));
       }
     },
-    [busy, disabled, llmProvider, messages],
+    [busyProvider, disabled, llmProvider, patchThread, patchUi, threads],
   );
 
   const send = () => void sendMessage(draft);
 
   const empty = messages.length === 0 && !busy;
+  const anyThreadBusy = busyProvider !== null;
 
   return (
-    <div className="chat-panel-shell bot-chat-panel relative flex min-h-[min(72vh,42rem)] flex-col overflow-hidden rounded-2xl border border-sidebar/12 shadow-[0_16px_48px_rgb(29_4_50/0.12)]">
+    <div className="chat-panel-shell bot-chat-panel relative flex h-[min(78vh,44rem)] max-h-[44rem] flex-col overflow-hidden rounded-2xl border border-sidebar/12 shadow-[0_16px_48px_rgb(29_4_50/0.12)]">
       <header className="glass-sheet shrink-0 border-b border-sidebar/10 px-4 py-3.5 backdrop-blur-sm sm:px-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -158,11 +201,12 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
               {(['cohere', 'fungpt'] as const).map((id) => {
                 const on = llmProvider === id;
                 const available = availableProviders.includes(id);
+                const threadCount = threads[id].length;
                 return (
                   <button
                     key={id}
                     type="button"
-                    disabled={disabled || busy || !available}
+                    disabled={disabled || anyThreadBusy || !available}
                     title={
                       available
                         ? undefined
@@ -170,7 +214,7 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
                     }
                     onClick={() => setLlmProvider(id)}
                     className={cn(
-                      'flex-1 rounded-lg px-2 py-2 text-xs font-display font-semibold uppercase tracking-[0.08em] transition sm:text-[11px]',
+                      'relative flex-1 rounded-lg px-2 py-2 text-xs font-display font-semibold uppercase tracking-[0.08em] transition sm:text-[11px]',
                       on
                         ? 'bg-sidebar text-on-chrome shadow-[0_4px_12px_rgb(29_4_50/0.2)]'
                         : 'text-muted hover:text-primary',
@@ -178,6 +222,12 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
                     )}
                   >
                     {BOT_CHAT_LLM_PROVIDER_LABELS[id]}
+                    {threadCount > 0 && !on ? (
+                      <span
+                        className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-sidebar"
+                        aria-hidden
+                      />
+                    ) : null}
                   </button>
                 );
               })}
@@ -188,12 +238,13 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
                 {BOT_CHAT_LLM_PROVIDER_LABELS[llmProvider]}
               </span>
               {llmProvider === 'cohere' ? ' · hosted, low latency' : ' · local BanterBot model'}
+              <span className="text-muted"> · separate thread per backend</span>
             </p>
           </div>
           <button
             type="button"
             onClick={clear}
-            disabled={busy && messages.length === 0}
+            disabled={busy || messages.length === 0}
             className="glass-sheet shrink-0 rounded-full border border-sidebar/15 px-3 py-1.5 text-[10px] font-display font-semibold uppercase tracking-wider text-muted shadow-[0_2px_8px_rgb(29_4_50/0.06)] transition hover:border-sidebar/30 hover:text-sidebar disabled:opacity-40"
           >
             Clear
@@ -203,20 +254,20 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
 
       <ul
         ref={scroller}
-        className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-4 sm:px-5"
+        className="flex min-h-0 flex-1 flex-col space-y-3 overflow-y-auto px-3 py-4 sm:px-5"
         aria-live="polite"
         aria-label="Bot conversation"
       >
         {empty ? (
-          <li className="flex list-none flex-col items-center gap-5 px-2 py-6 text-center">
+          <li className="flex list-none flex-1 flex-col items-center justify-center gap-4 px-2 py-4 text-center sm:gap-5 sm:py-6">
             <div className="glass-sheet flex h-14 w-14 items-center justify-center rounded-2xl border border-sidebar/10 shadow-[0_6px_18px_rgb(29_4_50/0.08)]">
               <AppleEmoji emoji="🔥" size={32} decorative />
             </div>
             <div className="max-w-sm">
               <p className="font-heading-sub">Ready when you are</p>
               <p className="mt-1.5 text-sm leading-relaxed text-muted">
-                Tap a starter below or write your own — BanterBot answers with the backend you
-                selected.
+                Tap a starter below or write your own. Cohere and FunGPT each keep their own
+                conversation.
               </p>
             </div>
             <div className="w-full max-w-lg space-y-2.5">
@@ -228,7 +279,7 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
                   <button
                     key={prompt}
                     type="button"
-                    disabled={disabled || busy}
+                    disabled={disabled || anyThreadBusy}
                     onClick={() => void sendMessage(prompt)}
                     className="glass-sheet rounded-xl border border-sidebar/10 px-3.5 py-2.5 text-left text-sm leading-snug text-primary shadow-[0_2px_10px_rgb(29_4_50/0.05)] transition hover:border-sidebar/22 hover:shadow-[0_4px_14px_rgb(29_4_50/0.08)] disabled:opacity-50"
                   >
@@ -244,7 +295,7 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
             const pending = !isUser && busy && i === messages.length - 1 && !m.content;
             return (
               <li
-                key={`${m.role}-${i}`}
+                key={`${llmProvider}-${m.role}-${i}`}
                 className={cn(
                   'max-w-[min(100%,22rem)] list-none rounded-2xl px-3.5 py-2.5',
                   isUser
@@ -289,7 +340,7 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
               <button
                 key={`foot-${prompt}`}
                 type="button"
-                disabled={disabled || busy}
+                disabled={disabled || anyThreadBusy}
                 onClick={() => void sendMessage(prompt)}
                 className="shrink-0 rounded-full border border-sidebar/12 bg-white/80 px-3 py-1 text-[11px] font-medium text-sidebar hover:border-sidebar/25 hover:bg-white disabled:opacity-50"
               >
@@ -311,11 +362,11 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
           <textarea
             ref={inputRef}
             value={draft}
-            disabled={disabled || busy}
+            disabled={disabled || anyThreadBusy}
             rows={1}
             placeholder={disabled ? 'Sign in to chat' : 'Roast me…'}
             className="max-h-28 min-h-[2.5rem] min-w-0 flex-1 resize-none bg-transparent py-2 text-sm font-body text-primary outline-none placeholder:text-muted disabled:opacity-60"
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => patchUi(llmProvider, { draft: e.target.value })}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -325,7 +376,7 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
           />
           <Button
             type="submit"
-            disabled={disabled || busy || !draft.trim()}
+            disabled={disabled || anyThreadBusy || !draft.trim()}
             className="shrink-0 min-h-0 rounded-xl px-4 py-2.5 text-[11px] disabled:cursor-not-allowed"
           >
             Send

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { resolveSidecarApiKey } from './bot-chat.providers.js';
 import type {
   BotBanterContext,
   BotBanterTrigger,
@@ -128,7 +129,8 @@ export class BotBanterLlmService {
   private applyConfig(config: Partial<BotBanterLlmConfig>): void {
     const base = (config.baseUrl ?? process.env.BANTER_LLM_BASE_URL ?? '').replace(/\/$/, '');
     this.baseUrl = base || null;
-    this.apiKey = (config.apiKey ?? process.env.BANTER_LLM_API_KEY)?.trim() || null;
+    this.apiKey =
+      (config.apiKey ?? resolveSidecarApiKey() ?? undefined)?.trim() || null;
     this.model =
       (config.model ?? process.env.BANTER_LLM_MODEL)?.trim() || 'banterbot';
     this.path = config.path ?? process.env.BANTER_LLM_PATH?.trim() ?? DEFAULT_PATH;

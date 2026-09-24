@@ -76,6 +76,7 @@ services:
       # OpenAI-compatible LLM (hosted API or FunGPT sidecar). Unset → template banter; /chat unavailable.
       BANTER_LLM_BASE_URL: ${BANTER_LLM_BASE_URL:-}
       BANTER_LLM_API_KEY: ${BANTER_LLM_API_KEY:-}
+      FUNGPT_API_KEY: ${FUNGPT_API_KEY:-${BANTER_LLM_API_KEY:-}}
       BANTER_LLM_MODEL: ${BANTER_LLM_MODEL:-}
       BANTER_LLM_PATH: ${BANTER_LLM_PATH:-/v1/chat/completions}
       BANTER_LLM_TIMEOUT_MS: ${BANTER_LLM_TIMEOUT_MS:-8000}

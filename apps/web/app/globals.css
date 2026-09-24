@@ -629,6 +629,30 @@ body > * {
     @apply w-full pb-[max(0.5rem,env(safe-area-inset-bottom))];
   }
 
+  /* Lobby bot chat — solid panel (play chat uses transparent shell on v3). */
+  .bot-chat-panel.chat-panel-shell {
+    background-color: rgb(var(--mushroom));
+    background-image: linear-gradient(
+      to bottom,
+      rgb(244 238 236),
+      rgb(var(--mushroom)),
+      rgb(232 221 217)
+    );
+  }
+
+  html[data-ui-theme='v3'] .bot-chat-panel.chat-panel-shell {
+    background-color: rgb(255 252 250 / 0.96);
+    background-image: linear-gradient(
+      to bottom,
+      rgb(248 242 255 / 0.98),
+      rgb(255 252 250 / 0.98),
+      rgb(237 228 244 / 0.96)
+    );
+    border-color: rgb(var(--sidebar) / 0.2);
+    backdrop-filter: blur(14px) saturate(1.15);
+    -webkit-backdrop-filter: blur(14px) saturate(1.15);
+  }
+
   .sidebar-rail {
     @apply hidden h-full min-h-0 md:flex md:w-60 md:shrink-0 md:flex-col;
   }

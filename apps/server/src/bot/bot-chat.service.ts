@@ -69,6 +69,40 @@ async function readUpstreamError(res: Response): Promise<string> {
   }
 }
 
+/** OpenAI-compatible and Cohere compatibility chat completion bodies. */
+export function extractCompletionText(data: unknown): string | null {
+  if (!data || typeof data !== 'object') return null;
+  const root = data as Record<string, unknown>;
+  const choices = root.choices;
+  if (!Array.isArray(choices) || !choices[0] || typeof choices[0] !== 'object') {
+    return null;
+  }
+  const choice = choices[0] as Record<string, unknown>;
+  if (typeof choice.text === 'string' && choice.text.trim()) return choice.text;
+  const message = choice.message;
+  if (!message || typeof message !== 'object') return null;
+  const content = (message as Record<string, unknown>).content;
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    const parts = content
+      .map((part) => {
+        if (!part || typeof part !== 'object') return '';
+        const row = part as Record<string, unknown>;
+        if (typeof row.text === 'string') return row.text;
+        if (typeof row.content === 'string') return row.content;
+        return '';
+      })
+      .join('');
+    if (parts.trim()) return parts;
+  }
+  return null;
+}
+
+export interface BotChatCompletionResult {
+  text: string | null;
+  error: string | null;
+}
+
 function streamTextDelta(parsed: {
   choices?: Array<{
     delta?: { content?: string };
@@ -165,7 +199,19 @@ export class BotChatService {
   }
 
   async complete(persona: BotChatPersona, messages: BotChatMessage[]): Promise<string | null> {
-    if (!this.baseUrl) return null;
+    const result = await this.completeDetailed(persona, messages);
+    return result.text;
+  }
+
+  async completeDetailed(
+    persona: BotChatPersona,
+    messages: BotChatMessage[],
+  ): Promise<BotChatCompletionResult> {
+    const configErr = this.configurationError();
+    if (configErr) return { text: null, error: configErr };
+    if (!this.baseUrl) {
+      return { text: null, error: 'Bot chat is not configured' };
+    }
     const url = llmUrl(this.baseUrl, this.path);
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), this.timeoutMs);
@@ -182,16 +228,20 @@ export class BotChatService {
         signal: ac.signal,
       });
       if (!res.ok) {
-        console.warn('[bot-chat] LLM error:', await readUpstreamError(res));
-        return null;
+        const error = await readUpstreamError(res);
+        console.warn('[bot-chat] LLM error:', error);
+        return { text: null, error };
       }
-      const data = (await res.json()) as {
-        choices?: Array<{ message?: { content?: string } }>;
-      };
-      return clipBotChatReply(data.choices?.[0]?.message?.content);
+      const data: unknown = await res.json();
+      const text = clipBotChatReply(extractCompletionText(data));
+      if (!text) {
+        return { text: null, error: 'LLM returned empty content' };
+      }
+      return { text, error: null };
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Bot chat timed out';
       console.warn('[bot-chat] LLM request failed:', err);
-      return null;
+      return { text: null, error: message };
     } finally {
       clearTimeout(timer);
     }
@@ -222,7 +272,17 @@ export class BotChatService {
       return;
     }
 
-    const url = llmUrl(this.baseUrl, this.path);
+    // Hosted APIs (Cohere): avoid upstream SSE — Next /api rewrites often buffer event streams.
+    if (this.baseUrl && !this.baseUrl.includes('fungpt:') && !this.baseUrl.includes('127.0.0.1')) {
+      const { text, error } = await this.completeDetailed(persona, messages);
+      if (text) writeEvent({ delta: text });
+      else writeEvent({ error: error ?? 'Bot chat is not available' });
+      writeEvent('[DONE]');
+      res.end();
+      return;
+    }
+
+    const url = llmUrl(this.baseUrl!, this.path);
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), this.timeoutMs);
     try {

@@ -23,7 +23,8 @@ export async function streamBotChat(opts: {
     body: JSON.stringify({
       persona: opts.persona ?? 'banter',
       messages: opts.messages,
-      stream: true,
+      // Non-stream: reliable through Next.js /api rewrite (SSE is often buffered).
+      stream: false,
     }),
     signal: opts.signal,
   });

@@ -1,5 +1,24 @@
 import { describe, expect, it, vi } from 'vitest';
-import { BotChatService, clipBotChatReply } from './bot-chat.service.js';
+import {
+  BotChatService,
+  clipBotChatReply,
+  extractCompletionText,
+} from './bot-chat.service.js';
+
+describe('extractCompletionText', () => {
+  it('reads string and array message content', () => {
+    expect(
+      extractCompletionText({
+        choices: [{ message: { content: 'Hello' } }],
+      }),
+    ).toBe('Hello');
+    expect(
+      extractCompletionText({
+        choices: [{ message: { content: [{ type: 'text', text: 'Hi there' }] } }],
+      }),
+    ).toBe('Hi there');
+  });
+});
 
 describe('clipBotChatReply', () => {
   it('trims and caps length', () => {

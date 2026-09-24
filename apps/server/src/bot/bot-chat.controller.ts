@@ -34,9 +34,12 @@ export class BotChatController {
       return;
     }
 
-    const text = await this.chat.complete(parsed.value.persona, parsed.value.messages);
+    const { text, error } = await this.chat.completeDetailed(
+      parsed.value.persona,
+      parsed.value.messages,
+    );
     if (!text) {
-      res.status(503).json({ error: 'Bot chat is not available' });
+      res.status(503).json({ error: error ?? 'Bot chat is not available' });
       return;
     }
     res.json({ text, persona: parsed.value.persona });

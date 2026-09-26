@@ -1,7 +1,15 @@
 import { isBotUserId } from '../bot.js';
 
-type OfflineHandPlayer = { seat?: unknown; userId?: unknown };
+export const OFFLINE_GAME_COMPLETE_HAND_ID = '__game_complete__';
+
+type OfflineHandPlayer = { seat?: unknown; userId?: unknown; stack?: unknown };
 type OfflineHandWinner = { seat?: unknown };
+
+function playerStack(p: OfflineHandPlayer): number {
+  const stack = p.stack;
+  if (typeof stack !== 'number' || !Number.isFinite(stack)) return 0;
+  return Math.max(0, Math.floor(stack));
+}
 
 function seatUserIdMap(players: OfflineHandPlayer[]): Map<number, string> {
   const map = new Map<number, string>();
@@ -50,4 +58,27 @@ export function isOfflineSoloVsBots(result: unknown, userId: string): boolean {
     return false;
   }
   return hasHuman;
+}
+
+/** True when the human has all chips and every bot is busted (offline session won). */
+export function humanWonOfflineGame(result: unknown, userId: string): boolean {
+  if (!isOfflineSoloVsBots(result, userId)) return false;
+  const players = (result as { players?: unknown }).players;
+  if (!Array.isArray(players)) return false;
+  let humanStack = 0;
+  let botCount = 0;
+  for (const raw of players as OfflineHandPlayer[]) {
+    if (!raw || typeof raw !== 'object') continue;
+    const id = raw.userId;
+    if (typeof id !== 'string' || !id) continue;
+    if (isBotUserId(id)) {
+      botCount++;
+      if (playerStack(raw) > 0) return false;
+      continue;
+    }
+    if (id === userId) {
+      humanStack = playerStack(raw);
+    }
+  }
+  return botCount > 0 && humanStack > 0;
 }

@@ -51,6 +51,7 @@ import { WinHandModal } from './WinHandModal';
 import { avatarIdFromUserId, loadSavedAvatarId } from '@/lib/avatars';
 import { loadSavedTableColorId } from '@/lib/tableColors';
 import { coerceMoney, formatMoneyAmount } from '@/lib/currency';
+import { isOfflineGameComplete } from '@/lib/offlineGameComplete';
 import { useHandPresentation } from '@/hooks/useHandPresentation';
 import { useRevealedWinPct } from '@/hooks/useRevealedWinPct';
 import { useTableSounds } from '@/hooks/useTableSounds';
@@ -227,10 +228,9 @@ export function OfflineTableView({
   const [bootstrapped, setBootstrapped] = useState(false);
   const [turnEndsAt, setTurnEndsAt] = useState<number | null>(null);
   const [dismissedWinHandId, setDismissedWinHandId] = useState<string | null>(null);
-  const [whuffiesAwardedForHand, setWhuffiesAwardedForHand] = useState<{
-    handId: string;
-    amount: number;
-  } | null>(null);
+  const [whuffiesAwardedForGame, setWhuffiesAwardedForGame] = useState<number | null>(
+    null,
+  );
   const [chatOpen, setChatOpen] = useState(false);
   const [chatFocusRequestId, setChatFocusRequestId] = useState(0);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -362,6 +362,7 @@ export function OfflineTableView({
       if (!next.handId || recordedHandsRef.current.has(next.handId)) return;
       if (!readStoredSession()?.sessionToken) return;
       recordedHandsRef.current.add(next.handId);
+      const gameComplete = isOfflineGameComplete(next, HUMAN_ID);
       const payload = {
         tableId: tableIdRef.current,
         handId: next.handId,
@@ -369,12 +370,13 @@ export function OfflineTableView({
         endedAt: Date.now(),
         source: 'offline' as const,
         botGroupId: botGroupId ?? undefined,
+        ...(gameComplete ? { gameComplete: true as const } : {}),
         result: buildOfflineHandResult(next, handActionsRef.current, handChatRef.current),
         chat: handChatRef.current,
       };
       void submitOfflineHand(payload).then((res) => {
-        if (res?.whuffiesAwarded != null && res.whuffiesAwarded > 0) {
-          setWhuffiesAwardedForHand({ handId: next.handId!, amount: res.whuffiesAwarded });
+        if (gameComplete && res?.whuffiesAwarded != null && res.whuffiesAwarded > 0) {
+          setWhuffiesAwardedForGame(res.whuffiesAwarded);
         }
       });
     },
@@ -734,7 +736,7 @@ export function OfflineTableView({
     handActionsRef.current = [];
     handChatRef.current = [];
     handStartedAtRef.current = Date.now();
-    setWhuffiesAwardedForHand(null);
+    setWhuffiesAwardedForGame(null);
     const result = startHand(s, config, `off-${Date.now()}`, randomBytes);
     if (!result.ok) return;
     syncChat(result.state, result.events);
@@ -803,15 +805,13 @@ export function OfflineTableView({
     youWon,
   } = useHandPresentation(publicTable, HUMAN_ID, dismissedWinHandId);
   const signedIn = !!readStoredSession()?.sessionToken;
+  const offlineGameComplete = isOfflineGameComplete(state, HUMAN_ID);
   const whuffiesEarned =
-    youWon &&
-    whuffiesAwardedForHand != null &&
-    whuffiesAwardedForHand.handId === publicTable?.handId &&
-    whuffiesAwardedForHand.amount > 0
-      ? whuffiesAwardedForHand.amount
+    offlineGameComplete && whuffiesAwardedForGame != null && whuffiesAwardedForGame > 0
+      ? whuffiesAwardedForGame
       : null;
   const whuffiesTeaser =
-    !signedIn && youWon && winWhuffies > 0 ? winWhuffies : undefined;
+    offlineGameComplete && !signedIn && winWhuffies > 0 ? winWhuffies : undefined;
   const winPctBySeat = useRevealedWinPct(
     publicTable?.players,
     publicTable?.community,
@@ -930,7 +930,7 @@ export function OfflineTableView({
             canTopUp,
             topUpLabel: 'Top up',
             onTopUp: doTopUp,
-            youWonHand: youWon && publicTable.street === 'payout',
+            youWonHand: offlineGameComplete,
           }}
         />
   );
@@ -1096,6 +1096,7 @@ export function OfflineTableView({
           whuffiesEarned={whuffiesEarned}
           whuffiesTeaser={whuffiesTeaser}
           whuffieSignInHint={!signedIn && !!whuffiesTeaser}
+          offlineGameComplete={offlineGameComplete}
           canStartNext={
             myPlayer?.status !== 'sittingOut' &&
             myPlayer?.status !== 'empty' &&

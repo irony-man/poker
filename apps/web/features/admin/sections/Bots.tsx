@@ -490,7 +490,7 @@ function BotGroupEditor({
           });
         }}
         disabled={busy}
-        help="Whuffies credited when a signed-in player wins an offline hand vs this bot pack. 0 = off."
+        help="Whuffies credited when a signed-in player wins the offline session (all bots busted). 0 = off."
       />
 
       <div className="grid max-w-md gap-4 sm:grid-cols-2">

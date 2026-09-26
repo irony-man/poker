@@ -134,7 +134,7 @@ export interface BotGroup {
   defaultPersonality: BotPersonalityId | null;
   /** Per display-name style overrides (keys match `names`). */
   namePersonalities: Record<string, BotPersonalityId>;
-  /** Whuffies for a signed-in player who wins an offline hand vs this pack. 0 = disabled. */
+  /** Whuffies when a signed-in player wins the offline session (all bots busted). 0 = disabled. */
   winWhuffies: number;
 }
 
@@ -275,7 +275,7 @@ export const MAX_BOT_CHAT_STARTER_CHARS = 500;
 export const DEFAULT_BOT_CHAT_STARTERS: readonly string[] = [
   'I slow-played pocket aces and still lost.',
   'Is open-limping ever defensible?',
-  'I pushed code to prod without testing.',
+  'I min-raised UTG with jack-ten suited. Roast me.',
   'Rate my bluff: I had seven-high.',
   'I called a river bet with middle pair. Again.',
 ] as const;

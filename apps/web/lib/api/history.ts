@@ -8,6 +8,7 @@ export type UploadHandPayload = {
   contestId?: string | null;
   source: 'offline';
   botGroupId?: string | null;
+  gameComplete?: boolean;
   result: unknown;
   chat?: Array<{ at: number; userId: string; name: string; text: string; kind?: string }>;
 };

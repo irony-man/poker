@@ -14,7 +14,7 @@ export interface BotChatTurn {
 }
 
 export const BOT_CHAT_LLM_PROVIDER_LABELS: Record<BotChatLlmProvider, string> = {
-  cohere: 'Quick roast',
+  cohere: 'Bot',
   boost: 'Boost bot',
 };
 
@@ -31,7 +31,7 @@ export const BOT_CHAT_ASSISTANT_EMOJI: Record<BotChatLlmProvider, string> = {
 export const BOT_CHAT_STARTER_PROMPTS: readonly string[] = [
   'I slow-played pocket aces and still lost.',
   'Is open-limping ever defensible?',
-  'I pushed code to prod without testing.',
+  'I min-raised UTG with jack-ten suited. Roast me.',
   'Rate my bluff: I had seven-high.',
   'I called a river bet with middle pair. Again.',
 ];

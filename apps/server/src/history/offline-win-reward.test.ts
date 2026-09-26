@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { isOfflineSoloVsBots, userWonOfflineHand } from './offline-win-reward.js';
+import {
+  humanWonOfflineGame,
+  isOfflineSoloVsBots,
+  userWonOfflineHand,
+} from './offline-win-reward.js';
 
 const winResult = {
   winners: [{ seat: 0, amount: 500 }],
   players: [
-    { seat: 0, userId: 'alice' },
-    { seat: 1, userId: 'bot:balanced:off-1' },
+    { seat: 0, userId: 'alice', stack: 1500 },
+    { seat: 1, userId: 'bot:balanced:off-1', stack: 0 },
   ],
 };
 
@@ -20,6 +24,40 @@ describe('userWonOfflineHand', () => {
         {
           winners: [{ seat: 1, amount: 500 }],
           players: winResult.players,
+        },
+        'alice',
+      ),
+    ).toBe(false);
+  });
+});
+
+describe('humanWonOfflineGame', () => {
+  it('returns true when human has chips and all bots are busted', () => {
+    expect(humanWonOfflineGame(winResult, 'alice')).toBe(true);
+  });
+
+  it('returns false when a bot still has chips', () => {
+    expect(
+      humanWonOfflineGame(
+        {
+          players: [
+            { seat: 0, userId: 'alice', stack: 1500 },
+            { seat: 1, userId: 'bot:balanced:off-1', stack: 400 },
+          ],
+        },
+        'alice',
+      ),
+    ).toBe(false);
+  });
+
+  it('returns false when human is busted', () => {
+    expect(
+      humanWonOfflineGame(
+        {
+          players: [
+            { seat: 0, userId: 'alice', stack: 0 },
+            { seat: 1, userId: 'bot:balanced:off-1', stack: 0 },
+          ],
         },
         'alice',
       ),

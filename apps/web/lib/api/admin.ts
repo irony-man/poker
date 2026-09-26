@@ -88,7 +88,7 @@ export interface BotGroup {
   defaultPersonality: BotPersonalityId | null;
   /** Per display-name style overrides. */
   namePersonalities: Record<string, BotPersonalityId>;
-  /** Whuffies for winning an offline hand vs this pack (0 = disabled). */
+  /** Whuffies for winning the offline session vs this pack (0 = disabled). */
   winWhuffies: number;
 }
 

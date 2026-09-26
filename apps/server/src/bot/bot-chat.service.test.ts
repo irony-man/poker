@@ -75,7 +75,8 @@ describe('BotChatService', () => {
       };
       expect(body.model).toBe('banterbot');
       expect(body.messages[0]?.role).toBe('system');
-      expect(body.messages[0]?.content).toContain('Roast Master');
+      expect(body.messages[0]?.content).toContain('BanterBot');
+      expect(body.messages[0]?.content).toContain('poker only');
       expect(body.messages.at(-1)).toEqual({ role: 'user', content: 'I shipped a feature' });
     } finally {
       if (prev === undefined) delete process.env.BANTER_LLM_MODEL;

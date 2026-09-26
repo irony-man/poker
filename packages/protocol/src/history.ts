@@ -19,6 +19,8 @@ export const UploadHandBodySchema = z.object({
   contestId: z.string().min(1).max(80).nullable().optional(),
   source: z.literal('offline').default('offline'),
   botGroupId: z.string().min(1).max(64).optional(),
+  /** When true, server may award offline game Whuffies (once per table, not per hand). */
+  gameComplete: z.boolean().optional(),
   result: z.unknown(),
   chat: z.array(HandChatLineSchema).max(500).optional(),
 });

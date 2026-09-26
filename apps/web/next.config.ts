@@ -24,6 +24,8 @@ const apiRewriteTarget = (
   'http://localhost:4000'
 ).replace(/\/$/, '');
 
+const isDev = process.env.NODE_ENV === 'development';
+
 const nextConfig: NextConfig = {
   transpilePackages: ['@poker/protocol', '@poker/engine', '@letele/playing-cards'],
   poweredByHeader: false,
@@ -35,6 +37,8 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
+    // Avoid Next 15 disk LRU errors from corrupt/empty entries under `.next/cache/images` in dev.
+    ...(isDev ? { maximumDiskCacheSize: 0 } : {}),
   },
   async headers() {
     return [

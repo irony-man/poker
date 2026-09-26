@@ -213,6 +213,7 @@ export function WinHandModal({
   whuffiesEarned = null,
   whuffiesTeaser,
   whuffieSignInHint = false,
+  offlineGameComplete = false,
 }: {
   winners: WinLine[];
   youWon: boolean;
@@ -221,6 +222,8 @@ export function WinHandModal({
   /** Configured Whuffies for guests (teaser before sign-in). */
   whuffiesTeaser?: number;
   whuffieSignInHint?: boolean;
+  /** Offline session won (all bots busted); Whuffies apply here, not per hand. */
+  offlineGameComplete?: boolean;
   canStartNext: boolean;
   readyCount?: number;
   readyTotal?: number;
@@ -322,15 +325,19 @@ export function WinHandModal({
         >
           <div className="shrink-0 border-b border-sidebar/10 bg-page/40 px-4 py-3 text-center sm:px-5 sm:py-5">
             <p className="text-[11px] font-display uppercase tracking-[0.28em] text-sidebar sm:text-xs">
-              Hand complete
+              {offlineGameComplete && youWon ? 'Game complete' : 'Hand complete'}
             </p>
             <h2
               id="win-hand-title"
               className="mt-0.5 font-display text-2xl font-extrabold uppercase tracking-wider text-sidebar sm:mt-1 sm:text-3xl"
             >
-              {youWon ? 'You won' : 'Winner'}
+              {offlineGameComplete && youWon
+                ? 'You won the game'
+                : youWon
+                  ? 'You won'
+                  : 'Winner'}
             </h2>
-            {youWon && whuffieAmount != null ? (
+            {offlineGameComplete && youWon && whuffieAmount != null ? (
               <div className="mt-2 flex flex-col items-center gap-1">
                 <MoneyAmount
                   amount={whuffieAmount}

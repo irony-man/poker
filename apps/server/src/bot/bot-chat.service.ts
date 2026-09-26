@@ -9,7 +9,7 @@ import {
   type BotChatRuntimeConfig,
 } from './bot-chat.providers.js';
 import {
-  BOOST_SYSTEM_PROMPT,
+  BOOST_SYSTEM_PROMPT_FULL,
   PERSONA_SYSTEM_PROMPT,
   type BotChatPersona,
 } from './bot-chat.prompts.js';
@@ -136,7 +136,7 @@ function withPersonaSystem(
   messages: BotChatMessage[],
 ): BotChatMessage[] {
   const systemContent =
-    provider === 'boost' ? BOOST_SYSTEM_PROMPT : PERSONA_SYSTEM_PROMPT[persona];
+    provider === 'boost' ? BOOST_SYSTEM_PROMPT_FULL : PERSONA_SYSTEM_PROMPT[persona];
   const system: BotChatMessage = { role: 'system', content: systemContent };
   const rest = messages.filter((m) => m.role !== 'system');
   return [system, ...rest];

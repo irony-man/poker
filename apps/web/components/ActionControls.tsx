@@ -29,7 +29,7 @@ function waitingCopy(opts: {
     return 'Waiting for players…';
   }
   if (opts.street === 'payout' || opts.street === 'showdown') {
-    if (opts.youWonHand) return 'You won — start next when ready';
+    if (opts.youWonHand) return 'You won the game — start a new game when ready';
     return 'Hand complete — start next when ready';
   }
   if (!opts.isTurn) return 'Waiting for your turn…';

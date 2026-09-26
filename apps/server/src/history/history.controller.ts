@@ -13,7 +13,10 @@ import { CurrentUser, SessionAuthGuard } from '../common/session-auth.guard.js';
 import { resolveBotWinWhuffies } from '../site-config/site-config.types.js';
 import { SiteConfigService } from '../site-config/site-config.service.js';
 import { WalletService } from '../wallet/wallet.service.js';
-import { isOfflineSoloVsBots, userWonOfflineHand } from './offline-win-reward.js';
+import {
+  humanWonOfflineGame,
+  OFFLINE_GAME_COMPLETE_HAND_ID,
+} from './offline-win-reward.js';
 import { playerUserIdsFromResult } from './history.store.js';
 import { HistoryService } from './history.service.js';
 
@@ -117,20 +120,28 @@ export class HistoryController {
         });
       }
 
-      const winWhuffies = resolveBotWinWhuffies(this.site.getBotGroups(), d.botGroupId);
-      if (
-        winWhuffies > 0 &&
-        userWonOfflineHand(result, user.id) &&
-        isOfflineSoloVsBots(result, user.id)
-      ) {
-        const credited = await this.wallet.creditWhuffies(
-          user.id,
-          winWhuffies,
-          'offline_win',
-          d.tableId,
-        );
-        whuffiesAwarded = winWhuffies;
-        whuffieBalance = credited.balance;
+      if (d.gameComplete && humanWonOfflineGame(result, user.id)) {
+        const completionInserted = await this.history.recordHand({
+          tableId: d.tableId,
+          handId: OFFLINE_GAME_COMPLETE_HAND_ID,
+          startedAt: d.endedAt,
+          endedAt: d.endedAt,
+          source: 'offline',
+          result: { gameComplete: true, players: (result as { players?: unknown }).players },
+        });
+        if (completionInserted) {
+          const winWhuffies = resolveBotWinWhuffies(this.site.getBotGroups(), d.botGroupId);
+          if (winWhuffies > 0) {
+            const credited = await this.wallet.creditWhuffies(
+              user.id,
+              winWhuffies,
+              'offline_win',
+              d.tableId,
+            );
+            whuffiesAwarded = winWhuffies;
+            whuffieBalance = credited.balance;
+          }
+        }
       }
     }
 

@@ -300,7 +300,7 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
             <div className="max-w-sm">
               <p className="font-heading-sub">Your move</p>
               <p className="mt-1 text-sm leading-relaxed text-muted">
-                Pick a starter below or type something worth a roast.
+                Poker hands and strategy only — pick a starter or describe a line you took.
               </p>
             </div>
             <div
@@ -438,7 +438,7 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
             value={draft}
             disabled={disabled || anyThreadBusy}
             rows={1}
-            placeholder={disabled ? 'Sign in to chat' : llmProvider === 'cohere' ? 'Roast me…' : 'Boost me…'}
+            placeholder={disabled ? 'Sign in to chat' : 'Chat...'}
             aria-label={llmProvider === 'cohere' ? 'Message to BanterBot' : 'Message to BoostBot'}
             className="max-h-28 min-h-[2.75rem] min-w-0 flex-1 resize-none border-0 bg-transparent py-2 text-base font-body text-primary shadow-none placeholder:text-muted disabled:opacity-60 sm:text-sm"
             onChange={(e) => patchUi(llmProvider, { draft: e.target.value })}

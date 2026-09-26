@@ -42,6 +42,13 @@ import { isSfxMuted, setSfxMuted } from '@/lib/audio';
 import { clampUiTheme, saveUiTheme, type UiTheme } from '@/lib/uiTheme';
 import { MoneyAmount } from '@/components/CurrencyIcon';
 import { HandsMap } from '@/features/progress/HandsMap';
+import { PlayingCard } from '@/components/PlayingCard';
+import { DEFAULT_CARD_THEME_ID } from '@/lib/cardFaceTheme';
+import { loadSavedCardThemeId, saveCardThemeId } from '@/lib/cardThemePref';
+import {
+  getConfiguredCardThemes,
+  subscribeCardThemes,
+} from '@/lib/cardThemesRegistry';
 import { Button } from '@/components/ui/Button';
 import { SelectedCheck } from '@/components/ui/SelectedCheck';
 import { StatusChip } from '@/components/ui/StatusChip';
@@ -125,6 +132,7 @@ function ProfilePageInner() {
   const sessionToken = useSession((s) => s.sessionToken);
   const setChipBalance = useSession((s) => s.setChipBalance);
   const setWhuffieBalance = useSession((s) => s.setWhuffieBalance);
+  const setCardThemeId = useSession((s) => s.setCardThemeId);
   const clearSession = useSession((s) => s.clearSession);
   const { pendingCount } = useOnlineFriends();
   const [profile, setProfile] = useState<MeProfile | null>(null);
@@ -138,6 +146,9 @@ function ProfilePageInner() {
   const [savingAvatar, setSavingAvatar] = useState(false);
   const [draftTableColorId, setDraftTableColorId] = useState(0);
   const [savingTableColor, setSavingTableColor] = useState(false);
+  const [publishedCardThemes, setPublishedCardThemes] = useState(() => getConfiguredCardThemes());
+  const [draftCardThemeId, setDraftCardThemeId] = useState(DEFAULT_CARD_THEME_ID);
+  const [savingCardTheme, setSavingCardTheme] = useState(false);
   const [draftUiTheme, setDraftUiTheme] = useState<UiTheme>('v1');
   const [savingUiTheme, setSavingUiTheme] = useState(false);
   const [draftTableLayout, setDraftTableLayout] = useState<TableLayout>('v1');
@@ -187,6 +198,9 @@ function ProfilePageInner() {
       setDraftAvatarId(me.avatarId);
       setDraftTableColorId(clampTableColorId(me.tableColorId));
       saveTableColorId(me.tableColorId);
+      setDraftCardThemeId(me.cardThemeId || DEFAULT_CARD_THEME_ID);
+      setCardThemeId(me.cardThemeId);
+      saveCardThemeId(me.cardThemeId);
       setDraftUiTheme(clampUiTheme(me.uiTheme));
       saveUiTheme(me.uiTheme);
       setDraftTableLayout(clampTableLayout(me.tableLayout));
@@ -205,12 +219,14 @@ function ProfilePageInner() {
     } finally {
       setLoading(false);
     }
-  }, [token, setChipBalance, setWhuffieBalance]);
+  }, [token, setCardThemeId, setChipBalance, setWhuffieBalance]);
 
   useEffect(() => {
     if (!authReady || !signedIn) return;
     void load();
   }, [authReady, signedIn, load]);
+
+  useEffect(() => subscribeCardThemes(setPublishedCardThemes), []);
 
   const contestHistory = useMemo((): ContestMatchRow[] => {
     if (!profile) return [];
@@ -295,6 +311,34 @@ function ProfilePageInner() {
       setError(err instanceof Error ? err.message : 'Could not upload avatar');
     } finally {
       setSavingAvatar(false);
+    }
+  };
+
+  const saveCardTheme = async (nextId: string) => {
+    if (!token || !profile || savingCardTheme) return;
+    const trimmed = nextId.trim().slice(0, 64) || DEFAULT_CARD_THEME_ID;
+    if (trimmed === (profile.cardThemeId || DEFAULT_CARD_THEME_ID)) {
+      setDraftCardThemeId(trimmed);
+      return;
+    }
+    const previous = draftCardThemeId;
+    setDraftCardThemeId(trimmed);
+    setSavingCardTheme(true);
+    setError(null);
+    try {
+      const me = await updateMe(token, { cardThemeId: trimmed });
+      setProfile(me);
+      setChipBalance(me.chipBalance);
+      setWhuffieBalance(me.whuffieBalance);
+      setFriendCount(me.friendCount ?? 0);
+      setCardThemeId(me.cardThemeId);
+      saveCardThemeId(me.cardThemeId);
+      setDraftCardThemeId(me.cardThemeId);
+    } catch (err) {
+      setDraftCardThemeId(previous);
+      setError(err instanceof Error ? err.message : 'Could not update card style');
+    } finally {
+      setSavingCardTheme(false);
     }
   };
 
@@ -890,6 +934,66 @@ function ProfilePageInner() {
                     </button>
                   );
                 })
+                }
+              </ThemeRadioGroup>
+
+              <div className="mt-8 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+                <div className="min-w-0">
+                  <h3 className="font-heading-section">Card style</h3>
+                  <p className="mt-1.5 max-w-lg font-prose-muted">
+                    Face layout and suit colors from site themes. Only you see this on your cards.
+                  </p>
+                </div>
+                {savingCardTheme ? (
+                  <p className="text-xs font-medium text-muted" role="status">
+                    Saving…
+                  </p>
+                ) : null}
+              </div>
+
+              <ThemeRadioGroup
+                label="Card style"
+                className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3"
+                options={publishedCardThemes.map((t) => t.id)}
+                selected={draftCardThemeId || loadSavedCardThemeId()}
+                onSelect={(id) => void saveCardTheme(id)}
+                disabled={savingCardTheme}
+              >
+                {({ tabIndexFor }) =>
+                  publishedCardThemes.map((theme) => {
+                    const selected = draftCardThemeId === theme.id;
+                    return (
+                      <button
+                        key={theme.id}
+                        type="button"
+                        role="radio"
+                        data-radio-value={theme.id}
+                        tabIndex={tabIndexFor(theme.id)}
+                        aria-checked={selected}
+                        aria-label={theme.name}
+                        disabled={savingCardTheme}
+                        onClick={() => void saveCardTheme(theme.id)}
+                        className={`flex flex-col overflow-hidden rounded-2xl border-2 text-left transition disabled:opacity-60 ${
+                          selected
+                            ? 'border-sidebar bg-sidebar/[0.06] shadow-[0_0_0_1px_rgb(29_4_50_/_0.1)]'
+                            : 'border-sidebar/10 bg-page/30 hover:border-sidebar/22'
+                        }`}
+                      >
+                        <span className="flex items-center justify-center bg-page/40 py-4">
+                          <PlayingCard
+                            code="Ah"
+                            size="sm"
+                            dealDelay={0}
+                            cardThemeOverride={theme}
+                          />
+                        </span>
+                        <span className="flex items-center justify-between gap-2 px-3 py-2.5">
+                          <span className="text-sm font-semibold text-sidebar">{theme.name}</span>
+                          {selected ? <SelectedCheck /> : null}
+                        </span>
+                      </button>
+                    );
+                  })
                 }
               </ThemeRadioGroup>
 

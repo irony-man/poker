@@ -16,6 +16,7 @@ import type {
   PagesCopy,
   RoomSettings,
   AvatarPresetsConfig,
+  CardFaceTheme,
   SiteAnnouncement,
   SiteConfigPayload,
   TableSoundsConfig,
@@ -91,6 +92,10 @@ export class SiteConfigService implements OnModuleInit {
     return this.store.getAvatarPresets();
   }
 
+  getCardThemes(): CardFaceTheme[] {
+    return this.store.getCardThemes();
+  }
+
   getBotChatStarters(): string[] {
     return this.store.getBotChatStarters();
   }
@@ -144,6 +149,10 @@ export class SiteConfigService implements OnModuleInit {
 
   setAvatarPresets(next: AvatarPresetsConfig): Promise<AvatarPresetsConfig> {
     return this.store.setAvatarPresets(next);
+  }
+
+  setCardThemes(themes: CardFaceTheme[]): Promise<CardFaceTheme[]> {
+    return this.store.setCardThemes(themes);
   }
 
   setBotChatStarters(starters: string[]): Promise<string[]> {

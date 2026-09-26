@@ -40,6 +40,10 @@ export class UserEntity {
   @Column({ name: 'table_color_id', type: 'int', default: 0 })
   tableColorId!: number;
 
+  /** Playing card face theme id from site config. */
+  @Column({ name: 'card_theme_id', type: 'text', default: 'classic' })
+  cardThemeId!: string;
+
   /** App chrome look: Classic (`v1`) or Arcade (`v2`). */
   @Column({ name: 'ui_theme', type: 'text', default: 'v1' })
   uiTheme!: string;

@@ -777,6 +777,8 @@ export const UpdateMeBodySchema = z
     avatarUrl: z.string().url().max(512).nullable().optional(),
     /** Preset table felt theme index (0–8). */
     tableColorId: z.number().int().min(0).max(8).optional(),
+    /** Playing card face theme id from site config. */
+    cardThemeId: z.string().min(1).max(64).optional(),
     /** App chrome look: Classic (v1), Arcade (v2), or Glass (v3). */
     uiTheme: UiThemeSchema.optional(),
     /** Table layout: Classic oval (v1) or stacked HUD (v2). */
@@ -791,13 +793,14 @@ export const UpdateMeBodySchema = z
       body.avatarId !== undefined ||
       body.avatarUrl !== undefined ||
       body.tableColorId !== undefined ||
+      body.cardThemeId !== undefined ||
       body.uiTheme !== undefined ||
       body.tableLayout !== undefined ||
       body.sfxMuted !== undefined ||
       body.keyboardShortcuts !== undefined,
     {
       message:
-        'At least one of avatarId, avatarUrl, tableColorId, uiTheme, tableLayout, sfxMuted, or keyboardShortcuts is required',
+        'At least one of avatarId, avatarUrl, tableColorId, cardThemeId, uiTheme, tableLayout, sfxMuted, or keyboardShortcuts is required',
     },
   );
 

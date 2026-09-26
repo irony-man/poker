@@ -90,6 +90,10 @@ export class AuthService implements OnModuleInit {
     return this.store.setTableColorId(userId, tableColorId);
   }
 
+  setCardThemeId(userId: string, cardThemeId: string): Promise<User | null> {
+    return this.store.setCardThemeId(userId, cardThemeId);
+  }
+
   setUiTheme(userId: string, uiTheme: string): Promise<User | null> {
     return this.store.setUiTheme(userId, uiTheme);
   }

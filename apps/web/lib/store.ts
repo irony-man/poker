@@ -125,6 +125,8 @@ interface SessionState {
   chipBalance: number | null;
   /** Contest ranking rating (Whuffies). */
   whuffieBalance: number | null;
+  /** Playing card face theme id from site config. */
+  cardThemeId: string | null;
 
   /** Lobby / social push state (session WebSocket). */
   publicTables: PublicTableSummary[];
@@ -180,6 +182,7 @@ interface SessionState {
   setActionBurst: (e: ActionBurst | null) => void;
   setChipBalance: (balance: number | null) => void;
   setWhuffieBalance: (balance: number | null) => void;
+  setCardThemeId: (id: string | null) => void;
   applyPublicTables: (tables: PublicTableSummary[]) => void;
   applyPublicContests: (contests: ContestView[]) => void;
   applyMyContests: (contests: ContestView[]) => void;
@@ -247,6 +250,7 @@ export const useSession = create<SessionState>((set) => ({
   actionBurst: null,
   chipBalance: null,
   whuffieBalance: null,
+  cardThemeId: null,
   publicTables: [],
   publicContests: [],
   myContests: [],
@@ -273,6 +277,7 @@ export const useSession = create<SessionState>((set) => ({
       sessionToken: null,
       chipBalance: null,
       whuffieBalance: null,
+      cardThemeId: null,
       connection: 'idle',
       ...clearedTable,
       ...clearedArcade,
@@ -531,6 +536,7 @@ export const useSession = create<SessionState>((set) => ({
   setActionBurst: (actionBurst) => set({ actionBurst }),
   setChipBalance: (chipBalance) => set({ chipBalance }),
   setWhuffieBalance: (whuffieBalance) => set({ whuffieBalance }),
+  setCardThemeId: (cardThemeId) => set({ cardThemeId }),
   applyPublicTables: (publicTables) => set({ publicTables }),
   applyPublicContests: (publicContests) => set({ publicContests }),
   applyMyContests: (myContests) => set({ myContests }),

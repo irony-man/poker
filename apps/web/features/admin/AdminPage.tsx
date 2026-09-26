@@ -19,6 +19,7 @@ import {
   fetchAdminRoomSettings,
   fetchAdminSounds,
   fetchAdminAvatarPresets,
+  fetchAdminCardThemes,
   fetchAdminBotChatStarters,
   fetchAdminUsers,
   fetchMe,
@@ -31,6 +32,7 @@ import {
   patchAdminRoomSettings,
   patchAdminSounds,
   patchAdminAvatarPresets,
+  patchAdminCardThemes,
   requestAdminSoundUploadUrl,
   requestAdminImageUploadUrl,
   resetAdminUserChips,
@@ -97,7 +99,10 @@ import { SoundsSection } from './sections/Sounds';
 import { GamesSection } from './sections/Games';
 import { HandsSection } from './sections/Hands';
 import { ChatStartersSection } from './sections/ChatStarters';
+import { CardPlaygroundSection, cloneThemesForAdmin } from './sections/CardPlayground';
 import { BOT_CHAT_STARTER_PROMPTS } from '@/lib/api/botChat';
+import { defaultCardFaceThemes, type CardFaceTheme } from '@/lib/cardFaceTheme';
+import { configureCardThemes } from '@/lib/cardThemesRegistry';
 
 function cloneHomeBag(list: HomeLandingFeature[]): HomeLandingFeature[] {
   return list.map((f) => ({ ...f }));
@@ -199,6 +204,7 @@ function AdminPageInner() {
   const [avatarPresets, setAvatarPresets] = useState<AvatarPresetsConfig>(() => ({
     urls: [...DEFAULT_AVATAR_PRESET_URLS],
   }));
+  const [cardThemes, setCardThemes] = useState<CardFaceTheme[]>(() => defaultCardFaceThemes());
   const [uploadingAvatarPresetIndex, setUploadingAvatarPresetIndex] = useState<number | null>(
     null,
   );
@@ -270,7 +276,7 @@ function AdminPageInner() {
         return;
       }
       setIsAdmin(true);
-      const [overview, eco, games, userList, home, pages, rooms, bots, soundCfg, avatarCfg, chatStarters] =
+      const [overview, eco, games, userList, home, pages, rooms, bots, soundCfg, avatarCfg, cardCfg, chatStarters] =
         await Promise.all([
         fetchAdminOverview(token),
         fetchAdminEconomy(token),
@@ -282,6 +288,7 @@ function AdminPageInner() {
         fetchAdminBotGroups(token),
         fetchAdminSounds(token),
         fetchAdminAvatarPresets(token),
+        fetchAdminCardThemes(token),
         fetchAdminBotChatStarters(token),
       ]);
       setAnnouncement(overview.announcement);
@@ -301,6 +308,8 @@ function AdminPageInner() {
           (fallback, i) => avatarCfg.urls[i]?.trim() || fallback,
         ),
       });
+      setCardThemes(cloneThemesForAdmin(cardCfg.themes?.length ? cardCfg.themes : defaultCardFaceThemes()));
+      configureCardThemes(cardCfg.themes);
       const groups = (bots.groups?.length ? bots.groups : defaultBotGroups()).map(
         normalizeAdminBotGroup,
       );
@@ -483,6 +492,17 @@ function AdminPageInner() {
         ),
       );
       flash('Bot groups saved');
+    });
+  }
+
+  async function saveCardThemes(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token) return;
+    await withBusy('cards', async () => {
+      const res = await patchAdminCardThemes(token, cardThemes);
+      setCardThemes(cloneThemesForAdmin(res.themes));
+      configureCardThemes(res.themes);
+      flash('Card themes saved');
     });
   }
 
@@ -1379,6 +1399,16 @@ function AdminPageInner() {
             onEconomy={(patch) => setEconomy((eco) => ({ ...eco, ...patch }))}
             onRoomSettings={setRoomSettings}
             onSave={(e) => void saveEconomy(e)}
+          />
+        ) : null}
+
+        {tab === 'cards' ? (
+          <CardPlaygroundSection
+            themes={cardThemes}
+            busy={busy}
+            busyKey={busyKey}
+            onThemes={setCardThemes}
+            onSave={(e) => void saveCardThemes(e)}
           />
         ) : null}
 

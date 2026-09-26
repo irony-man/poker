@@ -8,6 +8,8 @@ export interface User {
   avatarUrl: string | null;
   /** Viewer table felt theme preset (0–8). */
   tableColorId: number;
+  /** Playing card face theme id from site config. */
+  cardThemeId: string;
   /** App chrome look: Classic (`v1`), Arcade (`v2`), or Glass (`v3`). */
   uiTheme: 'v1' | 'v2' | 'v3';
   /** Table layout: Classic oval (`v1`) or stacked HUD (`v2`). */

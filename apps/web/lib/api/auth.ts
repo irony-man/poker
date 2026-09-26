@@ -16,6 +16,7 @@ export interface MeProfile {
   avatarId: number;
   avatarUrl: string | null;
   tableColorId: number;
+  cardThemeId: string;
   uiTheme: UiTheme;
   tableLayout: TableLayout;
   sfxMuted: boolean;
@@ -51,6 +52,10 @@ function normalizeMe(data: MeProfile): MeProfile {
         ? Math.floor(data.tableColorId)
         : 0,
     ),
+    cardThemeId:
+      typeof data.cardThemeId === 'string' && data.cardThemeId.trim()
+        ? data.cardThemeId.trim().slice(0, 64)
+        : 'classic',
     uiTheme: clampUiTheme(data.uiTheme),
     tableLayout: clampTableLayout(data.tableLayout),
     sfxMuted: data.sfxMuted === true,
@@ -122,6 +127,7 @@ export async function updateMe(
     avatarId?: number;
     avatarUrl?: string | null;
     tableColorId?: number;
+    cardThemeId?: string;
     uiTheme?: UiTheme;
     tableLayout?: TableLayout;
     sfxMuted?: boolean;

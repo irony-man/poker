@@ -33,6 +33,7 @@ export class SiteController {
       botGroupLabels: this.site.getBotGroupLabels(),
       sounds: this.site.getSounds(),
       avatarPresets: this.site.getAvatarPresets(),
+      cardThemes: this.site.getCardThemes(),
       botChatStarters: this.site.getBotChatStarters(),
     };
   }

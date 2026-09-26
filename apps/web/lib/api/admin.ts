@@ -397,6 +397,27 @@ export async function patchAdminAvatarPresets(
   }) as Promise<AvatarPresetsConfig>;
 }
 
+export type { CardFaceTheme } from '@/lib/cardFaceTheme';
+
+export async function fetchAdminCardThemes(
+  sessionToken: string,
+): Promise<{ themes: import('@/lib/cardFaceTheme').CardFaceTheme[] }> {
+  return authedFetch('/api/admin/card-themes', { sessionToken }) as Promise<{
+    themes: import('@/lib/cardFaceTheme').CardFaceTheme[];
+  }>;
+}
+
+export async function patchAdminCardThemes(
+  sessionToken: string,
+  themes: import('@/lib/cardFaceTheme').CardFaceTheme[],
+): Promise<{ themes: import('@/lib/cardFaceTheme').CardFaceTheme[] }> {
+  return authedFetch('/api/admin/card-themes', {
+    sessionToken,
+    method: 'PATCH',
+    body: { themes },
+  }) as Promise<{ themes: import('@/lib/cardFaceTheme').CardFaceTheme[] }>;
+}
+
 export async function requestAdminSoundUploadUrl(
   sessionToken: string,
   body: {

@@ -10,6 +10,7 @@ import { clampUserKeyboardShortcuts } from '../keyboard-shortcuts.js';
 import { clampSfxMuted } from '../sfx-muted.js';
 import { clampTableLayout } from '../table-layout.js';
 import { clampUiTheme } from '../ui-theme.js';
+import { DEFAULT_CARD_THEME_ID } from '../card-face-theme.js';
 import {
   defaultEconomy,
   type EconomyProvider,
@@ -55,6 +56,10 @@ function normalizeUser(
     avatarId: clampAvatarId(u.avatarId),
     avatarUrl: u.avatarUrl ?? null,
     tableColorId: clampTableColorId(u.tableColorId),
+    cardThemeId:
+      typeof u.cardThemeId === 'string' && u.cardThemeId.trim()
+        ? u.cardThemeId.trim().slice(0, 64)
+        : DEFAULT_CARD_THEME_ID,
     uiTheme: clampUiTheme(u.uiTheme),
     tableLayout: clampTableLayout(u.tableLayout),
     sfxMuted: clampSfxMuted(u.sfxMuted),
@@ -135,6 +140,7 @@ export class AuthStore {
           normalizeUser({
             ...u,
             tableColorId: (u as User).tableColorId ?? 0,
+            cardThemeId: (u as User).cardThemeId ?? DEFAULT_CARD_THEME_ID,
             uiTheme: clampUiTheme((u as User).uiTheme),
             tableLayout: clampTableLayout((u as User).tableLayout),
             sfxMuted: clampSfxMuted((u as User).sfxMuted),
@@ -179,8 +185,11 @@ export class AuthStore {
     await this.pool.query(
       `ALTER TABLE users ADD COLUMN IF NOT EXISTS keyboard_shortcuts jsonb NOT NULL DEFAULT '{}'::jsonb`,
     );
+    await this.pool.query(
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS card_theme_id text NOT NULL DEFAULT 'classic'`,
+    );
     const result = await this.pool.query(
-      `SELECT id, name, username, password_hash, avatar_id, avatar_url, table_color_id, ui_theme, table_layout, sfx_muted, keyboard_shortcuts, chip_balance, whuffie_balance, hands_played, created_at
+      `SELECT id, name, username, password_hash, avatar_id, avatar_url, table_color_id, card_theme_id, ui_theme, table_layout, sfx_muted, keyboard_shortcuts, chip_balance, whuffie_balance, hands_played, created_at
        FROM users
        WHERE password_hash IS NOT NULL AND username IS NOT NULL`,
     );
@@ -197,6 +206,7 @@ export class AuthStore {
       avatar_id: number;
       avatar_url?: string | null;
       table_color_id?: number | null;
+      card_theme_id?: string | null;
       ui_theme?: string | null;
       table_layout?: string | null;
       sfx_muted?: boolean | null;
@@ -218,6 +228,10 @@ export class AuthStore {
         avatarId: clampAvatarId(row.avatar_id ?? 0),
         avatarUrl: row.avatar_url ?? null,
         tableColorId: clampTableColorId(row.table_color_id ?? 0),
+        cardThemeId:
+          typeof row.card_theme_id === 'string' && row.card_theme_id.trim()
+            ? row.card_theme_id.trim().slice(0, 64)
+            : DEFAULT_CARD_THEME_ID,
         uiTheme: clampUiTheme(row.ui_theme),
         tableLayout: clampTableLayout(row.table_layout),
         sfxMuted: clampSfxMuted(row.sfx_muted),
@@ -344,8 +358,8 @@ export class AuthStore {
   private async persistUserToPostgres(user: User): Promise<void> {
     if (!this.pool) return;
     await this.pool.query(
-      `INSERT INTO users (id, name, username, username_lower, password_hash, avatar_id, avatar_url, table_color_id, ui_theme, table_layout, sfx_muted, keyboard_shortcuts, chip_balance, whuffie_balance, hands_played, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14, $15, to_timestamp($16 / 1000.0))
+      `INSERT INTO users (id, name, username, username_lower, password_hash, avatar_id, avatar_url, table_color_id, card_theme_id, ui_theme, table_layout, sfx_muted, keyboard_shortcuts, chip_balance, whuffie_balance, hands_played, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15, $16, to_timestamp($17 / 1000.0))
        ON CONFLICT (id) DO UPDATE SET
          name = EXCLUDED.name,
          username = EXCLUDED.username,
@@ -354,6 +368,7 @@ export class AuthStore {
          avatar_id = EXCLUDED.avatar_id,
          avatar_url = EXCLUDED.avatar_url,
          table_color_id = EXCLUDED.table_color_id,
+         card_theme_id = EXCLUDED.card_theme_id,
          ui_theme = EXCLUDED.ui_theme,
          table_layout = EXCLUDED.table_layout,
          sfx_muted = EXCLUDED.sfx_muted,
@@ -370,6 +385,7 @@ export class AuthStore {
         user.avatarId,
         user.avatarUrl,
         user.tableColorId,
+        user.cardThemeId,
         user.uiTheme,
         user.tableLayout,
         user.sfxMuted,
@@ -403,6 +419,7 @@ export class AuthStore {
       avatarId: avatarId !== undefined ? clampAvatarId(avatarId) : avatarIdFromUserId(id),
       avatarUrl: null,
       tableColorId: 0,
+      cardThemeId: DEFAULT_CARD_THEME_ID,
       uiTheme: 'v1',
       tableLayout: 'v1',
       sfxMuted: false,
@@ -573,6 +590,24 @@ export class AuthStore {
     if (this.pool) {
       await this.pool.query(`UPDATE users SET table_color_id = $1 WHERE id = $2`, [
         user.tableColorId,
+        userId,
+      ]);
+    } else {
+      await this.persistFile();
+    }
+    return user;
+  }
+
+  async setCardThemeId(userId: string, cardThemeId: string): Promise<User | null> {
+    const user = this.users.get(userId);
+    if (!user) return null;
+    user.cardThemeId =
+      typeof cardThemeId === 'string' && cardThemeId.trim()
+        ? cardThemeId.trim().slice(0, 64)
+        : DEFAULT_CARD_THEME_ID;
+    if (this.pool) {
+      await this.pool.query(`UPDATE users SET card_theme_id = $1 WHERE id = $2`, [
+        user.cardThemeId,
         userId,
       ]);
     } else {
@@ -766,6 +801,7 @@ export class AuthStore {
       avatarId: clampAvatarId(avatarId),
       avatarUrl: null,
       tableColorId: 0,
+      cardThemeId: DEFAULT_CARD_THEME_ID,
       uiTheme: 'v1',
       tableLayout: 'v1',
       sfxMuted: false,

@@ -1,6 +1,8 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { Queryable } from '../database/queryable.js';
+import type { CardFaceTheme } from '../card-face-theme.js';
+import { normalizeCardFaceThemes } from '../card-face-theme.js';
 import type { EconomySnapshot } from '../wallet/wallet.constants.js';
 import {
   clampCopyTheme,
@@ -140,6 +142,18 @@ export class SiteConfigStore {
         urls: { ...this.cache.sounds.urls },
       },
       avatarPresets: { urls: [...this.cache.avatarPresets.urls] },
+      cardThemes: this.cache.cardThemes.map((t) => ({
+        id: t.id,
+        name: t.name,
+        isDefault: t.isDefault,
+        suitColors: { ...t.suitColors },
+        layersBySuit: {
+          h: t.layersBySuit.h.map((l) => ({ ...l })),
+          d: t.layersBySuit.d.map((l) => ({ ...l })),
+          c: t.layersBySuit.c.map((l) => ({ ...l })),
+          s: t.layersBySuit.s.map((l) => ({ ...l })),
+        },
+      })),
       botChatStarters: [...this.cache.botChatStarters],
     };
   }
@@ -215,6 +229,21 @@ export class SiteConfigStore {
 
   getAvatarPresets(): AvatarPresetsConfig {
     return { urls: [...this.cache.avatarPresets.urls] };
+  }
+
+  getCardThemes() {
+    return this.cache.cardThemes.map((t) => ({
+      id: t.id,
+      name: t.name,
+      isDefault: t.isDefault,
+      suitColors: { ...t.suitColors },
+      layersBySuit: {
+        h: t.layersBySuit.h.map((l) => ({ ...l })),
+        d: t.layersBySuit.d.map((l) => ({ ...l })),
+        c: t.layersBySuit.c.map((l) => ({ ...l })),
+        s: t.layersBySuit.s.map((l) => ({ ...l })),
+      },
+    }));
   }
 
   getBotChatStarters(): string[] {
@@ -330,6 +359,16 @@ export class SiteConfigStore {
     };
     await this.serialized(() => this.persist());
     return this.getAvatarPresets();
+  }
+
+  async setCardThemes(themes: CardFaceTheme[]) {
+    await this.ensureLoaded();
+    this.cache = {
+      ...this.cache,
+      cardThemes: normalizeCardFaceThemes(themes),
+    };
+    await this.serialized(() => this.persist());
+    return this.getCardThemes();
   }
 
   async setBotChatStarters(starters: string[]): Promise<string[]> {

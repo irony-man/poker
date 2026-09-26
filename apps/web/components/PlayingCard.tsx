@@ -1,6 +1,10 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { CardFaceView } from '@/components/CardFaceView';
+import { parseCardPreviewCode } from '@/lib/cardCodeParse';
+import type { CardFaceTheme, SuitKey } from '@/lib/cardFaceTheme';
+import { useCardFaceTheme } from '@/lib/useCardFaceTheme';
 
 const SIZE = {
   xs: 'w-7 h-[2.625rem] sm:w-12 sm:h-[4.5rem]',
@@ -74,16 +78,18 @@ export function speakCard(code: string): string {
 
 function parseCode(
   code: string,
-): { rankChar: string; rank: string; suit: string; red: boolean } | null {
-  if (code.length !== 2) return null;
-  const rankChar = code[0]!.toUpperCase();
-  const suit = code[1]!.toLowerCase();
-  if (!RANK_LABEL[rankChar] || !SUIT_GLYPH[suit]) return null;
+): { rankChar: string; rank: string; suit: string; suitKey: SuitKey; engineCode: string; red: boolean } | null {
+  const p = parseCardPreviewCode(code);
+  if (p.rank === '?') return null;
+  const rankChar = p.engineCode[0]!.toUpperCase();
+  if (!RANK_LABEL[rankChar]) return null;
   return {
     rankChar,
-    rank: RANK_LABEL[rankChar]!,
-    suit: SUIT_GLYPH[suit]!,
-    red: suit === 'h' || suit === 'd',
+    rank: p.rank,
+    suit: p.suitGlyph,
+    suitKey: p.suitKey,
+    engineCode: p.engineCode,
+    red: p.suitKey === 'h' || p.suitKey === 'd',
   };
 }
 
@@ -97,86 +103,29 @@ function isTiny(size: CardSize) {
   );
 }
 
-/**
- * Classic modern face: top-left rank + suit, top-right suit, large center suit,
- * soft sheen on white stock.
- */
 function CardFace({
   rank,
   suit,
-  red,
-  size,
+  engineCode,
+  suitKey,
+  themeOverride,
 }: {
   rank: string;
   suit: string;
-  red: boolean;
-  size: CardSize;
+  engineCode: string;
+  suitKey: SuitKey;
+  themeOverride?: CardFaceTheme;
 }) {
-  const ink = red ? 'rgb(var(--card-red))' : 'rgb(var(--card-ink))';
-  const tiny = isTiny(size);
-  const isTen = rank === '10';
-
-  const rankClass = tiny
-    ? isTen
-      ? 'text-[9px] leading-none'
-      : 'text-[11px] leading-none'
-    : isTen
-      ? 'text-[13px] sm:text-[17px] leading-none'
-      : 'text-[15px] sm:text-[20px] leading-none';
-
-  const cornerSuit = tiny ? 'text-[9px] leading-none' : 'text-[12px] sm:text-[15px] leading-none';
-  const centerSuit = tiny
-    ? 'text-[1.55rem] leading-none'
-    : 'text-[2.15rem] sm:text-[3rem] leading-none';
-
+  const themeFromHook = useCardFaceTheme();
+  const theme = themeOverride ?? themeFromHook;
   return (
-    <div
-      className="absolute inset-0"
-      style={{
-        color: ink,
-        background: 'linear-gradient(180deg, #ffffff 0%, #ffffff 48%, #f2f2f2 100%)',
-      }}
-    >
-      {/* Soft horizontal sheen */}
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-[55%]"
-        style={{
-          background:
-            'linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.55) 55%, transparent 100%)',
-        }}
-      />
-      <div
-        className="pointer-events-none absolute inset-x-[8%] top-[42%] h-px opacity-40"
-        style={{
-          background: 'linear-gradient(90deg, transparent, rgba(0,0,0,0.08), transparent)',
-        }}
-      />
-
-      {/* Top-left: rank + small suit */}
-      <div
-        className="absolute left-[5%] top-[5%] z-[1] flex flex-col items-center"
-        style={{ fontVariantEmoji: 'text' }}
-      >
-        <span className={`select-none font-extrabold tracking-tight ${rankClass}`}>{rank}</span>
-        <span className={`mt-px select-none font-semibold ${cornerSuit}`} aria-hidden>
-          {suit}
-        </span>
-      </div>
-
-      {/* Large center suit */}
-      <div
-        className="absolute inset-0 flex items-center justify-center"
-        style={{ fontVariantEmoji: 'text' }}
-      >
-        <span
-          className={`select-none font-semibold ${centerSuit}`}
-          style={{ transform: 'translateY(8%)' }}
-          aria-hidden
-        >
-          {suit}
-        </span>
-      </div>
-    </div>
+    <CardFaceView
+      theme={theme}
+      suitKey={suitKey}
+      rank={rank}
+      suitGlyph={suit}
+      cardCode={engineCode}
+    />
   );
 }
 
@@ -254,6 +203,7 @@ export function PlayingCard({
   dealDelay = 0,
   variant = 'deck',
   className,
+  cardThemeOverride,
 }: {
   code?: string;
   faceDown?: boolean;
@@ -265,6 +215,8 @@ export function PlayingCard({
   dealDelay?: number;
   variant?: 'deck' | 'hand';
   className?: string;
+  /** Preview a specific face theme (profile picker / admin). */
+  cardThemeOverride?: CardFaceTheme;
 }) {
   const resolved: CardSize =
     size ?? (variant === 'hand' ? 'hand' : small ? 'sm' : 'md');
@@ -337,7 +289,13 @@ export function PlayingCard({
       role="img"
       aria-label={speakCard(code)}
     >
-      <CardFace rank={parsed.rank} suit={parsed.suit} red={parsed.red} size={resolved} />
+      <CardFace
+        rank={parsed.rank}
+        suit={parsed.suit}
+        engineCode={parsed.engineCode}
+        suitKey={parsed.suitKey}
+        themeOverride={cardThemeOverride}
+      />
       {highlight ? (
         <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-transparent via-mushroom to-transparent" />
       ) : null}

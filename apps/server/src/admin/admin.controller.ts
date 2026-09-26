@@ -27,6 +27,7 @@ import { PresenceService } from '../presence/presence.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 import { RoomsService } from '../rooms/rooms.service.js';
 import { SiteConfigService } from '../site-config/site-config.service.js';
+import { normalizeCardFaceThemes } from '../card-face-theme.js';
 import { normalizeBotGroup, normalizeBotGroupLabels } from '../site-config/site-config.types.js';
 import {
   ALLOWED_SITE_IMAGE_CONTENT_TYPES,
@@ -173,6 +174,72 @@ const SoundsBody = z.object({
 
 const AvatarPresetsBody = z.object({
   urls: z.array(z.string().max(512)).length(8),
+});
+
+const CardFaceElementLayoutBody = z.object({
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+  size: z.number().min(0.02).max(0.8),
+});
+
+const CardFaceLayerBody = z.object({
+  id: z.string().min(1).max(64),
+  kind: z.enum(['rank', 'suit', 'svg']),
+  name: z.string().max(48),
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+  size: z.number().min(0.02).max(0.8),
+  opacity: z.number().min(0).max(1).optional(),
+  svg: z.string().max(12000).optional(),
+});
+
+const CardFaceLayersBySuitBody = z.object({
+  h: z.array(CardFaceLayerBody).max(24),
+  d: z.array(CardFaceLayerBody).max(24),
+  c: z.array(CardFaceLayerBody).max(24),
+  s: z.array(CardFaceLayerBody).max(24),
+});
+
+const CardThemeBody = z
+  .object({
+    id: z.string().min(1).max(64),
+    name: z.string().min(1).max(48),
+    isDefault: z.boolean().optional(),
+    suitColors: z.object({
+      h: z.string().max(7),
+      d: z.string().max(7),
+      c: z.string().max(7),
+      s: z.string().max(7),
+    }),
+    layers: z.array(CardFaceLayerBody).max(24).optional(),
+    layersBySuit: CardFaceLayersBySuitBody.optional(),
+    elements: z
+      .object({
+        rank: CardFaceElementLayoutBody,
+        cornerSuit: CardFaceElementLayoutBody,
+        centerSuit: CardFaceElementLayoutBody,
+      })
+      .optional(),
+  })
+  .refine(
+    (t) => {
+      if (t.elements !== undefined) return true;
+      if ((t.layers?.length ?? 0) > 0) return true;
+      if (t.layersBySuit) {
+        return (
+          t.layersBySuit.h.length > 0 &&
+          t.layersBySuit.d.length > 0 &&
+          t.layersBySuit.c.length > 0 &&
+          t.layersBySuit.s.length > 0
+        );
+      }
+      return false;
+    },
+    { message: 'Each theme needs layers, layersBySuit, or legacy elements' },
+  );
+
+const CardThemesBody = z.object({
+  themes: z.array(CardThemeBody).min(1).max(12),
 });
 
 @Controller('api/admin')
@@ -365,6 +432,21 @@ export class AdminController {
       throw new BadRequestException({ error: parsed.error.message });
     }
     return this.site.setAvatarPresets({ urls: parsed.data.urls });
+  }
+
+  @Get('card-themes')
+  getCardThemes() {
+    return { themes: this.site.getCardThemes() };
+  }
+
+  @Patch('card-themes')
+  async patchCardThemes(@Body() body: unknown) {
+    const parsed = CardThemesBody.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({ error: parsed.error.message });
+    }
+    const themes = await this.site.setCardThemes(normalizeCardFaceThemes(parsed.data.themes));
+    return { themes };
   }
 
   @Post('sounds/upload-url')

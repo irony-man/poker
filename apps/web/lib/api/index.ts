@@ -156,6 +156,8 @@ export {
   patchAdminSounds,
   fetchAdminAvatarPresets,
   patchAdminAvatarPresets,
+  fetchAdminCardThemes,
+  patchAdminCardThemes,
   requestAdminSoundUploadUrl,
   requestAdminImageUploadUrl,
   fetchAdminHands,

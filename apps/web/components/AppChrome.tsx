@@ -28,6 +28,8 @@ import { loadSavedUiTheme, saveUiTheme } from '@/lib/uiTheme';
 import { attachPlayFullscreen } from '@/lib/mobileFullscreen';
 import { ConfirmProvider } from '@/components/ConfirmPopover';
 import { AvatarPresetsLoader } from '@/components/AvatarPresetsLoader';
+import { CardThemesLoader } from '@/components/CardThemesLoader';
+import { saveCardThemeId } from '@/lib/cardThemePref';
 import { SiteAnnouncementBanner } from '@/components/SiteAnnouncement';
 import { SkipLink } from '@/components/SkipLink';
 import { BotChatFab } from '@/components/BotChatFab';
@@ -113,6 +115,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const clearSession = useSession((s) => s.clearSession);
   const setChipBalance = useSession((s) => s.setChipBalance);
   const setWhuffieBalance = useSession((s) => s.setWhuffieBalance);
+  const setCardThemeId = useSession((s) => s.setCardThemeId);
   const sessionName = useSession((s) => s.name);
   const sessionToken = useSession((s) => s.sessionToken);
   const [signedIn, setSignedIn] = useState(() => {
@@ -164,6 +167,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
     if (!sessionToken) {
       setChipBalance(null);
       setWhuffieBalance(null);
+      setCardThemeId(null);
       setIsAdmin(false);
       return;
     }
@@ -176,6 +180,8 @@ export function AppChrome({ children }: { children: ReactNode }) {
         setIsAdmin(Boolean(me.isAdmin));
         saveAvatarId(me.avatarId);
         saveTableColorId(me.tableColorId);
+        setCardThemeId(me.cardThemeId);
+        saveCardThemeId(me.cardThemeId);
         saveUiTheme(me.uiTheme);
         saveTableLayout(me.tableLayout);
         setSfxMuted(me.sfxMuted);
@@ -187,7 +193,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [sessionToken, setChipBalance, setWhuffieBalance]);
+  }, [sessionToken, setCardThemeId, setChipBalance, setWhuffieBalance]);
 
   const onLogout = useCallback(async () => {
     const token = sessionToken ?? readStoredSession()?.sessionToken;
@@ -224,6 +230,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   if (isAdminRoute) {
     return (
       <ConfirmProvider>
+        <CardThemesLoader />
         <OnlineFriendsProvider signedIn={signedIn}>
           <div className="lobby-shell">
             {children}
@@ -237,6 +244,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   return (
     <ConfirmProvider>
       <AvatarPresetsLoader />
+      <CardThemesLoader />
       <OnlineFriendsProvider signedIn={signedIn}>
         <div className="lobby-shell">
           <SkipLink />

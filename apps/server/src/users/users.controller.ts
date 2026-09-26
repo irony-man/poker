@@ -22,6 +22,11 @@ import { HistoryService, toOwnerHandRows } from '../history/history.service.js';
 import { ALLOWED_AVATAR_CONTENT_TYPES } from '../storage/storage.constants.js';
 import { StorageService } from '../storage/storage.service.js';
 import { WalletService } from '../wallet/wallet.service.js';
+import { SiteConfigService } from '../site-config/site-config.service.js';
+import {
+  clampCardThemeId,
+  resolveDefaultCardThemeId,
+} from '../card-face-theme.js';
 
 function toMeProfile(
   user: User,
@@ -37,6 +42,7 @@ function toMeProfile(
     avatarId: user.avatarId,
     avatarUrl: user.avatarUrl,
     tableColorId: user.tableColorId,
+    cardThemeId: user.cardThemeId,
     uiTheme: user.uiTheme ?? 'v1',
     tableLayout: user.tableLayout ?? 'v1',
     sfxMuted: user.sfxMuted === true,
@@ -60,6 +66,7 @@ export class UsersController {
     private readonly history: HistoryService,
     private readonly config: ConfigService,
     private readonly storage: StorageService,
+    private readonly site: SiteConfigService,
   ) {}
 
   private isAdmin(user: User): boolean {
@@ -164,6 +171,13 @@ export class UsersController {
     }
     if (parsed.data.tableColorId !== undefined) {
       updated = await this.auth.setTableColorId(user.id, parsed.data.tableColorId);
+    }
+    if (parsed.data.cardThemeId !== undefined) {
+      const themes = this.site.getCardThemes();
+      const allowed = themes.map((t) => t.id);
+      const fallback = resolveDefaultCardThemeId(themes);
+      const nextId = clampCardThemeId(parsed.data.cardThemeId, allowed, fallback);
+      updated = await this.auth.setCardThemeId(user.id, nextId);
     }
     if (parsed.data.uiTheme !== undefined) {
       updated = await this.auth.setUiTheme(user.id, parsed.data.uiTheme);

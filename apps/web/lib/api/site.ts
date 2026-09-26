@@ -44,6 +44,8 @@ export type AvatarPresetsConfig = {
   urls: string[];
 };
 
+export type { CardFaceTheme } from '@/lib/cardFaceTheme';
+
 export type PublicSitePayload = {
   announcement: SiteAnnouncement;
   homeFeatures?: HomeLandingFeature[];
@@ -54,6 +56,7 @@ export type PublicSitePayload = {
   botGroupLabels?: BotGroupLabels;
   sounds?: TableSoundsConfig;
   avatarPresets?: AvatarPresetsConfig;
+  cardThemes?: import('@/lib/cardFaceTheme').CardFaceTheme[];
 };
 
 export { DEFAULT_AVATAR_PRESET_URLS } from '@/lib/avatars';

@@ -17,6 +17,21 @@ import {
   STARTING_WHUFFIE_GRANT,
 } from '../wallet/wallet.constants.js';
 import { assetUrl } from '../assets.js';
+import {
+  type CardFaceTheme,
+  defaultCardFaceThemes,
+  normalizeCardFaceThemes,
+} from '../card-face-theme.js';
+
+export type {
+  CardFaceTheme,
+  CardFaceLayer,
+  CardFaceLayerKind,
+  CardFaceElementId,
+  CardFaceElementLayout,
+  CardFaceSuitColors,
+} from '../card-face-theme.js';
+export { defaultCardFaceThemes, normalizeCardFaceThemes, DEFAULT_CARD_THEME_ID } from '../card-face-theme.js';
 
 export type { BotGroupLabelDef };
 
@@ -301,6 +316,8 @@ export interface SiteConfigPayload {
   botGroupLabels: BotGroupLabels;
   sounds: TableSoundsConfig;
   avatarPresets: AvatarPresetsConfig;
+  /** Admin-designed playing card face themes (users pick in profile). */
+  cardThemes: CardFaceTheme[];
   botChatStarters: string[];
 }
 
@@ -629,6 +646,7 @@ export function defaultSiteConfig(): SiteConfigPayload {
     botGroupLabels: DEFAULT_BOT_GROUP_LABELS.map((l) => ({ ...l })),
     sounds: defaultTableSounds(),
     avatarPresets: defaultAvatarPresets(),
+    cardThemes: defaultCardFaceThemes(),
     botChatStarters: [...DEFAULT_BOT_CHAT_STARTERS],
   };
 }
@@ -1074,6 +1092,9 @@ export function normalizeSiteConfig(raw: unknown): SiteConfigPayload {
   const avatarPresets =
     o.avatarPresets !== undefined ? normalizeAvatarPresets(o.avatarPresets) : defaults.avatarPresets;
 
+  const cardThemes =
+    o.cardThemes !== undefined ? normalizeCardFaceThemes(o.cardThemes) : defaults.cardThemes;
+
   const botChatStarters =
     o.botChatStarters !== undefined
       ? normalizeBotChatStarters(o.botChatStarters)
@@ -1091,6 +1112,7 @@ export function normalizeSiteConfig(raw: unknown): SiteConfigPayload {
     botGroupLabels,
     sounds,
     avatarPresets,
+    cardThemes,
     botChatStarters,
   };
 }

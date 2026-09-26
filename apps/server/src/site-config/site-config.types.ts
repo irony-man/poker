@@ -97,7 +97,8 @@ export type BotPersonalityId =
   | 'caller'
   | 'nit'
   | 'lag'
-  | 'humanoid';
+  | 'humanoid'
+  | 'exploiter';
 
 export const BOT_PERSONALITY_IDS: readonly BotPersonalityId[] = [
   'balanced',
@@ -110,6 +111,7 @@ export const BOT_PERSONALITY_IDS: readonly BotPersonalityId[] = [
   'nit',
   'lag',
   'humanoid',
+  'exploiter',
 ] as const;
 
 export function isBotPersonalityId(value: string | null | undefined): value is BotPersonalityId {

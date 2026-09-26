@@ -31,7 +31,7 @@ export const BOT_CHAT_ASSISTANT_EMOJI: Record<BotChatLlmProvider, string> = {
 export const BOT_CHAT_STARTER_PROMPTS: readonly string[] = [
   'I slow-played pocket aces and still lost.',
   'Is open-limping ever defensible?',
-  'I min-raised UTG with jack-ten suited. Roast me.',
+  'I min-raised UTG with jack-ten suited.',
   'Rate my bluff: I had seven-high.',
   'I called a river bet with middle pair. Again.',
 ];

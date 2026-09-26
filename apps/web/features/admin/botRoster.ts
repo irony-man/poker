@@ -49,6 +49,7 @@ export const PERSONALITY_LABELS: Record<BotPersonalityId, string> = {
   nit: 'Nit',
   lag: 'LAG',
   humanoid: 'Humanoid',
+  exploiter: 'Exploiter',
 };
 
 const PERSONALITY_TOKEN_TO_ID: Record<string, BotPersonalityId> = (() => {

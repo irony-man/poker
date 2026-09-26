@@ -1,6 +1,7 @@
 import { Injectable, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import type { TableConfig } from '@poker/engine';
 import { BotBanterLlmService } from '../bot/bot-banter-llm.service.js';
+import { PlayerExploitLlmService } from '../bot/player-exploit-llm.service.js';
 import { HistoryService } from '../history/history.service.js';
 import { KvService } from '../kv/kv.service.js';
 import { ensurePublicTables } from '../public-tables/public-tables.js';
@@ -32,6 +33,7 @@ export class RoomsService implements OnModuleInit, OnModuleDestroy {
     private readonly siteConfig: SiteConfigService,
     @Optional() private readonly realtime?: RealtimeService,
     @Optional() private readonly banterLlm?: BotBanterLlmService,
+    @Optional() private readonly exploitLlm?: PlayerExploitLlmService,
   ) {}
 
   onModuleInit(): void {
@@ -42,6 +44,7 @@ export class RoomsService implements OnModuleInit, OnModuleDestroy {
       this.wallet.asStore(),
     );
     if (this.banterLlm) this.manager.setBanterLlm(this.banterLlm);
+    if (this.exploitLlm) this.manager.setExploitLlm(this.exploitLlm);
     this.manager.setPublicLobbyChangeHandler(() => this.pushPublicTables());
     // Drop abandoned private/public tables; re-seed stake lobbies if needed.
     this.idleSweepTimer = setInterval(() => {

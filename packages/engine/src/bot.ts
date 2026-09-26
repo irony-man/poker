@@ -2,6 +2,12 @@ import { createDeck, type Card } from './cards.js';
 import { evaluateBest } from './eval.js';
 import { legalActions } from './hand.js';
 import type { ActionIntent, ActionType, HandState, TableConfig } from './hand.js';
+import {
+  resolveBotPersonalityForDecision,
+  type BotDecisionContext,
+} from './player-exploit.js';
+
+export type { BotDecisionContext, PlayerTendencySnapshot, HandResultPayload } from './player-exploit.js';
 
 const BOT_PREFIX = 'bot:';
 
@@ -20,7 +26,8 @@ export type BotPersonalityId =
   | 'caller'
   | 'nit'
   | 'lag'
-  | 'humanoid';
+  | 'humanoid'
+  | 'exploiter';
 
 export const BOT_PERSONALITY_IDS: readonly BotPersonalityId[] = [
   'balanced',
@@ -33,6 +40,7 @@ export const BOT_PERSONALITY_IDS: readonly BotPersonalityId[] = [
   'nit',
   'lag',
   'humanoid',
+  'exploiter',
 ] as const;
 
 export function isBotPersonalityId(value: string | null | undefined): value is BotPersonalityId {
@@ -191,6 +199,14 @@ export const BOT_PERSONALITIES: Record<BotPersonalityId, BotPersonality> = {
     bluffRate: 1.4,
     callBias: 0.01,
     jamBias: 0.03,
+  },
+  exploiter: {
+    id: 'exploiter',
+    rangeOffset: 0.9,
+    aggression: 1.42,
+    bluffRate: 0.35,
+    callBias: -0.07,
+    jamBias: 0.06,
   },
 };
 
@@ -575,6 +591,8 @@ export function chooseBotAction(
   seat: number,
   config: TableConfig,
   personality?: BotPersonality,
+  context?: BotDecisionContext,
+  styleOptions?: BotStyleOptions | null,
 ): ActionIntent | null {
   const legal = legalActions(state, seat, config);
   if (legal.types.length === 0) return null;
@@ -582,7 +600,9 @@ export function chooseBotAction(
   const types = new Set(legal.types);
   const seq = state.actionSeq;
   const player = state.players[seat]!;
-  const style = personality ?? personalityForBot(player.userId, player.name);
+  const base =
+    personality ?? personalityForBot(player.userId, player.name, styleOptions ?? undefined);
+  const style = resolveBotPersonalityForDecision(base, state, seat, context);
   const humanoid = style.id === 'humanoid';
   const bb = config.bigBlind;
   const pot = Math.max(1, state.pot);

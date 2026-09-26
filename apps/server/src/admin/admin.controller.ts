@@ -117,6 +117,7 @@ const BotPersonalityIdSchema = z.enum([
   'nit',
   'lag',
   'humanoid',
+  'exploiter',
 ]);
 
 const BotGroupBody = z.object({

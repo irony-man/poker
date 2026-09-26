@@ -90,6 +90,7 @@ const CHAT_SCALE: Record<BotPersonalityId, number> = {
   nit: 0.4,
   lag: 1.25,
   humanoid: 1.4,
+  exploiter: 1.05,
 };
 
 const STREET_LABEL: Record<string, string> = {
@@ -265,6 +266,18 @@ const PHRASES: Record<
       'That pot helps. Appreciate the action.',
     ],
   },
+  exploiter: {
+    fold: ['Easy fold on the {street}.', 'Not paying that off.', 'Out.'],
+    check: ['Check.', 'Pot control.', 'See a free card.'],
+    call: ['Calling {amount} — price is right.', 'I call into {pot}.'],
+    betRaise: [
+      'Value — betting {amount}.',
+      'You call too much. {amount} on the {street}.',
+      'Sizing up for {amount}.',
+    ],
+    allin: ['All in for value.', 'Stack off — all in on the {street}.'],
+    win: ['Paid off{hand}. {win}.', 'That is what I expected — {win}.'],
+  },
 };
 
 /** Reactions to another player's move. Prefer lines that use {name} when available. */
@@ -387,6 +400,13 @@ const REACT_PHRASES: Record<
         '{name} ships it on the {street}. Big spot.',
       ],
     },
+    exploiter: {
+      fold: ['{name} folds. Expected.', '{name} out on the {street}.'],
+      check: ['{name} checks again.', 'Check from {name} — I can work with that.'],
+      call: ['{name} calls {amount}. Of course.', 'Station line from {name} into {pot}.'],
+      betRaise: ['{name} bets {amount}. Rare aggression.', '{name} raises on the {street}.'],
+      allin: ['{name} all in. Finally some pressure.', 'Shove from {name}.'],
+    },
   };
 
 /** Replies to human table chat. Slots: {name} */
@@ -462,6 +482,13 @@ const CHAT_REPLY_PHRASES: Record<BotPersonalityId, readonly string[]> = {
     'Yeah {name}, that tracks.',
     "Appreciate you saying that, {name}.",
     'Chat keeps the table human — thanks {name}.',
+  ],
+  exploiter: [
+    'Keep talking, {name} — I am taking notes.',
+    'Your pattern is showing, {name}.',
+    'Noted, {name}.',
+    'I have read on you, {name}.',
+    'Value town welcomes you, {name}.',
   ],
 };
 

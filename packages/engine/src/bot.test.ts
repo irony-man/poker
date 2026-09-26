@@ -73,6 +73,11 @@ describe('pro bot', () => {
     expect(personalityForBot(id, 'Whatever').id).toBe('maniac');
   });
 
+  it('includes exploiter personality', () => {
+    expect(BOT_PERSONALITIES.exploiter.bluffRate).toBeLessThan(BOT_PERSONALITIES.aggro.bluffRate);
+    expect(personalityForBot(makeBotUserId('e', 'exploiter'), 'X').id).toBe('exploiter');
+  });
+
   it('honors seating-time name overrides over the built-in roster', () => {
     expect(
       personalityForBot(makeBotUserId('a'), 'FoldBot', {

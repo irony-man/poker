@@ -69,7 +69,7 @@ export class TablesController {
     const room = this.rooms.get(meta.id)!;
     if (bots > 0) {
       const seating = this.site.getBotSeatingConfig(d.botGroupId);
-      room.addBot(user.id, undefined, d.buyIn, bots, seating.names, seating);
+      room.addBot(user.id, undefined, d.buyIn, bots, seating.names, seating, d.botGroupId);
     }
 
     let inviteCount = 0;

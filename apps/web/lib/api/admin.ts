@@ -59,7 +59,8 @@ export type BotPersonalityId =
   | 'caller'
   | 'nit'
   | 'lag'
-  | 'humanoid';
+  | 'humanoid'
+  | 'exploiter';
 
 export interface BotGroupLabel {
   id: string;

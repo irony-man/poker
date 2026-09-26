@@ -42,10 +42,21 @@ import type {
   BotStyleOptions,
   BotBanterContext,
   BotBanterTrigger,
+  BotDecisionContext,
+  HandResultPayload,
+  PersonalityKnobOverrides,
+  PlayerTendencySnapshot,
+  TendencyCounters,
+} from '@poker/engine';
+import {
+  mergeHandIntoCounters,
+  snapshotFromTendencyCounters,
+  tendencyCountersFromHands,
 } from '@poker/engine';
 import type { WalletStore } from '../wallet/wallet.constants.js';
 import { UnlimitedWalletStore, WalletError } from '../wallet/wallet.store.js';
 import type { BotBanterLlmService } from '../bot/bot-banter-llm.service.js';
+import type { PlayerExploitLlmService } from '../bot/player-exploit-llm.service.js';
 
 export interface TournamentTableRules {
   contestId: string;
@@ -157,6 +168,11 @@ export class Room {
   private botStyles: BotStyleOptions | null = null;
   /** Optional in-house LLM for elaborate banter (null → templates only). */
   private banterLlm: BotBanterLlmService | null = null;
+  private exploitLlm: PlayerExploitLlmService | null = null;
+  /** Admin bot group id (e.g. station-crushers) for adaptive exploit + LLM refresh. */
+  private botGroupId: string | null = null;
+  private exploitCounters = new Map<string, TendencyCounters>();
+  private exploitLlmOverrides = new Map<string, PersonalityKnobOverrides>();
 
   /** Resolved name pool used for bots on this room (or null if not set). */
   getBotNamePool(): string[] | null {
@@ -181,6 +197,7 @@ export class Room {
     wallet: WalletStore = new UnlimitedWalletStore(),
     onSeatingChange: (() => void) | null = null,
     banterLlm: BotBanterLlmService | null = null,
+    exploitLlm: PlayerExploitLlmService | null = null,
   ) {
     this.meta = meta;
     this.state = createEmptyTable(meta.config);
@@ -191,6 +208,7 @@ export class Room {
     this.tournamentHook = tournamentHook;
     this.onSeatingChange = onSeatingChange;
     this.banterLlm = banterLlm;
+    this.exploitLlm = exploitLlm;
     this.lastLobbySeats = this.seatedCount();
     // Empty until a human joins — age from creation.
     this.idleSince = meta.createdAt;
@@ -198,6 +216,106 @@ export class Room {
 
   setBanterLlm(llm: BotBanterLlmService | null): void {
     this.banterLlm = llm;
+  }
+
+  setExploitLlm(llm: PlayerExploitLlmService | null): void {
+    this.exploitLlm = llm;
+  }
+
+  private usesAdaptiveExploit(): boolean {
+    return (
+      this.botGroupId === 'station-crushers' ||
+      this.botStyles?.defaultPersonality === 'exploiter'
+    );
+  }
+
+  private shouldUseExploitLlm(): boolean {
+    return this.usesAdaptiveExploit() && this.exploitLlm != null;
+  }
+
+  private parseStoredHandResult(resultJson: string): HandResultPayload | null {
+    try {
+      return JSON.parse(resultJson) as HandResultPayload;
+    } catch {
+      return null;
+    }
+  }
+
+  private onHumanSeated(userId: string): void {
+    if (isBotUserId(userId) || !this.usesAdaptiveExploit()) return;
+    void this.refreshExploitProfile(userId);
+  }
+
+  private async refreshExploitProfile(userId: string): Promise<void> {
+    if (isBotUserId(userId)) return;
+    try {
+      const rows = await this.history.listHandsForUser(userId, 150);
+      const hands: HandResultPayload[] = [];
+      for (const row of rows) {
+        const parsed = this.parseStoredHandResult(row.resultJson);
+        if (parsed) hands.push(parsed);
+      }
+      const counters = tendencyCountersFromHands(hands, userId);
+      if (counters) this.exploitCounters.set(userId, counters);
+      if (this.shouldUseExploitLlm() && counters) {
+        const snap = snapshotFromTendencyCounters(counters);
+        void this.refreshExploitLlm(userId, snap, hands.slice(0, 25));
+      }
+    } catch (err) {
+      console.error('[exploit] refreshExploitProfile failed', err);
+    }
+  }
+
+  private async refreshExploitLlm(
+    userId: string,
+    snapshot: PlayerTendencySnapshot,
+    recentHands: HandResultPayload[],
+  ): Promise<void> {
+    const llm = this.exploitLlm;
+    if (!llm) return;
+    try {
+      const result = await llm.suggestKnobs({
+        userId,
+        botName: 'StationCrusher',
+        personalityId: 'exploiter',
+        snapshot,
+        recentHands,
+      });
+      if (result?.knobOverrides) {
+        this.exploitLlmOverrides.set(userId, result.knobOverrides);
+      }
+    } catch (err) {
+      console.error('[exploit] LLM knob refresh failed', err);
+    }
+  }
+
+  private mergeRecordedHandIntoExploit(hand: HandResultPayload): void {
+    if (!this.usesAdaptiveExploit()) return;
+    for (const p of hand.players ?? []) {
+      const uid = p.userId;
+      if (!uid || isBotUserId(uid)) continue;
+      const next = mergeHandIntoCounters(this.exploitCounters.get(uid) ?? null, hand, uid);
+      if (next) this.exploitCounters.set(uid, next);
+    }
+  }
+
+  private buildBotDecisionContext(): BotDecisionContext {
+    const opponentTendencies = new Map<string, PlayerTendencySnapshot>();
+    for (const p of this.state.players) {
+      if (!p.userId || isBotUserId(p.userId)) continue;
+      const c = this.exploitCounters.get(p.userId);
+      if (c) opponentTendencies.set(p.userId, snapshotFromTendencyCounters(c));
+    }
+    let primaryHumanUserId: string | null = null;
+    let personalityKnobOverrides: PersonalityKnobOverrides | null = null;
+    for (const p of this.state.players) {
+      if (p.userId && !isBotUserId(p.userId) && p.status !== 'empty') {
+        primaryHumanUserId = p.userId;
+        personalityKnobOverrides = this.exploitLlmOverrides.get(p.userId) ?? null;
+        break;
+      }
+    }
+    return { opponentTendencies, primaryHumanUserId, personalityKnobOverrides };
   }
 
   setSeatingChangeHandler(handler: (() => void) | null): void {
@@ -654,11 +772,19 @@ export class Room {
     const actor = this.state.players[seat];
     if (!actor || !isBotUserId(actor.userId)) return;
 
-    const intent = chooseBotAction(this.state, seat, this.config);
-    if (!intent) return;
-
     const userId = actor.userId!;
     const name = actor.name ?? `Seat ${seat}`;
+    const style = personalityForBot(userId, name, this.botStyles);
+    const exploitCtx = this.usesAdaptiveExploit() ? this.buildBotDecisionContext() : undefined;
+    const intent = chooseBotAction(
+      this.state,
+      seat,
+      this.config,
+      style,
+      exploitCtx,
+      this.botStyles,
+    );
+    if (!intent) return;
     const street = this.state.street;
 
     const result = applyAction(this.state, seat, intent, this.config);
@@ -705,6 +831,7 @@ export class Room {
     count = 1,
     namePool?: readonly string[],
     styles?: BotStyleOptions | null,
+    botGroupId?: string | null,
   ): { ok: boolean; error?: string; added?: number } {
     // Public cash tables are humans-only (bots are private host / practice).
     if (!this.meta.isPrivate) {
@@ -728,6 +855,9 @@ export class Room {
         defaultPersonality: styles.defaultPersonality ?? null,
         namePersonalities: { ...(styles.namePersonalities ?? {}) },
       };
+    }
+    if (botGroupId) {
+      this.botGroupId = botGroupId;
     }
 
     // Specific seat → always one bot
@@ -759,6 +889,12 @@ export class Room {
     }
 
     if (added === 0) return { ok: false, error: 'Table full' };
+
+    if (this.usesAdaptiveExploit()) {
+      for (const p of this.state.players) {
+        if (p.userId && !isBotUserId(p.userId)) this.onHumanSeated(p.userId);
+      }
+    }
 
     // Before humans paid in: private host + bots is free practice.
     this.maybeEnablePlayMoneyForBots();
@@ -898,6 +1034,19 @@ export class Room {
       if (this.state.handId && this.state.handId !== this.lastRecordedHandId) {
         this.lastRecordedHandId = this.state.handId;
         try {
+          const handResult: HandResultPayload = {
+            winners: this.state.winners,
+            community: this.state.community,
+            players: this.state.players.map((p) => ({
+              seat: p.seat,
+              userId: p.userId,
+              name: p.name,
+              stack: p.stack,
+              revealed: p.revealed,
+              holeCards: p.holeCards,
+            })),
+            actions: this.handActions,
+          };
           await this.history.recordHand({
             tableId: this.meta.id,
             handId: this.state.handId,
@@ -906,20 +1055,11 @@ export class Room {
             startedAt: this.handStartedAt,
             endedAt: Date.now(),
             result: {
-              winners: this.state.winners,
-              community: this.state.community,
-              players: this.state.players.map((p) => ({
-                seat: p.seat,
-                userId: p.userId,
-                name: p.name,
-                stack: p.stack,
-                revealed: p.revealed,
-                holeCards: p.holeCards,
-              })),
-              actions: this.handActions,
+              ...handResult,
               chat: this.handChat,
             },
           });
+          this.mergeRecordedHandIntoExploit(handResult);
         } catch (err) {
           console.error('[history] recordHand failed', err);
         }
@@ -1292,6 +1432,7 @@ export class Room {
       this.avatarByUser.set(userId, avatarIdFromUserId(userId));
     }
     this.refreshIdleClock();
+    this.onHumanSeated(userId);
     void this.afterStateChange();
     this.maybeAutoStart();
     return { ok: true };
@@ -1785,6 +1926,7 @@ export class RoomManager {
   private tournamentHook: TournamentHandEndedHook | null = null;
   private onPublicLobbyChange: (() => void) | null = null;
   private banterLlm: BotBanterLlmService | null = null;
+  private exploitLlm: PlayerExploitLlmService | null = null;
 
   constructor(
     kv: KvStore,
@@ -1809,6 +1951,13 @@ export class RoomManager {
     this.banterLlm = llm;
     for (const room of this.rooms.values()) {
       room.setBanterLlm(llm);
+    }
+  }
+
+  setExploitLlm(llm: PlayerExploitLlmService | null): void {
+    this.exploitLlm = llm;
+    for (const room of this.rooms.values()) {
+      room.setExploitLlm(llm);
     }
   }
 
@@ -1861,6 +2010,7 @@ export class RoomManager {
       this.wallet,
       this.onPublicLobbyChange,
       this.banterLlm,
+      this.exploitLlm,
     );
     this.rooms.set(id, room);
     this.byInvite.set(inviteCode, id);

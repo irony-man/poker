@@ -6,3 +6,4 @@ export * from './view.js';
 export * from './bot.js';
 export * from './bot-groups.js';
 export * from './bot-banter.js';
+export * from './player-exploit.js';

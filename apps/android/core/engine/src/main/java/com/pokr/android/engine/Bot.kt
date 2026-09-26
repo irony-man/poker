@@ -22,6 +22,7 @@ enum class BotPersonalityId(val wire: String) {
     Nit("nit"),
     Lag("lag"),
     Humanoid("humanoid"),
+    Exploiter("exploiter"),
     ;
 
     companion object {
@@ -50,6 +51,7 @@ val BOT_PERSONALITIES: Map<BotPersonalityId, BotPersonality> = mapOf(
     BotPersonalityId.Nit to BotPersonality(BotPersonalityId.Nit, -2.4, 0.75, 0.35, -0.04, -0.04),
     BotPersonalityId.Lag to BotPersonality(BotPersonalityId.Lag, 1.8, 1.3, 1.5, 0.01, 0.05),
     BotPersonalityId.Humanoid to BotPersonality(BotPersonalityId.Humanoid, 0.8, 1.15, 1.4, 0.01, 0.03),
+    BotPersonalityId.Exploiter to BotPersonality(BotPersonalityId.Exploiter, 0.9, 1.42, 0.35, -0.07, 0.06),
 )
 
 private val BOT_NAME_PERSONALITIES: Map<String, BotPersonalityId> = mapOf(

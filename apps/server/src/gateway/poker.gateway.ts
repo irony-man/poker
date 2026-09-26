@@ -666,7 +666,15 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
         } else if (!r.getBotStyles()) {
           styles = this.site.getBotSeatingConfig();
         }
-        const result = r.addBot(userId, msg.seat, msg.buyIn, msg.count ?? 1, namePool, styles);
+        const result = r.addBot(
+          userId,
+          msg.seat,
+          msg.buyIn,
+          msg.count ?? 1,
+          namePool,
+          styles,
+          msg.botGroupId ?? null,
+        );
         if (!result.ok) send({ type: 'error', message: result.error ?? 'Add bot failed' });
         break;
       }

@@ -76,11 +76,17 @@ describe('DEFAULT_BOT_GROUP_DEFS', () => {
     const levels = DEFAULT_BOT_GROUP_DEFS.filter((g) => g.labelId === 'level');
     const styles = DEFAULT_BOT_GROUP_DEFS.filter((g) => g.labelId === 'groups');
     expect(levels).toHaveLength(3);
-    expect(styles.length).toBeGreaterThanOrEqual(5);
+    expect(styles.length).toBeGreaterThanOrEqual(6);
     for (const g of DEFAULT_BOT_GROUP_DEFS) {
       expect(g.names.length).toBeGreaterThan(0);
       expect(Object.keys(g.namePersonalities).length).toBeGreaterThan(0);
       expect(typeof g.description).toBe('string');
     }
+  });
+
+  it('includes Station Crushers with exploiter default', () => {
+    const pack = DEFAULT_BOT_GROUP_DEFS.find((g) => g.id === 'station-crushers');
+    expect(pack?.defaultPersonality).toBe('exploiter');
+    expect(pack?.labelId).toBe('groups');
   });
 });

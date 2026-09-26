@@ -18,6 +18,8 @@ import {
   pickReactingBot,
   resolveBotPersonalityId,
   resolveChatReplyBot,
+  aggregatePlayerTendencies,
+  type BotDecisionContext,
   returnToWaiting,
   sitDown,
   sitIn,
@@ -71,6 +73,10 @@ import {
   saveOfflineSession,
 } from '@/lib/offlineSession';
 import { readStoredSession } from '@/lib/session';
+import {
+  appendOfflineExploitHand,
+  listOfflineExploitHands,
+} from '@/lib/offlineExploitHands';
 import type { ActionType } from '@poker/engine';
 import { useSfxMuted } from '@/lib/useSfxMuted';
 import { useTableHotkeys, type PlayHotkeyHandlers } from '@/lib/useTableHotkeys';
@@ -216,6 +222,17 @@ export function OfflineTableView({
   winWhuffies?: number;
 }) {
   const router = useRouter();
+  const exploitHumanUserId = readStoredSession()?.userId ?? HUMAN_ID;
+  const usesAdaptiveExploit =
+    botGroupId === 'station-crushers' || botStyles?.defaultPersonality === 'exploiter';
+  const buildOfflineExploitContext = useCallback((): BotDecisionContext | undefined => {
+    if (!usesAdaptiveExploit) return undefined;
+    const hands = listOfflineExploitHands(exploitHumanUserId);
+    const snap = aggregatePlayerTendencies(hands, exploitHumanUserId);
+    const opponentTendencies = new Map<string, NonNullable<ReturnType<typeof aggregatePlayerTendencies>>>();
+    if (snap) opponentTendencies.set(exploitHumanUserId, snap);
+    return { primaryHumanUserId: exploitHumanUserId, opponentTendencies };
+  }, [usesAdaptiveExploit, exploitHumanUserId]);
   const pushChat = useSession((s) => s.pushChat);
   const setEmoji = useSession((s) => s.setEmoji);
   const setActionBurst = useSession((s) => s.setActionBurst);
@@ -374,13 +391,14 @@ export function OfflineTableView({
         result: buildOfflineHandResult(next, handActionsRef.current, handChatRef.current),
         chat: handChatRef.current,
       };
+      appendOfflineExploitHand(exploitHumanUserId, payload.result);
       void submitOfflineHand(payload).then((res) => {
         if (gameComplete && res?.whuffiesAwarded != null && res.whuffiesAwarded > 0) {
           setWhuffiesAwardedForGame(res.whuffiesAwarded);
         }
       });
     },
-    [botGroupId],
+    [botGroupId, exploitHumanUserId],
   );
 
   const syncChat = useCallback(
@@ -609,7 +627,19 @@ export function OfflineTableView({
         timerRef.current = setTimeout(() => {
           setState((curr) => {
             if (curr.toAct === null || curr.toAct !== seat) return curr;
-            const intent = chooseBotAction(curr, curr.toAct, config);
+            const botSeat = curr.toAct;
+            const botActor = curr.players[botSeat];
+            const botStyle = botActor
+              ? personalityForBot(botActor.userId, botActor.name, botStyles)
+              : undefined;
+            const intent = chooseBotAction(
+              curr,
+              botSeat,
+              config,
+              botStyle,
+              buildOfflineExploitContext(),
+              botStyles,
+            );
             const result = intent
               ? applyAction(curr, curr.toAct, intent, config)
               : applyTimeout(curr, config);

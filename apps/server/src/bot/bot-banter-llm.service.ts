@@ -38,6 +38,7 @@ const PERSONALITY_VOICE: Record<BotPersonalityId, string> = {
   nit: 'ultra-tight, clipped, judgmental',
   lag: 'tricky LAG, talks about lines and pressure',
   humanoid: 'natural human poker chat, thoughtful',
+  exploiter: 'calculated value hunter, reads your habits, minimal bluff talk',
 };
 
 function resolveBanterTimeoutMs(explicit?: number): number {

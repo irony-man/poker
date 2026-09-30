@@ -22,6 +22,7 @@ import {
   DetailHeader,
   EmptyPane,
   PanelBlock,
+  CheckboxRow,
   SaveBar,
   Section,
   SplitItem,
@@ -100,6 +101,7 @@ export function BotsSection({
   onSave: (e: React.FormEvent) => void;
 }) {
   const group = botGroups.find((g) => g.id === openBotGroup) ?? botGroups[0] ?? null;
+  const hotOfflineNavCount = botGroups.filter((g) => g.hotOfflineNav).length;
   const importPreview = useMemo(
     () => (showJsonImport ? parseBotGroupsJson(importJsonText) : null),
     [showJsonImport, importJsonText],
@@ -113,6 +115,9 @@ export function BotsSection({
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs tabular-nums text-muted">
             {botGroups.length}/{MAX_BOT_GROUPS}
+            {hotOfflineNavCount > 0 ? (
+              <> · {hotOfflineNavCount}/5 nav shortcuts</>
+            ) : null}
           </span>
           <Button
             variant="ghost"
@@ -491,6 +496,16 @@ function BotGroupEditor({
         }}
         disabled={busy}
         help="Whuffies credited when a signed-in player wins the offline session (all bots busted). 0 = off."
+      />
+
+      <CheckboxRow
+        title="Hot offline nav shortcut"
+        checked={Boolean(group.hotOfflineNav)}
+        onChange={(checked) => {
+          if (busy) return;
+          onUpdateGroup(group.id, { hotOfflineNav: checked });
+        }}
+        hint="Shows in the lobby sidebar and on offline setup. Max 5 site-wide (first five in list order)."
       />
 
       <div className="grid max-w-md gap-4 sm:grid-cols-2">

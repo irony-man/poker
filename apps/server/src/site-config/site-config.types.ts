@@ -138,6 +138,8 @@ export interface BotGroup {
   namePersonalities: Record<string, BotPersonalityId>;
   /** Whuffies when a signed-in player wins the offline session (all bots busted). 0 = disabled. */
   winWhuffies: number;
+  /** Featured offline shortcut in lobby nav and /solo (max site-wide). */
+  hotOfflineNav: boolean;
 }
 
 /** Name pool + styles used when seating bots from a group. */
@@ -158,6 +160,7 @@ export const MAX_BOT_NAMES_PER_GROUP = 40;
 export const MAX_BOT_GROUP_NAME_LEN = 48;
 export const MAX_BOT_DISPLAY_NAME_LEN = 24;
 export const MAX_BOT_GROUP_WIN_WHUFFIES = 100_000;
+export const MAX_HOT_OFFLINE_NAV = 5;
 
 /** Matches engine DEFAULT_BOT_NAMES; fallback when config is empty. */
 export const DEFAULT_BOT_DISPLAY_NAMES: string[] = [
@@ -199,6 +202,7 @@ export const DEFAULT_BOT_GROUPS: BotGroup[] = DEFAULT_BOT_GROUP_DEFS.map((g) => 
   defaultPersonality: g.defaultPersonality,
   namePersonalities: { ...g.namePersonalities },
   winWhuffies: 0,
+  hotOfflineNav: false,
 }));
 
 /** Table SFX kinds played during a hand (admin-editable URLs). */
@@ -664,6 +668,7 @@ function cloneBotGroup(g: BotGroup): BotGroup {
     defaultPersonality: g.defaultPersonality,
     namePersonalities: { ...g.namePersonalities },
     winWhuffies: g.winWhuffies,
+    hotOfflineNav: g.hotOfflineNav,
   };
 }
 
@@ -757,6 +762,7 @@ export function normalizeBotGroup(raw: unknown, index: number): BotGroup | null 
       ? o.description.trim().slice(0, MAX_BOT_GROUP_DESCRIPTION_LEN)
       : '';
   const winWhuffies = normalizeWinWhuffies(o.winWhuffies);
+  const hotOfflineNav = Boolean(o.hotOfflineNav);
   return {
     id,
     name,
@@ -767,7 +773,19 @@ export function normalizeBotGroup(raw: unknown, index: number): BotGroup | null 
     defaultPersonality,
     namePersonalities,
     winWhuffies,
+    hotOfflineNav,
   };
+}
+
+/** Keep at most {@link MAX_HOT_OFFLINE_NAV} hot flags (list order wins). */
+export function capHotOfflineNav(groups: BotGroup[]): BotGroup[] {
+  let hotCount = 0;
+  return groups.map((g) => {
+    if (!g.hotOfflineNav) return g;
+    hotCount += 1;
+    if (hotCount <= MAX_HOT_OFFLINE_NAV) return g;
+    return { ...g, hotOfflineNav: false };
+  });
 }
 
 export function normalizeBotGroups(raw: unknown): BotGroup[] {
@@ -796,7 +814,7 @@ export function normalizeBotGroups(raw: unknown): BotGroup[] {
   for (let i = 0; i < out.length; i++) {
     out[i]!.isDefault = i === (defaultIdx >= 0 ? defaultIdx : 0);
   }
-  return out;
+  return capHotOfflineNav(out);
 }
 
 function pickBotGroup(groups: BotGroup[], groupId?: string | null): BotGroup {

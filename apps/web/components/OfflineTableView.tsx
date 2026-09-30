@@ -245,6 +245,7 @@ export function OfflineTableView({
   const [bootstrapped, setBootstrapped] = useState(false);
   const [turnEndsAt, setTurnEndsAt] = useState<number | null>(null);
   const [dismissedWinHandId, setDismissedWinHandId] = useState<string | null>(null);
+  const [dismissedGameWonModal, setDismissedGameWonModal] = useState(false);
   const [whuffiesAwardedForGame, setWhuffiesAwardedForGame] = useState<number | null>(
     null,
   );
@@ -271,6 +272,8 @@ export function OfflineTableView({
   const handActionsRef = useRef<Array<EngineEvent & { at: number }>>([]);
   const handChatRef = useRef<ChatMessage[]>([]);
   const recordedHandsRef = useRef(new Set<string>());
+  const wasGameCompleteOnLoadRef = useRef(false);
+  const capturedInitialGameCompleteRef = useRef(false);
   const pendingAnnounceRef = useRef<{
     state: HandState;
     events: EngineEvent[];
@@ -524,6 +527,12 @@ export function OfflineTableView({
   }, [config, playerName, botNames, botStyles, resume, pushChat, clearBotReadyTimers, clearBotBanterTimers]);
 
   useEffect(() => {
+    if (!bootstrapped || capturedInitialGameCompleteRef.current) return;
+    capturedInitialGameCompleteRef.current = true;
+    wasGameCompleteOnLoadRef.current = isOfflineGameComplete(state, HUMAN_ID);
+  }, [bootstrapped, state]);
+
+  useEffect(() => {
     if (!bootstrapped) return;
     const write = () => {
       if (!persistSessionRef.current) return;
@@ -759,6 +768,58 @@ export function OfflineTableView({
     setState(result.state);
   };
 
+  const seatFreshOfflineTable = useCallback((): HandState | null => {
+    let s = createEmptyTable(config);
+    const seated = sitDown(s, 0, HUMAN_ID, playerName, config.buyIn);
+    if (!seated.ok) return null;
+    s = seated.state;
+    const taken = new Set([playerName]);
+    const namePool = botNames && botNames.length > 0 ? botNames : undefined;
+    const bots = Math.max(1, config.maxSeats - 1);
+    for (let i = 0; i < bots; i++) {
+      const empty = s.players.find((p) => p.status === 'empty');
+      if (!empty) break;
+      const botName = pickBotName(taken, namePool);
+      taken.add(botName);
+      const bareId = `off-${i}`;
+      const personality = resolveBotPersonalityId(botName, bareId, botStyles);
+      const r = sitDown(s, empty.seat, makeBotUserId(bareId, personality), botName, config.buyIn);
+      if (r.ok) s = r.state;
+    }
+    return s;
+  }, [config, playerName, botNames, botStyles]);
+
+  const startNextOfflineGame = useCallback(() => {
+    resetBotReady();
+    clearBotBanterTimers();
+    botReadyIdsRef.current.clear();
+    tableIdRef.current = newOfflineTableId(readStoredSession()?.userId);
+    recordedHandsRef.current.clear();
+    handActionsRef.current = [];
+    handChatRef.current = [];
+    handStartedAtRef.current = 0;
+    setDismissedWinHandId(null);
+    setDismissedGameWonModal(false);
+    setWhuffiesAwardedForGame(null);
+    wasGameCompleteOnLoadRef.current = false;
+    const s = seatFreshOfflineTable();
+    if (!s) return;
+    setState(s);
+    const bots = Math.max(1, config.maxSeats - 1);
+    pushChat({
+      userId: 'system',
+      name: 'Dealer',
+      text: `New game — you vs ${bots} bot${bots === 1 ? '' : 's'}`,
+      at: Date.now(),
+    });
+  }, [
+    clearBotBanterTimers,
+    config.maxSeats,
+    pushChat,
+    resetBotReady,
+    seatFreshOfflineTable,
+  ]);
+
   const start = () => {
     if (state.street !== 'waiting' && state.street !== 'payout') return;
     resetBotReady();
@@ -836,6 +897,11 @@ export function OfflineTableView({
   } = useHandPresentation(publicTable, HUMAN_ID, dismissedWinHandId);
   const signedIn = !!readStoredSession()?.sessionToken;
   const offlineGameComplete = isOfflineGameComplete(state, HUMAN_ID);
+  const showHandWinModal = showWinModal;
+  const showGameWonModal =
+    offlineGameComplete && !dismissedGameWonModal && !showHandWinModal;
+  const openWinModal = showHandWinModal || showGameWonModal;
+  const showPlayNextGame = offlineGameComplete;
   const whuffiesEarned =
     offlineGameComplete && whuffiesAwardedForGame != null && whuffiesAwardedForGame > 0
       ? whuffiesAwardedForGame
@@ -881,7 +947,8 @@ export function OfflineTableView({
     router.push('/solo');
   };
 
-  const showDockReadyRoster = betweenHands && readyRosterPlayers.length > 0;
+  const showDockReadyRoster =
+    betweenHands && readyRosterPlayers.length > 0 && !offlineGameComplete;
   const dockReadyHeading =
     publicTable.street === 'waiting' && readyCount === 0
       ? 'Players'
@@ -945,7 +1012,7 @@ export function OfflineTableView({
           connection="open"
           playHotkeysRef={playHotkeysRef}
           tableTools={{
-            onStart: canStartHand ? start : undefined,
+            onStart: canStartHand && !offlineGameComplete ? start : undefined,
             startLabel: publicTable.street === 'waiting' ? 'Start hand' : 'Next hand',
             readyCount,
             readyTotal: eligiblePlayers.length,
@@ -1120,9 +1187,9 @@ export function OfflineTableView({
 
       </div>
 
-      {showWinModal && publicTable && (
+      {openWinModal && publicTable && (
         <WinHandModal
-          youWon={youWon}
+          youWon={showGameWonModal ? true : youWon}
           whuffiesEarned={whuffiesEarned}
           whuffiesTeaser={whuffiesTeaser}
           whuffieSignInHint={!signedIn && !!whuffiesTeaser}
@@ -1130,23 +1197,45 @@ export function OfflineTableView({
           canStartNext={
             myPlayer?.status !== 'sittingOut' &&
             myPlayer?.status !== 'empty' &&
-            coerceMoney(myPlayer?.stack) > 0
+            coerceMoney(myPlayer?.stack) > 0 &&
+            (!offlineGameComplete || showPlayNextGame)
           }
+          nextHandLabel={showPlayNextGame ? 'Play next Game' : undefined}
           canTopUp={canTopUp}
           canSitOut={canSitOut}
           canSitIn={canSitIn}
           readyCount={readyCount}
           readyTotal={eligiblePlayers.length}
           readyPlayers={readyRosterPlayers}
-          winners={winLines}
+          winners={
+            winLines.length > 0
+              ? winLines
+              : [
+                  {
+                    seat: mySeat ?? 0,
+                    name: myPlayer?.name ?? playerName,
+                    amount: coerceMoney(myPlayer?.stack),
+                    isSelf: true,
+                  },
+                ]
+          }
           onNextHand={() => {
+            if (showPlayNextGame) {
+              setDismissedGameWonModal(true);
+              setDismissedWinHandId(publicTable.handId);
+              startNextOfflineGame();
+              return;
+            }
             setDismissedWinHandId(publicTable.handId);
             start();
           }}
           onTopUp={doTopUp}
           onSitOut={doSitOut}
           onSitIn={doSitIn}
-          onDismiss={() => setDismissedWinHandId(publicTable.handId)}
+          onDismiss={() => {
+            setDismissedWinHandId(publicTable.handId);
+            if (offlineGameComplete) setDismissedGameWonModal(true);
+          }}
         />
       )}
     </TableShell>

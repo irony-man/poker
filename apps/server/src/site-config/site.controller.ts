@@ -29,6 +29,7 @@ export class SiteController {
         defaultPersonality: g.defaultPersonality,
         namePersonalities: g.namePersonalities,
         winWhuffies: g.winWhuffies,
+        hotOfflineNav: g.hotOfflineNav,
       })),
       botGroupLabels: this.site.getBotGroupLabels(),
       sounds: this.site.getSounds(),

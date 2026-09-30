@@ -10,7 +10,13 @@ import { loadSavedAvatarId } from '@/lib/avatars';
 import { MoneyAmount } from '@/components/CurrencyIcon';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 import { PendingCountBadge, useOnlineFriends } from '@/components/OnlineFriends';
-import { LOBBY_NAV, isLobbyNavActive } from '@/lib/lobbyNav';
+import { fetchPublicBotGroups } from '@/lib/api';
+import {
+  LOBBY_NAV,
+  hotOfflineSoloHref,
+  isHotOfflineNavActive,
+  isLobbyNavActive,
+} from '@/lib/lobbyNav';
 import { useSession } from '@/lib/store';
 import { cn } from '@/lib/cn';
 
@@ -86,11 +92,27 @@ export function LobbySidebar({
   const { pendingCount } = useOnlineFriends();
   const [avatarId, setAvatarId] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [hotOfflineGroups, setHotOfflineGroups] = useState<
+    { id: string; name: string }[]
+  >([]);
 
   useEffect(() => {
     if (!signedIn) return;
     setAvatarId(loadSavedAvatarId());
   }, [signedIn, userId, pathname, chipBalance]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchPublicBotGroups().then((groups) => {
+      if (cancelled) return;
+      setHotOfflineGroups(
+        groups.filter((g) => g.hotOfflineNav).map((g) => ({ id: g.id, name: g.name })),
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const onCopyUsername = useCallback(async () => {
     const handle = (username ?? displayName ?? '').trim();
@@ -138,6 +160,29 @@ export function LobbySidebar({
             >
               <span>{t.label}</span>
               {showBadge ? <PendingCountBadge count={pendingCount} /> : null}
+            </Link>
+          );
+        })}
+        {hotOfflineGroups.map((g) => {
+          const href = hotOfflineSoloHref(g.id);
+          const active = isHotOfflineNavActive(
+            pathname,
+            g.id,
+            searchParams.toString(),
+          );
+          return (
+            <Link
+              key={g.id}
+              href={href}
+              aria-current={active ? 'page' : undefined}
+              className={cn(
+                'nav-sidebar-item pl-5 text-sm',
+                active
+                  ? 'nav-sidebar-item-active bg-on-chrome/15 text-on-chrome'
+                  : 'text-on-chrome/85 hover:bg-on-chrome/12 hover:text-on-chrome',
+              )}
+            >
+              {g.name}
             </Link>
           );
         })}

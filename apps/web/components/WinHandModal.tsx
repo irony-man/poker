@@ -214,6 +214,7 @@ export function WinHandModal({
   whuffiesTeaser,
   whuffieSignInHint = false,
   offlineGameComplete = false,
+  nextHandLabel,
 }: {
   winners: WinLine[];
   youWon: boolean;
@@ -224,6 +225,8 @@ export function WinHandModal({
   whuffieSignInHint?: boolean;
   /** Offline session won (all bots busted); Whuffies apply here, not per hand. */
   offlineGameComplete?: boolean;
+  /** Overrides default “Play Next Hand” (e.g. offline game won). */
+  nextHandLabel?: string;
   canStartNext: boolean;
   readyCount?: number;
   readyTotal?: number;
@@ -270,7 +273,7 @@ export function WinHandModal({
         size="sm"
         className={cn('btn-segment', isReady && 'ring-2 ring-sidebar/25 ring-offset-2 ring-offset-white')}
       >
-        {isReady ? 'Not ready' : 'Play Next Hand'}
+        {isReady ? 'Not ready' : (nextHandLabel ?? 'Play Next Hand')}
       </Button>
     );
   } else if (canSitIn && onSitIn) {
@@ -444,7 +447,7 @@ export function WinHandModal({
           </div>
         </div>
 
-        {roster.length > 0 ? (
+        {roster.length > 0 && !offlineGameComplete ? (
           <ReadyPlayersRoster
             players={roster}
             readyCount={readyCount}

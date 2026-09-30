@@ -69,6 +69,7 @@ import { useSession } from '@/lib/store';
 import { useLobbySession } from '@/lib/useLobbySession';
 import {
   applyBotGroupsImport,
+  capHotOfflineNav,
   defaultBotGroupLabels,
   defaultBotGroups,
   emptyBotGroup,
@@ -474,7 +475,7 @@ function AdminPageInner() {
       if (!payload.some((g) => g.isDefault) && payload[0]) {
         payload[0] = { ...payload[0], isDefault: true };
       }
-      const res = await patchAdminBotGroups(token, payload, botGroupLabels);
+      const res = await patchAdminBotGroups(token, capHotOfflineNav(payload), botGroupLabels);
       setBotGroups(res.groups.map(normalizeAdminBotGroup));
       if (res.labels) {
         setBotGroupLabels(
@@ -617,7 +618,7 @@ function AdminPageInner() {
       if (patch.isDefault) {
         next = next.map((g) => ({ ...g, isDefault: g.id === id }));
       }
-      return next;
+      return capHotOfflineNav(next);
     });
   }
 

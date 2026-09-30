@@ -75,7 +75,39 @@ export function isLobbyNavActive(
     const mode = playModeFromSearch(search);
     return href === '/play?mode=join' ? mode === 'join' : mode === 'host';
   }
+  if (href === '/solo') {
+    if (pathname !== '/solo' && !pathname.startsWith('/solo/')) {
+      if (pathname !== '/offline' && !pathname.startsWith('/offline/')) return false;
+    }
+    const params = new URLSearchParams(
+      search?.startsWith('?') ? search.slice(1) : (search ?? ''),
+    );
+    return !params.get('botGroup');
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+export function hotOfflineSoloHref(groupId: string): string {
+  return `/solo?botGroup=${encodeURIComponent(groupId)}`;
+}
+
+export function isHotOfflineNavActive(
+  pathname: string,
+  groupId: string,
+  search?: string | null,
+): boolean {
+  if (
+    pathname !== '/solo' &&
+    !pathname.startsWith('/solo/') &&
+    pathname !== '/offline' &&
+    !pathname.startsWith('/offline/')
+  ) {
+    return false;
+  }
+  const params = new URLSearchParams(
+    search?.startsWith('?') ? search.slice(1) : (search ?? ''),
+  );
+  return params.get('botGroup') === groupId;
 }
 
 export function isMobileNavActive(pathname: string, item: MobileBottomNavItem): boolean {

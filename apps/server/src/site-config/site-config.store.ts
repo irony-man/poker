@@ -135,6 +135,7 @@ export class SiteConfigStore {
         defaultPersonality: g.defaultPersonality,
         namePersonalities: { ...g.namePersonalities },
         winWhuffies: g.winWhuffies,
+        hotOfflineNav: g.hotOfflineNav,
       })),
       botGroupLabels: this.cache.botGroupLabels.map((l) => ({ ...l })),
       sounds: {
@@ -213,6 +214,7 @@ export class SiteConfigStore {
       defaultPersonality: g.defaultPersonality,
       namePersonalities: { ...g.namePersonalities },
       winWhuffies: g.winWhuffies,
+      hotOfflineNav: g.hotOfflineNav,
     }));
   }
 

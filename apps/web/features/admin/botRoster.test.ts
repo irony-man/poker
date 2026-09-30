@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { BotGroup } from '@/lib/api';
 import {
   applyBotGroupsImport,
+  capHotOfflineNav,
   defaultBotGroups,
   parseBotGroupsJson,
   serializeBotGroupsJson,
@@ -16,6 +17,8 @@ const classic: BotGroup = {
   description: 'Classic mixed table',
   defaultPersonality: null,
   namePersonalities: { AceBot: 'aggro', FoldBot: 'nit' },
+  winWhuffies: 0,
+  hotOfflineNav: false,
 };
 
 describe('parseBotGroupsJson', () => {
@@ -261,5 +264,29 @@ describe('defaultBotGroups', () => {
       'medium',
     ]);
     expect(groups.find((g) => g.id === 'easy')?.description).toMatch(/soft/i);
+  });
+});
+
+describe('capHotOfflineNav', () => {
+  it('keeps at most five hot flags in list order', () => {
+    const groups: BotGroup[] = Array.from({ length: 7 }, (_, i) => ({
+      ...classic,
+      id: `g-${i}`,
+      hotOfflineNav: true,
+    }));
+    const capped = capHotOfflineNav(groups);
+    expect(capped.filter((g) => g.hotOfflineNav)).toHaveLength(5);
+    expect(capped.slice(0, 5).every((g) => g.hotOfflineNav)).toBe(true);
+    expect(capped[5]!.hotOfflineNav).toBe(false);
+  });
+});
+
+describe('hotOfflineNav JSON', () => {
+  it('round-trips hotOfflineNav in export/import', () => {
+    const text = serializeBotGroupsJson([{ ...classic, hotOfflineNav: true }]);
+    const res = parseBotGroupsJson(text);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.groups[0]!.hotOfflineNav).toBe(true);
   });
 });

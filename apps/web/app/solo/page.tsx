@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   clearOfflineSession,
   loadOfflineSession,
@@ -23,8 +23,9 @@ import { usePageCopy } from '@/lib/usePageCopy';
 /** Full local range supported by the offline table. */
 const SEAT_OPTIONS = [2, 3, 4, 5, 6, 7, 8, 9] as const;
 
-export default function SoloPage() {
+function SoloPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { authReady, signedIn, name } = useLobbySession();
   const pageCopy = usePageCopy('solo');
   const [offlineSeats, setOfflineSeats] = useState(6);
@@ -45,7 +46,9 @@ export default function SoloPage() {
       if (cancelled) return;
       setBotGroups(groups);
       setBotGroupLabels(labels);
+      const fromUrl = searchParams.get('botGroup');
       setBotGroupId((cur) => {
+        if (fromUrl && groups.some((g) => g.id === fromUrl)) return fromUrl;
         if (cur && groups.some((g) => g.id === cur)) return cur;
         return groups.find((g) => g.isDefault)?.id ?? groups[0]?.id ?? null;
       });
@@ -53,7 +56,17 @@ export default function SoloPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [searchParams]);
+
+  const hotGroups = botGroups.filter((g) => g.hotOfflineNav);
+  const featuredIds = hotGroups.map((g) => g.id);
+
+  function selectBotGroup(id: string) {
+    setBotGroupId(id);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('botGroup', id);
+    router.replace(`/solo?${params.toString()}`, { scroll: false });
+  }
 
   if (!authReady) {
     return <LoadingScreen label="Loading…" />;
@@ -119,13 +132,23 @@ export default function SoloPage() {
                   : `${offlineSeats}-handed · you + ${bots} bots`}
               </p>
             </div>
+            {featuredIds.length > 0 ? (
+              <ChoiceRow
+                label="Featured"
+                name="offline-bot-featured"
+                selected={botGroupId ?? featuredIds[0]!}
+                options={featuredIds}
+                onSelect={selectBotGroup}
+                format={(id) => hotGroups.find((g) => g.id === id)?.name ?? id}
+              />
+            ) : null}
             {botGroups.length > 0 ? (
               <BotGroupPicker
                 groups={botGroups}
                 labels={botGroupLabels}
                 name="offline-bot-group"
                 selectedId={botGroupId ?? botGroups[0]!.id}
-                onSelect={setBotGroupId}
+                onSelect={selectBotGroup}
               />
             ) : null}
           </div>
@@ -162,5 +185,13 @@ export default function SoloPage() {
         </LobbySplitCard>
       </form>
     </LobbyPageShell>
+  );
+}
+
+export default function SoloPage() {
+  return (
+    <Suspense fallback={<LoadingScreen label="Loading…" />}>
+      <SoloPageInner />
+    </Suspense>
   );
 }

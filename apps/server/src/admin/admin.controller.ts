@@ -132,6 +132,7 @@ const BotGroupBody = z.object({
   defaultPersonality: BotPersonalityIdSchema.nullable().optional(),
   namePersonalities: z.record(BotPersonalityIdSchema).optional(),
   winWhuffies: z.number().int().min(0).max(100_000).optional(),
+  hotOfflineNav: z.boolean().optional(),
 });
 
 const BotGroupLabelBody = z.object({

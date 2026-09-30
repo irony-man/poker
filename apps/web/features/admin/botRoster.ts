@@ -31,6 +31,7 @@ export function defaultBotGroups(): BotGroup[] {
     defaultPersonality: g.defaultPersonality,
     namePersonalities: { ...g.namePersonalities },
     winWhuffies: 0,
+    hotOfflineNav: false,
   }));
 }
 
@@ -97,7 +98,21 @@ export function normalizeAdminBotGroup(g: BotGroup): BotGroup {
     defaultPersonality: g.defaultPersonality ?? null,
     namePersonalities: pruneNamePersonalities(names, g.namePersonalities),
     winWhuffies: Math.max(0, Math.min(100_000, Math.floor(g.winWhuffies ?? 0))),
+    hotOfflineNav: Boolean(g.hotOfflineNav),
   };
+}
+
+const MAX_HOT_OFFLINE_NAV = 5;
+
+/** Keep at most five hot offline nav flags (list order wins). */
+export function capHotOfflineNav(groups: BotGroup[]): BotGroup[] {
+  let hotCount = 0;
+  return groups.map((g) => {
+    if (!g.hotOfflineNav) return g;
+    hotCount += 1;
+    if (hotCount <= MAX_HOT_OFFLINE_NAV) return g;
+    return { ...g, hotOfflineNav: false };
+  });
 }
 
 export function rosterToBulkText(
@@ -221,6 +236,7 @@ export function emptyBotGroup(labelId = 'groups'): BotGroup {
     defaultPersonality: null,
     namePersonalities,
     winWhuffies: 0,
+    hotOfflineNav: false,
   };
 }
 
@@ -398,6 +414,8 @@ function parseOneImportedGroup(raw: unknown, index: number, errors: string[]): B
     }
   }
 
+  const hotOfflineNav = Boolean(o.hotOfflineNav);
+
   return {
     id,
     name,
@@ -408,6 +426,7 @@ function parseOneImportedGroup(raw: unknown, index: number, errors: string[]): B
     defaultPersonality,
     namePersonalities,
     winWhuffies,
+    hotOfflineNav,
   };
 }
 
@@ -568,6 +587,7 @@ export function serializeBotGroupsJson(
       isDefault: g.isDefault,
       defaultPersonality: g.defaultPersonality,
       winWhuffies: g.winWhuffies,
+      hotOfflineNav: g.hotOfflineNav,
       names: g.names,
       namePersonalities: g.namePersonalities,
     })),
@@ -596,7 +616,7 @@ export function applyBotGroupsImport(
     }
     return {
       ok: true,
-      groups: ensureOneDefault(imported.map(normalizeAdminBotGroup)),
+      groups: capHotOfflineNav(ensureOneDefault(imported.map(normalizeAdminBotGroup))),
       added: imported.length,
       replaced: existing.length,
     };
@@ -628,7 +648,7 @@ export function applyBotGroupsImport(
       ],
     };
   }
-  return { ok: true, groups: ensureOneDefault(merged), added, replaced };
+  return { ok: true, groups: capHotOfflineNav(ensureOneDefault(merged)), added, replaced };
 }
 
 /** Remap packs off a deleted label onto the first remaining label. */

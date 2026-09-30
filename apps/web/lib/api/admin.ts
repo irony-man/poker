@@ -91,6 +91,8 @@ export interface BotGroup {
   namePersonalities: Record<string, BotPersonalityId>;
   /** Whuffies for winning the offline session vs this pack (0 = disabled). */
   winWhuffies: number;
+  /** Featured offline shortcut in lobby nav and /solo. */
+  hotOfflineNav: boolean;
 }
 
 /** Public list of bot groups for host / table / offline. */
@@ -108,6 +110,7 @@ export interface PublicBotGroup {
   defaultPersonality?: BotPersonalityId | null;
   namePersonalities?: Record<string, BotPersonalityId>;
   winWhuffies?: number;
+  hotOfflineNav?: boolean;
 }
 
 export async function fetchAdminHomeFeatures(sessionToken: string) {

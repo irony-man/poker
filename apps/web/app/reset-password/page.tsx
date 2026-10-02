@@ -1,15 +1,33 @@
 'use client';
 
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { FormEvent, Suspense, useState } from 'react';
+import { FormEvent, Suspense, useEffect, useState } from 'react';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { Button } from '@/components/ui/Button';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { TextField } from '@/components/ui/TextField';
-import { resetPassword } from '@/lib/api';
+import { checkResetToken, resetPassword } from '@/lib/api';
 import { clearStoredSession } from '@/lib/session';
 import { useSession } from '@/lib/store';
+
+type LinkState = 'checking' | 'valid' | 'invalid';
+
+function InvalidLink({ message }: { message: string }) {
+  return (
+    <div className="surface-card-lg flex flex-col gap-4">
+      <StatusChip tone="danger" role="alert" className="text-sm">
+        {message}
+      </StatusChip>
+      <p className="text-sm text-muted">
+        Reset links work once and expire after an hour. Request a new one and use the latest
+        email.
+      </p>
+      <Button href="/forgot-password" className="min-h-11 w-full">
+        Request a new link
+      </Button>
+    </div>
+  );
+}
 
 function ResetPasswordForm() {
   const search = useSearchParams();
@@ -20,6 +38,27 @@ function ResetPasswordForm() {
   const [busy, setBusy] = useState(false);
   const [doneFor, setDoneFor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [linkState, setLinkState] = useState<LinkState>(token ? 'checking' : 'invalid');
+
+  useEffect(() => {
+    if (!token) {
+      setLinkState('invalid');
+      return;
+    }
+    let cancelled = false;
+    setLinkState('checking');
+    void checkResetToken(token)
+      .then((valid) => {
+        if (!cancelled) setLinkState(valid ? 'valid' : 'invalid');
+      })
+      .catch(() => {
+        // Can't tell (network/server) — show the form; submit reports the real error.
+        if (!cancelled) setLinkState('valid');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -36,7 +75,12 @@ function ResetPasswordForm() {
       clearSession();
       setDoneFor(username);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not reset password');
+      const stillValid = await checkResetToken(token).catch(() => true);
+      if (!stillValid) {
+        setLinkState('invalid');
+      } else {
+        setError(err instanceof Error ? err.message : 'Could not reset password');
+      }
     } finally {
       setBusy(false);
     }
@@ -44,14 +88,7 @@ function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <div className="surface-card-lg flex flex-col gap-4">
-        <StatusChip tone="danger" role="alert" className="text-sm">
-          This reset link is missing its token. Open the link from the email again.
-        </StatusChip>
-        <Button href="/forgot-password" className="min-h-11 w-full">
-          Request a new link
-        </Button>
-      </div>
+      <InvalidLink message="This reset link is missing its token. Open the link from the email again." />
     );
   }
 
@@ -66,6 +103,14 @@ function ResetPasswordForm() {
         </Button>
       </div>
     );
+  }
+
+  if (linkState === 'checking') {
+    return <LoadingScreen compact label="Checking your link…" />;
+  }
+
+  if (linkState === 'invalid') {
+    return <InvalidLink message="This reset link is invalid or has expired." />;
   }
 
   return (
@@ -102,12 +147,6 @@ function ResetPasswordForm() {
       <Button disabled={busy} type="submit" className="min-h-11 w-full">
         {busy ? 'Saving…' : 'Set new password'}
       </Button>
-      <p className="text-sm text-muted">
-        Link expired?{' '}
-        <Link href="/forgot-password" className="font-semibold text-sidebar hover:underline">
-          Request a new one
-        </Link>
-      </p>
     </form>
   );
 }

@@ -79,6 +79,15 @@ export function contestPlacementPrize(
   return 0;
 }
 
+/** One finished hand in a contest, for the contest page's hand list. */
+export interface ContestHandSummary {
+  id: string;
+  /** 1-based, in play order across the contest. */
+  handNumber: number;
+  endedAt: number | null;
+  winners: { name: string; amount: number; handName: string | null }[];
+}
+
 export const ContestBlindInfoSchema = z.object({
   levelIndex: z.number().int().nonnegative(),
   smallBlind: z.number().int().positive(),

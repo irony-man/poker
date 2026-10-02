@@ -4,6 +4,7 @@ import { MemoryKv } from './kv/kv.store.js';
 import { memoryHistoryStore, type HandHistoryStore } from './history/history.store.js';
 import { RoomManager } from './rooms/room.js';
 import { TournamentManager } from './contests/tournament.js';
+import type { ContestPersistence, PersistedContest } from './contests/contest.store.js';
 import { UnlimitedWalletStore, type WalletStore } from './wallet/wallet.store.js';
 import type {
   WalletMutationResult,
@@ -492,5 +493,139 @@ describe('TournamentManager', () => {
       amount: 500,
       reason: 'cash_out',
     });
+  });
+});
+
+class MemoryContestStore implements ContestPersistence {
+  rows = new Map<string, PersistedContest>();
+  async loadAll(): Promise<PersistedContest[]> {
+    return [...this.rows.values()].map((p) => structuredClone(p));
+  }
+  async save(contest: PersistedContest): Promise<void> {
+    this.rows.set(contest.id, structuredClone(contest));
+  }
+}
+
+describe('TournamentManager persistence', () => {
+  let store: MemoryContestStore;
+  let wallet: TrackingWallet;
+  let tournaments: TournamentManager;
+
+  const baseOpts = {
+    name: 'Saved',
+    hostUserId: 'host',
+    hostName: 'Host',
+    fieldSize: 2,
+    startingStack: 500,
+    smallBlind: 5,
+    bigBlind: 10,
+    turnTimeMs: 20_000,
+    botCount: 0,
+    isPrivate: true,
+    autoStart: false,
+  };
+
+  function boot(): TournamentManager {
+    const tm = new TournamentManager(new RoomManager(new MemoryKv(), memoryHistory()), wallet);
+    tm.setPersistence(store);
+    return tm;
+  }
+
+  async function restart(): Promise<TournamentManager> {
+    await tournaments.flushPersistence();
+    wallet = new TrackingWallet();
+    const next = boot();
+    await next.restore();
+    return next;
+  }
+
+  beforeEach(() => {
+    store = new MemoryContestStore();
+    wallet = new TrackingWallet();
+    tournaments = boot();
+  });
+
+  it('keeps registering contests (entrants, invite code) across a restart', async () => {
+    const created = await tournaments.create({ ...baseOpts, mode: 'chips', fieldSize: 4 });
+    await tournaments.register(created.id, 'p2', 'Bob');
+
+    const after = await restart();
+    const view = after.get(created.id);
+    expect(view?.status).toBe('registering');
+    expect(view?.entrants.map((e) => e.userId)).toEqual(['host', 'p2']);
+    expect(after.getByInvite(created.inviteCode)?.id).toBe(created.id);
+    expect(after.listPublic()).toHaveLength(0);
+    expect(after.listForUser('p2').map((c) => c.id)).toEqual([created.id]);
+
+    // Buy-ins were already collected; unregistering after restart still refunds.
+    const left = await after.unregister(created.id, 'p2');
+    expect(left.ok).toBe(true);
+    expect(wallet.credits).toContainEqual({ userId: 'p2', amount: 500, reason: 'cash_out' });
+  });
+
+  it('cancels a contest interrupted mid-game and refunds last known stacks', async () => {
+    const created = await tournaments.create({ ...baseOpts, mode: 'chips' });
+    await tournaments.register(created.id, 'p2', 'Bob');
+    const started = await tournaments.start(created.id, 'host');
+    expect(started.contest?.status).toBe('running');
+
+    const after = await restart();
+    const view = after.get(created.id);
+    expect(view?.status).toBe('cancelled');
+    expect(view?.assignments.every((a) => a.tableId === null)).toBe(true);
+    expect(wallet.credits).toEqual(
+      expect.arrayContaining([
+        { userId: 'host', amount: 500, reason: 'cash_out' },
+        { userId: 'p2', amount: 500, reason: 'cash_out' },
+      ]),
+    );
+
+    // A second restart must not refund again.
+    tournaments = after;
+    const again = await restart();
+    expect(again.get(created.id)?.status).toBe('cancelled');
+    expect(wallet.credits).toHaveLength(0);
+  });
+
+  it('refunds the stacks recorded after the last finished hand', async () => {
+    const rooms = new RoomManager(new MemoryKv(), memoryHistory());
+    tournaments = new TournamentManager(rooms, wallet);
+    tournaments.setPersistence(store);
+    const created = await tournaments.create({ ...baseOpts, mode: 'rounds', handLimit: 10 });
+    await tournaments.register(created.id, 'p2', 'Bob');
+    const started = await tournaments.start(created.id, 'host');
+    const room = rooms.get(started.contest!.tableId!)!;
+    for (const p of room.state.players) {
+      if (p.userId === 'host') p.stack = 650;
+      if (p.userId === 'p2') p.stack = 350;
+    }
+    tournaments.forceHandEnded(created.id);
+
+    const after = await restart();
+    expect(after.get(created.id)?.status).toBe('cancelled');
+    expect(wallet.credits).toEqual(
+      expect.arrayContaining([
+        { userId: 'host', amount: 650, reason: 'cash_out' },
+        { userId: 'p2', amount: 350, reason: 'cash_out' },
+      ]),
+    );
+  });
+
+  it('keeps completed contests with standings and does not pay again', async () => {
+    const created = await tournaments.create({ ...baseOpts, mode: 'chips' });
+    await tournaments.register(created.id, 'p2', 'Bob');
+    await tournaments.start(created.id, 'host');
+    tournaments.forceEliminate(created.id, 'p2');
+    expect(tournaments.get(created.id)?.status).toBe('completed');
+
+    const after = await restart();
+    const view = after.get(created.id);
+    expect(view?.status).toBe('completed');
+    expect(view?.placements.map((p) => [p.userId, p.place])).toEqual([
+      ['host', 1],
+      ['p2', 2],
+    ]);
+    expect(wallet.credits).toHaveLength(0);
+    expect(wallet.whuffieCredits).toHaveLength(0);
   });
 });

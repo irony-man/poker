@@ -124,6 +124,18 @@ export async function forgotPassword(identifier: string): Promise<void> {
   if (!res.ok) throw new Error(await parseError(res, 'Could not send reset email'));
 }
 
+/** Whether a reset link can still be used (does not consume it). */
+export async function checkResetToken(token: string): Promise<boolean> {
+  const res = await fetch(`${apiBase()}/api/auth/reset-password/check`, {
+    method: 'POST',
+    headers: sessionHeaders(),
+    body: JSON.stringify({ token }),
+  });
+  if (!res.ok) throw new Error(await parseError(res, 'Could not check reset link'));
+  const data = (await res.json()) as { valid?: boolean };
+  return data.valid === true;
+}
+
 export async function resetPassword(
   token: string,
   password: string,

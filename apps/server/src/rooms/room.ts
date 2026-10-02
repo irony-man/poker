@@ -92,6 +92,8 @@ export interface TableMeta {
 
 /** Called after a tournament table hand reaches payout (before next-hand scheduling). */
 export type TournamentHandEndedHook = (room: Room) => void;
+/** Fired after a contest seat's stack changes outside a hand (top-up). */
+export type TournamentStacksChangedHook = (room: Room) => void;
 
 export interface ConnectionContext {
   userId: string;
@@ -144,6 +146,7 @@ export class Room {
   private wallet: WalletStore;
   private handStartedAt = 0;
   private tournamentHook: TournamentHandEndedHook | null = null;
+  private tournamentStacksHook: TournamentStacksChangedHook | null = null;
   private autoStartTimer: NodeJS.Timeout | null = null;
   /** Tournament: one hand → payout transition already notified. */
   private lastNotifiedHandId: string | null = null;
@@ -386,6 +389,10 @@ export class Room {
 
   setTournamentHook(hook: TournamentHandEndedHook | null): void {
     this.tournamentHook = hook;
+  }
+
+  setTournamentStacksHook(hook: TournamentStacksChangedHook | null): void {
+    this.tournamentStacksHook = hook;
   }
 
   isTournament(): boolean {
@@ -1560,6 +1567,7 @@ export class Room {
       return { ok: false, error: result.error };
     }
     this.state = result.state;
+    if (this.isTournament()) this.tournamentStacksHook?.(this);
     void this.afterStateChange();
     return { ok: true };
   }
@@ -1924,6 +1932,7 @@ export class RoomManager {
   private chips: TableChipStore;
   private wallet: WalletStore;
   private tournamentHook: TournamentHandEndedHook | null = null;
+  private tournamentStacksHook: TournamentStacksChangedHook | null = null;
   private onPublicLobbyChange: (() => void) | null = null;
   private banterLlm: BotBanterLlmService | null = null;
   private exploitLlm: PlayerExploitLlmService | null = null;
@@ -1944,6 +1953,13 @@ export class RoomManager {
     this.tournamentHook = hook;
     for (const room of this.rooms.values()) {
       room.setTournamentHook(hook);
+    }
+  }
+
+  setTournamentStacksHook(hook: TournamentStacksChangedHook | null): void {
+    this.tournamentStacksHook = hook;
+    for (const room of this.rooms.values()) {
+      room.setTournamentStacksHook(hook);
     }
   }
 
@@ -2012,6 +2028,7 @@ export class RoomManager {
       this.banterLlm,
       this.exploitLlm,
     );
+    room.setTournamentStacksHook(this.tournamentStacksHook);
     this.rooms.set(id, room);
     this.byInvite.set(inviteCode, id);
     void this.history.recordTable(meta).catch((err) => {

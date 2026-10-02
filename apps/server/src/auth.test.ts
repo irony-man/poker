@@ -264,6 +264,22 @@ describe('AuthStore', () => {
       });
     });
 
+    it('checks reset tokens without consuming them', async () => {
+      const s = await verifiedEmailUser(auth, 'Lia', 'lia@example.com');
+      const token = await auth.createEmailToken(s.userId, 'reset_password', 'lia@example.com');
+      const verifyToken = await auth.createEmailToken(s.userId, 'verify_email', 'lia@example.com');
+      const expired = await auth.createEmailToken(s.userId, 'reset_password', 'lia@example.com', -1);
+
+      expect(await auth.isResetTokenValid(token)).toBe(true);
+      expect(await auth.isResetTokenValid(token)).toBe(true);
+      expect(await auth.isResetTokenValid(verifyToken)).toBe(false);
+      expect(await auth.isResetTokenValid(expired)).toBe(false);
+      expect(await auth.isResetTokenValid('not-a-real-token-value')).toBe(false);
+
+      await auth.resetPassword(token, 'newpass12');
+      expect(await auth.isResetTokenValid(token)).toBe(false);
+    });
+
     it('rejects expired reset tokens', async () => {
       const s = await verifiedEmailUser(auth, 'Kim', 'kim@example.com');
       const token = await auth.createEmailToken(s.userId, 'reset_password', 'kim@example.com', -1);

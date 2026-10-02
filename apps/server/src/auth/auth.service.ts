@@ -110,6 +110,10 @@ export class AuthService implements OnModuleInit {
     }
   }
 
+  isResetTokenValid(token: string): Promise<boolean> {
+    return this.store.isResetTokenValid(token);
+  }
+
   resetPassword(token: string, password: string): Promise<User> {
     return this.store.resetPassword(token, password);
   }

@@ -139,6 +139,16 @@ export class AuthController {
     return { ok: true };
   }
 
+  /** Lets the reset page show "link expired" up front instead of after the user types a password. */
+  @Post('auth/reset-password/check')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  async checkResetToken(@Body() body: unknown) {
+    const parsed = VerifyEmailBodySchema.safeParse(body);
+    if (!parsed.success) return { valid: false };
+    return { valid: await this.auth.isResetTokenValid(parsed.data.token) };
+  }
+
   @Post('auth/reset-password')
   @HttpCode(200)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })

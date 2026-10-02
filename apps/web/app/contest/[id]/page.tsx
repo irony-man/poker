@@ -3,9 +3,11 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import type { ContestHandSummary } from '@poker/protocol';
 import {
   type ContestView,
   getContest,
+  getContestHands,
   inviteContestFriends,
   registerContest,
   startContest,
@@ -61,6 +63,7 @@ export default function ContestPage() {
   const [inviteFriendIds, setInviteFriendIds] = useState<string[]>([]);
   const [inviteToast, setInviteToast] = useState<string | null>(null);
   const navigatedTable = useRef<string | null>(null);
+  const [hands, setHands] = useState<ContestHandSummary[]>([]);
 
   useEffect(() => {
     if (sessionToken && ticket) return;
@@ -96,6 +99,23 @@ export default function ContestPage() {
   }, [contestId]);
 
   useContestSocket(ticket ? contestId : null);
+
+  const contestStarted = contest?.status === 'running' || contest?.status === 'completed';
+  const handsPlayed = contest?.handsPlayed ?? 0;
+  useEffect(() => {
+    if (!contestStarted) return;
+    let cancelled = false;
+    void getContestHands(contestId)
+      .then(({ hands: rows }) => {
+        if (!cancelled) setHands(rows);
+      })
+      .catch(() => {
+        /* hand list is best-effort */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [contestId, contestStarted, handsPlayed]);
 
   useEffect(() => {
     if (liveContest) setContest(liveContest);
@@ -456,6 +476,57 @@ export default function ContestPage() {
           </ol>
         </section>
       )}
+
+      {contestStarted && (
+        <section className="hud-panel mt-4 p-5 sm:p-6">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="hud-label">Hands</h2>
+            <span className="text-xs font-medium tabular text-muted">
+              {hands.length} played
+            </span>
+          </div>
+          {hands.length === 0 ? (
+            <p className="mt-3 text-sm text-muted">No hands finished yet.</p>
+          ) : (
+            <ol className="mt-3 max-h-96 space-y-1.5 overflow-y-auto pr-1">
+              {hands.map((h) => {
+                const winnerNames = [...new Set(h.winners.map((w) => w.name))];
+                const handLabel = winningHandLabel(h);
+                return (
+                  <li
+                    key={h.id}
+                    className="surface-row flex items-center justify-between gap-3 py-2 text-sm"
+                  >
+                    <span className="shrink-0 font-mono text-xs font-semibold text-muted">
+                      #{h.handNumber}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate font-medium text-primary">
+                      {winnerNames.length === 0 ? 'No winner recorded' : winnerNames.join(' & ')}
+                      {winnerNames.length > 1 ? (
+                        <span className="ml-1.5 text-[10px] font-display font-semibold uppercase tracking-wide text-muted">
+                          split
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="flex shrink-0 items-center gap-2 text-xs text-muted">
+                      {handLabel ? <span>{handLabel}</span> : null}
+                      <span className="font-mono font-semibold text-sidebar">
+                        +{h.winners.reduce((sum, w) => sum + w.amount, 0)}
+                      </span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </section>
+      )}
     </div>
   );
+}
+
+function winningHandLabel(hand: ContestHandSummary): string | null {
+  const name = hand.winners.find((w) => w.handName)?.handName ?? null;
+  if (!name) return null;
+  return name === 'Uncontested' ? 'Everyone folded' : name;
 }

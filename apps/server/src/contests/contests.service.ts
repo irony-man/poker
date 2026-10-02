@@ -1,26 +1,43 @@
-import { Injectable, OnModuleInit, Optional } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
+import { InjectDataSource } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
+import { dataSourceAsQueryable } from '../database/queryable.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 import { RoomsService } from '../rooms/rooms.service.js';
 import { WalletService } from '../wallet/wallet.service.js';
+import { PostgresContestStore } from './contest.store.js';
 import { TournamentManager, type CreateContestOpts, type ContestState } from './tournament.js';
 
 @Injectable()
-export class ContestsService implements OnModuleInit {
+export class ContestsService implements OnModuleInit, OnModuleDestroy {
   private tournaments!: TournamentManager;
 
   constructor(
     private readonly rooms: RoomsService,
     private readonly wallet: WalletService,
+    @InjectDataSource() private readonly dataSource: DataSource,
     @Optional() private readonly realtime?: RealtimeService,
   ) {}
 
-  onModuleInit(): void {
+  async onModuleInit(): Promise<void> {
     this.tournaments = new TournamentManager(this.rooms.asManager(), this.wallet.asStore());
+    this.tournaments.setPersistence(
+      new PostgresContestStore(dataSourceAsQueryable(this.dataSource)),
+    );
+    try {
+      await this.tournaments.restore();
+    } catch (err) {
+      console.error('[contests] restore failed', err);
+    }
     this.tournaments.setListChangeHandler((c) => this.onContestListChange(c));
     if (this.realtime) {
       this.realtime.setMyContestsLoader((userId) => this.listForUser(userId));
       this.realtime.setPublicContests(this.listPublic());
     }
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.tournaments?.flushPersistence();
   }
 
   private onContestListChange(c: ContestState): void {

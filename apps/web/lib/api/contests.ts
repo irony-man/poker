@@ -1,4 +1,4 @@
-import type { ContestMode, ContestView } from '@poker/protocol';
+import type { ContestHandSummary, ContestMode, ContestView } from '@poker/protocol';
 import { apiBase, authedFetch, parseError, sessionHeaders, type AuthOptions } from './client';
 
 export async function createContest(
@@ -62,6 +62,12 @@ export async function getContest(contestId: string) {
   const res = await fetch(`${apiBase()}/api/contests/${contestId}`);
   if (!res.ok) throw new Error('Contest not found');
   return res.json() as Promise<{ contest: ContestView }>;
+}
+
+export async function getContestHands(contestId: string) {
+  const res = await fetch(`${apiBase()}/api/contests/${contestId}/hands`);
+  if (!res.ok) throw new Error(await parseError(res, 'Could not load hands'));
+  return res.json() as Promise<{ hands: ContestHandSummary[] }>;
 }
 
 export async function registerContest(contestId: string, options: AuthOptions) {

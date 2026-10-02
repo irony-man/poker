@@ -11,13 +11,20 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { CreateContestBodySchema, InviteFriendsBodySchema } from '@poker/protocol';
+import {
+  CreateContestBodySchema,
+  InviteFriendsBodySchema,
+  type ContestHandSummary,
+} from '@poker/protocol';
 import { AuthService } from '../auth/auth.service.js';
 import type { User } from '../auth/auth.types.js';
 import { CurrentUser, SessionAuthGuard } from '../common/session-auth.guard.js';
 import { FriendsService } from '../friends/friends.service.js';
-import { HistoryService, toPublicHandRows } from '../history/history.service.js';
+import { HistoryService, summarizeHand, toPublicHandRows } from '../history/history.service.js';
 import { ContestsService } from './contests.service.js';
+
+/** Hand numbers are counted from the oldest returned row, so keep this above any realistic contest length. */
+const CONTEST_HANDS_LIMIT = 500;
 
 @Controller('api/contests')
 export class ContestsController {
@@ -151,6 +158,26 @@ export class ContestsController {
   @Get(':id/history')
   async historyList(@Param('id') id: string) {
     const hands = toPublicHandRows(await this.history.listHandsForContest(id, 50));
+    return { hands };
+  }
+
+  @Get(':id/hands')
+  async handList(@Param('id') id: string): Promise<{ hands: ContestHandSummary[] }> {
+    const rows = await this.history.listHandsForContest(id, CONTEST_HANDS_LIMIT);
+    const total = rows.length;
+    const hands = rows.map((row, i) => {
+      const s = summarizeHand(row);
+      return {
+        id: s.id,
+        handNumber: total - i,
+        endedAt: s.endedAt ? new Date(s.endedAt).getTime() : null,
+        winners: s.winners.map((w) => ({
+          name: w.name ?? `Seat ${w.seat + 1}`,
+          amount: w.amount,
+          handName: w.handName ?? null,
+        })),
+      };
+    });
     return { hands };
   }
 

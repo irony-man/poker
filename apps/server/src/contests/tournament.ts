@@ -17,6 +17,7 @@ import {
 import { isBotUserId } from '../bot.js';
 import { Room, RoomManager } from '../rooms/room.js';
 import type { WalletStore } from '../wallet/wallet.constants.js';
+import type { ContestPersistence, PersistedContest } from './contest.store.js';
 import { UnlimitedWalletStore, WalletError } from '../wallet/wallet.store.js';
 
 export interface CreateContestOpts {
@@ -77,6 +78,8 @@ export interface ContestState {
   tableIds: Set<string>;
   /** Humans who already paid `startingStack` entry (join-time buy-in). */
   entryPaid: Set<string>;
+  /** userId → stack after the last finished hand / top-up; used to refund if a restart interrupts play. */
+  lastStacks: Map<string, number>;
 }
 
 type SendFn = (msg: unknown) => void;
@@ -93,19 +96,174 @@ export class TournamentManager {
   private prizeSettled = new Map<string, Set<string>>(); // contestId → userIds
   /** Fan-out public + mine contest lists (set by ContestsService). */
   private onListChange: ((c: ContestState) => void) | null = null;
+  private persistence: ContestPersistence | null = null;
+  /** Serializes snapshot writes so a slow save never overwrites a newer one. */
+  private saveChain: Promise<void> = Promise.resolve();
 
   constructor(rooms: RoomManager, wallet: WalletStore = new UnlimitedWalletStore()) {
     this.rooms = rooms;
     this.wallet = wallet;
     rooms.setTournamentHook((room) => this.onRoomHandEnded(room));
+    rooms.setTournamentStacksHook((room) => this.onRoomStacksChanged(room));
   }
 
   setListChangeHandler(handler: ((c: ContestState) => void) | null): void {
     this.onListChange = handler;
   }
 
+  setPersistence(persistence: ContestPersistence | null): void {
+    this.persistence = persistence;
+  }
+
   private notifyListChange(c: ContestState): void {
+    this.persist(c);
     this.onListChange?.(c);
+  }
+
+  private persist(c: ContestState): void {
+    const store = this.persistence;
+    if (!store) return;
+    const snapshot = this.toPersisted(c);
+    this.saveChain = this.saveChain
+      .then(() => store.save(snapshot))
+      .catch((err) => {
+        console.error('[contests] persist failed', c.id, err);
+      });
+  }
+
+  /** Wait for queued snapshot writes (tests / shutdown). */
+  flushPersistence(): Promise<void> {
+    return this.saveChain;
+  }
+
+  /**
+   * Load saved contests on boot. Contests that were mid-game lost their in-memory table,
+   * so they are cancelled and each unsettled player is paid back their last known stack.
+   */
+  async restore(): Promise<void> {
+    if (!this.persistence) return;
+    const saved = await this.persistence.loadAll();
+    for (const p of saved) {
+      if (this.contests.has(p.id)) continue;
+      const c = this.fromPersisted(p);
+      this.contests.set(c.id, c);
+      if (c.status === 'registering' || c.status === 'running') {
+        this.byInvite.set(c.inviteCode, c.id);
+      }
+      if (c.status === 'running') {
+        await this.cancelInterrupted(c);
+      }
+    }
+  }
+
+  private async cancelInterrupted(c: ContestState): Promise<void> {
+    const settled = this.walletSettled.get(c.id) ?? new Set<string>();
+    this.walletSettled.set(c.id, settled);
+    for (const e of c.entrants) {
+      if (e.isBot || isBotUserId(e.userId)) continue;
+      if (!c.entryPaid.has(e.userId) || settled.has(e.userId)) continue;
+      const amount = Math.max(0, Math.floor(c.lastStacks.get(e.userId) ?? c.startingStack));
+      try {
+        if (amount > 0) await this.wallet.credit(e.userId, amount, 'cash_out', c.id);
+        settled.add(e.userId);
+      } catch (err) {
+        console.error('[wallet] interrupted contest refund failed', c.id, e.userId, err);
+      }
+    }
+    c.status = 'cancelled';
+    c.completedAt = Date.now();
+    c.activeTableByUser.clear();
+    this.byInvite.delete(c.inviteCode);
+    this.persist(c);
+  }
+
+  private recordStacks(c: ContestState, room: Room): void {
+    for (const p of room.state.players) {
+      if (!p.userId || p.status === 'empty') continue;
+      c.lastStacks.set(p.userId, p.stack);
+    }
+  }
+
+  private onRoomStacksChanged(room: Room): void {
+    const t = room.meta.tournament;
+    if (!t) return;
+    const c = this.contests.get(t.contestId);
+    if (!c || c.status !== 'running') return;
+    this.recordStacks(c, room);
+    this.persist(c);
+  }
+
+  private toPersisted(c: ContestState): PersistedContest {
+    return {
+      v: 1,
+      id: c.id,
+      inviteCode: c.inviteCode,
+      name: c.name,
+      mode: c.mode,
+      status: c.status,
+      hostUserId: c.hostUserId,
+      fieldSize: c.fieldSize,
+      startingStack: c.startingStack,
+      smallBlind: c.smallBlind,
+      bigBlind: c.bigBlind,
+      turnTimeMs: c.turnTimeMs,
+      isPrivate: c.isPrivate,
+      autoStart: c.autoStart,
+      handLimit: c.handLimit,
+      handsPlayed: c.handsPlayed,
+      entrants: c.entrants.map((e) => ({ ...e })),
+      pendingInvites: c.pendingInvites.map((inv) => ({ ...inv })),
+      placements: c.placements.map((p) => ({ ...p })),
+      tableId: c.tableId,
+      levelIndex: c.levelIndex,
+      handsAtLevel: c.handsAtLevel,
+      createdAt: c.createdAt,
+      startedAt: c.startedAt,
+      completedAt: c.completedAt,
+      activeTableByUser: [...c.activeTableByUser],
+      tableIds: [...c.tableIds],
+      entryPaid: [...c.entryPaid],
+      walletSettled: [...(this.walletSettled.get(c.id) ?? [])],
+      prizeSettled: [...(this.prizeSettled.get(c.id) ?? [])],
+      lastStacks: Object.fromEntries(c.lastStacks),
+    };
+  }
+
+  private fromPersisted(p: PersistedContest): ContestState {
+    if (p.walletSettled.length > 0) this.walletSettled.set(p.id, new Set(p.walletSettled));
+    if (p.prizeSettled.length > 0) this.prizeSettled.set(p.id, new Set(p.prizeSettled));
+    return {
+      id: p.id,
+      inviteCode: p.inviteCode,
+      name: p.name,
+      mode: p.mode,
+      status: p.status,
+      hostUserId: p.hostUserId,
+      fieldSize: p.fieldSize,
+      botFillMax: 0,
+      startingStack: p.startingStack,
+      smallBlind: p.smallBlind,
+      bigBlind: p.bigBlind,
+      turnTimeMs: p.turnTimeMs,
+      isPrivate: p.isPrivate,
+      autoStart: p.autoStart,
+      handLimit: p.handLimit,
+      handsPlayed: p.handsPlayed,
+      entrants: p.entrants.map((e) => ({ ...e })),
+      pendingInvites: p.pendingInvites ?? [],
+      placements: p.placements ?? [],
+      tableId: p.tableId,
+      levelIndex: p.levelIndex,
+      handsAtLevel: p.handsAtLevel,
+      schedule: buildBlindSchedule(p.smallBlind, p.bigBlind),
+      createdAt: p.createdAt,
+      startedAt: p.startedAt,
+      completedAt: p.completedAt,
+      activeTableByUser: new Map(p.activeTableByUser ?? []),
+      tableIds: new Set(p.tableIds ?? []),
+      entryPaid: new Set(p.entryPaid ?? []),
+      lastStacks: new Map(Object.entries(p.lastStacks ?? {})),
+    };
   }
 
   async create(opts: CreateContestOpts): Promise<ContestView> {
@@ -151,6 +309,7 @@ export class TournamentManager {
       activeTableByUser: new Map(),
       tableIds: new Set(),
       entryPaid: new Set(),
+      lastStacks: new Map(),
     };
 
     // Host auto-registers — collect buy-in at join time (create).
@@ -266,7 +425,9 @@ export class TournamentManager {
   async removeUser(userId: string): Promise<void> {
     this.detachWatcherAll(userId);
     for (const c of [...this.contests.values()]) {
+      const invitesBefore = c.pendingInvites.length;
       c.pendingInvites = c.pendingInvites.filter((inv) => inv.userId !== userId);
+      if (c.pendingInvites.length !== invitesBefore) this.persist(c);
       if (c.status !== 'registering') continue;
       if (c.hostUserId === userId) {
         await this.cancelRegistering(c);
@@ -502,6 +663,7 @@ export class TournamentManager {
     c.entrants.forEach((e, i) => {
       room.forceSeat(e.userId, e.name, i, c.startingStack);
       c.activeTableByUser.set(e.userId, meta.id);
+      c.lastStacks.set(e.userId, c.startingStack);
     });
     this.emitMatchAssigned(c, meta.id, c.entrants.map((e) => e.userId));
     room.scheduleTournamentAutoStart();
@@ -564,12 +726,14 @@ export class TournamentManager {
       );
     }
 
+    this.recordStacks(c, room);
     if (c.mode === 'chips') {
       this.processChipsHand(c, room);
     } else {
       this.processRoundsHand(c, room);
     }
     this.broadcast(c.id);
+    this.persist(c);
   }
 
   private processChipsHand(c: ContestState, room: Room): void {

@@ -814,6 +814,45 @@ export class AuthStore {
     return { userId: record.userId, email: record.email };
   }
 
+  /** Read-only lookup of an unused, unexpired token (does not consume it). */
+  private async peekEmailToken(
+    token: string,
+    purpose: EmailTokenPurpose,
+  ): Promise<{ userId: string; email: string } | null> {
+    if (!token) return null;
+    const tokenHash = hashEmailToken(token);
+    if (this.pool) {
+      const res = await this.pool.query(
+        `SELECT user_id, email FROM auth_email_tokens
+         WHERE token_hash = $1 AND purpose = $2 AND used_at IS NULL AND expires_at > NOW()`,
+        [tokenHash, purpose],
+      );
+      const row = res.rows[0] as { user_id: string; email: string } | undefined;
+      return row ? { userId: row.user_id, email: row.email } : null;
+    }
+    const record = this.emailTokens.get(tokenHash);
+    if (
+      !record ||
+      record.purpose !== purpose ||
+      record.usedAt !== null ||
+      record.expiresAt <= Date.now()
+    ) {
+      return null;
+    }
+    return { userId: record.userId, email: record.email };
+  }
+
+  /** True when `resetPassword` would accept this token right now. */
+  async isResetTokenValid(token: string): Promise<boolean> {
+    await this.ensureLoaded();
+    const found = await this.peekEmailToken(token, 'reset_password');
+    if (!found) return false;
+    const user = this.users.get(found.userId);
+    return Boolean(
+      user?.email && user.emailVerified && emailKey(user.email) === emailKey(found.email),
+    );
+  }
+
   async verifyEmail(token: string): Promise<User> {
     await this.ensureLoaded();
     const { userId, email } = await this.consumeEmailToken(token, 'verify_email');

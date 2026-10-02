@@ -348,6 +348,26 @@ export class SiteConfigEntity {
   updatedAt!: Date;
 }
 
+/** Contest state snapshot (one JSON payload per contest) so contests survive restarts. */
+@Entity({ name: 'contests' })
+@Index('contests_status_idx', ['status'])
+export class ContestEntity {
+  @PrimaryColumn({ type: 'text' })
+  id!: string;
+
+  @Column({ type: 'text' })
+  status!: string;
+
+  @Column({ type: 'jsonb' })
+  payload!: Record<string, unknown>;
+
+  @Column({ name: 'created_at', type: 'timestamptz', default: () => 'NOW()' })
+  createdAt!: Date;
+
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  updatedAt!: Date;
+}
+
 /** All TypeORM entities registered by the server. */
 export const ALL_ENTITIES = [
   UserEntity,
@@ -361,4 +381,5 @@ export const ALL_ENTITIES = [
   TableChipBalanceEntity,
   SocialStoreEntity,
   SiteConfigEntity,
+  ContestEntity,
 ] as const;

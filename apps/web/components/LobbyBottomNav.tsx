@@ -101,7 +101,7 @@ function slotClass(active: boolean) {
 export function LobbyBottomNav() {
   const pathname = usePathname();
   const signedIn = !!useSession((s) => s.sessionToken);
-  const { pendingCount } = useOnlineFriends();
+  const { pendingCount, sentCount } = useOnlineFriends();
 
   return (
     <nav
@@ -112,7 +112,7 @@ export function LobbyBottomNav() {
       <div className="flex items-stretch">
         {MOBILE_BOTTOM_NAV.map((item) => {
           const active = isMobileNavActive(pathname, item);
-          const showBadge = signedIn && item.id === 'friends' && pendingCount > 0;
+          const isFriends = signedIn && item.id === 'friends';
           return (
             <Link
               key={item.id}
@@ -123,8 +123,14 @@ export function LobbyBottomNav() {
             >
               <span className="relative">
                 <NavIcon name={item.icon} active={active} />
-                {showBadge ? (
+                {isFriends && pendingCount > 0 ? (
                   <PendingCountBadge count={pendingCount} className="absolute -right-2.5 -top-1.5" />
+                ) : isFriends && sentCount > 0 ? (
+                  <PendingCountBadge
+                    count={sentCount}
+                    tone="sent"
+                    className="absolute -right-2.5 -top-1.5"
+                  />
                 ) : null}
               </span>
               <SlotLabel text={item.shortLabel} active={active} />

@@ -35,6 +35,7 @@ import com.pokr.android.core.designsystem.PokrChrome
 import com.pokr.android.core.designsystem.PokrColors
 import com.pokr.android.core.designsystem.PokrFonts
 import com.pokr.android.core.designsystem.PokrGhostButton
+import com.pokr.android.core.designsystem.PokrLabel
 import com.pokr.android.core.designsystem.PokrPrimaryButton
 import com.pokr.android.core.designsystem.PokrRadius
 import com.pokr.android.core.designsystem.TABLE_COLOR_PRESETS
@@ -158,7 +159,10 @@ fun ProfileScreen(
                                 contests = state.contests,
                                 onOpen = onContest,
                             )
-                            else -> state.profile?.let { OverviewPane(it, onAdmin) }
+                            else -> state.profile?.let {
+                                OverviewPane(it, onAdmin)
+                                AccountRecoveryPane(state = state, profile = it, viewModel = viewModel)
+                            }
                         }
                         PokrGhostButton(
                             text = "Sign out",
@@ -266,6 +270,86 @@ private fun OverviewPane(profile: MeProfile, onAdmin: () -> Unit) {
                     onClick = onAdmin,
                     modifier = Modifier.fillMaxWidth(),
                 )
+            }
+        }
+    }
+}
+
+/** Recovery email (for password resets) and the linked Google account. */
+@Composable
+private fun AccountRecoveryPane(
+    state: ProfileUiState,
+    profile: MeProfile,
+    viewModel: ProfileViewModel,
+) {
+    val draftChanged = !state.emailDraft.trim().equals(profile.email.orEmpty(), ignoreCase = true)
+    HudPanel(modifier = Modifier.fillMaxWidth(), chrome = PokrChrome.Lobby) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+            Text(
+                "Account & recovery",
+                color = PokrColors.Sidebar,
+                fontFamily = PokrFonts.Display,
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+            )
+            FieldHelp("Add an email so you can reset your password if you lose it.")
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                PokrLabel("Recovery email")
+                LobbyTextField(
+                    value = state.emailDraft,
+                    onValueChange = viewModel::onEmailDraftChange,
+                    placeholder = "you@example.com",
+                )
+                Text(
+                    when {
+                        profile.email == null -> "Not set"
+                        profile.emailVerified -> "Confirmed"
+                        else -> "Waiting for confirmation — check your inbox"
+                    },
+                    color = if (profile.emailVerified) PokrColors.Positive else PokrColors.InkStrongMuted,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            PokrPrimaryButton(
+                text = if (profile.email == null) "Save email" else "Update email",
+                onClick = viewModel::saveEmail,
+                enabled = !state.saving && state.emailDraft.isNotBlank() &&
+                    (draftChanged || !profile.emailVerified),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            if (profile.email != null && !profile.emailVerified && !draftChanged) {
+                PokrGhostButton(
+                    text = "Resend confirmation link",
+                    onClick = viewModel::resendVerification,
+                    enabled = !state.saving,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
+            PokrLabel("Google sign-in")
+            when {
+                profile.googleLinked && profile.hasPassword -> PokrGhostButton(
+                    text = "Disconnect Google",
+                    onClick = viewModel::unlinkGoogle,
+                    enabled = !state.saving,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                profile.googleLinked -> FieldHelp(
+                    "Connected. This account signs in with Google only — set a password via " +
+                        "Forgot password before disconnecting.",
+                )
+                state.googleClientId != null -> GoogleSignInRow(
+                    clientId = state.googleClientId,
+                    enabled = !state.saving,
+                    onIdToken = viewModel::linkGoogle,
+                    onError = viewModel::onGoogleError,
+                    text = "Connect Google",
+                )
+                else -> FieldHelp("Google sign-in isn't available right now.")
+            }
+            state.accountNotice?.let {
+                Text(it, color = PokrColors.Positive, fontSize = 13.sp)
             }
         }
     }

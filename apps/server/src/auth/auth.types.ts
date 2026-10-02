@@ -18,7 +18,14 @@ export interface User {
   sfxMuted: boolean;
   /** Remappable table keyboard shortcuts (full map after clamp). */
   keyboardShortcuts: Record<string, string>;
-  passwordHash: string;
+  /** Null for accounts that only sign in with Google. */
+  passwordHash: string | null;
+  /** Recovery email (original casing). */
+  email: string | null;
+  /** Only verified emails receive reset links or auto-link Google sign-ins. */
+  emailVerified: boolean;
+  /** Linked Google account subject id. */
+  googleSub: string | null;
   /** Global play-money balance (chips). */
   chipBalance: number;
   /** Contest ranking rating (Whuffies); not spendable. */
@@ -64,7 +71,37 @@ export interface AuthSessionPayload {
   whuffieBalance: number;
 }
 
-export type AuthErrorCode = 'username_taken' | 'invalid_credentials' | 'invalid_username';
+export type EmailTokenPurpose = 'verify_email' | 'reset_password';
+
+export interface EmailToken {
+  tokenHash: string;
+  userId: string;
+  purpose: EmailTokenPurpose;
+  email: string;
+  expiresAt: number;
+  usedAt: number | null;
+}
+
+/** Identity claims taken from a verified Google ID token. */
+export interface GoogleIdentity {
+  sub: string;
+  email: string | null;
+  emailVerified: boolean;
+  name: string | null;
+}
+
+export type GoogleSignInResult =
+  | { kind: 'session'; session: AuthSessionPayload; created: boolean }
+  | { kind: 'needs_username'; suggestedUsername: string };
+
+export type AuthErrorCode =
+  | 'username_taken'
+  | 'invalid_credentials'
+  | 'invalid_username'
+  | 'email_taken'
+  | 'google_taken'
+  | 'password_required'
+  | 'invalid_token';
 
 export class AuthError extends Error {
   constructor(

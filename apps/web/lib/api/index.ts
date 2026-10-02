@@ -9,6 +9,17 @@ export {
   fetchMe,
   updateMe,
   requestAvatarUploadUrl,
+  fetchAuthConfig,
+  googleAuth,
+  isGoogleNeedsUsername,
+  forgotPassword,
+  resetPassword,
+  verifyEmail,
+  setRecoveryEmail,
+  resendVerificationEmail,
+  linkGoogle,
+  unlinkGoogle,
+  type GoogleAuthResult,
   type MeProfile,
 } from './auth';
 export {

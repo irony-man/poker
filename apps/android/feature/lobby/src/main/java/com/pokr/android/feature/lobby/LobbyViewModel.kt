@@ -22,8 +22,12 @@ import com.pokr.android.core.network.EmptyBody
 import com.pokr.android.core.network.PokrApi
 import com.pokr.android.core.network.SessionTokenHolder
 import com.pokr.android.core.network.SocialRepository
+import com.pokr.android.core.model.ForgotPasswordRequest
+import com.pokr.android.core.model.GoogleAuthRequest
+import com.pokr.android.core.network.apiErrorMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import javax.inject.Named
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -73,6 +77,15 @@ data class LobbyUiState(
     val announcement: String? = null,
     val busy: Boolean = false,
     val error: String? = null,
+    /** OAuth web client id for Credential Manager; null hides "Continue with Google". */
+    val googleClientId: String? = null,
+    /** Set while a brand-new Google user picks a username. */
+    val googlePendingToken: String? = null,
+    val googlePendingEmail: String? = null,
+    val googleUsername: String = "",
+    val forgotOpen: Boolean = false,
+    val forgotIdentifier: String = "",
+    val forgotSent: Boolean = false,
 )
 
 @HiltViewModel
@@ -81,6 +94,7 @@ class LobbyViewModel @Inject constructor(
     private val sessionPreferences: SessionPreferences,
     private val tokenHolder: SessionTokenHolder,
     private val social: SocialRepository,
+    @Named("google_web_client_id") private val bakedGoogleClientId: String,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LobbyUiState())
@@ -93,6 +107,12 @@ class LobbyViewModel @Inject constructor(
     val openFriends = social.openFriends
 
     init {
+        viewModelScope.launch {
+            val clientId = bakedGoogleClientId.ifBlank {
+                runCatching { api.authConfig().googleClientId }.getOrNull().orEmpty()
+            }
+            _uiState.update { it.copy(googleClientId = clientId.ifBlank { null }) }
+        }
         viewModelScope.launch {
             social.snapshot.collect { snap ->
                 _uiState.update { it.copy(friends = snap.friends, groups = snap.groups) }
@@ -249,19 +269,136 @@ class LobbyViewModel @Inject constructor(
                 persistSession(session)
                 session
             }.onSuccess { session ->
-                _uiState.update {
-                    it.copy(
-                        busy = false,
-                        signedIn = true,
-                        name = session.name,
-                        username = session.username.ifBlank { session.name },
-                        password = "",
-                    )
-                }
-                loadSocialAndSite()
+                onSignedIn(session)
             }.onFailure { err ->
-                _uiState.update { it.copy(busy = false, error = err.message ?: "Auth failed") }
+                _uiState.update { it.copy(busy = false, error = err.apiErrorMessage("Auth failed")) }
             }
+        }
+    }
+
+    private fun onSignedIn(session: SessionDto) {
+        _uiState.update {
+            it.copy(
+                busy = false,
+                signedIn = true,
+                name = session.name,
+                username = session.username.ifBlank { session.name },
+                avatarId = session.avatarId,
+                avatarUrl = session.avatarUrl,
+                password = "",
+                googlePendingToken = null,
+                googlePendingEmail = null,
+                googleUsername = "",
+            )
+        }
+        loadSocialAndSite()
+    }
+
+    /** ID token from Credential Manager. New Google users are asked for a username first. */
+    fun onGoogleIdToken(idToken: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(busy = true, error = null) }
+            runCatching { api.googleAuth(GoogleAuthRequest(idToken)) }
+                .onSuccess { res ->
+                    val session = res.toSessionOrNull()
+                    if (session == null) {
+                        _uiState.update {
+                            it.copy(
+                                busy = false,
+                                googlePendingToken = idToken,
+                                googlePendingEmail = res.email,
+                                googleUsername = res.suggestedUsername.orEmpty(),
+                            )
+                        }
+                    } else {
+                        persistSession(session)
+                        onSignedIn(session)
+                    }
+                }
+                .onFailure { err ->
+                    _uiState.update {
+                        it.copy(busy = false, error = err.apiErrorMessage("Google sign-in failed"))
+                    }
+                }
+        }
+    }
+
+    fun onGoogleError(err: Throwable) {
+        if (err is GoogleSignInCancelled) return
+        _uiState.update { it.copy(error = err.message ?: "Google sign-in failed") }
+    }
+
+    fun onGoogleUsernameChange(value: String) =
+        _uiState.update { it.copy(googleUsername = value.take(24)) }
+
+    fun cancelGoogleUsername() = _uiState.update {
+        it.copy(googlePendingToken = null, googlePendingEmail = null, googleUsername = "", error = null)
+    }
+
+    fun submitGoogleUsername() {
+        val state = _uiState.value
+        val token = state.googlePendingToken ?: return
+        val username = state.googleUsername.trim()
+        if (!Regex("^[a-zA-Z0-9_]{3,24}$").matches(username)) {
+            _uiState.update {
+                it.copy(error = "Username must be 3–24 letters, numbers, or underscores")
+            }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(busy = true, error = null) }
+            runCatching {
+                api.googleAuth(GoogleAuthRequest(token, username = username, avatarId = state.avatarId))
+            }.onSuccess { res ->
+                val session = res.toSessionOrNull()
+                if (session == null) {
+                    _uiState.update { it.copy(busy = false, error = "Please choose a username") }
+                } else {
+                    persistSession(session)
+                    onSignedIn(session)
+                }
+            }.onFailure { err ->
+                val message = err.apiErrorMessage("Could not create account")
+                _uiState.update {
+                    if (message.contains("Google sign-in failed", ignoreCase = true)) {
+                        // ID tokens expire after ~1 hour; restart from the Google button.
+                        it.copy(
+                            busy = false,
+                            googlePendingToken = null,
+                            error = "Your Google sign-in expired. Please continue with Google again.",
+                        )
+                    } else {
+                        it.copy(busy = false, error = message)
+                    }
+                }
+            }
+        }
+    }
+
+    fun openForgotPassword() = _uiState.update {
+        it.copy(forgotOpen = true, forgotSent = false, forgotIdentifier = it.username.trim())
+    }
+
+    fun dismissForgotPassword() = _uiState.update { it.copy(forgotOpen = false, forgotSent = false) }
+
+    fun onForgotIdentifierChange(value: String) =
+        _uiState.update { it.copy(forgotIdentifier = value.take(254)) }
+
+    fun submitForgotPassword() {
+        val identifier = _uiState.value.forgotIdentifier.trim()
+        if (identifier.length < 3) {
+            _uiState.update { it.copy(error = "Enter your username or email") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(busy = true, error = null) }
+            runCatching { api.forgotPassword(ForgotPasswordRequest(identifier)) }
+                .onSuccess { _uiState.update { it.copy(busy = false, forgotSent = true) } }
+                .onFailure { err ->
+                    _uiState.update {
+                        it.copy(busy = false, error = err.apiErrorMessage("Could not send reset email"))
+                    }
+                }
         }
     }
 

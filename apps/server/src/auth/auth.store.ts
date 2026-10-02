@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import * as argon2 from 'argon2';
@@ -20,6 +20,10 @@ import {
 import {
   AuthError,
   type AuthSessionPayload,
+  type EmailToken,
+  type EmailTokenPurpose,
+  type GoogleIdentity,
+  type GoogleSignInResult,
   type PublicUser,
   type Session,
   type User,
@@ -30,6 +34,39 @@ interface PersistedSnapshot {
   users: User[];
   sessions: Session[];
   tickets: WsTicket[];
+  emailTokens?: EmailToken[];
+}
+
+export const VERIFY_EMAIL_TTL_MS = 24 * 60 * 60 * 1000;
+export const RESET_PASSWORD_TTL_MS = 60 * 60 * 1000;
+
+const USERNAME_MAX = 24;
+
+function hashEmailToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
+
+export function normalizeEmail(email: string): string {
+  return email.trim();
+}
+
+function emailKey(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+/** Turn a Google display name / email local part into something `UsernameSchema` accepts. */
+export function usernameBaseFromGoogle(identity: Pick<GoogleIdentity, 'name' | 'email'>): string {
+  const source = identity.name?.trim() || identity.email?.split('@')[0] || '';
+  let base = source
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '_')
+    .replace(/[^a-zA-Z0-9_]/g, '')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  if (base.toLowerCase().startsWith('bot')) base = `p_${base}`;
+  if (base.length < 3) base = `player${base}`;
+  return base.slice(0, USERNAME_MAX - 4);
 }
 
 function toPublic(u: User): PublicUser {
@@ -53,6 +90,10 @@ function normalizeUser(
 ): User {
   return {
     ...u,
+    passwordHash: typeof u.passwordHash === 'string' && u.passwordHash ? u.passwordHash : null,
+    email: typeof u.email === 'string' && u.email.trim() ? normalizeEmail(u.email) : null,
+    emailVerified: u.emailVerified === true && typeof u.email === 'string' && !!u.email.trim(),
+    googleSub: typeof u.googleSub === 'string' && u.googleSub ? u.googleSub : null,
     avatarId: clampAvatarId(u.avatarId),
     avatarUrl: u.avatarUrl ?? null,
     tableColorId: clampTableColorId(u.tableColorId),
@@ -81,8 +122,12 @@ function normalizeNonNegInt(value: unknown, fallback: number): number {
 export class AuthStore {
   private users = new Map<string, User>();
   private usernameIndex = new Map<string, string>(); // lower -> id
+  private emailIndex = new Map<string, string>(); // verified email lower -> id
+  private googleSubIndex = new Map<string, string>(); // google sub -> id
   private tickets = new Map<string, WsTicket>();
   private sessions = new Map<string, Session>();
+  /** File-backed mode only; Postgres mode reads/consumes `auth_email_tokens` directly. */
+  private emailTokens = new Map<string, EmailToken>(); // token hash -> token
   private loaded = false;
   private readonly filePath: string;
   private pool: Queryable | null = null;
@@ -131,10 +176,7 @@ export class AuthStore {
     try {
       const raw = await readFile(this.filePath, 'utf8');
       const snap = JSON.parse(raw) as PersistedSnapshot;
-      this.users.clear();
-      this.usernameIndex.clear();
-      this.sessions.clear();
-      this.tickets.clear();
+      this.clearMemory();
       for (const u of snap.users ?? []) {
         this.indexUser(
           normalizeUser({
@@ -160,12 +202,22 @@ export class AuthStore {
       for (const t of snap.tickets ?? []) {
         if (t.expiresAt > Date.now()) this.tickets.set(t.ticket, t);
       }
+      for (const t of snap.emailTokens ?? []) {
+        if (t.expiresAt > Date.now() && t.usedAt === null) this.emailTokens.set(t.tokenHash, t);
+      }
     } catch {
-      this.users.clear();
-      this.usernameIndex.clear();
-      this.sessions.clear();
-      this.tickets.clear();
+      this.clearMemory();
     }
+  }
+
+  private clearMemory(): void {
+    this.users.clear();
+    this.usernameIndex.clear();
+    this.emailIndex.clear();
+    this.googleSubIndex.clear();
+    this.sessions.clear();
+    this.tickets.clear();
+    this.emailTokens.clear();
   }
 
   private async loadFromPostgres(): Promise<void> {
@@ -188,21 +240,48 @@ export class AuthStore {
     await this.pool.query(
       `ALTER TABLE users ADD COLUMN IF NOT EXISTS card_theme_id text NOT NULL DEFAULT 'classic'`,
     );
-    const result = await this.pool.query(
-      `SELECT id, name, username, password_hash, avatar_id, avatar_url, table_color_id, card_theme_id, ui_theme, table_layout, sfx_muted, keyboard_shortcuts, chip_balance, whuffie_balance, hands_played, created_at
-       FROM users
-       WHERE password_hash IS NOT NULL AND username IS NOT NULL`,
+    await this.pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email text`);
+    await this.pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_lower text`);
+    await this.pool.query(
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified boolean NOT NULL DEFAULT false`,
     );
-    this.users.clear();
-    this.usernameIndex.clear();
-    this.sessions.clear();
-    this.tickets.clear();
+    await this.pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub text`);
+    await this.pool.query(
+      `CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_verified_uidx ON users (email_lower)
+       WHERE email_lower IS NOT NULL AND email_verified`,
+    );
+    await this.pool.query(
+      `CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub_uidx ON users (google_sub)
+       WHERE google_sub IS NOT NULL`,
+    );
+    await this.pool.query(
+      `CREATE TABLE IF NOT EXISTS auth_email_tokens (
+         token_hash text PRIMARY KEY,
+         user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+         purpose text NOT NULL,
+         email text NOT NULL,
+         expires_at timestamptz NOT NULL,
+         used_at timestamptz
+       )`,
+    );
+    await this.pool.query(
+      `CREATE INDEX IF NOT EXISTS auth_email_tokens_user_idx ON auth_email_tokens (user_id)`,
+    );
+    const result = await this.pool.query(
+      `SELECT id, name, username, password_hash, email, email_verified, google_sub, avatar_id, avatar_url, table_color_id, card_theme_id, ui_theme, table_layout, sfx_muted, keyboard_shortcuts, chip_balance, whuffie_balance, hands_played, created_at
+       FROM users
+       WHERE username IS NOT NULL AND (password_hash IS NOT NULL OR google_sub IS NOT NULL)`,
+    );
+    this.clearMemory();
 
     for (const row of result.rows as {
       id: string;
       name: string;
       username: string;
-      password_hash: string;
+      password_hash: string | null;
+      email?: string | null;
+      email_verified?: boolean | null;
+      google_sub?: string | null;
       avatar_id: number;
       avatar_url?: string | null;
       table_color_id?: number | null;
@@ -224,7 +303,10 @@ export class AuthStore {
         id: row.id,
         username: row.username,
         name: row.username || row.name,
-        passwordHash: row.password_hash,
+        passwordHash: row.password_hash || null,
+        email: row.email?.trim() ? normalizeEmail(row.email) : null,
+        emailVerified: row.email_verified === true && !!row.email?.trim(),
+        googleSub: row.google_sub || null,
         avatarId: clampAvatarId(row.avatar_id ?? 0),
         avatarUrl: row.avatar_url ?? null,
         tableColorId: clampTableColorId(row.table_color_id ?? 0),
@@ -286,6 +368,14 @@ export class AuthStore {
   private indexUser(user: User): void {
     this.users.set(user.id, user);
     this.usernameIndex.set(user.username.toLowerCase(), user.id);
+    if (user.email && user.emailVerified) this.emailIndex.set(emailKey(user.email), user.id);
+    if (user.googleSub) this.googleSubIndex.set(user.googleSub, user.id);
+  }
+
+  private unindexEmail(user: User): void {
+    if (!user.email) return;
+    const key = emailKey(user.email);
+    if (this.emailIndex.get(key) === user.id) this.emailIndex.delete(key);
   }
 
   private async persistFile(): Promise<void> {
@@ -295,6 +385,7 @@ export class AuthStore {
         users: [...this.users.values()],
         sessions: [...this.sessions.values()],
         tickets: [...this.tickets.values()],
+        emailTokens: [...this.emailTokens.values()],
       };
       await this.writeAtomic(snap);
     };
@@ -316,6 +407,9 @@ export class AuthStore {
     await Promise.all([
       this.pool.query(`DELETE FROM auth_sessions WHERE expires_at <= NOW()`),
       this.pool.query(`DELETE FROM auth_tickets WHERE expires_at <= NOW()`),
+      this.pool.query(
+        `DELETE FROM auth_email_tokens WHERE expires_at <= NOW() OR used_at IS NOT NULL`,
+      ),
     ]);
   }
 
@@ -358,13 +452,17 @@ export class AuthStore {
   private async persistUserToPostgres(user: User): Promise<void> {
     if (!this.pool) return;
     await this.pool.query(
-      `INSERT INTO users (id, name, username, username_lower, password_hash, avatar_id, avatar_url, table_color_id, card_theme_id, ui_theme, table_layout, sfx_muted, keyboard_shortcuts, chip_balance, whuffie_balance, hands_played, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15, $16, to_timestamp($17 / 1000.0))
+      `INSERT INTO users (id, name, username, username_lower, password_hash, avatar_id, avatar_url, table_color_id, card_theme_id, ui_theme, table_layout, sfx_muted, keyboard_shortcuts, chip_balance, whuffie_balance, hands_played, created_at, email, email_lower, email_verified, google_sub)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15, $16, to_timestamp($17 / 1000.0), $18, $19, $20, $21)
        ON CONFLICT (id) DO UPDATE SET
          name = EXCLUDED.name,
          username = EXCLUDED.username,
          username_lower = EXCLUDED.username_lower,
          password_hash = EXCLUDED.password_hash,
+         email = EXCLUDED.email,
+         email_lower = EXCLUDED.email_lower,
+         email_verified = EXCLUDED.email_verified,
+         google_sub = EXCLUDED.google_sub,
          avatar_id = EXCLUDED.avatar_id,
          avatar_url = EXCLUDED.avatar_url,
          table_color_id = EXCLUDED.table_color_id,
@@ -394,8 +492,60 @@ export class AuthStore {
         user.whuffieBalance,
         user.handsPlayed,
         user.createdAt,
+        user.email,
+        user.email ? emailKey(user.email) : null,
+        user.emailVerified,
+        user.googleSub,
       ],
     );
+  }
+
+  private async persistIdentity(user: User): Promise<void> {
+    if (this.pool) {
+      await this.pool.query(
+        `UPDATE users SET password_hash = $1, email = $2, email_lower = $3, email_verified = $4, google_sub = $5
+         WHERE id = $6`,
+        [
+          user.passwordHash,
+          user.email,
+          user.email ? emailKey(user.email) : null,
+          user.emailVerified,
+          user.googleSub,
+          user.id,
+        ],
+      );
+    } else {
+      await this.persistFile();
+    }
+  }
+
+  private newUser(
+    id: string,
+    username: string,
+    passwordHash: string | null,
+    avatarId: number,
+  ): User {
+    return {
+      id,
+      username,
+      name: username,
+      passwordHash,
+      email: null,
+      emailVerified: false,
+      googleSub: null,
+      avatarId,
+      avatarUrl: null,
+      tableColorId: 0,
+      cardThemeId: DEFAULT_CARD_THEME_ID,
+      uiTheme: 'v1',
+      tableLayout: 'v1',
+      sfxMuted: false,
+      keyboardShortcuts: clampUserKeyboardShortcuts({}),
+      chipBalance: this.startingGrant(),
+      whuffieBalance: this.startingWhuffies(),
+      handsPlayed: 0,
+      createdAt: Date.now(),
+    };
   }
 
   async signup(
@@ -411,24 +561,12 @@ export class AuthStore {
     }
 
     const id = nanoid(12);
-    const user: User = {
+    const user = this.newUser(
       id,
-      username: trimmed,
-      name: trimmed,
-      passwordHash: await argon2.hash(password),
-      avatarId: avatarId !== undefined ? clampAvatarId(avatarId) : avatarIdFromUserId(id),
-      avatarUrl: null,
-      tableColorId: 0,
-      cardThemeId: DEFAULT_CARD_THEME_ID,
-      uiTheme: 'v1',
-      tableLayout: 'v1',
-      sfxMuted: false,
-      keyboardShortcuts: clampUserKeyboardShortcuts({}),
-      chipBalance: this.startingGrant(),
-      whuffieBalance: this.startingWhuffies(),
-      handsPlayed: 0,
-      createdAt: Date.now(),
-    };
+      trimmed,
+      await argon2.hash(password),
+      avatarId !== undefined ? clampAvatarId(avatarId) : avatarIdFromUserId(id),
+    );
     this.indexUser(user);
     await this.persistUserToPostgres(user);
     if (!this.pool) await this.persistFile();
@@ -444,10 +582,12 @@ export class AuthStore {
     }
     const user = this.users.get(id)!;
     let ok = false;
-    try {
-      ok = await argon2.verify(user.passwordHash, password);
-    } catch {
-      ok = false;
+    if (user.passwordHash) {
+      try {
+        ok = await argon2.verify(user.passwordHash, password);
+      } catch {
+        ok = false;
+      }
     }
     if (!ok) {
       throw new AuthError('invalid_credentials', 'Invalid username or password');
@@ -480,6 +620,258 @@ export class AuthStore {
       chipBalance: user.chipBalance,
       whuffieBalance: user.whuffieBalance,
     };
+  }
+
+  getUserByGoogleSub(sub: string): User | undefined {
+    const id = this.googleSubIndex.get(sub);
+    return id ? this.users.get(id) : undefined;
+  }
+
+  getUserByVerifiedEmail(email: string): User | undefined {
+    const id = this.emailIndex.get(emailKey(email));
+    return id ? this.users.get(id) : undefined;
+  }
+
+  suggestUsername(identity: Pick<GoogleIdentity, 'name' | 'email'>): string {
+    const base = usernameBaseFromGoogle(identity);
+    if (!this.usernameIndex.has(base.toLowerCase())) return base;
+    for (let i = 0; i < 50; i++) {
+      const candidate = `${base}${Math.floor(10 + Math.random() * 9990)}`.slice(0, USERNAME_MAX);
+      if (!this.usernameIndex.has(candidate.toLowerCase())) return candidate;
+    }
+    return `${base.slice(0, USERNAME_MAX - 8)}${nanoid(8).replace(/[^a-zA-Z0-9]/g, '0')}`;
+  }
+
+  /**
+   * Sign in with a verified Google identity. Existing links win, then a user whose
+   * *verified* recovery email matches Google's verified email is linked. Otherwise a new
+   * password-less account is created once the caller supplies a username.
+   */
+  async googleSignIn(
+    identity: GoogleIdentity,
+    opts: { username?: string; avatarId?: number } = {},
+  ): Promise<GoogleSignInResult> {
+    await this.ensureLoaded();
+    const linked = this.getUserByGoogleSub(identity.sub);
+    if (linked) {
+      return { kind: 'session', session: await this.issueAuthSession(linked), created: false };
+    }
+
+    if (identity.email && identity.emailVerified) {
+      const byEmail = this.getUserByVerifiedEmail(identity.email);
+      if (byEmail && !byEmail.googleSub) {
+        byEmail.googleSub = identity.sub;
+        this.googleSubIndex.set(identity.sub, byEmail.id);
+        await this.persistIdentity(byEmail);
+        return { kind: 'session', session: await this.issueAuthSession(byEmail), created: false };
+      }
+    }
+
+    const username = opts.username?.trim();
+    if (!username) {
+      return { kind: 'needs_username', suggestedUsername: this.suggestUsername(identity) };
+    }
+    if (this.usernameIndex.has(username.toLowerCase())) {
+      throw new AuthError('username_taken', 'Username already taken');
+    }
+
+    const id = nanoid(12);
+    const user = this.newUser(
+      id,
+      username,
+      null,
+      opts.avatarId !== undefined ? clampAvatarId(opts.avatarId) : avatarIdFromUserId(id),
+    );
+    user.googleSub = identity.sub;
+    if (identity.email && !this.emailIndex.has(emailKey(identity.email))) {
+      user.email = normalizeEmail(identity.email);
+      user.emailVerified = identity.emailVerified;
+    }
+    this.indexUser(user);
+    await this.persistUserToPostgres(user);
+    if (!this.pool) await this.persistFile();
+    return { kind: 'session', session: await this.issueAuthSession(user), created: true };
+  }
+
+  async linkGoogle(userId: string, identity: GoogleIdentity): Promise<User> {
+    await this.ensureLoaded();
+    const user = this.requireUser(userId);
+    const owner = this.googleSubIndex.get(identity.sub);
+    if (owner && owner !== userId) {
+      throw new AuthError('google_taken', 'That Google account is linked to another user');
+    }
+    if (user.googleSub && user.googleSub !== identity.sub) {
+      this.googleSubIndex.delete(user.googleSub);
+    }
+    user.googleSub = identity.sub;
+    this.googleSubIndex.set(identity.sub, userId);
+    if (
+      !user.email &&
+      identity.email &&
+      identity.emailVerified &&
+      !this.emailIndex.has(emailKey(identity.email))
+    ) {
+      user.email = normalizeEmail(identity.email);
+      user.emailVerified = true;
+      this.emailIndex.set(emailKey(user.email), userId);
+    }
+    await this.persistIdentity(user);
+    return user;
+  }
+
+  async unlinkGoogle(userId: string): Promise<User> {
+    await this.ensureLoaded();
+    const user = this.requireUser(userId);
+    if (!user.passwordHash) {
+      throw new AuthError(
+        'password_required',
+        'Set a password (via Forgot password) before disconnecting Google',
+      );
+    }
+    if (user.googleSub) this.googleSubIndex.delete(user.googleSub);
+    user.googleSub = null;
+    await this.persistIdentity(user);
+    return user;
+  }
+
+  /** Store a new (unverified) recovery email. Unchanged verified emails stay verified. */
+  async setEmail(userId: string, email: string): Promise<User> {
+    await this.ensureLoaded();
+    const user = this.requireUser(userId);
+    const next = normalizeEmail(email);
+    const key = emailKey(next);
+    if (user.email && emailKey(user.email) === key && user.emailVerified) return user;
+    const owner = this.emailIndex.get(key);
+    if (owner && owner !== userId) {
+      throw new AuthError('email_taken', 'That email is already used by another account');
+    }
+    this.unindexEmail(user);
+    user.email = next;
+    user.emailVerified = false;
+    await this.persistIdentity(user);
+    return user;
+  }
+
+  /** Create a single-use token; only its sha256 is stored. Returns the raw token for the email link. */
+  async createEmailToken(
+    userId: string,
+    purpose: EmailTokenPurpose,
+    email: string,
+    ttlMs = purpose === 'reset_password' ? RESET_PASSWORD_TTL_MS : VERIFY_EMAIL_TTL_MS,
+  ): Promise<string> {
+    const token = randomBytes(32).toString('hex');
+    const record: EmailToken = {
+      tokenHash: hashEmailToken(token),
+      userId,
+      purpose,
+      email,
+      expiresAt: Date.now() + ttlMs,
+      usedAt: null,
+    };
+    if (this.pool) {
+      await this.pool.query(
+        `INSERT INTO auth_email_tokens (token_hash, user_id, purpose, email, expires_at)
+         VALUES ($1, $2, $3, $4, to_timestamp($5 / 1000.0))`,
+        [record.tokenHash, userId, purpose, email, record.expiresAt],
+      );
+      void this.maybeCleanupExpiredPostgres();
+    } else {
+      this.emailTokens.set(record.tokenHash, record);
+      await this.persistFile();
+    }
+    return token;
+  }
+
+  private async consumeEmailToken(
+    token: string,
+    purpose: EmailTokenPurpose,
+  ): Promise<{ userId: string; email: string }> {
+    const invalid = new AuthError('invalid_token', 'This link is invalid or has expired');
+    if (!token) throw invalid;
+    const tokenHash = hashEmailToken(token);
+    if (this.pool) {
+      const res = await this.pool.query(
+        `UPDATE auth_email_tokens SET used_at = NOW()
+         WHERE token_hash = $1 AND purpose = $2 AND used_at IS NULL AND expires_at > NOW()
+         RETURNING user_id, email`,
+        [tokenHash, purpose],
+      );
+      const row = res.rows[0] as { user_id: string; email: string } | undefined;
+      if (!row) throw invalid;
+      return { userId: row.user_id, email: row.email };
+    }
+    const record = this.emailTokens.get(tokenHash);
+    if (
+      !record ||
+      record.purpose !== purpose ||
+      record.usedAt !== null ||
+      record.expiresAt <= Date.now()
+    ) {
+      throw invalid;
+    }
+    this.emailTokens.delete(tokenHash);
+    await this.persistFile();
+    return { userId: record.userId, email: record.email };
+  }
+
+  async verifyEmail(token: string): Promise<User> {
+    await this.ensureLoaded();
+    const { userId, email } = await this.consumeEmailToken(token, 'verify_email');
+    const user = this.users.get(userId);
+    if (!user || !user.email || emailKey(user.email) !== emailKey(email)) {
+      throw new AuthError('invalid_token', 'This link is invalid or has expired');
+    }
+    const owner = this.emailIndex.get(emailKey(email));
+    if (owner && owner !== userId) {
+      throw new AuthError('email_taken', 'That email is already used by another account');
+    }
+    user.emailVerified = true;
+    this.emailIndex.set(emailKey(email), userId);
+    await this.persistIdentity(user);
+    return user;
+  }
+
+  /** Account to email a reset link to: by username or verified email, and only if it has a verified email. */
+  findRecoverableUser(identifier: string): User | undefined {
+    const trimmed = identifier.trim();
+    const user = trimmed.includes('@')
+      ? this.getUserByVerifiedEmail(trimmed)
+      : this.getUserByUsername(trimmed);
+    return user?.email && user.emailVerified ? user : undefined;
+  }
+
+  async resetPassword(token: string, password: string): Promise<User> {
+    await this.ensureLoaded();
+    const { userId, email } = await this.consumeEmailToken(token, 'reset_password');
+    const user = this.users.get(userId);
+    if (!user || !user.email || !user.emailVerified || emailKey(user.email) !== emailKey(email)) {
+      throw new AuthError('invalid_token', 'This link is invalid or has expired');
+    }
+    user.passwordHash = await argon2.hash(password);
+    await this.persistIdentity(user);
+    await this.revokeAllSessions(userId);
+    return user;
+  }
+
+  private async revokeAllSessions(userId: string): Promise<void> {
+    for (const [token, session] of this.sessions) {
+      if (session.userId === userId) this.sessions.delete(token);
+    }
+    for (const [ticket, wsTicket] of this.tickets) {
+      if (wsTicket.userId === userId) this.tickets.delete(ticket);
+    }
+    if (this.pool) {
+      await this.pool.query(`DELETE FROM auth_sessions WHERE user_id = $1`, [userId]);
+      await this.pool.query(`DELETE FROM auth_tickets WHERE user_id = $1`, [userId]);
+    } else {
+      await this.persistFile();
+    }
+  }
+
+  private requireUser(userId: string): User {
+    const user = this.users.get(userId);
+    if (!user) throw new AuthError('invalid_credentials', 'Unknown user');
+    return user;
   }
 
   createSession(userId: string, ttlMs = 30 * 24 * 60 * 60 * 1000): string {
@@ -737,15 +1129,23 @@ export class AuthStore {
     if (!user) return null;
     this.users.delete(userId);
     this.usernameIndex.delete(user.username.toLowerCase());
+    this.unindexEmail(user);
+    if (user.googleSub && this.googleSubIndex.get(user.googleSub) === userId) {
+      this.googleSubIndex.delete(user.googleSub);
+    }
     for (const [token, session] of this.sessions) {
       if (session.userId === userId) this.sessions.delete(token);
     }
     for (const [ticket, wsTicket] of this.tickets) {
       if (wsTicket.userId === userId) this.tickets.delete(ticket);
     }
+    for (const [hash, record] of this.emailTokens) {
+      if (record.userId === userId) this.emailTokens.delete(hash);
+    }
     if (this.pool) {
       await this.pool.query(`DELETE FROM auth_sessions WHERE user_id = $1`, [userId]);
       await this.pool.query(`DELETE FROM auth_tickets WHERE user_id = $1`, [userId]);
+      await this.pool.query(`DELETE FROM auth_email_tokens WHERE user_id = $1`, [userId]);
       await this.pool.query(`DELETE FROM table_chip_balances WHERE user_id = $1`, [userId]);
       await this.pool.query(`DELETE FROM users WHERE id = $1`, [userId]);
     } else {
@@ -793,24 +1193,7 @@ export class AuthStore {
     if (this.usernameIndex.has(key) || this.users.has(id)) {
       throw new AuthError('username_taken', 'Username or id already taken');
     }
-    const user: User = {
-      id,
-      username,
-      name: username,
-      passwordHash: await argon2.hash(password),
-      avatarId: clampAvatarId(avatarId),
-      avatarUrl: null,
-      tableColorId: 0,
-      cardThemeId: DEFAULT_CARD_THEME_ID,
-      uiTheme: 'v1',
-      tableLayout: 'v1',
-      sfxMuted: false,
-      keyboardShortcuts: clampUserKeyboardShortcuts({}),
-      chipBalance: this.startingGrant(),
-      whuffieBalance: this.startingWhuffies(),
-      handsPlayed: 0,
-      createdAt: Date.now(),
-    };
+    const user = this.newUser(id, username, await argon2.hash(password), clampAvatarId(avatarId));
     this.indexUser(user);
     await this.persistUserToPostgres(user);
     await this.persistFile();

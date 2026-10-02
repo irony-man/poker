@@ -98,7 +98,7 @@ Prefer a GPU for the sidecar. CPU float32 is slow and may miss table-banter time
 
 Lobby **Contests** tab (web) or Contests panel (Android):
 
-1. **Chips** — 2–9 players, equal starting stacks, no top-ups; busted players are eliminated; last stack standing wins. Blinds rise on a fixed hand schedule.
+1. **Chips** — 2–9 players, equal starting stacks, no top-ups; busted players are eliminated; last stack standing wins. Blinds stay fixed at the contest's configured level.
 2. **Rounds** — 2–9 players, equal start stacks, top-ups allowed when broke; after a fixed number of hands (or if fewer than two stacks remain), standings are by chip count and the chip leader wins.
 
 Create with optional friend invites and bot fill. Share the contest code, or open from the lobby. Friends see invites under **Friends → Invites**. Contest page shows registration, progress/standings, and routes you to your assigned table when play starts.

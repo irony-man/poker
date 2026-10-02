@@ -14,6 +14,14 @@ import {
   unique: true,
   where: 'username_lower IS NOT NULL',
 })
+@Index('users_email_lower_verified_uidx', ['emailLower'], {
+  unique: true,
+  where: 'email_lower IS NOT NULL AND email_verified',
+})
+@Index('users_google_sub_uidx', ['googleSub'], {
+  unique: true,
+  where: 'google_sub IS NOT NULL',
+})
 export class UserEntity {
   @PrimaryColumn({ type: 'text' })
   id!: string;
@@ -27,8 +35,23 @@ export class UserEntity {
   @Column({ name: 'username_lower', type: 'text', nullable: true })
   usernameLower!: string | null;
 
+  /** Null for accounts that only sign in with Google. */
   @Column({ name: 'password_hash', type: 'text', nullable: true })
   passwordHash!: string | null;
+
+  /** Recovery email (original casing). Only verified emails receive reset links. */
+  @Column({ type: 'text', nullable: true })
+  email!: string | null;
+
+  @Column({ name: 'email_lower', type: 'text', nullable: true })
+  emailLower!: string | null;
+
+  @Column({ name: 'email_verified', type: 'boolean', default: false })
+  emailVerified!: boolean;
+
+  /** Google account subject id when linked. */
+  @Column({ name: 'google_sub', type: 'text', nullable: true })
+  googleSub!: string | null;
 
   @Column({ name: 'avatar_id', type: 'int', default: 0 })
   avatarId!: number;
@@ -109,6 +132,35 @@ export class AuthTicketEntity {
 
   @Column({ name: 'expires_at', type: 'timestamptz' })
   expiresAt!: Date;
+}
+
+export type AuthEmailTokenPurpose = 'verify_email' | 'reset_password';
+
+/** Single-use email verification / password reset tokens (only the sha256 hash is stored). */
+@Entity({ name: 'auth_email_tokens' })
+@Index('auth_email_tokens_user_idx', ['userId'])
+export class AuthEmailTokenEntity {
+  @PrimaryColumn({ name: 'token_hash', type: 'text' })
+  tokenHash!: string;
+
+  @Column({ name: 'user_id', type: 'text' })
+  userId!: string;
+
+  @ManyToOne(() => UserEntity, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'user_id' })
+  user?: UserEntity;
+
+  @Column({ type: 'text' })
+  purpose!: AuthEmailTokenPurpose;
+
+  @Column({ type: 'text' })
+  email!: string;
+
+  @Column({ name: 'expires_at', type: 'timestamptz' })
+  expiresAt!: Date;
+
+  @Column({ name: 'used_at', type: 'timestamptz', nullable: true })
+  usedAt!: Date | null;
 }
 
 @Entity({ name: 'tables' })
@@ -301,6 +353,7 @@ export const ALL_ENTITIES = [
   UserEntity,
   AuthSessionEntity,
   AuthTicketEntity,
+  AuthEmailTokenEntity,
   TableEntity,
   HandHistoryEntity,
   ChatMessageEntity,

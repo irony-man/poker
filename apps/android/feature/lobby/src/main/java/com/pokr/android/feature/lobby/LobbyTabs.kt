@@ -1,10 +1,12 @@
 package com.pokr.android.feature.lobby
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,7 +38,10 @@ fun HomeTab(
     onOffline: (seats: Int, bots: Int, name: String) -> Unit,
 ) {
     LobbyScrollColumn {
-        if (!state.signedIn) {
+        if (!state.signedIn && state.googlePendingToken != null) {
+            GoogleUsernamePanel(state = state, viewModel = viewModel)
+        } else if (!state.signedIn) {
+            if (state.forgotOpen) ForgotPasswordDialog(state = state, viewModel = viewModel)
             LobbyPageHeader(
                 title = if (state.authMode == "signup") "Create account" else "Sign in",
                 subtitle = if (state.authMode == "signup") {
@@ -47,6 +52,15 @@ fun HomeTab(
             )
             HudPanel(modifier = Modifier.fillMaxWidth(), chrome = PokrChrome.Lobby) {
                 Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    if (state.googleClientId != null) {
+                        GoogleSignInRow(
+                            clientId = state.googleClientId,
+                            enabled = !state.busy,
+                            onIdToken = viewModel::onGoogleIdToken,
+                            onError = viewModel::onGoogleError,
+                        )
+                        OrDividerRow()
+                    }
                     SegmentedChoice(
                         selected = state.authMode,
                         options = listOf("login", "signup"),
@@ -79,6 +93,18 @@ fun HomeTab(
                         enabled = !state.busy,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    if (state.authMode == "login") {
+                        Text(
+                            "Forgot password?",
+                            color = PokrColors.Sidebar,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp,
+                            modifier = Modifier
+                                .align(Alignment.End)
+                                .clickable(onClick = viewModel::openForgotPassword)
+                                .padding(vertical = 4.dp),
+                        )
+                    }
                 }
             }
             LobbyPageHeader(

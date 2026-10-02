@@ -87,6 +87,16 @@ services:
       BOT_CHAT_LLM_PATH: ${BOT_CHAT_LLM_PATH:-}
       BOT_CHAT_TIMEOUT_MS: ${BOT_CHAT_TIMEOUT_MS:-60000}
       BOT_CHAT_MODEL: ${BOT_CHAT_MODEL:-}
+      # Google sign-in (OAuth web client id; web + Android verify against it).
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      # Recovery / password-reset email (SMTP). Unset SMTP_HOST → links are logged instead.
+      PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
     volumes:
       - poker-data:/app/data
     restart: unless-stopped
@@ -115,6 +125,8 @@ services:
         NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ${NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION:-}
         NEXT_PUBLIC_BING_SITE_VERIFICATION: ${NEXT_PUBLIC_BING_SITE_VERIFICATION:-}
         NEXT_PUBLIC_YANDEX_VERIFICATION: ${NEXT_PUBLIC_YANDEX_VERIFICATION:-}
+        # Optional: blank → the web app reads GOOGLE_CLIENT_ID from GET /api/auth/config at runtime.
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-}
         # Must be Compose service URL at build time (not https://pokr.site) or /api rewrites loop.
         API_REWRITE_TARGET: ${API_REWRITE_TARGET:-http://server:4000}
     ports:

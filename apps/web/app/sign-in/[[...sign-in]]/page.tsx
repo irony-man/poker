@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, Suspense, useState } from 'react';
+import type { AuthSession } from '@poker/protocol';
+import { GoogleAuthPanel } from '@/components/GoogleAuthPanel';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { resolvePublicImage } from '@/lib/assets';
 import { LoadingScreen } from '@/components/LoadingScreen';
@@ -25,20 +27,24 @@ function SignInForm() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [choosingUsername, setChoosingUsername] = useState(false);
   const returnTo = safeReturnPath(search.get('next'));
+
+  function finishSignIn(session: AuthSession) {
+    const avatarId = session.avatarId ?? loadSavedAvatarId();
+    const stored = { ...session, avatarId };
+    setSession(stored);
+    writeStoredSession(stored);
+    saveAvatarId(avatarId);
+    router.replace(returnTo);
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      const session = await login(username.trim(), password);
-      const avatarId = session.avatarId ?? loadSavedAvatarId();
-      const stored = { ...session, avatarId };
-      setSession(stored);
-      writeStoredSession(stored);
-      saveAvatarId(avatarId);
-      router.replace(returnTo);
+      finishSignIn(await login(username.trim(), password));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
@@ -54,11 +60,16 @@ function SignInForm() {
         </h1>
         <p className="mt-2 text-sm text-muted">{pageCopy.subtitle}</p>
       </div>
-      <form onSubmit={onSubmit}>
-        <LobbySplitCard
-          imageSrc={resolvePublicImage(pageCopy.image ?? '/home-challenge.webp')}
-          imageAlt={pageCopy.imageAlt ?? 'Sit down and sign in to play'}
-        >
+      <LobbySplitCard
+        imageSrc={resolvePublicImage(pageCopy.image ?? '/home-challenge.webp')}
+        imageAlt={pageCopy.imageAlt ?? 'Sit down and sign in to play'}
+      >
+        <GoogleAuthPanel
+          mode="sign-in"
+          onSession={finishSignIn}
+          onStepChange={setChoosingUsername}
+        />
+        <form onSubmit={onSubmit} className={choosingUsername ? 'hidden' : 'flex flex-col gap-4'}>
           <TextField
             variant="hud"
             label="Username"
@@ -88,17 +99,22 @@ function SignInForm() {
           <Button disabled={busy} type="submit" className="min-h-11 w-full">
             {busy ? 'Signing in…' : 'Sign in'}
           </Button>
-          <p className="text-sm text-muted">
-            No account?{' '}
-            <Link
-              href={authHref('sign-up', returnTo)}
-              className="font-semibold text-sidebar hover:underline"
-            >
-              Sign up
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted">
+            <p>
+              No account?{' '}
+              <Link
+                href={authHref('sign-up', returnTo)}
+                className="font-semibold text-sidebar hover:underline"
+              >
+                Sign up
+              </Link>
+            </p>
+            <Link href="/forgot-password" className="font-semibold text-sidebar hover:underline">
+              Forgot password?
             </Link>
-          </p>
-        </LobbySplitCard>
-      </form>
+          </div>
+        </form>
+      </LobbySplitCard>
     </div>
   );
 }

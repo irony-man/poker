@@ -40,6 +40,11 @@ android {
 
         val pokrWebUrl = localProps.getProperty("pokr.web.url", "http://localhost:3000")
         buildConfigField("String", "POKR_WEB_URL", "\"$pokrWebUrl\"")
+
+        // Google OAuth *Web* client id (used as serverClientId). Blank = ask the server
+        // (GET /api/auth/config), which reads GOOGLE_CLIENT_ID.
+        val googleWebClientId = localProps.getProperty("pokr.google.client.id", "")
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
     }
 
     buildFeatures {

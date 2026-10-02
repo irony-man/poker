@@ -25,16 +25,10 @@ export interface BlindLevel {
 }
 
 /**
- * Default blind ladder scaled from the contest's starting small/big blinds.
- * Level 0 uses the configured blinds; later levels scale up.
+ * Contest blind schedule: a single level, so the configured blinds stay fixed for the whole contest.
  */
 export function buildBlindSchedule(smallBlind: number, bigBlind: number): BlindLevel[] {
-  const multipliers = [1, 1.5, 2, 3, 4, 6, 8, 12, 16, 24];
-  return multipliers.map((m) => ({
-    smallBlind: Math.max(1, Math.round(smallBlind * m)),
-    bigBlind: Math.max(2, Math.round(bigBlind * m)),
-    durationHands: m <= 2 ? 6 : m <= 6 ? 4 : 3,
-  }));
+  return [{ smallBlind, bigBlind, durationHands: 1 }];
 }
 
 export const ContestEntrantSchema = z.object({

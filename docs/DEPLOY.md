@@ -120,3 +120,29 @@ docker compose --profile fungpt up -d --build
 ```
 
 If the LLM is down, table bots fall back to templates; `/chat` returns 503.
+## Google sign-in
+
+1. Google Cloud Console → **APIs & Services → OAuth consent screen**: configure the app (External, scopes `openid email profile`), then publish it.
+2. **Credentials → Create credentials → OAuth client ID → Web application**:
+   - Authorized JavaScript origins: `https://pokr.site`, `https://www.pokr.site`, `http://localhost:3000`
+   - No redirect URIs are needed (the web app uses the Google Identity Services popup).
+3. Set `GOOGLE_CLIENT_ID=<web client id>.apps.googleusercontent.com` in `~/poker/.env` and redeploy. The server verifies ID tokens against it, and the web app reads it at runtime from `GET /api/auth/config` (so `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is optional).
+4. **Android:** create a second OAuth client of type **Android** with package `com.pokr.android` and the SHA-1 of each signing key (`./gradlew signingReport` for debug; Play Console → App integrity for release). The app still asks for tokens with the *web* client id: it uses `pokr.google.client.id` from `apps/android/local.properties` if set, otherwise `GET /api/auth/config`.
+
+Multiple accepted audiences can be given as a comma-separated `GOOGLE_CLIENT_ID`; the first one is served to clients.
+
+## Recovery email (SMTP)
+
+Players can add an email on their profile; once confirmed it is used for "Forgot password?" resets and for linking Google accounts. Set in `~/poker/.env`:
+
+```bash
+SMTP_HOST=smtppro.zoho.com      # Zoho Mail (smtp.zoho.com for free plans; .in / .eu by region)
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=no-reply@pokr.site
+SMTP_PASS=<Zoho app-specific password>
+SMTP_FROM="Pokr <no-reply@pokr.site>"
+PUBLIC_WEB_URL=https://pokr.site
+```
+
+With `SMTP_HOST` unset, verification and reset links are written to the server log instead of being emailed (useful in dev).

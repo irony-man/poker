@@ -592,6 +592,38 @@ export const LoginBodySchema = z.object({
   password: PasswordSchema,
 });
 
+export const EmailSchema = z.string().trim().email('Enter a valid email address').max(254);
+
+export const GoogleAuthBodySchema = z.object({
+  /** Google ID token (GIS credential on web, Credential Manager on Android). */
+  idToken: z.string().min(20).max(4096),
+  /** Required only when creating a new account (server replied `needsUsername`). */
+  username: UsernameSchema.optional(),
+  avatarId: z.number().int().min(0).max(7).optional(),
+});
+
+export const GoogleLinkBodySchema = z.object({
+  idToken: z.string().min(20).max(4096),
+});
+
+export const SetEmailBodySchema = z.object({
+  email: EmailSchema,
+});
+
+export const VerifyEmailBodySchema = z.object({
+  token: z.string().min(16).max(256),
+});
+
+export const ForgotPasswordBodySchema = z.object({
+  /** Username or verified recovery email. */
+  identifier: z.string().trim().min(3).max(254),
+});
+
+export const ResetPasswordBodySchema = z.object({
+  token: z.string().min(16).max(256),
+  password: PasswordSchema,
+});
+
 export const AuthSessionSchema = z.object({
   userId: z.string(),
   username: z.string(),
@@ -834,6 +866,18 @@ export type PublicProfile = z.infer<typeof PublicProfileSchema>;
 export type SignupBody = z.infer<typeof SignupBodySchema>;
 export type LoginBody = z.infer<typeof LoginBodySchema>;
 export type AuthSession = z.infer<typeof AuthSessionSchema>;
+export type GoogleAuthBody = z.infer<typeof GoogleAuthBodySchema>;
+export type GoogleLinkBody = z.infer<typeof GoogleLinkBodySchema>;
+export type SetEmailBody = z.infer<typeof SetEmailBodySchema>;
+export type VerifyEmailBody = z.infer<typeof VerifyEmailBodySchema>;
+export type ForgotPasswordBody = z.infer<typeof ForgotPasswordBodySchema>;
+export type ResetPasswordBody = z.infer<typeof ResetPasswordBodySchema>;
+/** `POST /api/auth/google` reply when a new Google user must pick a username first. */
+export interface GoogleNeedsUsername {
+  needsUsername: true;
+  suggestedUsername: string;
+  email: string | null;
+}
 export type AvatarUploadUrlBody = z.infer<typeof AvatarUploadUrlBodySchema>;
 export type TableSoundKind = z.infer<typeof TableSoundKindSchema>;
 export type SoundUploadUrlBody = z.infer<typeof SoundUploadUrlBodySchema>;

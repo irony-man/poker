@@ -25,6 +25,8 @@ type OnlineFriendsContextValue = {
   incomingCount: number;
   challengeCount: number;
   pendingCount: number;
+  /** Outgoing friend requests + challenges still awaiting the other player. */
+  sentCount: number;
   refreshSocial: () => Promise<void>;
 };
 
@@ -35,6 +37,7 @@ const OnlineFriendsContext = createContext<OnlineFriendsContextValue>({
   incomingCount: 0,
   challengeCount: 0,
   pendingCount: 0,
+  sentCount: 0,
   refreshSocial: async () => {},
 });
 
@@ -46,19 +49,26 @@ export function PendingCountBadge({
 }: {
   count: number;
   className?: string;
-  /** dark = sidebar/mushroom chrome; light = cream profile tabs */
-  tone?: 'dark' | 'light';
+  /** dark = sidebar/mushroom chrome; light = cream profile tabs; sent = outgoing (no action needed) */
+  tone?: 'dark' | 'light' | 'sent';
 }) {
   if (count <= 0) return null;
   const label = count > 9 ? '9+' : String(count);
   const toneClass =
     tone === 'light'
       ? 'bg-danger text-on-chrome'
-      : 'bg-gold text-sidebar';
+      : tone === 'sent'
+        ? 'border border-on-chrome/40 bg-sidebar text-on-chrome/85'
+        : 'bg-gold text-sidebar';
+  const ariaLabel =
+    tone === 'sent'
+      ? `${count} sent request${count === 1 ? '' : 's'}`
+      : `${count} pending invite${count === 1 ? '' : 's'}`;
   return (
     <span
       className={`inline-flex min-w-[1.15rem] items-center justify-center rounded-full px-1 py-0.5 text-[10px] font-bold leading-none tabular-nums ${toneClass} ${className}`.trim()}
-      aria-label={`${count} pending invite${count === 1 ? '' : 's'}`}
+      aria-label={ariaLabel}
+      title={tone === 'sent' ? ariaLabel : undefined}
     >
       {label}
     </span>
@@ -108,6 +118,7 @@ export function OnlineFriendsProvider({
         incomingCount: 0,
         challengeCount: 0,
         pendingCount: 0,
+        sentCount: 0,
         refreshSocial: refresh,
       };
     }
@@ -124,6 +135,7 @@ export function OnlineFriendsProvider({
       incomingCount,
       challengeCount,
       pendingCount: incomingCount + challengeCount,
+      sentCount: (social?.outgoing?.length ?? 0) + (social?.outgoingChallenges?.length ?? 0),
       refreshSocial: refresh,
     };
   }, [signedIn, sessionToken, social, socialLoaded, refresh]);

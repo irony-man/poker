@@ -27,6 +27,11 @@ object AppModule {
 
     @Provides
     @Singleton
+    @Named("google_web_client_id")
+    fun provideGoogleWebClientId(): String = BuildConfig.GOOGLE_WEB_CLIENT_ID
+
+    @Provides
+    @Singleton
     fun provideTableSoundPlayer(
         @ApplicationContext context: Context,
     ): TableSoundPlayer = TableSoundPlayer(context)

@@ -3,6 +3,7 @@ import {
   Body,
   ConflictException,
   Controller,
+  Get,
   GoneException,
   HttpCode,
   Post,
@@ -10,15 +11,33 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { LoginBodySchema, SignupBodySchema } from '@poker/protocol';
+import {
+  ForgotPasswordBodySchema,
+  GoogleAuthBodySchema,
+  LoginBodySchema,
+  ResetPasswordBodySchema,
+  SignupBodySchema,
+  VerifyEmailBodySchema,
+} from '@poker/protocol';
 import type { Request } from 'express';
 import { AuthError } from './auth.types.js';
+import { toAuthHttpError } from './auth.errors.js';
+import { GoogleIdTokenVerifier } from './auth.google.js';
 import { AuthService } from './auth.service.js';
 import { bearerToken } from './bearer.js';
 
 @Controller('api')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly google: GoogleIdTokenVerifier,
+  ) {}
+
+  /** Public auth options so clients don't need the Google client id baked in at build time. */
+  @Get('auth/config')
+  config() {
+    return { googleClientId: this.google.webClientId() };
+  }
 
   @Post('signup')
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
@@ -61,6 +80,78 @@ export class AuthController {
       throw new BadRequestException({
         error: err instanceof Error ? err.message : 'Login failed',
       });
+    }
+  }
+
+  /** Sign in (or sign up) with a Google ID token. New users get `{ needsUsername }` first. */
+  @Post('auth/google')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  async googleSignIn(@Body() body: unknown) {
+    const parsed = GoogleAuthBodySchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({ error: parsed.error.message });
+    }
+    try {
+      const result = await this.auth.googleSignIn(parsed.data.idToken, {
+        username: parsed.data.username,
+        avatarId: parsed.data.avatarId,
+      });
+      if (result.kind === 'needs_username') {
+        return {
+          needsUsername: true,
+          suggestedUsername: result.suggestedUsername,
+          email: result.email ?? null,
+        };
+      }
+      return result.session;
+    } catch (err) {
+      throw toAuthHttpError(err, 'Google sign-in failed');
+    }
+  }
+
+  @Post('auth/verify-email')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  async verifyEmail(@Body() body: unknown) {
+    const parsed = VerifyEmailBodySchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({ error: 'This link is invalid or has expired' });
+    }
+    try {
+      const user = await this.auth.verifyEmail(parsed.data.token);
+      return { ok: true, email: user.email };
+    } catch (err) {
+      throw toAuthHttpError(err, 'Could not verify email');
+    }
+  }
+
+  /** Always 200 so the response never reveals whether an account or email exists. */
+  @Post('auth/forgot-password')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  forgotPassword(@Body() body: unknown) {
+    const parsed = ForgotPasswordBodySchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({ error: 'Enter your username or email' });
+    }
+    void this.auth.requestPasswordReset(parsed.data.identifier).catch(() => undefined);
+    return { ok: true };
+  }
+
+  @Post('auth/reset-password')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  async resetPassword(@Body() body: unknown) {
+    const parsed = ResetPasswordBodySchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({ error: parsed.error.message });
+    }
+    try {
+      const user = await this.auth.resetPassword(parsed.data.token, parsed.data.password);
+      return { ok: true, username: user.username };
+    } catch (err) {
+      throw toAuthHttpError(err, 'Could not reset password');
     }
   }
 

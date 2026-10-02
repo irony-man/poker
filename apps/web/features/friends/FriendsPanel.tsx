@@ -103,6 +103,15 @@ export function FriendsPanel({
   } = useFriendsSocial({ disabled, onFriendCountChange });
 
   const incomingPendingCount = incoming.length + challenges.length;
+  const sentPendingCount = outgoing.length + outgoingChallenges.length;
+  const pendingTabLabel =
+    incomingPendingCount > 0 && sentPendingCount > 0
+      ? `Pending (${incomingPendingCount} · ${sentPendingCount} sent)`
+      : incomingPendingCount > 0
+        ? `Pending (${incomingPendingCount})`
+        : sentPendingCount > 0
+          ? `Pending (${sentPendingCount} sent)`
+          : 'Pending';
   const [socialTab, setSocialTab] = useState<SocialTab>(() => {
     const fromUrl = tabFromLocation();
     if (fromUrl) return fromUrl;
@@ -501,10 +510,7 @@ export function FriendsPanel({
             options={[
               {
                 id: 'pending',
-                label:
-                  incomingPendingCount > 0
-                    ? `Pending (${incomingPendingCount})`
-                    : 'Pending',
+                label: pendingTabLabel,
                 panelId: 'social-panel-pending',
               },
               { id: 'friends', label: 'Friends', panelId: 'social-panel-friends' },
@@ -522,10 +528,7 @@ export function FriendsPanel({
             options={[
               {
                 id: 'pending',
-                label:
-                  incomingPendingCount > 0
-                    ? `Pending (${incomingPendingCount})`
-                    : 'Pending',
+                label: pendingTabLabel,
                 panelId: 'social-panel-pending',
               },
               { id: 'friends', label: 'Friends', panelId: 'social-panel-friends' },

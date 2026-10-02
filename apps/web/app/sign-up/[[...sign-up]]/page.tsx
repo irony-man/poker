@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, Suspense, useState } from 'react';
+import type { AuthSession } from '@poker/protocol';
+import { GoogleAuthPanel } from '@/components/GoogleAuthPanel';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { resolvePublicImage } from '@/lib/assets';
 import { LoadingScreen } from '@/components/LoadingScreen';
@@ -29,19 +31,23 @@ function SignUpForm() {
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [choosingUsername, setChoosingUsername] = useState(false);
   const returnTo = safeReturnPath(search.get('next'));
+
+  function finishSignUp(session: AuthSession) {
+    const stored = { ...session, avatarId: session.avatarId ?? avatarId };
+    setSession(stored);
+    writeStoredSession(stored);
+    saveAvatarId(stored.avatarId);
+    router.replace(returnTo);
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      const session = await signup(username.trim(), password, avatarId);
-      const stored = { ...session, avatarId: session.avatarId ?? avatarId };
-      setSession(stored);
-      writeStoredSession(stored);
-      saveAvatarId(stored.avatarId);
-      router.replace(returnTo);
+      finishSignUp(await signup(username.trim(), password, avatarId));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Signup failed');
     } finally {
@@ -57,11 +63,17 @@ function SignUpForm() {
         </h1>
         <p className="mt-2 text-sm text-muted">{pageCopy.subtitle}</p>
       </div>
-      <form onSubmit={onSubmit}>
-        <LobbySplitCard
-          imageSrc={resolvePublicImage(pageCopy.image ?? '/home-knockout.webp')}
-          imageAlt={pageCopy.imageAlt ?? 'Join the table — create your account'}
-        >
+      <LobbySplitCard
+        imageSrc={resolvePublicImage(pageCopy.image ?? '/home-knockout.webp')}
+        imageAlt={pageCopy.imageAlt ?? 'Join the table — create your account'}
+      >
+        <GoogleAuthPanel
+          mode="sign-up"
+          initialAvatarId={avatarId}
+          onSession={finishSignUp}
+          onStepChange={setChoosingUsername}
+        />
+        <form onSubmit={onSubmit} className={choosingUsername ? 'hidden' : 'flex flex-col gap-4'}>
           <TextField
             variant="hud"
             label="Username"
@@ -110,8 +122,8 @@ function SignUpForm() {
               Sign in
             </Link>
           </p>
-        </LobbySplitCard>
-      </form>
+        </form>
+      </LobbySplitCard>
     </div>
   );
 }

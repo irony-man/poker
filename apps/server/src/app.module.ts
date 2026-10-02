@@ -13,6 +13,7 @@ import { GatewayModule } from './gateway/gateway.module.js';
 import { HealthModule } from './health/health.module.js';
 import { HistoryModule } from './history/history.module.js';
 import { LudoModule } from './ludo/ludo.module.js';
+import { MailModule } from './mail/mail.module.js';
 import { MemoryModule } from './memory/memory.module.js';
 import { CourtpieceModule } from './courtpiece/courtpiece.module.js';
 import { PresenceModule } from './presence/presence.module.js';
@@ -40,6 +41,7 @@ import { WalletModule } from './wallet/wallet.module.js';
     ]),
     DatabaseModule,
     StorageModule,
+    MailModule,
     SiteConfigModule,
     PresenceModule,
     RealtimeModule,

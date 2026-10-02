@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { AccountRecoveryCard } from '@/components/AccountRecoveryCard';
 import { AvatarPicker, PlayerAvatar } from '@/components/PlayerAvatar';
 import { FriendsPanel } from '@/components/FriendsPanel';
 import { LoadingScreen } from '@/components/LoadingScreen';
@@ -673,6 +674,7 @@ function ProfilePageInner() {
           </section>
 
           {tab === 'overview' ? (
+            <>
             <section
               role="tabpanel"
               id="profile-panel-overview"
@@ -708,6 +710,10 @@ function ProfilePageInner() {
                 </button>
               </div>
             </section>
+            {token ? (
+              <AccountRecoveryCard profile={profile} sessionToken={token} onProfile={setProfile} />
+            ) : null}
+            </>
           ) : tab === 'hands' ? (
             <section
               role="tabpanel"

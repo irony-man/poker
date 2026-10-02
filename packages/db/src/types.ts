@@ -6,6 +6,9 @@ export interface UserRow {
   username: string | null;
   usernameLower: string | null;
   passwordHash: string | null;
+  email: string | null;
+  emailVerified: boolean;
+  googleSub: string | null;
   avatarId: number;
   chipBalance: number;
   whuffieBalance: number;

@@ -1,4 +1,4 @@
-import type { AuthSession } from '@poker/protocol';
+import type { AuthSession, GoogleNeedsUsername } from '@poker/protocol';
 import { coerceMoney } from '@/lib/currency';
 import { clampTableColorId } from '@/lib/tableColors';
 import { clampTableLayout, type TableLayout } from '@/lib/tableLayoutPref';
@@ -21,6 +21,11 @@ export interface MeProfile {
   tableLayout: TableLayout;
   sfxMuted: boolean;
   keyboardShortcuts: KeyboardShortcuts;
+  /** Recovery email; only verified emails receive password reset links. */
+  email: string | null;
+  emailVerified: boolean;
+  googleLinked: boolean;
+  hasPassword: boolean;
   createdAt: number;
   chipBalance: number;
   whuffieBalance: number;
@@ -60,7 +65,125 @@ function normalizeMe(data: MeProfile): MeProfile {
     tableLayout: clampTableLayout(data.tableLayout),
     sfxMuted: data.sfxMuted === true,
     keyboardShortcuts: clampKeyboardShortcuts(data.keyboardShortcuts ?? {}),
+    email: typeof data.email === 'string' && data.email ? data.email : null,
+    emailVerified: data.emailVerified === true,
+    googleLinked: data.googleLinked === true,
+    hasPassword: data.hasPassword !== false,
   };
+}
+
+let authConfigPromise: Promise<{ googleClientId: string | null }> | null = null;
+
+/** Public auth options (cached for the page lifetime). */
+export function fetchAuthConfig(): Promise<{ googleClientId: string | null }> {
+  if (!authConfigPromise) {
+    authConfigPromise = fetch(`${apiBase()}/api/auth/config`)
+      .then(async (res) => {
+        if (!res.ok) return { googleClientId: null };
+        const data = (await res.json()) as { googleClientId?: unknown };
+        return {
+          googleClientId:
+            typeof data.googleClientId === 'string' && data.googleClientId
+              ? data.googleClientId
+              : null,
+        };
+      })
+      .catch(() => {
+        authConfigPromise = null;
+        return { googleClientId: null };
+      });
+  }
+  return authConfigPromise;
+}
+
+export type GoogleAuthResult = AuthSession | GoogleNeedsUsername;
+
+export function isGoogleNeedsUsername(r: GoogleAuthResult): r is GoogleNeedsUsername {
+  return (r as GoogleNeedsUsername).needsUsername === true;
+}
+
+export async function googleAuth(
+  idToken: string,
+  opts: { username?: string; avatarId?: number } = {},
+): Promise<GoogleAuthResult> {
+  const res = await fetch(`${apiBase()}/api/auth/google`, {
+    method: 'POST',
+    headers: sessionHeaders(),
+    body: JSON.stringify({ idToken, ...opts }),
+  });
+  if (!res.ok) throw new Error(await parseError(res, 'Google sign-in failed'));
+  return res.json() as Promise<GoogleAuthResult>;
+}
+
+export async function forgotPassword(identifier: string): Promise<void> {
+  const res = await fetch(`${apiBase()}/api/auth/forgot-password`, {
+    method: 'POST',
+    headers: sessionHeaders(),
+    body: JSON.stringify({ identifier }),
+  });
+  if (!res.ok) throw new Error(await parseError(res, 'Could not send reset email'));
+}
+
+export async function resetPassword(
+  token: string,
+  password: string,
+): Promise<{ username: string }> {
+  const res = await fetch(`${apiBase()}/api/auth/reset-password`, {
+    method: 'POST',
+    headers: sessionHeaders(),
+    body: JSON.stringify({ token, password }),
+  });
+  if (!res.ok) throw new Error(await parseError(res, 'Could not reset password'));
+  return res.json() as Promise<{ username: string }>;
+}
+
+export async function verifyEmail(token: string): Promise<{ email: string | null }> {
+  const res = await fetch(`${apiBase()}/api/auth/verify-email`, {
+    method: 'POST',
+    headers: sessionHeaders(),
+    body: JSON.stringify({ token }),
+  });
+  if (!res.ok) throw new Error(await parseError(res, 'Could not verify email'));
+  return res.json() as Promise<{ email: string | null }>;
+}
+
+export async function setRecoveryEmail(sessionToken: string, email: string): Promise<MeProfile> {
+  const res = await fetch(`${apiBase()}/api/me/email`, {
+    method: 'PUT',
+    headers: sessionHeaders(sessionToken),
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) await failFromResponse(res, 'Could not save email');
+  return normalizeMe((await res.json()) as MeProfile);
+}
+
+export async function resendVerificationEmail(sessionToken: string): Promise<MeProfile> {
+  const res = await fetch(`${apiBase()}/api/me/email/resend`, {
+    method: 'POST',
+    headers: sessionHeaders(sessionToken),
+  });
+  if (!res.ok) await failFromResponse(res, 'Could not resend email');
+  return normalizeMe((await res.json()) as MeProfile);
+}
+
+export async function linkGoogle(sessionToken: string, idToken: string): Promise<MeProfile> {
+  const res = await fetch(`${apiBase()}/api/me/google`, {
+    method: 'POST',
+    headers: sessionHeaders(sessionToken),
+    body: JSON.stringify({ idToken }),
+  });
+  // A rejected Google token is also a 401; don't treat it as an expired Pokr session.
+  if (!res.ok) throw new Error(await parseError(res, 'Could not connect Google'));
+  return normalizeMe((await res.json()) as MeProfile);
+}
+
+export async function unlinkGoogle(sessionToken: string): Promise<MeProfile> {
+  const res = await fetch(`${apiBase()}/api/me/google`, {
+    method: 'DELETE',
+    headers: sessionHeaders(sessionToken),
+  });
+  if (!res.ok) await failFromResponse(res, 'Could not disconnect Google');
+  return normalizeMe((await res.json()) as MeProfile);
 }
 
 export async function signup(

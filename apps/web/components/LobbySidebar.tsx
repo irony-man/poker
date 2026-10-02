@@ -89,12 +89,22 @@ export function LobbySidebar({
   const username = useSession((s) => s.username);
   const chipBalance = useSession((s) => s.chipBalance);
   const whuffieBalance = useSession((s) => s.whuffieBalance);
-  const { pendingCount } = useOnlineFriends();
+  const { pendingCount, sentCount } = useOnlineFriends();
   const [avatarId, setAvatarId] = useState(0);
   const [copied, setCopied] = useState(false);
   const [hotOfflineGroups, setHotOfflineGroups] = useState<
     { id: string; name: string }[]
   >([]);
+  const onOfflineRoute =
+    pathname === '/solo' ||
+    pathname.startsWith('/solo/') ||
+    pathname === '/offline' ||
+    pathname.startsWith('/offline/');
+  const [offlineOpen, setOfflineOpen] = useState(onOfflineRoute);
+
+  useEffect(() => {
+    if (onOfflineRoute) setOfflineOpen(true);
+  }, [onOfflineRoute]);
 
   useEffect(() => {
     if (!signedIn) return;
@@ -145,7 +155,71 @@ export function LobbySidebar({
       <nav className="flex flex-1 flex-col gap-1 px-3 py-4" aria-label="Lobby">
         {LOBBY_NAV.map((t) => {
           const active = isLobbyNavActive(pathname, t.href, searchParams.toString());
-          const showBadge = signedIn && t.href === '/friends' && pendingCount > 0;
+          const isFriends = signedIn && t.href === '/friends';
+          if (t.href === '/solo' && hotOfflineGroups.length > 0) {
+            return (
+              <div key={t.href}>
+                <div className="flex items-stretch gap-0.5">
+                  <Link
+                    href={t.href}
+                    aria-current={active ? 'page' : undefined}
+                    className={cn(
+                      'nav-sidebar-item flex-1',
+                      active
+                        ? 'nav-sidebar-item-active bg-on-chrome/15 text-on-chrome'
+                        : 'text-on-chrome/90 hover:bg-on-chrome/12 hover:text-on-chrome',
+                    )}
+                  >
+                    {t.label}
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setOfflineOpen((open) => !open)}
+                    aria-expanded={offlineOpen}
+                    aria-controls="sidebar-offline-groups"
+                    aria-label={offlineOpen ? 'Collapse offline modes' : 'Expand offline modes'}
+                    className="nav-sidebar-item flex items-center px-2 text-on-chrome/80 hover:bg-on-chrome/12 hover:text-on-chrome"
+                  >
+                    <ChevronIcon
+                      className={cn(
+                        'h-4 w-4 transition-transform',
+                        offlineOpen ? 'rotate-90' : '',
+                      )}
+                    />
+                  </button>
+                </div>
+                {offlineOpen ? (
+                  <div
+                    id="sidebar-offline-groups"
+                    className="ml-3 mt-1 flex flex-col gap-1 border-l border-on-chrome/20 pl-2"
+                  >
+                    {hotOfflineGroups.map((g) => {
+                      const groupActive = isHotOfflineNavActive(
+                        pathname,
+                        g.id,
+                        searchParams.toString(),
+                      );
+                      return (
+                        <Link
+                          key={g.id}
+                          href={hotOfflineSoloHref(g.id)}
+                          aria-current={groupActive ? 'page' : undefined}
+                          className={cn(
+                            'nav-sidebar-item py-2 text-xs',
+                            groupActive
+                              ? 'nav-sidebar-item-active bg-on-chrome/15 text-on-chrome'
+                              : 'text-on-chrome/85 hover:bg-on-chrome/12 hover:text-on-chrome',
+                          )}
+                        >
+                          {g.name}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            );
+          }
           return (
             <Link
               key={t.href}
@@ -159,30 +233,12 @@ export function LobbySidebar({
               )}
             >
               <span>{t.label}</span>
-              {showBadge ? <PendingCountBadge count={pendingCount} /> : null}
-            </Link>
-          );
-        })}
-        {hotOfflineGroups.map((g) => {
-          const href = hotOfflineSoloHref(g.id);
-          const active = isHotOfflineNavActive(
-            pathname,
-            g.id,
-            searchParams.toString(),
-          );
-          return (
-            <Link
-              key={g.id}
-              href={href}
-              aria-current={active ? 'page' : undefined}
-              className={cn(
-                'nav-sidebar-item pl-5 text-sm',
-                active
-                  ? 'nav-sidebar-item-active bg-on-chrome/15 text-on-chrome'
-                  : 'text-on-chrome/85 hover:bg-on-chrome/12 hover:text-on-chrome',
-              )}
-            >
-              {g.name}
+              {isFriends && (pendingCount > 0 || sentCount > 0) ? (
+                <span className="flex items-center gap-1">
+                  <PendingCountBadge count={pendingCount} />
+                  <PendingCountBadge count={sentCount} tone="sent" />
+                </span>
+              ) : null}
             </Link>
           );
         })}

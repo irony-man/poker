@@ -15,6 +15,11 @@ data class MeProfile(
     val uiTheme: String = "v1",
     val tableLayout: String = "v1",
     val sfxMuted: Boolean = false,
+    /** Recovery email; only confirmed emails receive password reset links. */
+    val email: String? = null,
+    val emailVerified: Boolean = false,
+    val googleLinked: Boolean = false,
+    val hasPassword: Boolean = true,
     val createdAt: Long = 0,
     val chipBalance: Int = 0,
     val whuffieBalance: Int = 0,

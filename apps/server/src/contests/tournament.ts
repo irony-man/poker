@@ -778,13 +778,14 @@ export class TournamentManager {
   }
 
   private toView(c: ContestState): ContestView {
+    const lastLevel = c.levelIndex >= c.schedule.length - 1;
     const level = c.schedule[Math.min(c.levelIndex, c.schedule.length - 1)]!;
     const blinds: ContestBlindInfo = {
       levelIndex: c.levelIndex,
       smallBlind: level.smallBlind,
       bigBlind: level.bigBlind,
       handsAtLevel: c.handsAtLevel,
-      handsUntilNext: Math.max(0, level.durationHands - c.handsAtLevel),
+      handsUntilNext: lastLevel ? 0 : Math.max(0, level.durationHands - c.handsAtLevel),
     };
 
     const assignments: ContestPlayerAssignment[] = c.entrants.map((e) => {

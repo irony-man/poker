@@ -57,7 +57,13 @@ import com.pokr.android.core.model.PatchHomeFeaturesBody
 import com.pokr.android.core.model.PatchPagesBody
 import com.pokr.android.core.model.PublicProfile
 import com.pokr.android.core.model.PublicTablesResponse
+import com.pokr.android.core.model.AuthConfigResponse
+import com.pokr.android.core.model.ForgotPasswordRequest
+import com.pokr.android.core.model.GoogleAuthRequest
+import com.pokr.android.core.model.GoogleAuthResponse
+import com.pokr.android.core.model.GoogleLinkRequest
 import com.pokr.android.core.model.SessionDto
+import com.pokr.android.core.model.SetEmailRequest
 import com.pokr.android.core.model.SignupRequest
 import com.pokr.android.core.model.SiteAnnouncement
 import com.pokr.android.core.model.SiteEconomy
@@ -75,6 +81,7 @@ import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -90,6 +97,27 @@ interface PokrApi {
 
     @POST("api/logout")
     suspend fun logout(@Body body: EmptyBody = EmptyBody()): Unit
+
+    @GET("api/auth/config")
+    suspend fun authConfig(): AuthConfigResponse
+
+    @POST("api/auth/google")
+    suspend fun googleAuth(@Body body: GoogleAuthRequest): GoogleAuthResponse
+
+    @POST("api/auth/forgot-password")
+    suspend fun forgotPassword(@Body body: ForgotPasswordRequest): OkResponse
+
+    @PUT("api/me/email")
+    suspend fun setEmail(@Body body: SetEmailRequest): MeProfile
+
+    @POST("api/me/email/resend")
+    suspend fun resendVerificationEmail(@Body body: EmptyBody = EmptyBody()): MeProfile
+
+    @POST("api/me/google")
+    suspend fun linkGoogle(@Body body: GoogleLinkRequest): MeProfile
+
+    @DELETE("api/me/google")
+    suspend fun unlinkGoogle(): MeProfile
 
     @POST("api/ticket")
     suspend fun refreshTicket(@Body body: EmptyBody = EmptyBody()): SessionDto

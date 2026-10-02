@@ -2,17 +2,29 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Patch,
   Post,
+  Put,
   Query,
   ServiceUnavailableException,
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AvatarUploadUrlBodySchema, UpdateMeBodySchema, clampKeyboardShortcuts } from '@poker/protocol';
+import { Throttle } from '@nestjs/throttler';
+import {
+  AvatarUploadUrlBodySchema,
+  GoogleLinkBodySchema,
+  SetEmailBodySchema,
+  UpdateMeBodySchema,
+  clampKeyboardShortcuts,
+} from '@poker/protocol';
 import { isAdminUsername, parseAdminUsernames } from '../admin/admin-allowlist.js';
+import { toAuthHttpError } from '../auth/auth.errors.js';
+import { AuthError } from '../auth/auth.types.js';
 import { CurrentUser } from '../common/session-auth.guard.js';
 import { SessionAuthGuard } from '../common/session-auth.guard.js';
 import type { User } from '../auth/auth.types.js';
@@ -47,6 +59,10 @@ function toMeProfile(
     tableLayout: user.tableLayout ?? 'v1',
     sfxMuted: user.sfxMuted === true,
     keyboardShortcuts: clampKeyboardShortcuts(user.keyboardShortcuts ?? {}),
+    email: user.email,
+    emailVerified: user.emailVerified,
+    googleLinked: user.googleSub !== null,
+    hasPassword: user.passwordHash !== null,
     createdAt: user.createdAt,
     chipBalance,
     whuffieBalance,
@@ -92,6 +108,77 @@ export class UsersController {
       friendCount,
       this.isAdmin(fresh),
     );
+  }
+
+  private async profileFor(user: User) {
+    const friendCount = await this.friends.countFriends(user.id);
+    return toMeProfile(
+      user,
+      this.wallet.getBalance(user.id),
+      this.wallet.getWhuffieBalance(user.id),
+      friendCount,
+      this.isAdmin(user),
+    );
+  }
+
+  /** Set the recovery email and send a confirmation link. */
+  @Put('me/email')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  async setEmail(@CurrentUser() user: User, @Body() body: unknown) {
+    const parsed = SetEmailBodySchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({ error: 'Enter a valid email address' });
+    }
+    let updated: User;
+    try {
+      updated = await this.auth.setEmail(user.id, parsed.data.email);
+    } catch (err) {
+      if (err instanceof AuthError) throw toAuthHttpError(err, 'Could not save email');
+      throw new ServiceUnavailableException({
+        error: 'Email saved, but the confirmation email could not be sent. Try "Resend" later.',
+      });
+    }
+    return this.profileFor(updated);
+  }
+
+  @Post('me/email/resend')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  async resendEmail(@CurrentUser() user: User) {
+    try {
+      const updated = await this.auth.resendVerification(user.id);
+      if (!updated) throw new UnauthorizedException({ error: 'Unknown user' });
+      return this.profileFor(updated);
+    } catch (err) {
+      if (err instanceof UnauthorizedException) throw err;
+      throw new ServiceUnavailableException({
+        error: 'Could not send the confirmation email. Try again later.',
+      });
+    }
+  }
+
+  @Post('me/google')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  async linkGoogle(@CurrentUser() user: User, @Body() body: unknown) {
+    const parsed = GoogleLinkBodySchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({ error: parsed.error.message });
+    }
+    try {
+      return this.profileFor(await this.auth.linkGoogle(user.id, parsed.data.idToken));
+    } catch (err) {
+      throw toAuthHttpError(err, 'Could not connect Google');
+    }
+  }
+
+  @Delete('me/google')
+  async unlinkGoogle(@CurrentUser() user: User) {
+    try {
+      return this.profileFor(await this.auth.unlinkGoogle(user.id));
+    } catch (err) {
+      throw toAuthHttpError(err, 'Could not disconnect Google');
+    }
   }
 
   @Get('me/hands')

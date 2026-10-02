@@ -47,6 +47,9 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.hilt.android)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
     ksp(libs.hilt.compiler)
 
     implementation(platform(libs.androidx.compose.bom))

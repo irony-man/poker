@@ -580,19 +580,24 @@ export const UsernameSchema = z
 
 export const PasswordSchema = z.string().min(6).max(128);
 
+export const EmailSchema = z.string().trim().email('Enter a valid email address').max(254);
+
 export const SignupBodySchema = z.object({
   username: UsernameSchema,
   password: PasswordSchema,
   /** Preset profile picture index (0–7). */
   avatarId: z.number().int().min(0).max(7).optional(),
+  /** Optional recovery email; the welcome email asks the user to confirm it. Blank = none. */
+  email: z.preprocess(
+    (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
+    EmailSchema.optional(),
+  ),
 });
 
 export const LoginBodySchema = z.object({
   username: UsernameSchema,
   password: PasswordSchema,
 });
-
-export const EmailSchema = z.string().trim().email('Enter a valid email address').max(254);
 
 export const GoogleAuthBodySchema = z.object({
   /** Google ID token (GIS credential on web, Credential Manager on Android). */

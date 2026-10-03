@@ -41,6 +41,8 @@ data class LobbyUiState(
     val signedIn: Boolean = false,
     val username: String = "",
     val password: String = "",
+    /** Optional recovery email on sign-up. */
+    val signupEmail: String = "",
     val name: String = "",
     val avatarId: Int = 0,
     val avatarUrl: String? = null,
@@ -156,6 +158,7 @@ class LobbyViewModel @Inject constructor(
 
     fun onUsernameChange(value: String) = _uiState.update { it.copy(username = value.filter { ch -> ch.isLetterOrDigit() || ch == '_' }.take(24)) }
     fun onPasswordChange(value: String) = _uiState.update { it.copy(password = value.take(128)) }
+    fun onSignupEmailChange(value: String) = _uiState.update { it.copy(signupEmail = value.trim().take(254)) }
     fun onAuthModeChange(mode: String) = _uiState.update { it.copy(authMode = mode, error = null) }
     fun onNameChange(value: String) = _uiState.update { it.copy(name = value) }
     fun onAvatarChange(value: Int) {
@@ -262,7 +265,14 @@ class LobbyViewModel @Inject constructor(
             _uiState.update { it.copy(busy = true, error = null) }
             runCatching {
                 val session = if (state.authMode == "signup") {
-                    api.signup(SignupRequest(username, password, state.avatarId))
+                    api.signup(
+                        SignupRequest(
+                            username,
+                            password,
+                            state.avatarId,
+                            email = state.signupEmail.ifBlank { null },
+                        ),
+                    )
                 } else {
                     api.login(LoginRequest(username, password))
                 }.let { it.copy(avatarId = it.avatarId.takeIf { a -> a in 0..7 } ?: state.avatarId) }
@@ -286,6 +296,7 @@ class LobbyViewModel @Inject constructor(
                 avatarId = session.avatarId,
                 avatarUrl = session.avatarUrl,
                 password = "",
+                signupEmail = "",
                 googlePendingToken = null,
                 googlePendingEmail = null,
                 googleUsername = "",

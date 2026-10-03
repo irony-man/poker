@@ -225,8 +225,12 @@ fun ContestScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("STANDINGS", color = PokrColors.InkStrongMuted, fontWeight = FontWeight.Bold)
                     contest.placements.sortedBy { it.place }.forEach { p ->
-                        val prize = p.prizeWuffies ?: 0
-                        val prizeLabel = if (prize > 0) "  +$prize Wuffies" else ""
+                        val prize = p.prizeWhuffies ?: 0
+                        val prizeLabel = when {
+                            prize == 1 -> "  +1 Whuffie"
+                            prize > 1 -> "  +$prize Whuffies"
+                            else -> ""
+                        }
                         Text(
                             "#${p.place}  ${p.name}$prizeLabel",
                             color = PokrColors.InkStrong,

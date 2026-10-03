@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { FormEvent, Suspense, useEffect, useState } from 'react';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { Button } from '@/components/ui/Button';
+import { Notice } from '@/components/ui/Notice';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { TextField } from '@/components/ui/TextField';
 import { checkResetToken, resetPassword } from '@/lib/api';
@@ -15,13 +16,10 @@ type LinkState = 'checking' | 'valid' | 'invalid';
 function InvalidLink({ message }: { message: string }) {
   return (
     <div className="surface-card-lg flex flex-col gap-4">
-      <StatusChip tone="danger" role="alert" className="text-sm">
-        {message}
-      </StatusChip>
-      <p className="text-sm text-muted">
+      <Notice tone="danger" role="alert" title={message}>
         Reset links work once and expire after an hour. Request a new one and use the latest
         email.
-      </p>
+      </Notice>
       <Button href="/forgot-password" className="min-h-11 w-full">
         Request a new link
       </Button>
@@ -95,9 +93,9 @@ function ResetPasswordForm() {
   if (doneFor) {
     return (
       <div className="surface-card-lg flex flex-col gap-4">
-        <StatusChip tone="positive" role="status" className="text-sm">
-          Password updated for {doneFor}. You&apos;ve been signed out everywhere.
-        </StatusChip>
+        <Notice tone="positive" role="status" title={`Password updated for ${doneFor}`}>
+          You&apos;ve been signed out everywhere. Sign in with your new password.
+        </Notice>
         <Button href="/sign-in" className="min-h-11 w-full">
           Sign in
         </Button>

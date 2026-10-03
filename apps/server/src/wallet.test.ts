@@ -88,7 +88,7 @@ describe('Room wallet economy', () => {
     await auth.seedUser('u1', 'alice', 'password1');
     await auth.seedUser('u2', 'bob', 'password2');
     wallet = new AuthWalletStore(auth);
-    rooms = new RoomManager(new MemoryKv(), memoryHistory(), new MemoryTableChipStore(), wallet);
+    rooms = new RoomManager(new MemoryKv(), memoryHistory(), new MemoryTableChipStore());
   });
 
   afterEach(async () => {
@@ -171,7 +171,7 @@ describe('Room wallet economy', () => {
 
   it('kick reserve rejoin does not touch bankroll', async () => {
     const chips = new MemoryTableChipStore();
-    rooms = new RoomManager(new MemoryKv(), memoryHistory(), chips, wallet);
+    rooms = new RoomManager(new MemoryKv(), memoryHistory(), chips);
     const meta = rooms.create({
       name: 'Cash',
       hostUserId: 'u1',

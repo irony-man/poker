@@ -8,7 +8,6 @@ import { ensurePublicTables } from '../public-tables/public-tables.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 import { SiteConfigService } from '../site-config/site-config.service.js';
 import { TableChipsService } from '../table-chips/table-chips.service.js';
-import { WalletService } from '../wallet/wallet.service.js';
 import {
   ROOM_IDLE_SWEEP_MS,
   RoomManager,
@@ -29,7 +28,6 @@ export class RoomsService implements OnModuleInit, OnModuleDestroy {
     private readonly kv: KvService,
     private readonly history: HistoryService,
     private readonly chips: TableChipsService,
-    private readonly wallet: WalletService,
     private readonly siteConfig: SiteConfigService,
     @Optional() private readonly realtime?: RealtimeService,
     @Optional() private readonly banterLlm?: BotBanterLlmService,
@@ -41,7 +39,6 @@ export class RoomsService implements OnModuleInit, OnModuleDestroy {
       this.kv.asStore(),
       this.history.asStore(),
       this.chips.asStore(),
-      this.wallet.asStore(),
     );
     if (this.banterLlm) this.manager.setBanterLlm(this.banterLlm);
     if (this.exploitLlm) this.manager.setExploitLlm(this.exploitLlm);

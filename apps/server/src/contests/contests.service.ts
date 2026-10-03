@@ -106,7 +106,7 @@ export class ContestsService implements OnModuleInit, OnModuleDestroy {
     return this.tournaments.detachWatcherAll(userId);
   }
 
-  /** Drop a deleted account from open contests (refunds registering buy-ins). */
+  /** Drop a deleted account from open contests. */
   removeUser(userId: string) {
     return this.tournaments.removeUser(userId);
   }

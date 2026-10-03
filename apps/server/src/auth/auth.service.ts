@@ -48,8 +48,32 @@ export class AuthService implements OnModuleInit {
     return this.store;
   }
 
-  signup(username: string, password: string, avatarId?: number): Promise<AuthSessionPayload> {
-    return this.store.signup(username, password, avatarId);
+  async signup(
+    username: string,
+    password: string,
+    avatarId?: number,
+    email?: string,
+  ): Promise<AuthSessionPayload> {
+    const session = await this.store.signup(username, password, avatarId, email);
+    this.sendWelcomeInBackground(session.userId);
+    return session;
+  }
+
+  /**
+   * Welcome email for a brand-new account that has an email. An unconfirmed address gets a
+   * confirm link in the same message. Never blocks or fails the sign-up.
+   */
+  private sendWelcomeInBackground(userId: string): void {
+    void (async () => {
+      const user = this.store.getUser(userId);
+      if (!user?.email) return;
+      const confirmToken = user.emailVerified
+        ? null
+        : await this.store.createEmailToken(user.id, 'verify_email', user.email);
+      await this.mail.sendWelcome(user.email, user.username, confirmToken);
+    })().catch((err) => {
+      this.logger.error(`Welcome email failed for user ${userId}`, err as Error);
+    });
   }
 
   login(username: string, password: string): Promise<AuthSessionPayload> {
@@ -62,7 +86,9 @@ export class AuthService implements OnModuleInit {
   ): Promise<GoogleSignInResult & { email?: string | null }> {
     const identity = await this.google.verify(idToken);
     const result = await this.store.googleSignIn(identity, opts);
-    return result.kind === 'needs_username' ? { ...result, email: identity.email } : result;
+    if (result.kind === 'needs_username') return { ...result, email: identity.email };
+    if (result.created) this.sendWelcomeInBackground(result.session.userId);
+    return result;
   }
 
   async linkGoogle(userId: string, idToken: string): Promise<User> {

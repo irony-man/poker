@@ -1261,7 +1261,7 @@ function ProfilePageInner() {
                     Contest matches
                   </h3>
                   <p className="mt-1.5 font-prose-muted">
-                    Completed contests you played, with place and ranking prizes.
+                    Completed contests you played, with place and Whuffies earned.
                   </p>
                 </div>
               </div>

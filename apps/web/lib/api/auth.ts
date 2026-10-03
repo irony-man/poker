@@ -202,11 +202,12 @@ export async function signup(
   username: string,
   password: string,
   avatarId?: number,
+  email?: string,
 ): Promise<AuthSession> {
   const res = await fetch(`${apiBase()}/api/signup`, {
     method: 'POST',
     headers: sessionHeaders(),
-    body: JSON.stringify({ username, password, avatarId }),
+    body: JSON.stringify({ username, password, avatarId, email: email?.trim() || undefined }),
   });
   if (!res.ok) throw new Error(await parseError(res, 'Signup failed'));
   return res.json() as Promise<AuthSession>;

@@ -1,5 +1,7 @@
 package com.pokr.android.core.model
 
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -13,11 +15,15 @@ data class SessionDto(
     val avatarUrl: String? = null,
 )
 
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class SignupRequest(
     val username: String,
     val password: String,
     val avatarId: Int? = null,
+    /** Optional recovery email; omitted (not null) when blank — the server rejects null. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val email: String? = null,
 )
 
 @Serializable

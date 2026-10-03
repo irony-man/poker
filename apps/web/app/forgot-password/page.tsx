@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { FormEvent, useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { Notice } from '@/components/ui/Notice';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { TextField } from '@/components/ui/TextField';
 import { forgotPassword } from '@/lib/api';
@@ -39,11 +40,11 @@ export default function ForgotPasswordPage() {
       <div className="surface-card-lg flex flex-col gap-4">
         {sent ? (
           <>
-            <StatusChip tone="positive" role="status" className="text-sm">
+            <Notice tone="positive" role="status" title="Check your inbox">
               If that account has a confirmed recovery email, a reset link is on its way. It
               expires in 1 hour.
-            </StatusChip>
-            <p className="text-sm text-muted">
+            </Notice>
+            <p className="text-sm leading-relaxed text-muted">
               No email? Check spam, or sign in and add a recovery email from your profile. Accounts
               without a confirmed email can&apos;t be recovered this way.
             </p>

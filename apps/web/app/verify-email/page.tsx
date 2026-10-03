@@ -4,7 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { Button } from '@/components/ui/Button';
-import { StatusChip } from '@/components/ui/StatusChip';
+import { Notice } from '@/components/ui/Notice';
 import { verifyEmail } from '@/lib/api';
 
 type State =
@@ -40,14 +40,17 @@ function VerifyEmailStatus() {
   return (
     <div className="surface-card-lg flex flex-col gap-4">
       {state.kind === 'done' ? (
-        <StatusChip tone="positive" role="status" className="text-sm">
-          {state.email ? `${state.email} is confirmed.` : 'Email confirmed.'} You can now use it to
-          reset your password.
-        </StatusChip>
+        <Notice
+          tone="positive"
+          role="status"
+          title={state.email ? `${state.email} is confirmed` : 'Email confirmed'}
+        >
+          You can now use it to reset your password.
+        </Notice>
       ) : (
-        <StatusChip tone="danger" role="alert" className="text-sm">
-          {state.message} Send a new confirmation link from your profile.
-        </StatusChip>
+        <Notice tone="danger" role="alert" title={state.message}>
+          Send a new confirmation link from your profile.
+        </Notice>
       )}
       <Button href="/profile" className="min-h-11 w-full">
         Go to profile

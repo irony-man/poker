@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   Body,
-  ConflictException,
   Controller,
   Get,
   GoneException,
@@ -47,19 +46,14 @@ export class AuthController {
       throw new BadRequestException({ error: parsed.error.message });
     }
     try {
-      const session = await this.auth.signup(
+      return await this.auth.signup(
         parsed.data.username,
         parsed.data.password,
         parsed.data.avatarId,
+        parsed.data.email,
       );
-      return session;
     } catch (err) {
-      if (err instanceof AuthError && err.code === 'username_taken') {
-        throw new ConflictException({ error: err.message });
-      }
-      throw new BadRequestException({
-        error: err instanceof Error ? err.message : 'Signup failed',
-      });
+      throw toAuthHttpError(err, 'Signup failed');
     }
   }
 

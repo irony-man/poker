@@ -26,6 +26,7 @@ function SignUpForm() {
   const pageCopy = usePageCopy('signUp');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('');
   const [avatarId, setAvatarId] = useState(() =>
     typeof window !== 'undefined' ? loadSavedAvatarId() : 0,
   );
@@ -47,7 +48,7 @@ function SignUpForm() {
     setBusy(true);
     setError(null);
     try {
-      finishSignUp(await signup(username.trim(), password, avatarId));
+      finishSignUp(await signup(username.trim(), password, avatarId, email));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Signup failed');
     } finally {
@@ -97,6 +98,16 @@ function SignUpForm() {
             maxLength={128}
             autoComplete="new-password"
             help="At least 6 characters"
+          />
+          <TextField
+            variant="hud"
+            label="Email (optional)"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            maxLength={254}
+            autoComplete="email"
+            help="For a welcome note and resetting your password if you forget it"
           />
           <AvatarPicker
             value={avatarId}

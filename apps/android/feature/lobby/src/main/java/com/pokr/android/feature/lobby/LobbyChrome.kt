@@ -497,6 +497,7 @@ fun LobbyTextField(
     placeholder: String? = null,
     numeric: Boolean = false,
     password: Boolean = false,
+    email: Boolean = false,
 ) {
     val shape = RoundedCornerShape(PokrRadius.Md)
     val interactionSource = remember { MutableInteractionSource() }
@@ -525,6 +526,7 @@ fun LobbyTextField(
             keyboardType = when {
                 password -> KeyboardType.Password
                 numeric -> KeyboardType.Number
+                email -> KeyboardType.Email
                 else -> KeyboardType.Text
             },
             imeAction = ImeAction.Done,

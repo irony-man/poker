@@ -85,6 +85,15 @@ fun HomeTab(
                         )
                     }
                     if (state.authMode == "signup") {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            PokrLabel("Email (optional)")
+                            LobbyTextField(
+                                value = state.signupEmail,
+                                onValueChange = viewModel::onSignupEmailChange,
+                                placeholder = "for password resets",
+                                email = true,
+                            )
+                        }
                         AvatarPicker(value = state.avatarId, onChange = viewModel::onAvatarChange)
                     }
                     PokrPrimaryButton(

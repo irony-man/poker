@@ -552,12 +552,17 @@ export class AuthStore {
     username: string,
     password: string,
     avatarId?: number,
+    email?: string,
   ): Promise<AuthSessionPayload> {
     await this.ensureLoaded();
     const trimmed = username.trim();
     const key = trimmed.toLowerCase();
     if (this.usernameIndex.has(key)) {
       throw new AuthError('username_taken', 'Username already taken');
+    }
+    const recoveryEmail = email?.trim() ? normalizeEmail(email) : null;
+    if (recoveryEmail && this.emailIndex.has(emailKey(recoveryEmail))) {
+      throw new AuthError('email_taken', 'That email is already used by another account');
     }
 
     const id = nanoid(12);
@@ -567,6 +572,10 @@ export class AuthStore {
       await argon2.hash(password),
       avatarId !== undefined ? clampAvatarId(avatarId) : avatarIdFromUserId(id),
     );
+    if (recoveryEmail) {
+      user.email = recoveryEmail;
+      user.emailVerified = false;
+    }
     this.indexUser(user);
     await this.persistUserToPostgres(user);
     if (!this.pool) await this.persistFile();

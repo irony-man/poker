@@ -36,7 +36,7 @@ const FORMAT_TABS: {
     points: [
       'Same stack for every seat at the start',
       "Bust out and you're eliminated",
-      'Last player standing wins ranking Whuffies',
+      'Last player standing wins — everyone earns 1 Whuffie when it finishes',
     ],
   },
   {
@@ -47,7 +47,7 @@ const FORMAT_TABS: {
     points: [
       'Top ups between hands when stack is zero',
       'Session ends after the hand limit',
-      'Stack rank decides place — win ranking Whuffies',
+      'Stack rank decides place — everyone earns 1 Whuffie when it finishes',
     ],
   },
 ];

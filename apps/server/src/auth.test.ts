@@ -221,6 +221,28 @@ describe('AuthStore', () => {
       expect(auth.findRecoverableUser('erin')?.id).toBe(s.userId);
     });
 
+    it('stores a sign-up email as unverified until confirmed', async () => {
+      const s = await auth.signup('Kim', 'secret12', undefined, ' Kim@Example.com ');
+      const user = auth.getUser(s.userId)!;
+      expect(user.email).toBe('Kim@Example.com');
+      expect(user.emailVerified).toBe(false);
+      expect(auth.findRecoverableUser('kim@example.com')).toBeUndefined();
+
+      const token = await auth.createEmailToken(s.userId, 'verify_email', user.email!);
+      await auth.verifyEmail(token);
+      expect(auth.findRecoverableUser('kim@example.com')?.id).toBe(s.userId);
+    });
+
+    it('rejects a sign-up email already verified by another account', async () => {
+      await verifiedEmailUser(auth, 'Lou', 'lou@example.com');
+      await expect(auth.signup('Lou2', 'secret12', undefined, 'LOU@example.com')).rejects.toMatchObject({
+        code: 'email_taken',
+      });
+      expect((await auth.signup('Lou2', 'secret12')).username).toBe('Lou2');
+      const plain = await auth.signup('Mo', 'secret12', undefined, '  ');
+      expect(auth.getUser(plain.userId)?.email ?? null).toBeNull();
+    });
+
     it('rejects a verify link after the email was changed', async () => {
       const s = await auth.signup('Finn', 'secret12');
       await auth.setEmail(s.userId, 'old@example.com');

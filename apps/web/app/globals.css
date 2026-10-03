@@ -515,6 +515,34 @@ body > * {
     @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-display font-semibold uppercase tracking-[0.14em];
   }
 
+  .notice {
+    @apply flex items-start gap-2.5 rounded-xl border px-3.5 py-3 text-left text-sm leading-relaxed;
+  }
+
+  .notice-positive {
+    @apply border-positive/30 bg-positive/10 text-primary;
+  }
+
+  .notice-positive > svg {
+    @apply text-positive;
+  }
+
+  .notice-danger {
+    @apply border-danger/30 bg-danger/10 text-primary;
+  }
+
+  .notice-danger > svg {
+    @apply text-danger;
+  }
+
+  .notice-info {
+    @apply border-sidebar/20 bg-sidebar/5 text-primary;
+  }
+
+  .notice-info > svg {
+    @apply text-sidebar;
+  }
+
   /* Light page: ghost buttons match lobby. */
   .play-shell .btn-ghost {
     border-color: rgb(var(--sidebar) / 0.22);
@@ -1618,6 +1646,23 @@ html[data-ui-theme='v2'] .status-chip,
 html[data-ui-theme='v2'] .lobby-shell .status-chip {
   border: 2px solid #000;
   box-shadow: 2px 2px 0 0 #000;
+}
+
+html[data-ui-theme='v2'] .notice {
+  border: 2px solid #000;
+  box-shadow: 3px 3px 0 0 #000;
+}
+
+html[data-ui-theme='v2'] .notice-positive {
+  background-color: #d9f7e3;
+}
+
+html[data-ui-theme='v2'] .notice-danger {
+  background-color: #ffe1e1;
+}
+
+html[data-ui-theme='v2'] .notice-info {
+  background-color: #fff;
 }
 
 html[data-ui-theme='v2'] .play-chrome-control,

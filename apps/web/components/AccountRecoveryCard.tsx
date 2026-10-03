@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import { Button } from '@/components/ui/Button';
+import { Notice } from '@/components/ui/Notice';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { TextField } from '@/components/ui/TextField';
 import {
@@ -161,14 +162,14 @@ export function AccountRecoveryCard({
       </div>
 
       {notice && (
-        <StatusChip tone="positive" role="status" className="mt-5 text-xs">
+        <Notice tone="positive" role="status" className="mt-5">
           {notice}
-        </StatusChip>
+        </Notice>
       )}
       {error && (
-        <StatusChip tone="danger" role="alert" className="mt-5 text-xs">
+        <Notice tone="danger" role="alert" className="mt-5">
           {error}
-        </StatusChip>
+        </Notice>
       )}
     </section>
   );

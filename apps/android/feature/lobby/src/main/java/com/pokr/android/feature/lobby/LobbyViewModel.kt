@@ -390,7 +390,8 @@ class LobbyViewModel @Inject constructor(
         it.copy(forgotOpen = true, forgotSent = false, forgotIdentifier = it.username.trim())
     }
 
-    fun dismissForgotPassword() = _uiState.update { it.copy(forgotOpen = false, forgotSent = false) }
+    fun dismissForgotPassword() =
+        _uiState.update { it.copy(forgotOpen = false, forgotSent = false, error = null) }
 
     fun onForgotIdentifierChange(value: String) =
         _uiState.update { it.copy(forgotIdentifier = value.take(254)) }
@@ -461,7 +462,7 @@ class LobbyViewModel @Inject constructor(
                 _uiState.update { it.copy(busy = false) }
                 onSuccess(tableId, invite)
             }.onFailure { err ->
-                _uiState.update { it.copy(busy = false, error = err.message ?: "Host failed") }
+                _uiState.update { it.copy(busy = false, error = err.apiErrorMessage("Host failed")) }
             }
         }
     }
@@ -535,7 +536,7 @@ class LobbyViewModel @Inject constructor(
                     is JoinTarget.Courtpiece -> onCourtpiece?.invoke(target.courtpieceId, target.invite)
                 }
             }.onFailure { err ->
-                _uiState.update { it.copy(busy = false, error = err.message ?: "Join failed") }
+                _uiState.update { it.copy(busy = false, error = err.apiErrorMessage("Join failed")) }
             }
         }
     }
@@ -567,7 +568,7 @@ class LobbyViewModel @Inject constructor(
                 _uiState.update { it.copy(busy = false) }
                 onSuccess(ludoId, invite)
             }.onFailure { err ->
-                _uiState.update { it.copy(busy = false, error = err.message ?: "Host failed") }
+                _uiState.update { it.copy(busy = false, error = err.apiErrorMessage("Host failed")) }
             }
         }
     }
@@ -598,7 +599,7 @@ class LobbyViewModel @Inject constructor(
                 _uiState.update { it.copy(busy = false) }
                 onSuccess(snakesId, invite)
             }.onFailure { err ->
-                _uiState.update { it.copy(busy = false, error = err.message ?: "Host failed") }
+                _uiState.update { it.copy(busy = false, error = err.apiErrorMessage("Host failed")) }
             }
         }
     }
@@ -630,7 +631,7 @@ class LobbyViewModel @Inject constructor(
                 _uiState.update { it.copy(busy = false) }
                 onSuccess(memoryId, invite)
             }.onFailure { err ->
-                _uiState.update { it.copy(busy = false, error = err.message ?: "Host failed") }
+                _uiState.update { it.copy(busy = false, error = err.apiErrorMessage("Host failed")) }
             }
         }
     }
@@ -661,7 +662,7 @@ class LobbyViewModel @Inject constructor(
                 _uiState.update { it.copy(busy = false) }
                 onSuccess(courtpieceId, invite)
             }.onFailure { err ->
-                _uiState.update { it.copy(busy = false, error = err.message ?: "Host failed") }
+                _uiState.update { it.copy(busy = false, error = err.apiErrorMessage("Host failed")) }
             }
         }
     }
@@ -711,7 +712,7 @@ class LobbyViewModel @Inject constructor(
                 _uiState.update { it.copy(busy = false) }
                 onSuccess(id)
             }.onFailure { err ->
-                _uiState.update { it.copy(busy = false, error = err.message ?: "Contest failed") }
+                _uiState.update { it.copy(busy = false, error = err.apiErrorMessage("Contest failed")) }
             }
         }
     }
@@ -728,7 +729,7 @@ class LobbyViewModel @Inject constructor(
                 _uiState.update { it.copy(busy = false) }
                 onSuccess(id)
             }.onFailure { err ->
-                _uiState.update { it.copy(busy = false, error = err.message ?: "Join contest failed") }
+                _uiState.update { it.copy(busy = false, error = err.apiErrorMessage("Join contest failed")) }
             }
         }
     }

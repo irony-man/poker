@@ -5,9 +5,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -18,6 +20,7 @@ import com.pokr.android.core.designsystem.TableSoundPlayer
 import kotlinx.coroutines.launch
 import com.pokr.android.core.designsystem.PokrPalette
 import com.pokr.android.core.designsystem.PokrTheme
+import com.pokr.android.core.designsystem.PokrToastHost
 import com.pokr.android.core.designsystem.PokrUiTheme
 import com.pokr.android.navigation.PokrNavHost
 import dagger.hilt.android.AndroidEntryPoint
@@ -49,7 +52,10 @@ class MainActivity : ComponentActivity() {
                     color = PokrColors.Ink,
                     contentColor = PokrColors.Cream,
                 ) {
-                    PokrNavHost(modifier = Modifier.fillMaxSize())
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        PokrNavHost(modifier = Modifier.fillMaxSize())
+                        PokrToastHost(modifier = Modifier.align(Alignment.TopCenter))
+                    }
                 }
             }
         }

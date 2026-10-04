@@ -43,7 +43,7 @@ import com.pokr.android.core.designsystem.PokrTableLayout
 import com.pokr.android.core.designsystem.HudPanel
 import com.pokr.android.core.designsystem.LegalActionsUi
 import com.pokr.android.core.designsystem.ReadyRosterPlayer
-import com.pokr.android.core.designsystem.StatusChip
+import com.pokr.android.core.designsystem.ToastOnMessage
 import com.pokr.android.core.designsystem.TableActionControls
 import com.pokr.android.core.designsystem.TableActionDock
 import com.pokr.android.core.designsystem.TableActionTools
@@ -215,13 +215,8 @@ fun TableScreen(
                 onToggleMute = { viewModel.dispatch(TableContract.Intent.ToggleVoiceMute) },
             )
 
-            state.lastError?.let { err ->
-                StatusChip(
-                    text = err,
-                    accent = PokrColors.Danger,
-                    chrome = PokrChrome.Play,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
+            ToastOnMessage(state.lastError) {
+                viewModel.dispatch(TableContract.Intent.DismissError)
             }
 
             state.emojiBurst?.let { burst ->

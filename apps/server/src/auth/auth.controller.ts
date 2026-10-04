@@ -6,6 +6,7 @@ import {
   GoneException,
   HttpCode,
   Post,
+  Query,
   Req,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -13,6 +14,7 @@ import { Throttle } from '@nestjs/throttler';
 import {
   ForgotPasswordBodySchema,
   GoogleAuthBodySchema,
+  InstagramAuthBodySchema,
   LoginBodySchema,
   ResetPasswordBodySchema,
   SignupBodySchema,
@@ -25,6 +27,15 @@ import { GoogleIdTokenVerifier } from './auth.google.js';
 import { AuthService } from './auth.service.js';
 import { bearerToken } from './bearer.js';
 
+function safeNextPath(next: string | null | undefined): string {
+  if (!next) return '/';
+  const path = next.trim();
+  if (!path.startsWith('/') || path.startsWith('//') || path.includes('://')) return '/';
+  if (path.startsWith('/sign-in') || path.startsWith('/sign-up')) return '/';
+  if (path.startsWith('/auth/instagram')) return '/';
+  return path;
+}
+
 @Controller('api')
 export class AuthController {
   constructor(
@@ -35,7 +46,11 @@ export class AuthController {
   /** Public auth options so clients don't need the Google client id baked in at build time. */
   @Get('auth/config')
   config() {
-    return { googleClientId: this.google.webClientId() };
+    return {
+      googleClientId: this.google.webClientId(),
+      instagramEnabled: this.auth.instagramConfigured(),
+      instagramRedirectUri: this.auth.instagramRedirectUri(),
+    };
   }
 
   @Post('signup')
@@ -101,6 +116,74 @@ export class AuthController {
       return result.session;
     } catch (err) {
       throw toAuthHttpError(err, 'Google sign-in failed');
+    }
+  }
+
+  @Get('auth/instagram/start')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  instagramStart(
+    @Req() req: Request,
+    @Query('next') next?: string,
+    @Query('intent') intentRaw?: string,
+  ) {
+    const intent = intentRaw === 'link' ? 'link' : 'login';
+    const token = bearerToken(req.header('authorization') ?? req.header('Authorization') ?? undefined);
+    const sessionUser = token ? this.auth.resolveSession(token) : null;
+    if (intent === 'link' && !sessionUser) {
+      throw new UnauthorizedException({ error: 'Sign in required' });
+    }
+    try {
+      return {
+        url: this.auth.instagramAuthorizeUrl({
+          intent,
+          next: safeNextPath(next),
+          userId: intent === 'link' ? sessionUser?.id : undefined,
+        }),
+      };
+    } catch (err) {
+      throw toAuthHttpError(err, 'Instagram sign-in is not available');
+    }
+  }
+
+  /** Exchange an Instagram authorization code, or finish username setup with a pending token. */
+  @Post('auth/instagram')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  async instagramSignIn(@Req() req: Request, @Body() body: unknown) {
+    const parsed = InstagramAuthBodySchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({ error: parsed.error.message });
+    }
+    try {
+      const token = bearerToken(
+        req.header('authorization') ?? req.header('Authorization') ?? undefined,
+      );
+      const sessionUser = token ? this.auth.resolveSession(token) : null;
+      const result = parsed.data.pendingToken
+        ? await this.auth.instagramSignInFromPending(parsed.data.pendingToken, {
+            username: parsed.data.username,
+            avatarId: parsed.data.avatarId,
+          })
+        : await this.auth.instagramSignInFromCode(parsed.data.code!, parsed.data.state!, {
+            username: parsed.data.username,
+            avatarId: parsed.data.avatarId,
+            sessionUserId: sessionUser?.id,
+          });
+      if (result.kind === 'needs_username') {
+        return {
+          needsUsername: true,
+          suggestedUsername: result.suggestedUsername,
+          instagramUsername: result.instagramUsername,
+          pendingToken: result.pendingToken,
+          next: result.next,
+        };
+      }
+      if (result.kind === 'linked') {
+        return { linked: true as const, next: result.next };
+      }
+      return { ...result.session, next: result.next };
+    } catch (err) {
+      throw toAuthHttpError(err, 'Instagram sign-in failed');
     }
   }
 

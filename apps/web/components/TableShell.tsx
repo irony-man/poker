@@ -20,7 +20,7 @@ import {
 import { MobileQuickReactions } from './MobileQuickReactions';
 import { RecentChatTicker } from './RecentChatTicker';
 import { OnlineFriendsOverlay } from './OnlineFriends';
-import { TableActionToast, useSeatActionAutoClear } from './TableActionToast';
+import { useSeatActionAutoClear, useTableNoticeToasts } from './TableActionToast';
 import { useSession } from '@/lib/store';
 import { useIsNarrow } from '@/lib/tableLayout';
 
@@ -123,6 +123,7 @@ export function TableShell({
   const mobileOpen = chatOpen ?? internalMobileOpen;
   const setMobileOpen = onChatOpenChange ?? setInternalMobileOpen;
   useSeatActionAutoClear();
+  useTableNoticeToasts();
 
   useEffect(() => {
     try {
@@ -227,7 +228,6 @@ export function TableShell({
       data-table-color={tableColorId}
     >
       <EmojiOverlay />
-      <TableActionToast />
 
       <div
         className={`relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ${

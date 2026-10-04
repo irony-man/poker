@@ -1,5 +1,5 @@
 import type { BotBanterContext, BotBanterTrigger, BotPersonalityId } from '@poker/engine';
-import { apiBase, sessionHeaders } from '@/lib/api/client';
+import { apiBase, apiFetch, sessionHeaders } from '@/lib/api/client';
 import { readStoredSession } from '@/lib/session';
 
 /**
@@ -17,8 +17,9 @@ export async function fetchBotBanterLine(opts: {
   const session = readStoredSession();
   if (!session?.sessionToken) return null;
   try {
-    const res = await fetch(`${apiBase()}/api/bot-banter`, {
+    const res = await apiFetch(`${apiBase()}/api/bot-banter`, {
       method: 'POST',
+      silent: true,
       headers: sessionHeaders(session.sessionToken),
       body: JSON.stringify({
         personalityId: opts.personalityId,

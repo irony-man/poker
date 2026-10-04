@@ -1,5 +1,6 @@
 import type { ContestHandSummary, ContestMode, ContestView } from '@poker/protocol';
-import { apiBase, authedFetch, parseError, sessionHeaders, type AuthOptions } from './client';
+import { apiBase, apiFetch, authedFetch, parseError, sessionHeaders, type AuthOptions } from './client';
+import type { MyHandRow } from './history';
 
 export async function createContest(
   input: {
@@ -19,7 +20,7 @@ export async function createContest(
   },
   sessionToken: string,
 ) {
-  const res = await fetch(`${apiBase()}/api/contests`, {
+  const res = await apiFetch(`${apiBase()}/api/contests`, {
     method: 'POST',
     headers: sessionHeaders(sessionToken),
     body: JSON.stringify(input),
@@ -43,7 +44,7 @@ export async function inviteContestFriends(
 }
 
 export async function listPublicContests() {
-  const res = await fetch(`${apiBase()}/api/contests`);
+  const res = await apiFetch(`${apiBase()}/api/contests`);
   if (!res.ok) throw new Error('Failed to load contests');
   return res.json() as Promise<{ contests: ContestView[] }>;
 }
@@ -53,21 +54,32 @@ export async function listMyContests(options: AuthOptions) {
 }
 
 export async function resolveContestInvite(code: string) {
-  const res = await fetch(`${apiBase()}/api/contests/invite/${code}`);
+  const res = await apiFetch(`${apiBase()}/api/contests/invite/${code}`);
   if (!res.ok) throw new Error('Contest not found');
   return res.json() as Promise<{ contest: ContestView }>;
 }
 
 export async function getContest(contestId: string) {
-  const res = await fetch(`${apiBase()}/api/contests/${contestId}`);
+  const res = await apiFetch(`${apiBase()}/api/contests/${contestId}`);
   if (!res.ok) throw new Error('Contest not found');
   return res.json() as Promise<{ contest: ContestView }>;
 }
 
-export async function getContestHands(contestId: string) {
-  const res = await fetch(`${apiBase()}/api/contests/${contestId}/hands`);
+export async function getContestHands(contestId: string, sessionToken?: string | null) {
+  const res = await apiFetch(`${apiBase()}/api/contests/${contestId}/hands`, {
+    headers: sessionHeaders(sessionToken),
+  });
   if (!res.ok) throw new Error(await parseError(res, 'Could not load hands'));
   return res.json() as Promise<{ hands: ContestHandSummary[] }>;
+}
+
+/** Full redacted resultJson — used when /hands is an older summary-only payload. */
+export async function getContestHistory(contestId: string, sessionToken?: string | null) {
+  const res = await apiFetch(`${apiBase()}/api/contests/${contestId}/history`, {
+    headers: sessionHeaders(sessionToken),
+  });
+  if (!res.ok) throw new Error(await parseError(res, 'Could not load history'));
+  return res.json() as Promise<{ hands: MyHandRow[] }>;
 }
 
 export async function registerContest(contestId: string, options: AuthOptions) {

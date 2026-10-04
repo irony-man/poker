@@ -13,6 +13,9 @@ export function safeReturnPath(next: string | null | undefined, fallback = '/'):
   if (path === '/sign-up' || path.startsWith('/sign-up?') || path.startsWith('/sign-up/')) {
     return fallback;
   }
+  if (path === '/auth/instagram' || path.startsWith('/auth/instagram/')) {
+    return fallback;
+  }
   return path;
 }
 

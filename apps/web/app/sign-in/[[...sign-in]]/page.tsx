@@ -68,6 +68,7 @@ function SignInForm() {
           mode="sign-in"
           onSession={finishSignIn}
           onStepChange={setChoosingUsername}
+          returnTo={returnTo}
         />
         <form onSubmit={onSubmit} className={choosingUsername ? 'hidden' : 'flex flex-col gap-4'}>
           <TextField

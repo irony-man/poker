@@ -1,5 +1,5 @@
 import type { CreateMemoryBody } from '@poker/protocol';
-import { apiBase, parseError, sessionHeaders, type AuthOptions, authedFetch } from './client';
+import { apiBase, apiFetch, parseError, sessionHeaders, type AuthOptions, authedFetch } from './client';
 
 export interface CreateMemoryResult {
   memoryId: string;
@@ -54,7 +54,7 @@ function pickGridSize(raw: Record<string, unknown>): 16 | 36 {
 }
 
 export async function createMemory(input: CreateMemoryBody, sessionToken: string) {
-  const res = await fetch(`${apiBase()}/api/memory`, {
+  const res = await apiFetch(`${apiBase()}/api/memory`, {
     method: 'POST',
     headers: sessionHeaders(sessionToken),
     body: JSON.stringify(input),
@@ -76,7 +76,7 @@ export async function createMemory(input: CreateMemoryBody, sessionToken: string
 }
 
 export async function resolveMemoryInvite(code: string) {
-  const res = await fetch(`${apiBase()}/api/memory/invite/${encodeURIComponent(code)}`);
+  const res = await apiFetch(`${apiBase()}/api/memory/invite/${encodeURIComponent(code)}`);
   if (!res.ok) throw new Error('Invite not found');
   const raw = asRecord(await res.json()) ?? {};
   const memoryId = pickMemoryId(raw);
@@ -92,11 +92,13 @@ export async function resolveMemoryInvite(code: string) {
 
 export async function fetchMemoryChat(memoryId: string, options?: AuthOptions) {
   if (options?.sessionToken) {
-    return authedFetch(`/api/memory/${memoryId}/chat`, options) as Promise<{
+    return authedFetch(`/api/memory/${memoryId}/chat`, { ...options, silent: true }) as Promise<{
       messages: MemoryChatLine[];
     }>;
   }
-  const res = await fetch(`${apiBase()}/api/memory/${encodeURIComponent(memoryId)}/chat`);
+  const res = await apiFetch(`${apiBase()}/api/memory/${encodeURIComponent(memoryId)}/chat`, {
+    silent: true,
+  });
   if (!res.ok) throw new Error(await parseError(res, 'Failed to load chat'));
   return res.json() as Promise<{ messages: MemoryChatLine[] }>;
 }

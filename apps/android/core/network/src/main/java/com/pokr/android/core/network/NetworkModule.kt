@@ -47,6 +47,7 @@ object NetworkModule {
             level = HttpLoggingInterceptor.Level.BASIC
         }
         return OkHttpClient.Builder()
+            .addInterceptor(ApiErrorToastInterceptor())
             .addInterceptor(authInterceptor)
             .addInterceptor(logging)
             .pingInterval(20, TimeUnit.SECONDS)

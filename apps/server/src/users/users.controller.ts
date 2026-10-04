@@ -62,6 +62,7 @@ function toMeProfile(
     email: user.email,
     emailVerified: user.emailVerified,
     googleLinked: user.googleSub !== null,
+    instagramLinked: user.instagramId !== null,
     hasPassword: user.passwordHash !== null,
     createdAt: user.createdAt,
     chipBalance,
@@ -178,6 +179,15 @@ export class UsersController {
       return this.profileFor(await this.auth.unlinkGoogle(user.id));
     } catch (err) {
       throw toAuthHttpError(err, 'Could not disconnect Google');
+    }
+  }
+
+  @Delete('me/instagram')
+  async unlinkInstagram(@CurrentUser() user: User) {
+    try {
+      return this.profileFor(await this.auth.unlinkInstagram(user.id));
+    } catch (err) {
+      throw toAuthHttpError(err, 'Could not disconnect Instagram');
     }
   }
 

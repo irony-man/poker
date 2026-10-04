@@ -22,6 +22,10 @@ import {
   unique: true,
   where: 'google_sub IS NOT NULL',
 })
+@Index('users_instagram_id_uidx', ['instagramId'], {
+  unique: true,
+  where: 'instagram_id IS NOT NULL',
+})
 export class UserEntity {
   @PrimaryColumn({ type: 'text' })
   id!: string;
@@ -35,7 +39,7 @@ export class UserEntity {
   @Column({ name: 'username_lower', type: 'text', nullable: true })
   usernameLower!: string | null;
 
-  /** Null for accounts that only sign in with Google. */
+  /** Null for accounts that only sign in with Google or Instagram. */
   @Column({ name: 'password_hash', type: 'text', nullable: true })
   passwordHash!: string | null;
 
@@ -52,6 +56,10 @@ export class UserEntity {
   /** Google account subject id when linked. */
   @Column({ name: 'google_sub', type: 'text', nullable: true })
   googleSub!: string | null;
+
+  /** Instagram user id when linked. */
+  @Column({ name: 'instagram_id', type: 'text', nullable: true })
+  instagramId!: string | null;
 
   @Column({ name: 'avatar_id', type: 'int', default: 0 })
   avatarId!: number;

@@ -12,6 +12,11 @@ export {
   fetchAuthConfig,
   googleAuth,
   isGoogleNeedsUsername,
+  startInstagramAuth,
+  instagramAuth,
+  isInstagramNeedsUsername,
+  isInstagramLinked,
+  unlinkInstagram,
   forgotPassword,
   resetPassword,
   checkResetToken,
@@ -21,6 +26,7 @@ export {
   linkGoogle,
   unlinkGoogle,
   type GoogleAuthResult,
+  type InstagramAuthResult,
   type MeProfile,
 } from './auth';
 export {
@@ -67,6 +73,7 @@ export {
   resolveContestInvite,
   getContest,
   getContestHands,
+  getContestHistory,
   registerContest,
   unregisterContest,
   startContest,

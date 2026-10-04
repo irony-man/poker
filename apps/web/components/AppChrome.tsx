@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
 import { imageAssetUrl } from '@/lib/assets';
 import { LobbySidebar } from '@/components/LobbySidebar';
@@ -33,6 +33,8 @@ import { saveCardThemeId } from '@/lib/cardThemePref';
 import { SiteAnnouncementBanner } from '@/components/SiteAnnouncement';
 import { SkipLink } from '@/components/SkipLink';
 import { BotChatFab } from '@/components/BotChatFab';
+import { ApiLoadingOverlay } from '@/components/ApiLoadingOverlay';
+import { ToastViewport } from '@/components/ToastViewport';
 import { useSessionSocket } from '@/lib/ws';
 
 function PersonIcon() {
@@ -93,6 +95,7 @@ function MobileProfileButton({ signedIn }: { signedIn: boolean }) {
 /** App shell: lobby sidebar + main, or immersive play with no chrome. */
 export function AppChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const tablePlay =
     pathname.startsWith('/table/') ||
     pathname === '/offline' ||
@@ -172,7 +175,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
       return;
     }
     let cancelled = false;
-    void fetchMe(sessionToken)
+    void fetchMe(sessionToken, { silent: true })
       .then((me) => {
         if (cancelled) return;
         setChipBalance(me.chipBalance);
@@ -209,7 +212,8 @@ export function AppChrome({ children }: { children: ReactNode }) {
     setSignedIn(false);
     setDisplayName(null);
     setIsAdmin(false);
-  }, [sessionToken, clearSession]);
+    router.push('/sign-in');
+  }, [sessionToken, clearSession, router]);
 
   if (immersive) {
     return (
@@ -222,6 +226,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
           >
             {children}
           </main>
+          <ToastViewport />
         </OnlineFriendsProvider>
       </ConfirmProvider>
     );
@@ -235,6 +240,8 @@ export function AppChrome({ children }: { children: ReactNode }) {
           <div className="lobby-shell">
             {children}
             <BotChatFab />
+            <ApiLoadingOverlay />
+            <ToastViewport />
           </div>
         </OnlineFriendsProvider>
       </ConfirmProvider>
@@ -283,7 +290,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
               className={
                 isBotChat
                   ? 'flex min-h-0 flex-1 flex-col overflow-hidden p-0'
-                  : `flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain pb-4 md:pb-0 ${
+                  : `flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain pb-20 sm:pb-24 ${
                       isHome
                         ? 'px-5 py-6 sm:px-10 sm:py-8 lg:px-14 lg:py-10 xl:px-20'
                         : 'px-4 py-4 sm:px-8 sm:py-5 lg:px-12'
@@ -299,6 +306,8 @@ export function AppChrome({ children }: { children: ReactNode }) {
             </Suspense>
           </div>
           <BotChatFab />
+          <ApiLoadingOverlay />
+          <ToastViewport />
         </div>
       </OnlineFriendsProvider>
     </ConfirmProvider>

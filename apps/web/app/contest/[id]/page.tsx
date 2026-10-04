@@ -8,6 +8,7 @@ import {
   type ContestView,
   getContest,
   getContestHands,
+  getContestHistory,
   inviteContestFriends,
   registerContest,
   startContest,
@@ -18,10 +19,14 @@ import { MoneyAmount } from '@/components/CurrencyIcon';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { Button } from '@/components/ui/Button';
 import { StatusChip } from '@/components/ui/StatusChip';
+import { parsePlayedHand, type PlayedHandLevel } from '@/features/progress/playedHand';
+import { SharedHandRow } from '@/features/progress/SharedHandRow';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { contestModeLabel } from '@/lib/contestLabels';
+import { clearStayOnContest, shouldStayOnContest } from '@/lib/contestStay';
 import { readStoredSession } from '@/lib/session';
 import { useSession } from '@/lib/store';
+import { toast } from '@/lib/toast';
 import { useContestSocket } from '@/lib/ws';
 
 function modeDescription(contest: ContestView): string {
@@ -61,7 +66,6 @@ export default function ContestPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [inviteFriendIds, setInviteFriendIds] = useState<string[]>([]);
-  const [inviteToast, setInviteToast] = useState<string | null>(null);
   const navigatedTable = useRef<string | null>(null);
   const [hands, setHands] = useState<ContestHandSummary[]>([]);
 
@@ -105,9 +109,12 @@ export default function ContestPage() {
   useEffect(() => {
     if (!contestStarted) return;
     let cancelled = false;
-    void getContestHands(contestId)
-      .then(({ hands: rows }) => {
-        if (!cancelled) setHands(rows);
+    void Promise.all([
+      getContestHands(contestId, sessionToken),
+      getContestHistory(contestId, sessionToken).catch(() => ({ hands: [] })),
+    ])
+      .then(([{ hands: rows }, { hands: history }]) => {
+        if (!cancelled) setHands(mergeContestHandDetails(rows, history));
       })
       .catch(() => {
         /* hand list is best-effort */
@@ -115,7 +122,7 @@ export default function ContestPage() {
     return () => {
       cancelled = true;
     };
-  }, [contestId, contestStarted, handsPlayed]);
+  }, [contestId, contestStarted, handsPlayed, sessionToken]);
 
   useEffect(() => {
     if (liveContest) setContest(liveContest);
@@ -129,6 +136,7 @@ export default function ContestPage() {
     }
     // Never auto-route into a table once the contest has ended (stale match_assigned).
     if (contest && contest.status !== 'running') return;
+    if (shouldStayOnContest(contestId)) return;
     if (contestEvent.event === 'match_assigned' && contestEvent.tableId) {
       if (navigatedTable.current !== contestEvent.tableId) {
         navigatedTable.current = contestEvent.tableId;
@@ -141,6 +149,7 @@ export default function ContestPage() {
   // Auto-navigate when assignment appears via sync (only while contest is live)
   useEffect(() => {
     if (!contest || !userId || contest.status !== 'running') return;
+    if (shouldStayOnContest(contestId)) return;
     const a = contest.assignments.find((x) => x.userId === userId);
     if (a?.tableId && navigatedTable.current !== a.tableId) {
       navigatedTable.current = a.tableId;
@@ -203,12 +212,13 @@ export default function ContestPage() {
       const result = await inviteContestFriends(contestId, inviteFriendIds, { sessionToken });
       setInviteFriendIds([]);
       if (result.contest) setContest(result.contest);
-      setInviteToast(
-        result.inviteCount > 0
-          ? `Invited ${result.inviteCount} friend${result.inviteCount === 1 ? '' : 's'}`
-          : 'No friends were invited',
-      );
-      window.setTimeout(() => setInviteToast(null), 3200);
+      if (result.inviteCount > 0) {
+        toast.success(
+          `Invited ${result.inviteCount} friend${result.inviteCount === 1 ? '' : 's'}`,
+        );
+      } else {
+        toast.info('No friends were invited');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invite failed');
     } finally {
@@ -324,6 +334,7 @@ export default function ContestPage() {
               type="button"
               className="min-h-11 px-6"
               onClick={() => {
+                clearStayOnContest(contestId);
                 enterMobileFullscreen();
                 router.push(`/table/${myAssignment.tableId}?contest=${contestId}`);
               }}
@@ -411,11 +422,6 @@ export default function ContestPage() {
             title="Invite friends"
             help="Send a contest invite. Friends already seated or invited are hidden. Empty seats can fill with bots when you start."
           />
-          {inviteToast && (
-            <p className="text-sm font-medium text-sidebar" role="status">
-              {inviteToast}
-            </p>
-          )}
           <Button
             type="button"
             disabled={busy || inviteFriendIds.length === 0}
@@ -488,33 +494,17 @@ export default function ContestPage() {
           {hands.length === 0 ? (
             <p className="mt-3 text-sm text-muted">No hands finished yet.</p>
           ) : (
-            <ol className="mt-3 max-h-96 space-y-1.5 overflow-y-auto pr-1">
+            <ol className="mt-3 max-h-[36rem] space-y-3 overflow-y-auto pr-1">
               {hands.map((h) => {
-                const winnerNames = [...new Set(h.winners.map((w) => w.name))];
-                const handLabel = winningHandLabel(h);
+                const parsed = parseContestHand(h, contestId, userId);
+                const chipsWon = h.winners.reduce((sum, w) => sum + w.amount, 0);
                 return (
-                  <li
+                  <SharedHandRow
                     key={h.id}
-                    className="surface-row flex items-center justify-between gap-3 py-2 text-sm"
-                  >
-                    <span className="shrink-0 font-mono text-xs font-semibold text-muted">
-                      #{h.handNumber}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate font-medium text-primary">
-                      {winnerNames.length === 0 ? 'No winner recorded' : winnerNames.join(' & ')}
-                      {winnerNames.length > 1 ? (
-                        <span className="ml-1.5 text-[10px] font-display font-semibold uppercase tracking-wide text-muted">
-                          split
-                        </span>
-                      ) : null}
-                    </span>
-                    <span className="flex shrink-0 items-center gap-2 text-xs text-muted">
-                      {handLabel ? <span>{handLabel}</span> : null}
-                      <span className="font-mono font-semibold text-sidebar">
-                        +{h.winners.reduce((sum, w) => sum + w.amount, 0)}
-                      </span>
-                    </span>
-                  </li>
+                    hand={parsed}
+                    handNumber={h.handNumber}
+                    chipsWon={chipsWon > 0 ? chipsWon : parsed.winAmount}
+                  />
                 );
               })}
             </ol>
@@ -525,8 +515,60 @@ export default function ContestPage() {
   );
 }
 
-function winningHandLabel(hand: ContestHandSummary): string | null {
-  const name = hand.winners.find((w) => w.handName)?.handName ?? null;
-  if (!name) return null;
-  return name === 'Uncontested' ? 'Everyone folded' : name;
+function mergeContestHandDetails(
+  summaries: ContestHandSummary[],
+  history: Array<{
+    id: string;
+    handId: string;
+    startedAt?: string | number | null;
+    resultJson?: string | Record<string, unknown>;
+  }>,
+): ContestHandSummary[] {
+  const byId = new Map(history.map((row) => [row.id, row]));
+  const byHandId = new Map(history.map((row) => [row.handId, row]));
+  return summaries.map((hand) => {
+    if (hand.resultJson) return hand;
+    const full = byId.get(hand.id) ?? byHandId.get(hand.id);
+    if (!full?.resultJson) return hand;
+    const started =
+      typeof full.startedAt === 'number'
+        ? full.startedAt
+        : typeof full.startedAt === 'string'
+          ? Date.parse(full.startedAt)
+          : NaN;
+    return {
+      ...hand,
+      resultJson: full.resultJson,
+      startedAt: hand.startedAt ?? (Number.isFinite(started) ? started : hand.endedAt),
+    };
+  });
+}
+
+function parseContestHand(
+  hand: ContestHandSummary,
+  contestId: string,
+  userId: string | null,
+): PlayedHandLevel {
+  const parsed = parsePlayedHand(
+    {
+      id: hand.id,
+      tableId: '',
+      handId: hand.id,
+      contestId,
+      source: 'online',
+      startedAt: hand.startedAt ?? hand.endedAt ?? 0,
+      endedAt: hand.endedAt,
+      resultJson: hand.resultJson ?? {},
+    },
+    userId ?? '',
+  );
+  const winnerNames = [...new Set(hand.winners.map((w) => w.name).filter(Boolean))];
+  const handName = hand.winners.find((w) => w.handName)?.handName ?? null;
+  const chips = hand.winners.reduce((sum, w) => sum + w.amount, 0);
+  return {
+    ...parsed,
+    winnerName: parsed.winnerName ?? (winnerNames.length ? winnerNames.join(' & ') : null),
+    handName: parsed.handName ?? handName,
+    winAmount: parsed.winAmount ?? (chips > 0 ? chips : null),
+  };
 }

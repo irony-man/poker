@@ -1,4 +1,4 @@
-import { apiBase, parseError, sessionHeaders } from '@/lib/api/client';
+import { apiBase, apiFetch, parseError, sessionHeaders } from '@/lib/api/client';
 
 export type BotChatPersona = 'banter';
 
@@ -92,7 +92,7 @@ export async function fetchBotChatProviders(sessionToken: string): Promise<{
   default: BotChatLlmProvider | null;
   starters: string[];
 }> {
-  const res = await fetch(`${apiBase()}/api/bot-chat/providers`, {
+  const res = await apiFetch(`${apiBase()}/api/bot-chat/providers`, {
     headers: sessionHeaders(sessionToken),
   });
   if (!res.ok) {
@@ -133,7 +133,7 @@ export async function streamBotChat(opts: {
   persona?: BotChatPersona;
   llmProvider: BotChatLlmProvider;
 }): Promise<string> {
-  const res = await fetch(`${apiBase()}/api/bot-chat`, {
+  const res = await apiFetch(`${apiBase()}/api/bot-chat`, {
     method: 'POST',
     headers: sessionHeaders(opts.sessionToken),
     body: JSON.stringify({

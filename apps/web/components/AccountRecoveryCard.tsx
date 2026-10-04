@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
+import { InstagramSignInButton } from '@/components/InstagramSignInButton';
 import { Button } from '@/components/ui/Button';
 import { Notice } from '@/components/ui/Notice';
 import { StatusChip } from '@/components/ui/StatusChip';
@@ -11,6 +12,7 @@ import {
   resendVerificationEmail,
   setRecoveryEmail,
   unlinkGoogle,
+  unlinkInstagram,
   type MeProfile,
 } from '@/lib/api';
 
@@ -25,7 +27,7 @@ export function AccountRecoveryCard({
   onProfile: (next: MeProfile) => void;
 }) {
   const [email, setEmail] = useState(profile.email ?? '');
-  const [busy, setBusy] = useState<'email' | 'resend' | 'google' | null>(null);
+  const [busy, setBusy] = useState<'email' | 'resend' | 'google' | 'instagram' | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,7 +37,11 @@ export function AccountRecoveryCard({
 
   const emailChanged = email.trim().toLowerCase() !== (profile.email ?? '').toLowerCase();
 
-  async function run(kind: 'email' | 'resend' | 'google', fn: () => Promise<MeProfile>, ok: string) {
+  async function run(
+    kind: 'email' | 'resend' | 'google' | 'instagram',
+    fn: () => Promise<MeProfile>,
+    ok: string,
+  ) {
     setBusy(kind);
     setError(null);
     setNotice(null);
@@ -123,7 +129,7 @@ export function AccountRecoveryCard({
         {profile.googleLinked ? (
           <div className="mt-3 flex flex-wrap items-center gap-2.5">
             <StatusChip tone="positive">Connected</StatusChip>
-            {profile.hasPassword ? (
+            {profile.hasPassword || profile.instagramLinked ? (
               <Button
                 type="button"
                 variant="ghost"
@@ -138,7 +144,7 @@ export function AccountRecoveryCard({
             ) : (
               <p className="text-xs text-muted">
                 This account signs in with Google only. To disconnect it, first set a password via
-                Forgot password (needs a confirmed recovery email).
+                Forgot password (needs a confirmed recovery email) or connect Instagram.
               </p>
             )}
           </div>
@@ -155,6 +161,53 @@ export function AccountRecoveryCard({
                 onCredential={(idToken) =>
                   void run('google', () => linkGoogle(sessionToken, idToken), 'Google connected.')
                 }
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-6 max-w-xl border-t border-sidebar/10 pt-5">
+        <h4 className="font-display text-sm font-semibold text-sidebar">Instagram sign-in</h4>
+        {profile.instagramLinked ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2.5">
+            <StatusChip tone="positive">Connected</StatusChip>
+            {profile.hasPassword || profile.googleLinked ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={busy !== null}
+                onClick={() =>
+                  void run(
+                    'instagram',
+                    () => unlinkInstagram(sessionToken),
+                    'Instagram disconnected.',
+                  )
+                }
+              >
+                {busy === 'instagram' ? 'Disconnecting…' : 'Disconnect Instagram'}
+              </Button>
+            ) : (
+              <p className="text-xs text-muted">
+                This account signs in with Instagram only. To disconnect it, first set a password via
+                Forgot password (needs a confirmed recovery email) or connect Google.
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="mt-3 flex flex-col gap-2">
+            <p className="text-sm text-muted">
+              Connect Instagram to sign in with your professional Instagram account. Your username
+              and progress stay the same.
+            </p>
+            <div className="max-w-xs">
+              <InstagramSignInButton
+                intent="link"
+                next="/profile"
+                disabled={busy !== null}
+                onError={setError}
+                label="Connect Instagram"
               />
             </div>
           </div>

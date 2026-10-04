@@ -331,4 +331,62 @@ describe('AuthStore', () => {
       expect(auth.getUserByVerifiedEmail('alice@example.com')).toBeUndefined();
     });
   });
+
+  describe('Instagram sign-in', () => {
+    function ig(overrides: Partial<{ id: string; username: string; name: string | null }> = {}) {
+      return { id: 'ig-1', username: 'alice.ig', name: 'Alice Ig', ...overrides };
+    }
+
+    it('asks a new Instagram user for a username, then creates a password-less account', async () => {
+      const first = await auth.instagramSignIn(ig());
+      expect(first.kind).toBe('needs_username');
+      if (first.kind !== 'needs_username') return;
+      expect(first.suggestedUsername).toMatch(/^Alice_Ig/);
+
+      const created = await auth.instagramSignIn(ig(), { username: 'Alice_Ig' });
+      expect(created.kind).toBe('session');
+      if (created.kind !== 'session') return;
+      expect(created.created).toBe(true);
+      const user = auth.getUser(created.session.userId)!;
+      expect(user.passwordHash).toBeNull();
+      expect(user.instagramId).toBe('ig-1');
+
+      const again = await auth.instagramSignIn(ig());
+      expect(again.kind === 'session' && again.session.userId).toBe(created.session.userId);
+    });
+
+    it('links and unlinks Instagram from the profile', async () => {
+      const a = await auth.signup('CarlIg', 'secret12');
+      const b = await auth.signup('DinaIg', 'secret12');
+      const linked = await auth.linkInstagram(a.userId, ig());
+      expect(linked.instagramId).toBe('ig-1');
+      await expect(auth.linkInstagram(b.userId, ig())).rejects.toMatchObject({
+        code: 'instagram_taken',
+      });
+      const unlinked = await auth.unlinkInstagram(a.userId);
+      expect(unlinked.instagramId).toBeNull();
+    });
+
+    it('refuses to unlink Instagram from a password-less account', async () => {
+      const res = await auth.instagramSignIn(ig(), { username: 'IgOnly' });
+      if (res.kind !== 'session') throw new Error('expected session');
+      await expect(auth.unlinkInstagram(res.session.userId)).rejects.toMatchObject({
+        code: 'password_required',
+      });
+    });
+
+    it('lets a Google-only user unlink Google after connecting Instagram', async () => {
+      const g = await auth.googleSignIn(googleIdentity(), { username: 'BothSocial' });
+      if (g.kind !== 'session') throw new Error('expected session');
+      await auth.linkInstagram(g.session.userId, ig());
+      expect((await auth.unlinkGoogle(g.session.userId)).googleSub).toBeNull();
+    });
+
+    it('persists Instagram links across restarts', async () => {
+      await auth.instagramSignIn(ig(), { username: 'IgPersist' });
+      const again = new AuthStore(dir);
+      await again.init();
+      expect(again.getUserByInstagramId('ig-1')?.username).toBe('IgPersist');
+    });
+  });
 });

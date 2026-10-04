@@ -6,10 +6,13 @@ import { dataSourceAsQueryable } from '../database/queryable.js';
 import { MailService } from '../mail/mail.service.js';
 import { SiteConfigService } from '../site-config/site-config.service.js';
 import { GoogleIdTokenVerifier } from './auth.google.js';
+import { InstagramOAuth } from './auth.instagram.js';
 import { AuthStore } from './auth.store.js';
+import { AuthError } from './auth.types.js';
 import type {
   AuthSessionPayload,
   GoogleSignInResult,
+  InstagramIdentity,
   PublicUser,
   User,
 } from './auth.types.js';
@@ -27,6 +30,7 @@ export class AuthService implements OnModuleInit {
     private readonly config: ConfigService,
     private readonly siteConfig: SiteConfigService,
     private readonly google: GoogleIdTokenVerifier,
+    private readonly instagram: InstagramOAuth,
     private readonly mail: MailService,
     @InjectDataSource() private readonly dataSource: DataSource,
   ) {
@@ -98,6 +102,94 @@ export class AuthService implements OnModuleInit {
 
   unlinkGoogle(userId: string): Promise<User> {
     return this.store.unlinkGoogle(userId);
+  }
+
+  instagramAuthorizeUrl(input: {
+    intent: 'login' | 'link';
+    next: string;
+    userId?: string;
+  }): string {
+    const state = this.instagram.createState(input);
+    return this.instagram.authorizeUrl(state);
+  }
+
+  instagramConfigured(): boolean {
+    return this.instagram.isConfigured();
+  }
+
+  instagramRedirectUri(): string | null {
+    return this.instagram.configuredRedirectUri();
+  }
+
+  async instagramSignInFromCode(
+    code: string,
+    state: string,
+    opts: { username?: string; avatarId?: number; sessionUserId?: string },
+  ): Promise<
+    | { kind: 'session'; session: AuthSessionPayload; next: string }
+    | {
+        kind: 'needs_username';
+        suggestedUsername: string;
+        instagramUsername: string;
+        pendingToken: string;
+        next: string;
+      }
+    | { kind: 'linked'; user: User; next: string }
+  > {
+    const parsed = this.instagram.parseState(state);
+    if (parsed.intent === 'link') {
+      if (!opts.sessionUserId || opts.sessionUserId !== parsed.userId) {
+        throw new AuthError('invalid_token', 'Sign in to connect Instagram');
+      }
+      const identity = await this.instagram.exchangeCode(code);
+      return {
+        kind: 'linked',
+        user: await this.store.linkInstagram(opts.sessionUserId, identity),
+        next: parsed.next,
+      };
+    }
+    const identity = await this.instagram.exchangeCode(code);
+    return this.finishInstagramSignIn(identity, opts, parsed.next);
+  }
+
+  async instagramSignInFromPending(
+    pendingToken: string,
+    opts: { username?: string; avatarId?: number },
+  ) {
+    const identity = this.instagram.parsePending(pendingToken);
+    return this.finishInstagramSignIn(identity, opts, identity.next);
+  }
+
+  private async finishInstagramSignIn(
+    identity: InstagramIdentity,
+    opts: { username?: string; avatarId?: number },
+    next: string,
+  ): Promise<
+    | { kind: 'session'; session: AuthSessionPayload; next: string }
+    | {
+        kind: 'needs_username';
+        suggestedUsername: string;
+        instagramUsername: string;
+        pendingToken: string;
+        next: string;
+      }
+  > {
+    const result = await this.store.instagramSignIn(identity, opts);
+    if (result.kind === 'needs_username') {
+      return {
+        kind: 'needs_username',
+        suggestedUsername: result.suggestedUsername,
+        instagramUsername: identity.username,
+        pendingToken: this.instagram.createPending(identity, next),
+        next,
+      };
+    }
+    if (result.created) this.sendWelcomeInBackground(result.session.userId);
+    return { kind: 'session', session: result.session, next };
+  }
+
+  unlinkInstagram(userId: string): Promise<User> {
+    return this.store.unlinkInstagram(userId);
   }
 
   /** Save a recovery email and send a confirmation link (no-op send if already verified). */

@@ -89,6 +89,9 @@ services:
       BOT_CHAT_MODEL: ${BOT_CHAT_MODEL:-}
       # Google sign-in (OAuth web client id; web + Android verify against it).
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      INSTAGRAM_APP_ID: ${INSTAGRAM_APP_ID:-}
+      INSTAGRAM_APP_SECRET: ${INSTAGRAM_APP_SECRET:-}
+      INSTAGRAM_REDIRECT_URI: ${INSTAGRAM_REDIRECT_URI:-}
       # Recovery / password-reset email (SMTP). Unset SMTP_HOST → links are logged instead.
       PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:-}
       SMTP_HOST: ${SMTP_HOST:-}

@@ -52,21 +52,26 @@ export type PlayedHandLevel = {
   won: boolean;
   winnerName: string | null;
   handName: string | null;
+  /** Combined pot share awarded to winners (table chips). */
+  winAmount: number | null;
   /** Viewer + anyone whose hole cards were revealed at showdown. */
   shownPlayers: ShownPlayerHand[];
 };
 
 function parseResult(resultJson: unknown): Record<string, unknown> | null {
-  if (resultJson && typeof resultJson === 'object') {
-    return resultJson as Record<string, unknown>;
+  let value: unknown = resultJson;
+  for (let i = 0; i < 2; i += 1) {
+    if (value && typeof value === 'object') {
+      return value as Record<string, unknown>;
+    }
+    if (typeof value !== 'string') return null;
+    try {
+      value = JSON.parse(value) as unknown;
+    } catch {
+      return null;
+    }
   }
-  if (typeof resultJson !== 'string') return null;
-  try {
-    const parsed = JSON.parse(resultJson) as unknown;
-    return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null;
-  } catch {
-    return null;
-  }
+  return value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
 }
 
 function startedAtMs(raw: string | number | Date | null | undefined): number {
@@ -125,13 +130,17 @@ export function parsePlayedHand(row: MyHandRow, userId: string): PlayedHandLevel
   const winnersRaw = Array.isArray(result?.winners) ? result.winners : [];
   let won = false;
   let handName: string | null = null;
+  let winAmount = 0;
   const winnerNames: string[] = [];
   const winnerSeats = new Set<number>();
   for (const w of winnersRaw) {
     if (!w || typeof w !== 'object') continue;
-    const rec = w as { seat?: unknown; name?: unknown; handName?: unknown };
+    const rec = w as { seat?: unknown; name?: unknown; handName?: unknown; amount?: unknown };
     if (typeof rec.seat !== 'number') continue;
     winnerSeats.add(rec.seat);
+    if (typeof rec.amount === 'number' && Number.isFinite(rec.amount)) {
+      winAmount += rec.amount;
+    }
     const resolved =
       (typeof rec.name === 'string' && rec.name) || nameBySeat.get(rec.seat) || null;
     if (resolved && !winnerNames.includes(resolved)) winnerNames.push(resolved);
@@ -178,6 +187,7 @@ export function parsePlayedHand(row: MyHandRow, userId: string): PlayedHandLevel
     won,
     winnerName,
     handName,
+    winAmount: winAmount > 0 ? winAmount : null,
     shownPlayers,
   };
 }

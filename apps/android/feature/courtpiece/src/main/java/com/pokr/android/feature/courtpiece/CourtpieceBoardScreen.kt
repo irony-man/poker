@@ -53,6 +53,7 @@ import com.pokr.android.core.designsystem.PokrGhostButton
 import com.pokr.android.core.designsystem.PokrPrimaryButton
 import com.pokr.android.core.designsystem.PokrRadius
 import com.pokr.android.core.designsystem.StatusChip
+import com.pokr.android.core.designsystem.ToastOnMessage
 import com.pokr.android.core.designsystem.TableOverflowItem
 import com.pokr.android.core.designsystem.TableOverflowTone
 import com.pokr.android.core.designsystem.TablePlayHeader
@@ -241,15 +242,8 @@ fun CourtpieceBoardScreen(
                     }
                 }
 
-                state.lastError?.let { err ->
-                    StatusChip(
-                        text = err,
-                        accent = PokrColors.Danger,
-                        chrome = PokrChrome.Play,
-                        modifier = Modifier
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                            .clickable { viewModel.dispatch(CourtpieceContract.Intent.DismissError) },
-                    )
+                ToastOnMessage(state.lastError) {
+                    viewModel.dispatch(CourtpieceContract.Intent.DismissError)
                 }
 
                 CourtpieceTable(

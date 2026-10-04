@@ -93,7 +93,6 @@ export function FriendsPanel({
     setBusy,
     error,
     setError,
-    toast,
     loadError,
     setLoadError,
     auth,
@@ -473,28 +472,22 @@ export function FriendsPanel({
 
   const socialBody = (
     <>
-      {(error || loadError || toast) && (
+      {(error || loadError) && (
         <div
-          role={error || loadError ? 'alert' : 'status'}
-          className={`flex items-start justify-between gap-2 rounded-xl border px-3 py-2 text-sm ${
-            error || loadError
-              ? 'border-danger/25 bg-danger/10 text-danger'
-              : 'border-sidebar/20 bg-sidebar/8 text-sidebar'
-          }`}
+          role="alert"
+          className="flex items-start justify-between gap-2 rounded-xl border border-danger/25 bg-danger/10 px-3 py-2 text-sm text-danger"
         >
-          <p className="min-w-0 flex-1 leading-snug">{error ?? loadError ?? toast}</p>
-          {(error || loadError) && (
-            <button
-              type="button"
-              className="shrink-0 text-xs font-semibold opacity-70 hover:opacity-100"
-              onClick={() => {
-                setError(null);
-                setLoadError(null);
-              }}
-            >
-              Dismiss
-            </button>
-          )}
+          <p className="min-w-0 flex-1 leading-snug">{error ?? loadError}</p>
+          <button
+            type="button"
+            className="shrink-0 text-xs font-semibold opacity-70 hover:opacity-100"
+            onClick={() => {
+              setError(null);
+              setLoadError(null);
+            }}
+          >
+            Dismiss
+          </button>
         </div>
       )}
 

@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react';
 import type { AuthSession } from '@poker/protocol';
 import { GoogleSignInButton, OrDivider } from '@/components/GoogleSignInButton';
+import { InstagramSignInButton } from '@/components/InstagramSignInButton';
 import { AvatarPicker } from '@/components/PlayerAvatar';
 import { Button } from '@/components/ui/Button';
 import { StatusChip } from '@/components/ui/StatusChip';
@@ -21,11 +22,13 @@ export function GoogleAuthPanel({
   onSession,
   onStepChange,
   initialAvatarId,
+  returnTo,
 }: {
   mode: 'sign-in' | 'sign-up';
   onSession: (session: AuthSession) => void;
   onStepChange?: (choosingUsername: boolean) => void;
   initialAvatarId?: number;
+  returnTo?: string;
 }) {
   const [pending, setPending] = useState<PendingGoogle | null>(null);
   const [username, setUsername] = useState('');
@@ -35,6 +38,7 @@ export function GoogleAuthPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [available, setAvailable] = useState(false);
+  const [instagramAvailable, setInstagramAvailable] = useState(false);
 
   function openStep(next: PendingGoogle | null) {
     setPending(next);
@@ -149,19 +153,30 @@ export function GoogleAuthPanel({
 
   return (
     <div className="flex flex-col gap-4">
-      <GoogleSignInButton
-        text={mode === 'sign-up' ? 'signup_with' : 'continue_with'}
-        disabled={busy}
-        onCredential={(token) => void onCredential(token)}
-        onError={setError}
-        onAvailable={setAvailable}
-      />
+      <div className="flex items-center justify-center gap-3">
+        <GoogleSignInButton
+          layout="icon"
+          text={mode === 'sign-up' ? 'signup_with' : 'continue_with'}
+          disabled={busy}
+          onCredential={(token) => void onCredential(token)}
+          onError={setError}
+          onAvailable={setAvailable}
+        />
+        <InstagramSignInButton
+          layout="icon"
+          next={returnTo}
+          disabled={busy}
+          onError={setError}
+          onAvailable={setInstagramAvailable}
+          label={mode === 'sign-up' ? 'Sign up with Instagram' : 'Continue with Instagram'}
+        />
+      </div>
       {error && (
         <StatusChip tone="danger" role="alert" className="text-xs">
           {error}
         </StatusChip>
       )}
-      {available ? <OrDivider /> : null}
+      {available || instagramAvailable ? <OrDivider /> : null}
     </div>
   );
 }

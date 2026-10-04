@@ -67,8 +67,11 @@ export interface ContestHandSummary {
   id: string;
   /** 1-based, in play order across the contest. */
   handNumber: number;
+  startedAt: number | null;
   endedAt: number | null;
   winners: { name: string; amount: number; handName: string | null }[];
+  /** Public- or owner-redacted hand payload (hole cards only when revealed / viewer). */
+  resultJson?: string | Record<string, unknown>;
 }
 
 export const ContestBlindInfoSchema = z.object({

@@ -190,7 +190,7 @@ export function AdminShell({
         <SkipLink />
         <main
           id="main-content"
-          className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 py-4 sm:px-8 sm:py-5 lg:px-12"
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 py-4 pb-20 sm:px-8 sm:py-5 sm:pb-24 lg:px-12"
         >
           <header className="mb-5 hidden md:block">
             <h1 className="font-title-page">Admin</h1>

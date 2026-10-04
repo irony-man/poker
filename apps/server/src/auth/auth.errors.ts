@@ -6,6 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { GoogleAuthNotConfiguredError, InvalidGoogleTokenError } from './auth.google.js';
+import { InstagramAuthNotConfiguredError, InvalidInstagramAuthError } from './auth.instagram.js';
 import { AuthError } from './auth.types.js';
 
 /** Map auth-domain errors to HTTP responses (`{ error }` body like the rest of the API). */
@@ -14,7 +15,10 @@ export function toAuthHttpError(err: unknown, fallback: string): HttpException {
   if (err instanceof GoogleAuthNotConfiguredError) {
     return new ServiceUnavailableException({ error: err.message });
   }
-  if (err instanceof InvalidGoogleTokenError) {
+  if (err instanceof InstagramAuthNotConfiguredError) {
+    return new ServiceUnavailableException({ error: err.message });
+  }
+  if (err instanceof InvalidInstagramAuthError) {
     return new UnauthorizedException({ error: err.message });
   }
   if (err instanceof AuthError) {
@@ -22,6 +26,7 @@ export function toAuthHttpError(err: unknown, fallback: string): HttpException {
       case 'username_taken':
       case 'email_taken':
       case 'google_taken':
+      case 'instagram_taken':
         return new ConflictException({ error: err.message });
       case 'invalid_credentials':
         return new UnauthorizedException({ error: err.message });

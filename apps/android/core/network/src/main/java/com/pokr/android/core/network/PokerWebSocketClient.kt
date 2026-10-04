@@ -86,7 +86,10 @@ class PokerWebSocketClient(
     }
 
     private fun openSocket(wsUrl: String) {
-        val request = Request.Builder().url(wsUrl).build()
+        val request = Request.Builder()
+            .url(wsUrl)
+            .header(ApiErrorToastInterceptor.SILENT_HEADER, "1")
+            .build()
         webSocket = okHttpClient.newWebSocket(request, socketListener)
     }
 

@@ -1,5 +1,5 @@
 import type { CreateSnakesBody } from '@poker/protocol';
-import { apiBase, parseError, sessionHeaders, type AuthOptions, authedFetch } from './client';
+import { apiBase, apiFetch, parseError, sessionHeaders, type AuthOptions, authedFetch } from './client';
 
 export interface CreateSnakesResult {
   snakesId: string;
@@ -46,7 +46,7 @@ function pickMaxSeats(raw: Record<string, unknown>): number {
 }
 
 export async function createSnakes(input: CreateSnakesBody, sessionToken: string) {
-  const res = await fetch(`${apiBase()}/api/snakes`, {
+  const res = await apiFetch(`${apiBase()}/api/snakes`, {
     method: 'POST',
     headers: sessionHeaders(sessionToken),
     body: JSON.stringify(input),
@@ -67,7 +67,7 @@ export async function createSnakes(input: CreateSnakesBody, sessionToken: string
 }
 
 export async function resolveSnakesInvite(code: string) {
-  const res = await fetch(`${apiBase()}/api/snakes/invite/${encodeURIComponent(code)}`);
+  const res = await apiFetch(`${apiBase()}/api/snakes/invite/${encodeURIComponent(code)}`);
   if (!res.ok) throw new Error('Invite not found');
   const raw = asRecord(await res.json()) ?? {};
   const snakesId = pickSnakesId(raw);
@@ -82,11 +82,13 @@ export async function resolveSnakesInvite(code: string) {
 
 export async function fetchSnakesChat(snakesId: string, options?: AuthOptions) {
   if (options?.sessionToken) {
-    return authedFetch(`/api/snakes/${snakesId}/chat`, options) as Promise<{
+    return authedFetch(`/api/snakes/${snakesId}/chat`, { ...options, silent: true }) as Promise<{
       messages: SnakesChatLine[];
     }>;
   }
-  const res = await fetch(`${apiBase()}/api/snakes/${encodeURIComponent(snakesId)}/chat`);
+  const res = await apiFetch(`${apiBase()}/api/snakes/${encodeURIComponent(snakesId)}/chat`, {
+    silent: true,
+  });
   if (!res.ok) throw new Error(await parseError(res, 'Failed to load chat'));
   return res.json() as Promise<{ messages: SnakesChatLine[] }>;
 }

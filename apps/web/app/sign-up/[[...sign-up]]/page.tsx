@@ -73,6 +73,7 @@ function SignUpForm() {
           initialAvatarId={avatarId}
           onSession={finishSignUp}
           onStepChange={setChoosingUsername}
+          returnTo={returnTo}
         />
         <form onSubmit={onSubmit} className={choosingUsername ? 'hidden' : 'flex flex-col gap-4'}>
           <TextField

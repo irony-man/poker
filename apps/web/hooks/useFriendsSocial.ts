@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   searchUsers,
   type FriendGroup,
@@ -12,6 +12,7 @@ import {
 } from '@/lib/api';
 import { useOnlineFriends } from '@/components/OnlineFriends';
 import { useSession } from '@/lib/store';
+import { toast } from '@/lib/toast';
 
 export function groupMembersDirty(original: Set<string>, editMembers: Set<string>): boolean {
   if (original.size !== editMembers.size) return true;
@@ -19,7 +20,7 @@ export function groupMembersDirty(original: Set<string>, editMembers: Set<string
   return false;
 }
 
-/** Shared friends list / search / toast state for FriendsPanel (WS social_sync). */
+/** Shared friends list / search state for FriendsPanel (WS social_sync). */
 export function useFriendsSocial({
   disabled,
   onFriendCountChange,
@@ -45,9 +46,7 @@ export function useFriendsSocial({
   const [searchLookedUp, setSearchLookedUp] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const auth = useCallback(() => {
     if (!sessionToken) throw new Error('Not signed in');
@@ -57,15 +56,7 @@ export function useFriendsSocial({
   const friendIds = useMemo(() => new Set(friends.map((f) => f.userId)), [friends]);
 
   const flash = useCallback((msg: string) => {
-    setToast(msg);
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 3200);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (toastTimer.current) clearTimeout(toastTimer.current);
-    };
+    toast.success(msg);
   }, []);
 
   useEffect(() => {
@@ -140,7 +131,6 @@ export function useFriendsSocial({
     setBusy,
     error,
     setError,
-    toast,
     loadError,
     setLoadError,
     auth,

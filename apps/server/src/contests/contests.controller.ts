@@ -9,6 +9,7 @@ import {
   Param,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -16,11 +17,18 @@ import {
   InviteFriendsBodySchema,
   type ContestHandSummary,
 } from '@poker/protocol';
+import type { Request } from 'express';
 import { AuthService } from '../auth/auth.service.js';
 import type { User } from '../auth/auth.types.js';
+import { bearerToken } from '../auth/bearer.js';
 import { CurrentUser, SessionAuthGuard } from '../common/session-auth.guard.js';
 import { FriendsService } from '../friends/friends.service.js';
-import { HistoryService, summarizeHand, toPublicHandRows } from '../history/history.service.js';
+import {
+  HistoryService,
+  summarizeHand,
+  toOwnerHandRows,
+  toPublicHandRows,
+} from '../history/history.service.js';
 import { ContestsService } from './contests.service.js';
 
 /** Hand numbers are counted from the oldest returned row, so keep this above any realistic contest length. */
@@ -156,26 +164,41 @@ export class ContestsController {
   }
 
   @Get(':id/history')
-  async historyList(@Param('id') id: string) {
-    const hands = toPublicHandRows(await this.history.listHandsForContest(id, 50));
+  async historyList(@Param('id') id: string, @Req() req: Request) {
+    const raw = await this.history.listHandsForContest(id, CONTEST_HANDS_LIMIT);
+    const token = bearerToken(
+      req.header('authorization') ?? req.header('Authorization') ?? undefined,
+    );
+    const viewer = token ? this.auth.resolveSession(token) : null;
+    const hands = viewer ? toOwnerHandRows(raw, viewer.id) : toPublicHandRows(raw);
     return { hands };
   }
 
   @Get(':id/hands')
-  async handList(@Param('id') id: string): Promise<{ hands: ContestHandSummary[] }> {
-    const rows = await this.history.listHandsForContest(id, CONTEST_HANDS_LIMIT);
+  async handList(
+    @Param('id') id: string,
+    @Req() req: Request,
+  ): Promise<{ hands: ContestHandSummary[] }> {
+    const raw = await this.history.listHandsForContest(id, CONTEST_HANDS_LIMIT);
+    const token = bearerToken(
+      req.header('authorization') ?? req.header('Authorization') ?? undefined,
+    );
+    const viewer = token ? this.auth.resolveSession(token) : null;
+    const rows = viewer ? toOwnerHandRows(raw, viewer.id) : toPublicHandRows(raw);
     const total = rows.length;
     const hands = rows.map((row, i) => {
       const s = summarizeHand(row);
       return {
         id: s.id,
         handNumber: total - i,
+        startedAt: s.startedAt ? new Date(s.startedAt).getTime() : null,
         endedAt: s.endedAt ? new Date(s.endedAt).getTime() : null,
         winners: s.winners.map((w) => ({
           name: w.name ?? `Seat ${w.seat + 1}`,
           amount: w.amount,
           handName: w.handName ?? null,
         })),
+        resultJson: row.resultJson,
       };
     });
     return { hands };

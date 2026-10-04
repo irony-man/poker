@@ -79,6 +79,7 @@ import kotlinx.serialization.Serializable
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Headers
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
@@ -96,9 +97,11 @@ interface PokrApi {
     suspend fun login(@Body body: LoginRequest): SessionDto
 
     @POST("api/logout")
+    @Headers(ApiErrorToastInterceptor.SILENT)
     suspend fun logout(@Body body: EmptyBody = EmptyBody()): Unit
 
     @GET("api/auth/config")
+    @Headers(ApiErrorToastInterceptor.SILENT)
     suspend fun authConfig(): AuthConfigResponse
 
     @POST("api/auth/google")
@@ -120,6 +123,7 @@ interface PokrApi {
     suspend fun unlinkGoogle(): MeProfile
 
     @POST("api/ticket")
+    @Headers(ApiErrorToastInterceptor.SILENT)
     suspend fun refreshTicket(@Body body: EmptyBody = EmptyBody()): SessionDto
 
     @POST("api/tables")
@@ -132,6 +136,7 @@ interface PokrApi {
     suspend fun createContest(@Body body: CreateContestRequest): ContestResponse
 
     @GET("api/contests")
+    @Headers(ApiErrorToastInterceptor.SILENT)
     suspend fun listContests(): ContestListResponse
 
     @GET("api/contests/invite/{code}")
@@ -159,9 +164,11 @@ interface PokrApi {
     ): ContestResponse
 
     @POST("api/history/hands")
+    @Headers(ApiErrorToastInterceptor.SILENT)
     suspend fun uploadHand(@Body body: UploadHandRequest): UploadHandResponse
 
     @GET("api/me")
+    @Headers(ApiErrorToastInterceptor.SILENT)
     suspend fun getMe(): MeProfile
 
     @PATCH("api/me")
@@ -174,9 +181,11 @@ interface PokrApi {
     suspend fun getTables(): PublicTablesResponse
 
     @GET("api/contests/mine")
+    @Headers(ApiErrorToastInterceptor.SILENT)
     suspend fun listMyContests(): ContestListResponse
 
     @GET("api/friends")
+    @Headers(ApiErrorToastInterceptor.SILENT)
     suspend fun getFriends(): FriendsSnapshot
 
     @GET("api/friends/search")
@@ -246,6 +255,7 @@ interface PokrApi {
     ): InviteFriendsResponse
 
     @GET("api/site")
+    @Headers(ApiErrorToastInterceptor.SILENT)
     suspend fun getSite(): SitePublicResponse
 
     @GET("api/users/{username}")
@@ -264,6 +274,7 @@ interface PokrApi {
     suspend fun resolveLudoInvite(@Path("code") code: String): LudoInviteResolveResponse
 
     @GET("api/ludo/{id}/chat")
+    @Headers(ApiErrorToastInterceptor.SILENT)
     suspend fun getLudoChat(
         @Path("id") id: String,
         @Query("limit") limit: Int = 80,
@@ -276,6 +287,7 @@ interface PokrApi {
     suspend fun resolveSnakesInvite(@Path("code") code: String): SnakesInviteResolveResponse
 
     @GET("api/snakes/{id}/chat")
+    @Headers(ApiErrorToastInterceptor.SILENT)
     suspend fun getSnakesChat(
         @Path("id") id: String,
         @Query("limit") limit: Int = 80,
@@ -288,6 +300,7 @@ interface PokrApi {
     suspend fun resolveMemoryInvite(@Path("code") code: String): MemoryInviteResolveResponse
 
     @GET("api/memory/{id}/chat")
+    @Headers(ApiErrorToastInterceptor.SILENT)
     suspend fun getMemoryChat(
         @Path("id") id: String,
         @Query("limit") limit: Int = 80,
@@ -300,6 +313,7 @@ interface PokrApi {
     suspend fun resolveCourtpieceInvite(@Path("code") code: String): CourtpieceInviteResolveResponse
 
     @GET("api/courtpiece/{id}/chat")
+    @Headers(ApiErrorToastInterceptor.SILENT)
     suspend fun getCourtpieceChat(
         @Path("id") id: String,
         @Query("limit") limit: Int = 80,

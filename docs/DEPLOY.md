@@ -131,6 +131,28 @@ If the LLM is down, table bots fall back to templates; `/chat` returns 503.
 
 Multiple accepted audiences can be given as a comma-separated `GOOGLE_CLIENT_ID`; the first one is served to clients.
 
+## Instagram sign-in
+
+Instagram only offers OAuth for **professional** (Business or Creator) accounts via [Instagram API with Instagram Login](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/business-login/). Personal accounts cannot sign in.
+
+1. Meta Developer Dashboard → create a **Business** type app → add the **Instagram** product → **API setup with Instagram login**.
+2. Valid OAuth redirect URIs (exact match, HTTPS required — Instagram rejects `http://localhost`):
+   - Production: `https://pokr.site/auth/instagram/callback`
+   - Local: `https://localhost:3001/auth/instagram/callback` (run the web app with `next dev --experimental-https`)
+   Add them under **App Dashboard → Instagram → API setup with Instagram login → Set up Instagram business login → OAuth redirect URIs**. A URI listed only under Facebook Login will not work.
+3. Set in `~/poker/.env`:
+
+```bash
+INSTAGRAM_APP_ID=<instagram app id>
+INSTAGRAM_APP_SECRET=<instagram app secret>
+# Optional; defaults to $PUBLIC_WEB_URL/auth/instagram/callback
+# INSTAGRAM_REDIRECT_URI=https://pokr.site/auth/instagram/callback
+```
+
+Local Instagram login needs HTTPS. Use `https://localhost:<web-port>/auth/instagram/callback` as `INSTAGRAM_REDIRECT_URI` and start Next with `--experimental-https`.
+
+The web app reads `instagramEnabled` from `GET /api/auth/config` and only shows the button when both id and secret are set.
+
 ## Recovery email (SMTP)
 
 Players can add an email on their profile; once confirmed it is used for "Forgot password?" resets and for linking Google accounts. Set in `~/poker/.env`:

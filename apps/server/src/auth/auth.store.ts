@@ -24,6 +24,8 @@ import {
   type EmailTokenPurpose,
   type GoogleIdentity,
   type GoogleSignInResult,
+  type InstagramIdentity,
+  type InstagramSignInResult,
   type PublicUser,
   type Session,
   type User,
@@ -94,6 +96,7 @@ function normalizeUser(
     email: typeof u.email === 'string' && u.email.trim() ? normalizeEmail(u.email) : null,
     emailVerified: u.emailVerified === true && typeof u.email === 'string' && !!u.email.trim(),
     googleSub: typeof u.googleSub === 'string' && u.googleSub ? u.googleSub : null,
+    instagramId: typeof u.instagramId === 'string' && u.instagramId ? u.instagramId : null,
     avatarId: clampAvatarId(u.avatarId),
     avatarUrl: u.avatarUrl ?? null,
     tableColorId: clampTableColorId(u.tableColorId),
@@ -124,6 +127,7 @@ export class AuthStore {
   private usernameIndex = new Map<string, string>(); // lower -> id
   private emailIndex = new Map<string, string>(); // verified email lower -> id
   private googleSubIndex = new Map<string, string>(); // google sub -> id
+  private instagramIdIndex = new Map<string, string>(); // instagram user id -> id
   private tickets = new Map<string, WsTicket>();
   private sessions = new Map<string, Session>();
   /** File-backed mode only; Postgres mode reads/consumes `auth_email_tokens` directly. */
@@ -215,6 +219,7 @@ export class AuthStore {
     this.usernameIndex.clear();
     this.emailIndex.clear();
     this.googleSubIndex.clear();
+    this.instagramIdIndex.clear();
     this.sessions.clear();
     this.tickets.clear();
     this.emailTokens.clear();
@@ -246,6 +251,7 @@ export class AuthStore {
       `ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified boolean NOT NULL DEFAULT false`,
     );
     await this.pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub text`);
+    await this.pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS instagram_id text`);
     await this.pool.query(
       `CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_verified_uidx ON users (email_lower)
        WHERE email_lower IS NOT NULL AND email_verified`,
@@ -253,6 +259,10 @@ export class AuthStore {
     await this.pool.query(
       `CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub_uidx ON users (google_sub)
        WHERE google_sub IS NOT NULL`,
+    );
+    await this.pool.query(
+      `CREATE UNIQUE INDEX IF NOT EXISTS users_instagram_id_uidx ON users (instagram_id)
+       WHERE instagram_id IS NOT NULL`,
     );
     await this.pool.query(
       `CREATE TABLE IF NOT EXISTS auth_email_tokens (
@@ -268,9 +278,9 @@ export class AuthStore {
       `CREATE INDEX IF NOT EXISTS auth_email_tokens_user_idx ON auth_email_tokens (user_id)`,
     );
     const result = await this.pool.query(
-      `SELECT id, name, username, password_hash, email, email_verified, google_sub, avatar_id, avatar_url, table_color_id, card_theme_id, ui_theme, table_layout, sfx_muted, keyboard_shortcuts, chip_balance, whuffie_balance, hands_played, created_at
+      `SELECT id, name, username, password_hash, email, email_verified, google_sub, instagram_id, avatar_id, avatar_url, table_color_id, card_theme_id, ui_theme, table_layout, sfx_muted, keyboard_shortcuts, chip_balance, whuffie_balance, hands_played, created_at
        FROM users
-       WHERE username IS NOT NULL AND (password_hash IS NOT NULL OR google_sub IS NOT NULL)`,
+       WHERE username IS NOT NULL AND (password_hash IS NOT NULL OR google_sub IS NOT NULL OR instagram_id IS NOT NULL)`,
     );
     this.clearMemory();
 
@@ -282,6 +292,7 @@ export class AuthStore {
       email?: string | null;
       email_verified?: boolean | null;
       google_sub?: string | null;
+      instagram_id?: string | null;
       avatar_id: number;
       avatar_url?: string | null;
       table_color_id?: number | null;
@@ -307,6 +318,7 @@ export class AuthStore {
         email: row.email?.trim() ? normalizeEmail(row.email) : null,
         emailVerified: row.email_verified === true && !!row.email?.trim(),
         googleSub: row.google_sub || null,
+        instagramId: row.instagram_id || null,
         avatarId: clampAvatarId(row.avatar_id ?? 0),
         avatarUrl: row.avatar_url ?? null,
         tableColorId: clampTableColorId(row.table_color_id ?? 0),
@@ -370,6 +382,7 @@ export class AuthStore {
     this.usernameIndex.set(user.username.toLowerCase(), user.id);
     if (user.email && user.emailVerified) this.emailIndex.set(emailKey(user.email), user.id);
     if (user.googleSub) this.googleSubIndex.set(user.googleSub, user.id);
+    if (user.instagramId) this.instagramIdIndex.set(user.instagramId, user.id);
   }
 
   private unindexEmail(user: User): void {
@@ -452,8 +465,8 @@ export class AuthStore {
   private async persistUserToPostgres(user: User): Promise<void> {
     if (!this.pool) return;
     await this.pool.query(
-      `INSERT INTO users (id, name, username, username_lower, password_hash, avatar_id, avatar_url, table_color_id, card_theme_id, ui_theme, table_layout, sfx_muted, keyboard_shortcuts, chip_balance, whuffie_balance, hands_played, created_at, email, email_lower, email_verified, google_sub)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15, $16, to_timestamp($17 / 1000.0), $18, $19, $20, $21)
+      `INSERT INTO users (id, name, username, username_lower, password_hash, avatar_id, avatar_url, table_color_id, card_theme_id, ui_theme, table_layout, sfx_muted, keyboard_shortcuts, chip_balance, whuffie_balance, hands_played, created_at, email, email_lower, email_verified, google_sub, instagram_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15, $16, to_timestamp($17 / 1000.0), $18, $19, $20, $21, $22)
        ON CONFLICT (id) DO UPDATE SET
          name = EXCLUDED.name,
          username = EXCLUDED.username,
@@ -463,6 +476,7 @@ export class AuthStore {
          email_lower = EXCLUDED.email_lower,
          email_verified = EXCLUDED.email_verified,
          google_sub = EXCLUDED.google_sub,
+         instagram_id = EXCLUDED.instagram_id,
          avatar_id = EXCLUDED.avatar_id,
          avatar_url = EXCLUDED.avatar_url,
          table_color_id = EXCLUDED.table_color_id,
@@ -496,24 +510,31 @@ export class AuthStore {
         user.email ? emailKey(user.email) : null,
         user.emailVerified,
         user.googleSub,
+        user.instagramId,
       ],
     );
   }
 
   private async persistIdentity(user: User): Promise<void> {
     if (this.pool) {
-      await this.pool.query(
-        `UPDATE users SET password_hash = $1, email = $2, email_lower = $3, email_verified = $4, google_sub = $5
-         WHERE id = $6`,
-        [
-          user.passwordHash,
-          user.email,
-          user.email ? emailKey(user.email) : null,
-          user.emailVerified,
-          user.googleSub,
-          user.id,
-        ],
-      );
+      const cols = [
+        'password_hash',
+        'email',
+        'email_lower',
+        'email_verified',
+        'google_sub',
+        'instagram_id',
+      ];
+      const setClause = cols.map((col, i) => `${col} = $${i + 1}`).join(', ');
+      await this.pool.query(`UPDATE users SET ${setClause} WHERE id = $7`, [
+        user.passwordHash,
+        user.email,
+        user.email ? emailKey(user.email) : null,
+        user.emailVerified,
+        user.googleSub,
+        user.instagramId,
+        user.id,
+      ]);
     } else {
       await this.persistFile();
     }
@@ -533,6 +554,7 @@ export class AuthStore {
       email: null,
       emailVerified: false,
       googleSub: null,
+      instagramId: null,
       avatarId,
       avatarUrl: null,
       tableColorId: 0,
@@ -731,16 +753,92 @@ export class AuthStore {
   async unlinkGoogle(userId: string): Promise<User> {
     await this.ensureLoaded();
     const user = this.requireUser(userId);
-    if (!user.passwordHash) {
-      throw new AuthError(
-        'password_required',
-        'Set a password (via Forgot password) before disconnecting Google',
-      );
-    }
+    this.assertCanUnlinkSocial(user, 'google');
     if (user.googleSub) this.googleSubIndex.delete(user.googleSub);
     user.googleSub = null;
     await this.persistIdentity(user);
     return user;
+  }
+
+  getUserByInstagramId(id: string): User | undefined {
+    const userId = this.instagramIdIndex.get(id);
+    return userId ? this.users.get(userId) : undefined;
+  }
+
+  async instagramSignIn(
+    identity: InstagramIdentity,
+    opts: { username?: string; avatarId?: number } = {},
+  ): Promise<InstagramSignInResult> {
+    await this.ensureLoaded();
+    const linked = this.getUserByInstagramId(identity.id);
+    if (linked) {
+      return { kind: 'session', session: await this.issueAuthSession(linked), created: false };
+    }
+
+    const username = opts.username?.trim();
+    if (!username) {
+      return {
+        kind: 'needs_username',
+        suggestedUsername: this.suggestUsername({
+          name: identity.name || identity.username,
+          email: null,
+        }),
+        identity,
+      };
+    }
+    if (this.usernameIndex.has(username.toLowerCase())) {
+      throw new AuthError('username_taken', 'Username already taken');
+    }
+
+    const id = nanoid(12);
+    const user = this.newUser(
+      id,
+      username,
+      null,
+      opts.avatarId !== undefined ? clampAvatarId(opts.avatarId) : avatarIdFromUserId(id),
+    );
+    user.instagramId = identity.id;
+    this.indexUser(user);
+    await this.persistUserToPostgres(user);
+    if (!this.pool) await this.persistFile();
+    return { kind: 'session', session: await this.issueAuthSession(user), created: true };
+  }
+
+  async linkInstagram(userId: string, identity: InstagramIdentity): Promise<User> {
+    await this.ensureLoaded();
+    const user = this.requireUser(userId);
+    const owner = this.instagramIdIndex.get(identity.id);
+    if (owner && owner !== userId) {
+      throw new AuthError('instagram_taken', 'That Instagram account is linked to another user');
+    }
+    if (user.instagramId && user.instagramId !== identity.id) {
+      this.instagramIdIndex.delete(user.instagramId);
+    }
+    user.instagramId = identity.id;
+    this.instagramIdIndex.set(identity.id, userId);
+    await this.persistIdentity(user);
+    return user;
+  }
+
+  async unlinkInstagram(userId: string): Promise<User> {
+    await this.ensureLoaded();
+    const user = this.requireUser(userId);
+    this.assertCanUnlinkSocial(user, 'instagram');
+    if (user.instagramId) this.instagramIdIndex.delete(user.instagramId);
+    user.instagramId = null;
+    await this.persistIdentity(user);
+    return user;
+  }
+
+  private assertCanUnlinkSocial(user: User, provider: 'google' | 'instagram'): void {
+    const hasPassword = Boolean(user.passwordHash);
+    const hasOtherSocial =
+      provider === 'google' ? Boolean(user.instagramId) : Boolean(user.googleSub);
+    if (hasPassword || hasOtherSocial) return;
+    throw new AuthError(
+      'password_required',
+      'Use Forgot password or keep another sign-in method before disconnecting this provider',
+    );
   }
 
   /** Store a new (unverified) recovery email. Unchanged verified emails stay verified. */
@@ -1180,6 +1278,9 @@ export class AuthStore {
     this.unindexEmail(user);
     if (user.googleSub && this.googleSubIndex.get(user.googleSub) === userId) {
       this.googleSubIndex.delete(user.googleSub);
+    }
+    if (user.instagramId && this.instagramIdIndex.get(user.instagramId) === userId) {
+      this.instagramIdIndex.delete(user.instagramId);
     }
     for (const [token, session] of this.sessions) {
       if (session.userId === userId) this.sessions.delete(token);

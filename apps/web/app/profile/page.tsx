@@ -498,7 +498,7 @@ function ProfilePageInner() {
       }
       clearStoredSession();
       clearSession();
-      router.push('/');
+      router.push('/sign-in');
     } finally {
       setSigningOut(false);
     }

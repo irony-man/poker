@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class AuthConfigResponse(
     val googleClientId: String? = null,
+    val instagramEnabled: Boolean = false,
 )
 
 @OptIn(ExperimentalSerializationApi::class)

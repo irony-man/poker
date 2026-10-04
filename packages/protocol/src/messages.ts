@@ -611,6 +611,21 @@ export const GoogleLinkBodySchema = z.object({
   idToken: z.string().min(20).max(4096),
 });
 
+export const InstagramAuthBodySchema = z
+  .object({
+    /** Authorization code from Instagram OAuth redirect. */
+    code: z.string().min(8).max(4096).optional(),
+    /** Signed state issued by `GET /api/auth/instagram/start`. */
+    state: z.string().min(16).max(4096).optional(),
+    /** Opaque token from `{ needsUsername }` so the user can finish account creation. */
+    pendingToken: z.string().min(16).max(4096).optional(),
+    username: UsernameSchema.optional(),
+    avatarId: z.number().int().min(0).max(7).optional(),
+  })
+  .refine((v) => Boolean(v.pendingToken) || (Boolean(v.code) && Boolean(v.state)), {
+    message: 'Provide Instagram code and state, or a pending token',
+  });
+
 export const SetEmailBodySchema = z.object({
   email: EmailSchema,
 });
@@ -873,6 +888,7 @@ export type LoginBody = z.infer<typeof LoginBodySchema>;
 export type AuthSession = z.infer<typeof AuthSessionSchema>;
 export type GoogleAuthBody = z.infer<typeof GoogleAuthBodySchema>;
 export type GoogleLinkBody = z.infer<typeof GoogleLinkBodySchema>;
+export type InstagramAuthBody = z.infer<typeof InstagramAuthBodySchema>;
 export type SetEmailBody = z.infer<typeof SetEmailBodySchema>;
 export type VerifyEmailBody = z.infer<typeof VerifyEmailBodySchema>;
 export type ForgotPasswordBody = z.infer<typeof ForgotPasswordBodySchema>;
@@ -882,6 +898,14 @@ export interface GoogleNeedsUsername {
   needsUsername: true;
   suggestedUsername: string;
   email: string | null;
+}
+/** `POST /api/auth/instagram` reply when a new Instagram user must pick a username first. */
+export interface InstagramNeedsUsername {
+  needsUsername: true;
+  suggestedUsername: string;
+  instagramUsername: string;
+  pendingToken: string;
+  next?: string;
 }
 export type AvatarUploadUrlBody = z.infer<typeof AvatarUploadUrlBodySchema>;
 export type TableSoundKind = z.infer<typeof TableSoundKindSchema>;

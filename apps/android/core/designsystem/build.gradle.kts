@@ -30,6 +30,8 @@ kotlin {
 }
 
 dependencies {
+    api(project(":core:common"))
+    implementation(libs.kotlinx.coroutines.core)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.ui)

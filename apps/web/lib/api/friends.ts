@@ -84,6 +84,7 @@ export async function pingPresence(options: AuthOptions) {
     ...options,
     method: 'POST',
     body: {},
+    silent: true,
   }) as Promise<{ ok: true; onlineMs: number }>;
 }
 

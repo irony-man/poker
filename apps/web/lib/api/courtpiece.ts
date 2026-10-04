@@ -1,5 +1,5 @@
 import type { CreateCourtpieceBody, CourtpieceRulesVariant } from '@poker/protocol';
-import { apiBase, parseError, sessionHeaders, type AuthOptions, authedFetch } from './client';
+import { apiBase, apiFetch, parseError, sessionHeaders, type AuthOptions, authedFetch } from './client';
 
 export interface CreateCourtpieceResult {
   courtpieceId: string;
@@ -49,7 +49,7 @@ function pickVariant(raw: Record<string, unknown>): CourtpieceRulesVariant {
 }
 
 export async function createCourtpiece(input: CreateCourtpieceBody, sessionToken: string) {
-  const res = await fetch(`${apiBase()}/api/courtpiece`, {
+  const res = await apiFetch(`${apiBase()}/api/courtpiece`, {
     method: 'POST',
     headers: sessionHeaders(sessionToken),
     body: JSON.stringify(input),
@@ -71,7 +71,7 @@ export async function createCourtpiece(input: CreateCourtpieceBody, sessionToken
 }
 
 export async function resolveCourtpieceInvite(code: string) {
-  const res = await fetch(`${apiBase()}/api/courtpiece/invite/${encodeURIComponent(code)}`);
+  const res = await apiFetch(`${apiBase()}/api/courtpiece/invite/${encodeURIComponent(code)}`);
   if (!res.ok) throw new Error('Invite not found');
   const raw = asRecord(await res.json()) ?? {};
   const courtpieceId = pickId(raw);
@@ -87,11 +87,17 @@ export async function resolveCourtpieceInvite(code: string) {
 
 export async function fetchCourtpieceChat(courtpieceId: string, options?: AuthOptions) {
   if (options?.sessionToken) {
-    return authedFetch(`/api/courtpiece/${courtpieceId}/chat`, options) as Promise<{
+    return authedFetch(`/api/courtpiece/${courtpieceId}/chat`, {
+      ...options,
+      silent: true,
+    }) as Promise<{
       messages: CourtpieceChatLine[];
     }>;
   }
-  const res = await fetch(`${apiBase()}/api/courtpiece/${encodeURIComponent(courtpieceId)}/chat`);
+  const res = await apiFetch(
+    `${apiBase()}/api/courtpiece/${encodeURIComponent(courtpieceId)}/chat`,
+    { silent: true },
+  );
   if (!res.ok) throw new Error(await parseError(res, 'Failed to load chat'));
   return res.json() as Promise<{ messages: CourtpieceChatLine[] }>;
 }

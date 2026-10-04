@@ -1,5 +1,5 @@
 import { coerceMoney } from '@/lib/currency';
-import { apiBase, parseError, sessionHeaders } from './client';
+import { apiBase, apiFetch, parseError, sessionHeaders } from './client';
 import type { MyHandRow } from './history';
 
 export type PublicProfileRelationship =
@@ -53,7 +53,7 @@ export async function fetchPublicProfile(
   username: string,
   sessionToken?: string | null,
 ): Promise<PublicProfile> {
-  const res = await fetch(`${apiBase()}/api/users/${encodeURIComponent(username)}`, {
+  const res = await apiFetch(`${apiBase()}/api/users/${encodeURIComponent(username)}`, {
     headers: sessionHeaders(sessionToken),
   });
   if (res.status === 404) throw new Error('User not found');
@@ -68,7 +68,7 @@ export async function fetchHandsTogether(
   limit = 50,
 ): Promise<{ hands: MyHandRow[] }> {
   const n = Math.max(1, Math.min(200, Math.floor(limit)));
-  const res = await fetch(
+  const res = await apiFetch(
     `${apiBase()}/api/users/${encodeURIComponent(username)}/hands-together?limit=${n}`,
     { headers: sessionHeaders(sessionToken) },
   );

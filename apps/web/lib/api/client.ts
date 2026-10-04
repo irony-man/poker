@@ -1,4 +1,5 @@
 import { expireSession } from '@/lib/sessionAuth';
+import { toast } from '@/lib/toast';
 
 function stripTrailingSlash(url: string): string {
   return url.replace(/\/$/, '');
@@ -19,7 +20,56 @@ export function apiBase(): string {
 export const API_URL = stripTrailingSlash(process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000');
 export const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? 'ws://localhost:4000/ws';
 
-export type AuthOptions = { sessionToken: string };
+export type AuthOptions = { sessionToken: string; silent?: boolean };
+
+export type ApiFetchInit = RequestInit & { silent?: boolean };
+
+let inflightCount = 0;
+const inflightListeners = new Set<(count: number) => void>();
+
+export function getApiInflightCount(): number {
+  return inflightCount;
+}
+
+export function subscribeApiInflight(listener: (count: number) => void): () => void {
+  inflightListeners.add(listener);
+  return () => {
+    inflightListeners.delete(listener);
+  };
+}
+
+function setInflightCount(next: number): void {
+  inflightCount = Math.max(0, next);
+  for (const listener of inflightListeners) listener(inflightCount);
+}
+
+function isAbortError(err: unknown): boolean {
+  return (err as { name?: unknown } | null)?.name === 'AbortError';
+}
+
+/**
+ * Browser `/api` fetch that drives the lobby chip-shuffle overlay and surfaces
+ * failures as global toasts, unless `silent`. 401s are left to `expireSession`.
+ */
+export async function apiFetch(input: string, init?: ApiFetchInit): Promise<Response> {
+  const { silent, ...rest } = init ?? {};
+  const track = !silent && typeof window !== 'undefined';
+  if (track) setInflightCount(inflightCount + 1);
+  try {
+    const res = await fetch(input, rest);
+    if (track && !res.ok && res.status !== 401) {
+      void parseError(res.clone(), 'Request failed').then((msg) => toast.error(msg));
+    }
+    return res;
+  } catch (err) {
+    if (track && !isAbortError(err)) {
+      toast.error('Network error — check your connection and try again.');
+    }
+    throw err;
+  } finally {
+    if (track) setInflightCount(inflightCount - 1);
+  }
+}
 
 export function sessionHeaders(sessionToken?: string | null): HeadersInit {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -92,10 +142,11 @@ export async function authedFetch(
   path: string,
   options: AuthOptions & { method?: string; body?: unknown },
 ) {
-  const res = await fetch(`${apiBase()}${path}`, {
+  const res = await apiFetch(`${apiBase()}${path}`, {
     method: options.method ?? 'GET',
     headers: sessionHeaders(options.sessionToken),
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    silent: options.silent,
   });
   if (!res.ok) await failFromResponse(res, 'Request failed');
   return res.json();

@@ -1,6 +1,6 @@
 import type { ContestView } from '@poker/protocol';
 import type { PagesCopy } from '@/lib/pageCopy';
-import { apiBase, authedFetch, parseError, sessionHeaders } from './client';
+import { apiBase, apiFetch, authedFetch, parseError, sessionHeaders } from './client';
 import type {
   CopyTheme,
   HomeFeaturesByTheme,
@@ -430,7 +430,7 @@ export async function requestAdminSoundUploadUrl(
     contentLength: number;
   },
 ): Promise<{ uploadUrl: string; publicUrl: string; expiresIn: number }> {
-  const res = await fetch(`${apiBase()}/api/admin/sounds/upload-url`, {
+  const res = await apiFetch(`${apiBase()}/api/admin/sounds/upload-url`, {
     method: 'POST',
     headers: sessionHeaders(sessionToken),
     body: JSON.stringify(body),
@@ -459,7 +459,7 @@ export async function requestAdminImageUploadUrl(
     contentLength: number;
   },
 ): Promise<{ uploadUrl: string; publicUrl: string; expiresIn: number }> {
-  const res = await fetch(`${apiBase()}/api/admin/images/upload-url`, {
+  const res = await apiFetch(`${apiBase()}/api/admin/images/upload-url`, {
     method: 'POST',
     headers: sessionHeaders(sessionToken),
     body: JSON.stringify(body),

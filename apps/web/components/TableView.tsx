@@ -34,6 +34,7 @@ import { StatusChip } from '@/components/ui/StatusChip';
 import { fetchPublicBotGroups, type PublicBotGroup } from '@/lib/api';
 import { useSfxMuted } from '@/lib/useSfxMuted';
 import { useTableHotkeys, type PlayHotkeyHandlers } from '@/lib/useTableHotkeys';
+import { rememberStayOnContest } from '@/lib/contestStay';
 
 export function TableView({
   tableId,
@@ -126,7 +127,12 @@ export function TableView({
     clearTable();
     setError(null);
     const contestFallback = contestIdProp || null;
-    router.replace(contestFallback ? `/contest/${contestFallback}` : '/');
+    if (contestFallback) {
+      rememberStayOnContest(contestFallback);
+      router.replace(`/contest/${contestFallback}?from=table`);
+      return;
+    }
+    router.replace('/');
   }, [
     lastErrorCode,
     boundTableId,
@@ -383,14 +389,16 @@ export function TableView({
     voice.leaveVoice();
     leaveTable();
     clearTable();
-    router.push(to);
+    if (softLeave) router.replace(to);
+    else router.push(to);
     return true;
   };
 
   const contestId = table?.tournament?.contestId || contestIdProp || null;
   const goToContest = () => {
     if (contestId) {
-      void leaveRoom(`/contest/${contestId}`);
+      rememberStayOnContest(contestId);
+      void leaveRoom(`/contest/${contestId}?from=table`);
       return;
     }
     voice.leaveVoice();

@@ -26,10 +26,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pokr.android.core.designsystem.LockPortraitOrientation
-import com.pokr.android.core.designsystem.PokrChrome
 import com.pokr.android.core.designsystem.PokrColors
 import com.pokr.android.core.designsystem.PokrRadius
-import com.pokr.android.core.designsystem.StatusChip
+import com.pokr.android.core.designsystem.ToastOnMessage
 import com.pokr.android.core.designsystem.pokrPageGround
 
 @Composable
@@ -166,13 +165,9 @@ fun LobbyShell(
                     )
                 }
             }
-            state.error?.let { err ->
-                StatusChip(
-                    text = err,
-                    accent = PokrColors.Danger,
-                    chrome = PokrChrome.Play,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                )
+            // Forgot-password dialog renders its own inline error above the toast layer.
+            ToastOnMessage(state.error.takeUnless { state.forgotOpen }) {
+                viewModel.clearError()
             }
             LobbyBottomNav(
                 selected = tab,

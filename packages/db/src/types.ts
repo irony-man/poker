@@ -9,6 +9,7 @@ export interface UserRow {
   email: string | null;
   emailVerified: boolean;
   googleSub: string | null;
+  instagramId: string | null;
   avatarId: number;
   chipBalance: number;
   whuffieBalance: number;

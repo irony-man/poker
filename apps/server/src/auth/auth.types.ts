@@ -18,7 +18,7 @@ export interface User {
   sfxMuted: boolean;
   /** Remappable table keyboard shortcuts (full map after clamp). */
   keyboardShortcuts: Record<string, string>;
-  /** Null for accounts that only sign in with Google. */
+  /** Null for accounts that only sign in with Google or Instagram. */
   passwordHash: string | null;
   /** Recovery email (original casing). */
   email: string | null;
@@ -26,6 +26,8 @@ export interface User {
   emailVerified: boolean;
   /** Linked Google account subject id. */
   googleSub: string | null;
+  /** Linked Instagram user id. */
+  instagramId: string | null;
   /** Global play-money balance (chips). */
   chipBalance: number;
   /** Contest ranking rating (Whuffies); not spendable. */
@@ -94,12 +96,24 @@ export type GoogleSignInResult =
   | { kind: 'session'; session: AuthSessionPayload; created: boolean }
   | { kind: 'needs_username'; suggestedUsername: string };
 
+/** Identity claims from Instagram OAuth (graph.instagram.com/me). */
+export interface InstagramIdentity {
+  id: string;
+  username: string;
+  name: string | null;
+}
+
+export type InstagramSignInResult =
+  | { kind: 'session'; session: AuthSessionPayload; created: boolean }
+  | { kind: 'needs_username'; suggestedUsername: string; identity: InstagramIdentity };
+
 export type AuthErrorCode =
   | 'username_taken'
   | 'invalid_credentials'
   | 'invalid_username'
   | 'email_taken'
   | 'google_taken'
+  | 'instagram_taken'
   | 'password_required'
   | 'invalid_token';
 

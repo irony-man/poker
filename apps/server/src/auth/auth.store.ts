@@ -517,19 +517,24 @@ export class AuthStore {
 
   private async persistIdentity(user: User): Promise<void> {
     if (this.pool) {
-      await this.pool.query(
-        `UPDATE users SET password_hash = $1, email = $2, email_lower = $3, email_verified = $4, google_sub = $5, instagram_id = $6
-         WHERE id = $7`,
-        [
-          user.passwordHash,
-          user.email,
-          user.email ? emailKey(user.email) : null,
-          user.emailVerified,
-          user.googleSub,
-          user.instagramId,
-          user.id,
-        ],
-      );
+      const cols = [
+        'password_hash',
+        'email',
+        'email_lower',
+        'email_verified',
+        'google_sub',
+        'instagram_id',
+      ];
+      const setClause = cols.map((col, i) => `${col} = $${i + 1}`).join(', ');
+      await this.pool.query(`UPDATE users SET ${setClause} WHERE id = $7`, [
+        user.passwordHash,
+        user.email,
+        user.email ? emailKey(user.email) : null,
+        user.emailVerified,
+        user.googleSub,
+        user.instagramId,
+        user.id,
+      ]);
     } else {
       await this.persistFile();
     }
@@ -832,7 +837,7 @@ export class AuthStore {
     if (hasPassword || hasOtherSocial) return;
     throw new AuthError(
       'password_required',
-      'Set a password (via Forgot password) before disconnecting this sign-in method',
+      'Use Forgot password or keep another sign-in method before disconnecting this provider',
     );
   }
 

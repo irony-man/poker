@@ -549,6 +549,7 @@ function parseContestHand(
   contestId: string,
   userId: string | null,
 ): PlayedHandLevel {
+  const startedMs = hand.startedAt ?? hand.endedAt ?? 0;
   const parsed = parsePlayedHand(
     {
       id: hand.id,
@@ -556,8 +557,8 @@ function parseContestHand(
       handId: hand.id,
       contestId,
       source: 'online',
-      startedAt: hand.startedAt ?? hand.endedAt ?? 0,
-      endedAt: hand.endedAt,
+      startedAt: new Date(startedMs).toISOString(),
+      endedAt: hand.endedAt != null ? new Date(hand.endedAt).toISOString() : null,
       resultJson: hand.resultJson ?? {},
     },
     userId ?? '',

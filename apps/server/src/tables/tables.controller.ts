@@ -18,6 +18,7 @@ import { FriendsService } from '../friends/friends.service.js';
 import { HistoryService, toPublicHandRows } from '../history/history.service.js';
 import { RoomsService } from '../rooms/rooms.service.js';
 import { SiteConfigService } from '../site-config/site-config.service.js';
+import { publicErrorMessage } from '../common/public-error.js';
 
 @Controller('api/tables')
 export class TablesController {
@@ -60,7 +61,7 @@ export class TablesController {
         },
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create table';
+      const message = publicErrorMessage(err, 'Failed to create table');
       if (message.includes('already in use')) {
         throw new ConflictException({ error: message });
       }

@@ -7,11 +7,16 @@ import type { EconomySnapshot } from '../wallet/wallet.constants.js';
 import {
   clampCopyTheme,
   cloneHomeFeatures,
+  cloneLegalDocs,
+  cloneLobbyNavConfig,
   clonePagesCopy,
   defaultSiteConfig,
+  isLobbyNavVisible,
   normalizeBotGroupLabels,
   normalizeBotGroups,
   normalizeHomeFeatures,
+  normalizeLegalDocs,
+  normalizeLobbyNavConfig,
   normalizePagesCopy,
   normalizeRoomSettings,
   normalizeAvatarPresets,
@@ -26,6 +31,9 @@ import {
   type CopyTheme,
   type HomeFeaturesByTheme,
   type HomeLandingFeature,
+  type LegalDocs,
+  type LobbyNavConfig,
+  type LobbyNavId,
   type PagesByTheme,
   type PagesCopy,
   type RoomSettings,
@@ -156,6 +164,8 @@ export class SiteConfigStore {
         },
       })),
       botChatStarters: [...this.cache.botChatStarters],
+      legal: cloneLegalDocs(this.cache.legal),
+      lobbyNav: cloneLobbyNavConfig(this.cache.lobbyNav),
     };
   }
 
@@ -250,6 +260,18 @@ export class SiteConfigStore {
 
   getBotChatStarters(): string[] {
     return [...this.cache.botChatStarters];
+  }
+
+  getLegal(): LegalDocs {
+    return cloneLegalDocs(this.cache.legal);
+  }
+
+  getLobbyNav(): LobbyNavConfig {
+    return cloneLobbyNavConfig(this.cache.lobbyNav);
+  }
+
+  isLobbyNavVisible(id: LobbyNavId): boolean {
+    return isLobbyNavVisible(this.cache.lobbyNav, id);
   }
 
   /** Display-name pool for seating; uses default group when id is missing. */
@@ -381,5 +403,25 @@ export class SiteConfigStore {
     };
     await this.serialized(() => this.persist());
     return this.getBotChatStarters();
+  }
+
+  async setLegal(next: LegalDocs): Promise<LegalDocs> {
+    await this.ensureLoaded();
+    this.cache = {
+      ...this.cache,
+      legal: normalizeLegalDocs(next),
+    };
+    await this.serialized(() => this.persist());
+    return this.getLegal();
+  }
+
+  async setLobbyNav(next: LobbyNavConfig): Promise<LobbyNavConfig> {
+    await this.ensureLoaded();
+    this.cache = {
+      ...this.cache,
+      lobbyNav: normalizeLobbyNavConfig(next),
+    };
+    await this.serialized(() => this.persist());
+    return this.getLobbyNav();
   }
 }

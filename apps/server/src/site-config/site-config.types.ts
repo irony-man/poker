@@ -9,6 +9,16 @@ import {
   type BotGroupLabelDef,
 } from '@poker/engine';
 import {
+  cloneLegalDocs,
+  cloneLobbyNavConfig,
+  DEFAULT_LEGAL_DOCS,
+  DEFAULT_LOBBY_NAV,
+  normalizeLegalDocs,
+  normalizeLobbyNavConfig,
+  type LegalDocs,
+  type LobbyNavConfig,
+} from '@poker/protocol';
+import {
   defaultEconomy,
   type EconomySnapshot,
   REFILL_GRANT,
@@ -34,6 +44,10 @@ export type {
 export { defaultCardFaceThemes, normalizeCardFaceThemes, DEFAULT_CARD_THEME_ID } from '../card-face-theme.js';
 
 export type { BotGroupLabelDef };
+export type { LegalDoc, LegalDocKey, LegalDocs } from '@poker/protocol';
+export { cloneLegalDocs, normalizeLegalDocs } from '@poker/protocol';
+export type { LobbyNavConfig, LobbyNavId, LobbyNavItemConfig } from '@poker/protocol';
+export { cloneLobbyNavConfig, isLobbyNavVisible, normalizeLobbyNavConfig } from '@poker/protocol';
 
 export interface SiteAnnouncement {
   enabled: boolean;
@@ -325,6 +339,10 @@ export interface SiteConfigPayload {
   /** Admin-designed playing card face themes (users pick in profile). */
   cardThemes: CardFaceTheme[];
   botChatStarters: string[];
+  /** Privacy Policy and Terms & Conditions (served via `/api/site/legal`, not `/api/site`). */
+  legal: LegalDocs;
+  /** Lobby sidebar order + visibility; hidden items' pages 404. */
+  lobbyNav: LobbyNavConfig;
 }
 
 /** Ordered picker rows; packs reference a row via `BotGroup.labelId`. */
@@ -654,6 +672,8 @@ export function defaultSiteConfig(): SiteConfigPayload {
     avatarPresets: defaultAvatarPresets(),
     cardThemes: defaultCardFaceThemes(),
     botChatStarters: [...DEFAULT_BOT_CHAT_STARTERS],
+    legal: cloneLegalDocs(DEFAULT_LEGAL_DOCS),
+    lobbyNav: cloneLobbyNavConfig(DEFAULT_LOBBY_NAV),
   };
 }
 
@@ -1120,6 +1140,10 @@ export function normalizeSiteConfig(raw: unknown): SiteConfigPayload {
       ? normalizeBotChatStarters(o.botChatStarters)
       : defaults.botChatStarters;
 
+  const legal = o.legal !== undefined ? normalizeLegalDocs(o.legal) : defaults.legal;
+
+  const lobbyNav = normalizeLobbyNavConfig(o.lobbyNav);
+
   return {
     announcement,
     economy,
@@ -1134,5 +1158,7 @@ export function normalizeSiteConfig(raw: unknown): SiteConfigPayload {
     avatarPresets,
     cardThemes,
     botChatStarters,
+    legal,
+    lobbyNav,
   };
 }

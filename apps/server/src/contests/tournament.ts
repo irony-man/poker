@@ -781,7 +781,7 @@ export class TournamentManager {
       if (paid.has(p.userId)) continue;
       paid.add(p.userId);
       void this.wallet
-        .creditWhuffies(p.userId, amount, 'contest_prize', c.tableId ?? c.id)
+        .creditWhuffies(p.userId, amount, 'contest_prize', c.id)
         .then((result) => {
           room?.notifyWallet(p.userId, { whuffieBalance: result.balance });
         })

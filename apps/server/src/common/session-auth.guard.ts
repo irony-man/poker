@@ -20,13 +20,13 @@ export class SessionAuthGuard implements CanActivate {
     private readonly presence: PresenceService,
   ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest<Request & { [SESSION_USER_KEY]?: User }>();
     const token = bearerToken(req.header('authorization') ?? req.header('Authorization') ?? undefined);
     if (!token) {
       throw new UnauthorizedException({ error: 'Sign in required' });
     }
-    const user = this.auth.resolveSession(token);
+    const user = await this.auth.resolveSession(token);
     if (!user) {
       throw new UnauthorizedException({ error: 'Session expired or invalid' });
     }

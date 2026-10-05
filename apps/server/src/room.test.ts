@@ -23,8 +23,8 @@ describe('AuthStore', () => {
     const auth = new AuthStore(dir);
     await auth.init();
     const session = await auth.signup('Alice', 'password1');
-    expect(auth.consumeTicket(session.ticket)?.name).toBe('Alice');
-    expect(auth.consumeTicket('bad')).toBeNull();
+    expect((await auth.consumeTicket(session.ticket))?.name).toBe('Alice');
+    expect(await auth.consumeTicket('bad')).toBeNull();
   });
 });
 

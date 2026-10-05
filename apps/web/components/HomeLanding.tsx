@@ -3,10 +3,13 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { isHrefHiddenByLobbyNav } from '@poker/protocol';
 import { HomeAuthFooter } from '@/components/HomeAuthFooter';
+import { LegalLinks } from '@/components/LegalLinks';
 import { imageAssetUrl, resolvePublicImage } from '@/lib/assets';
 import { fetchPublicSite, type HomeFeaturesByTheme, type HomeLandingFeature } from '@/lib/api';
 import { pickHomeFeaturesForTheme } from '@/lib/themeCopy';
+import { useLobbyNav } from '@/lib/useLobbyNav';
 import { useUiTheme } from '@/lib/useUiTheme';
 /** Defaults match original static HomeLanding blocks (used until /api/site loads). */
 export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
@@ -68,6 +71,7 @@ export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
 
 export function HomeLanding() {
   const uiTheme = useUiTheme();
+  const lobbyNav = useLobbyNav();
   const [homeFeatures, setHomeFeatures] = useState<HomeLandingFeature[] | undefined>();
   const [homeFeaturesByTheme, setHomeFeaturesByTheme] = useState<
     Partial<HomeFeaturesByTheme> | undefined
@@ -89,8 +93,9 @@ export function HomeLanding() {
     };
   }, []);
 
-  const features =
-    pickHomeFeaturesForTheme(homeFeaturesByTheme, homeFeatures, uiTheme) ?? DEFAULT_HOME_FEATURES;
+  const features = (
+    pickHomeFeaturesForTheme(homeFeaturesByTheme, homeFeatures, uiTheme) ?? DEFAULT_HOME_FEATURES
+  ).filter((f) => !isHrefHiddenByLobbyNav(lobbyNav, f.href));
 
   return (
     <div className="mx-auto w-full mt-32 max-w-5xl pb-12 pt-2 sm:pb-20 sm:pt-4 lg:pt-6">
@@ -101,6 +106,10 @@ export function HomeLanding() {
       </div>
 
       <HomeAuthFooter />
+      <LegalLinks
+        className="mt-10 text-xs text-muted"
+        linkClassName="underline-offset-4 hover:text-primary hover:underline"
+      />
     </div>
   );
 }

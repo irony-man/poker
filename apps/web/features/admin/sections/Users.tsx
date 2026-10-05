@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import type { WalletCurrency, WalletTrailPage } from '@poker/protocol';
 import { MoneyAmount } from '@/components/CurrencyIcon';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
+import { WalletTrail } from '@/components/WalletTrail';
 import { Button } from '@/components/ui/Button';
 import { FORM_LABEL_CLASS, TextField } from '@/components/ui/TextField';
 import type { AdminUserRow, SiteEconomy } from '@/lib/api';
@@ -144,6 +146,7 @@ export function UsersSection({
   onResetChips,
   onResetWhuffies,
   onDeleteUser,
+  fetchUserTrail,
 }: {
   userQuery: string;
   users: AdminUserRow[];
@@ -162,8 +165,14 @@ export function UsersSection({
   onResetChips: (user: AdminUserRow) => void;
   onResetWhuffies: (user: AdminUserRow) => void;
   onDeleteUser: (user: AdminUserRow) => void;
+  fetchUserTrail: (
+    userId: string,
+    currency: WalletCurrency,
+    before: string | null,
+  ) => Promise<WalletTrailPage>;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
+  const [historyId, setHistoryId] = useState<string | null>(null);
   const searching = userQuery.trim().length > 0;
   const resultLabel = searching
     ? `${users.length} ${users.length === 1 ? 'match' : 'matches'}`
@@ -211,13 +220,15 @@ export function UsersSection({
             const isSelf = selfUserId === u.id;
             const joined = formatJoined(u.createdAt);
             const panelId = `user-adjust-${u.id}`;
+            const historyOpen = historyId === u.id;
+            const historyPanelId = `user-history-${u.id}`;
 
             return (
               <li key={u.id} className="border-b border-sidebar/6 last:border-0">
                 <AdminTableBodyRow
                   className={ROW_GRID}
                   interactive
-                  active={open}
+                  active={open || historyOpen}
                 >
                   <div className="flex min-w-0 items-center gap-2.5">
                     <PlayerAvatar
@@ -261,17 +272,30 @@ export function UsersSection({
                   </div>
                   <p className={cn('hidden sm:block', ADMIN_CELL_NUMBERS_MUTED)}>{joined}</p>
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    aria-expanded={open}
-                    aria-controls={panelId}
-                    onClick={() => setOpenId(open ? null : u.id)}
-                    className="inline-flex min-w-[5.75rem] items-center justify-center gap-1 justify-self-end px-2.5"
-                  >
-                    {open ? 'Done' : 'Adjust'}
-                    <Chevron open={open} />
-                  </Button>
+                  <div className="flex items-center gap-1.5 justify-self-end">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-expanded={historyOpen}
+                      aria-controls={historyPanelId}
+                      onClick={() => setHistoryId(historyOpen ? null : u.id)}
+                      className="inline-flex items-center justify-center gap-1 px-2.5"
+                    >
+                      History
+                      <Chevron open={historyOpen} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-expanded={open}
+                      aria-controls={panelId}
+                      onClick={() => setOpenId(open ? null : u.id)}
+                      className="inline-flex min-w-[5.75rem] items-center justify-center gap-1 px-2.5"
+                    >
+                      {open ? 'Done' : 'Adjust'}
+                      <Chevron open={open} />
+                    </Button>
+                  </div>
                 </AdminTableBodyRow>
 
                 {open ? (
@@ -321,6 +345,18 @@ export function UsersSection({
                         </button>
                       </div>
                     ) : null}
+                  </AdminExpandPanel>
+                ) : null}
+
+                {historyOpen ? (
+                  <AdminExpandPanel id={historyPanelId}>
+                    <p className={FORM_LABEL_CLASS}>Balance history</p>
+                    <WalletTrail
+                      className="mt-2"
+                      idPrefix={`user-history-${u.id}-tabs`}
+                      refreshKey={`${u.chipBalance}:${u.whuffieBalance}`}
+                      fetchPage={(currency, before) => fetchUserTrail(u.id, currency, before)}
+                    />
                   </AdminExpandPanel>
                 ) : null}
               </li>

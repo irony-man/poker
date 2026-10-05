@@ -4,10 +4,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { PendingCountBadge, useOnlineFriends } from '@/components/OnlineFriends';
 import {
-  MOBILE_BOTTOM_NAV,
   isMobileNavActive,
+  mobileBottomNav,
   type MobileBottomIcon,
 } from '@/lib/lobbyNav';
+import { useLobbyNav } from '@/lib/useLobbyNav';
 import { useSession } from '@/lib/store';
 
 function NavIcon({ name, active }: { name: MobileBottomIcon; active: boolean }) {
@@ -66,6 +67,13 @@ function NavIcon({ name, active }: { name: MobileBottomIcon; active: boolean }) 
           <path d="M15.3 13.8h.7a3.5 3.5 0 0 1 3.5 3.5v1.5" fill="none" />
         </svg>
       );
+    case 'chat':
+      return (
+        <svg {...props}>
+          <path d="M4.2 6.6a2.4 2.4 0 0 1 2.4-2.4h10.8a2.4 2.4 0 0 1 2.4 2.4v7.2a2.4 2.4 0 0 1-2.4 2.4h-6.6l-4.2 3.6v-3.6a2.4 2.4 0 0 1-2.4-2.4V6.6Z" />
+          <path d="M8.4 10.2h7.2" fill="none" stroke={active ? 'rgb(var(--sidebar))' : 'currentColor'} />
+        </svg>
+      );
     case 'offline':
       return (
         <svg {...props}>
@@ -102,6 +110,7 @@ export function LobbyBottomNav() {
   const pathname = usePathname();
   const signedIn = !!useSession((s) => s.sessionToken);
   const { pendingCount, sentCount } = useOnlineFriends();
+  const lobbyNav = useLobbyNav();
 
   return (
     <nav
@@ -110,7 +119,7 @@ export function LobbyBottomNav() {
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="flex items-stretch">
-        {MOBILE_BOTTOM_NAV.map((item) => {
+        {mobileBottomNav(lobbyNav).map((item) => {
           const active = isMobileNavActive(pathname, item);
           const isFriends = signedIn && item.id === 'friends';
           return (

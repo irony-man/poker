@@ -6,7 +6,7 @@ Private No-Limit Texas Hold'em for casual home games.
 
 - **Engine** (`packages/engine`) — pure TypeScript NLHE state machine, CSPRNG shuffle, 7-card evaluator, side pots
 - **Protocol** (`packages/protocol`) — Zod WebSocket/REST schemas
-- **Server** (`apps/server`) — Express + native `ws`, Redis-optional KV, file/Postgres hand history
+- **Server** (`apps/server`) — Express + native `ws`, Redis-optional KV (sessions with TTL), file/Postgres hand history
 - **Web** (`apps/web`) — Next.js 15, React 19, Tailwind, Framer Motion
 - **Android** (`apps/android`) — Jetpack Compose client (lobby, online WS table, offline engine)
 - **FunGPT sidecar** (`apps/fungpt`) — optional local BanterBot LLM for `/chat` and table banter
@@ -130,8 +130,8 @@ For a public URL (Vercel/Railway/Fly), you’ll need accounts + `NEXT_PUBLIC_API
 |----------|---------|---------|
 | `PORT` | `4000` | Game server port |
 | `WEB_ORIGIN` | `http://localhost:3000` | Extra CORS origins (comma-separated; `pokr.site` always allowed) |
-| `DATABASE_URL` | unset → file stores | **Postgres** for users, sessions, social, hand history |
-| `REDIS_URL` | unset | Optional Redis for table snapshots/pubsub |
+| `DATABASE_URL` | unset → file stores | **Postgres** for users, social, hand history (and sessions when Redis is unset) |
+| `REDIS_URL` | unset | Optional Redis: auth sessions, WS tickets and email tokens (native key TTL), table snapshots, pub/sub. Local: `npm run redis:up` → `redis://127.0.0.1:6379`; prod: managed `rediss://` URL. Needs persistence — a flush signs everyone out |
 | `DATA_DIR` | `./data` | File fallback when Postgres is unset; also schema.sql dump |
 | `NEXT_PUBLIC_SITE_URL` | `https://pokr.site` | Canonical site URL (metadata, sitemap, OG) |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:4000` | Absolute API host (SSR + rewrite target fallback) |

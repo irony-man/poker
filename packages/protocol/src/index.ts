@@ -7,3 +7,6 @@ export * from './ludo.js';
 export * from './snakes.js';
 export * from './memory.js';
 export * from './courtpiece.js';
+export * from './legal.js';
+export * from './lobby-nav.js';
+export * from './wallet.js';

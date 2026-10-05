@@ -2,6 +2,7 @@
 
 import { Suspense, useCallback, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { isLobbyNavVisible } from '@poker/protocol';
 import { HostTableForm } from '@/components/HostTableForm';
 import { JoinTableForm } from '@/components/JoinTableForm';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
@@ -9,6 +10,7 @@ import { LoadingScreen } from '@/components/LoadingScreen';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { Tabs } from '@/components/ui/Tabs';
 import { resolvePublicImage } from '@/lib/assets';
+import { useLobbyNav } from '@/lib/useLobbyNav';
 import { useLobbySession } from '@/lib/useLobbySession';
 import { usePageCopy } from '@/lib/usePageCopy';
 
@@ -24,6 +26,9 @@ function PlayPageInner() {
   const mode = parsePlayMode(searchParams.get('mode'));
   const { authReady, signedIn, sessionToken, ensureSession } = useLobbySession();
   const pageCopy = usePageCopy(mode);
+  const lobbyNav = useLobbyNav();
+  const hostVisible = isLobbyNavVisible(lobbyNav, 'host');
+  const joinVisible = isLobbyNavVisible(lobbyNav, 'join');
   const [error, setError] = useState<string | null>(null);
 
   const setMode = useCallback(
@@ -61,17 +66,19 @@ function PlayPageInner() {
         }
         alignTop
       >
-        <Tabs
-          label="Host or join"
-          variant="segmented"
-          idPrefix="play-mode"
-          selected={mode}
-          onSelect={setMode}
-          options={[
-            { id: 'host', label: 'Host', panelId: 'play-panel-host' },
-            { id: 'join', label: 'Join', panelId: 'play-panel-join' },
-          ]}
-        />
+        {hostVisible && joinVisible ? (
+          <Tabs
+            label="Host or join"
+            variant="segmented"
+            idPrefix="play-mode"
+            selected={mode}
+            onSelect={setMode}
+            options={[
+              { id: 'host', label: 'Host', panelId: 'play-panel-host' },
+              { id: 'join', label: 'Join', panelId: 'play-panel-join' },
+            ]}
+          />
+        ) : null}
 
         <div
           id={mode === 'host' ? 'play-panel-host' : 'play-panel-join'}

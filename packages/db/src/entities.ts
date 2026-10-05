@@ -291,10 +291,12 @@ export type ChipLedgerReason =
   | 'hand_win'
   | 'hand_loss'
   | 'admin_credit'
-  | 'admin_reset';
+  | 'admin_reset'
+  | 'opening_balance';
 
 @Entity({ name: 'chip_ledger' })
 @Index('chip_ledger_user_idx', ['userId'])
+@Index('chip_ledger_user_created_idx', ['userId', 'createdAt'])
 export class ChipLedgerEntity {
   @PrimaryColumn({ type: 'text' })
   id!: string;
@@ -310,6 +312,43 @@ export class ChipLedgerEntity {
 
   @Column({ type: 'text' })
   reason!: ChipLedgerReason;
+
+  /** Null on rows written before balances were tracked per entry. */
+  @Column({ name: 'balance_after', type: 'int', nullable: true })
+  balanceAfter!: number | null;
+
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  createdAt!: Date;
+}
+
+export type WhuffieLedgerReason =
+  | 'signup_grant'
+  | 'contest_prize'
+  | 'offline_win'
+  | 'admin_credit'
+  | 'admin_reset'
+  | 'opening_balance';
+
+@Entity({ name: 'whuffie_ledger' })
+@Index('whuffie_ledger_user_created_idx', ['userId', 'createdAt'])
+export class WhuffieLedgerEntity {
+  @PrimaryColumn({ type: 'text' })
+  id!: string;
+
+  @Column({ name: 'user_id', type: 'text' })
+  userId!: string;
+
+  @Column({ name: 'table_id', type: 'text' })
+  tableId!: string;
+
+  @Column({ type: 'int' })
+  delta!: number;
+
+  @Column({ type: 'text' })
+  reason!: WhuffieLedgerReason;
+
+  @Column({ name: 'balance_after', type: 'int', nullable: true })
+  balanceAfter!: number | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
@@ -386,6 +425,7 @@ export const ALL_ENTITIES = [
   HandHistoryEntity,
   ChatMessageEntity,
   ChipLedgerEntity,
+  WhuffieLedgerEntity,
   TableChipBalanceEntity,
   SocialStoreEntity,
   SiteConfigEntity,

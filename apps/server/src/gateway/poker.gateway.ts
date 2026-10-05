@@ -29,6 +29,8 @@ type SocketState = {
   snakesId: string | null;
   memoryId: string | null;
   courtpieceId: string | null;
+  /** In-flight ticket check; later messages wait on it so they see `userId`. */
+  authPending: Promise<unknown> | null;
   send: (msg: unknown) => void;
 };
 
@@ -125,6 +127,7 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
       snakesId: null,
       memoryId: null,
       courtpieceId: null,
+      authPending: null,
       send,
     });
     this.realtime.registerSocket(send);
@@ -211,14 +214,23 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     if (msg.type === 'auth') {
-      const user = this.auth.consumeTicket(msg.ticket);
+      let wasOnline = false;
+      const authDone = (async () => {
+        const found = await this.auth.consumeTicket(msg.ticket).catch(() => null);
+        if (found) {
+          wasOnline = this.presence.isOnline(found.id) || this.realtime.isUserConnected(found.id);
+          st.userId = found.id;
+          st.name = found.name;
+        }
+        return found;
+      })();
+      st.authPending = authDone;
+      const user = await authDone;
+      if (st.authPending === authDone) st.authPending = null;
       if (!user) {
         send({ type: 'error', message: 'Invalid or expired ticket', code: 'bad_auth' });
         return;
       }
-      const wasOnline = this.presence.isOnline(user.id) || this.realtime.isUserConnected(user.id);
-      st.userId = user.id;
-      st.name = user.name;
       void this.wallet.ensureStartingBalance(user.id);
       void this.wallet.ensureStartingWhuffies(user.id);
       this.presence.touch(user.id);
@@ -239,6 +251,7 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
+    if (st.authPending) await st.authPending;
     if (!st.userId || !st.name) {
       send({ type: 'error', message: 'Authenticate first', code: 'auth' });
       return;

@@ -57,6 +57,7 @@ export type PublicSitePayload = {
   sounds?: TableSoundsConfig;
   avatarPresets?: AvatarPresetsConfig;
   cardThemes?: import('@/lib/cardFaceTheme').CardFaceTheme[];
+  lobbyNav?: import('@poker/protocol').LobbyNavConfig;
 };
 
 export { DEFAULT_AVATAR_PRESET_URLS } from '@/lib/avatars';

@@ -8,15 +8,17 @@ import { imageAssetUrl } from '@/lib/assets';
 import { authHref } from '@/lib/authRedirect';
 import { loadSavedAvatarId } from '@/lib/avatars';
 import { MoneyAmount } from '@/components/CurrencyIcon';
+import { LegalLinks } from '@/components/LegalLinks';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 import { PendingCountBadge, useOnlineFriends } from '@/components/OnlineFriends';
 import { fetchPublicBotGroups } from '@/lib/api';
 import {
-  LOBBY_NAV,
   hotOfflineSoloHref,
   isHotOfflineNavActive,
   isLobbyNavActive,
+  orderedLobbyNav,
 } from '@/lib/lobbyNav';
+import { useLobbyNav } from '@/lib/useLobbyNav';
 import { useSession } from '@/lib/store';
 import { cn } from '@/lib/cn';
 
@@ -90,6 +92,7 @@ export function LobbySidebar({
   const chipBalance = useSession((s) => s.chipBalance);
   const whuffieBalance = useSession((s) => s.whuffieBalance);
   const { pendingCount, sentCount } = useOnlineFriends();
+  const lobbyNav = useLobbyNav();
   const [avatarId, setAvatarId] = useState(0);
   const [copied, setCopied] = useState(false);
   const [hotOfflineGroups, setHotOfflineGroups] = useState<
@@ -153,7 +156,7 @@ export function LobbySidebar({
       </Link>
 
       <nav className="flex flex-1 flex-col gap-1 px-3 py-4" aria-label="Lobby">
-        {LOBBY_NAV.map((t) => {
+        {orderedLobbyNav(lobbyNav).map((t) => {
           const active = isLobbyNavActive(pathname, t.href, searchParams.toString());
           const isFriends = signedIn && t.href === '/friends';
           if (t.href === '/solo' && hotOfflineGroups.length > 0) {
@@ -360,6 +363,10 @@ export function LobbySidebar({
             </Link>
           </div>
         )}
+        <LegalLinks
+          className="mt-2 text-[11px] text-on-chrome/60"
+          linkClassName="transition hover:text-on-chrome hover:underline"
+        />
       </div>
     </aside>
   );

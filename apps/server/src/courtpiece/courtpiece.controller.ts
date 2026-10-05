@@ -15,6 +15,7 @@ import type { User } from '../auth/auth.types.js';
 import { CurrentUser, SessionAuthGuard } from '../common/session-auth.guard.js';
 import { FriendsService } from '../friends/friends.service.js';
 import { CourtpieceRoomsService } from './courtpiece.service.js';
+import { publicErrorMessage } from '../common/public-error.js';
 
 @Controller('api/courtpiece')
 export class CourtpieceController {
@@ -42,7 +43,7 @@ export class CourtpieceController {
         botCount: bots,
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create board';
+      const message = publicErrorMessage(err, 'Failed to create board');
       if (message.includes('already in use')) {
         throw new ConflictException({ error: message });
       }

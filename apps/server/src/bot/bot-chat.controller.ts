@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, NotFoundException, Post, Res, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import type { User } from '../auth/auth.types.js';
@@ -15,9 +15,14 @@ export class BotChatController {
     private readonly site: SiteConfigService,
   ) {}
 
+  private assertChatEnabled(): void {
+    if (!this.site.isLobbyNavVisible('chat')) throw new NotFoundException();
+  }
+
   @Get('providers')
   @UseGuards(SessionAuthGuard)
   listProviders(@CurrentUser() _user: User) {
+    this.assertChatEnabled();
     const providers = this.chat.listProviders();
     const preferred = defaultBotChatProvider();
     return {
@@ -35,6 +40,7 @@ export class BotChatController {
     @Body() body: unknown,
     @Res() res: Response,
   ): Promise<void> {
+    this.assertChatEnabled();
     const parsed = parseBotChatBody(body);
     if (!parsed.ok) {
       res.status(400).json({ error: parsed.error });

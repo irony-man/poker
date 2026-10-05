@@ -36,6 +36,19 @@ export class SiteController {
       avatarPresets: this.site.getAvatarPresets(),
       cardThemes: this.site.getCardThemes(),
       botChatStarters: this.site.getBotChatStarters(),
+      lobbyNav: this.site.getLobbyNav(),
     };
+  }
+
+  /** Sidebar order + visibility; polled by the web middleware to 404 hidden routes. */
+  @Get('nav')
+  getNav() {
+    return { items: this.site.getLobbyNav() };
+  }
+
+  /** Privacy Policy and Terms & Conditions for /privacy and /terms. */
+  @Get('legal')
+  getLegal() {
+    return this.site.getLegal();
   }
 }

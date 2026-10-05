@@ -111,6 +111,7 @@ export {
   type CourtpieceChatLine,
 } from './courtpiece';
 export { uploadOfflineHand, fetchMyHands, type UploadHandPayload, type MyHandRow } from './history';
+export { fetchWalletTrail, type WalletTrailQuery } from './wallet';
 export { fetchBotBanterLine } from './botBanter';
 export {
   streamBotChat,
@@ -157,6 +158,10 @@ export {
   patchAdminAnnouncement,
   fetchAdminBotChatStarters,
   patchAdminBotChatStarters,
+  fetchAdminLegal,
+  patchAdminLegal,
+  fetchAdminLobbyNav,
+  patchAdminLobbyNav,
   MAX_BOT_CHAT_STARTERS,
   MAX_BOT_CHAT_STARTER_CHARS,
   fetchAdminEconomy,
@@ -168,6 +173,7 @@ export {
   resetAdminUserChips,
   creditAdminUserWhuffies,
   resetAdminUserWhuffies,
+  fetchAdminUserTrail,
   deleteAdminUser,
   fetchAdminGames,
   fetchAdminBotGroups,

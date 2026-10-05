@@ -13,7 +13,15 @@ import {
   ServiceUnavailableException,
   UseGuards,
 } from '@nestjs/common';
-import { SoundUploadUrlBodySchema, SiteImageUploadUrlBodySchema } from '@poker/protocol';
+import {
+  LEGAL_DATE_RE,
+  LOBBY_NAV_IDS,
+  MAX_LEGAL_BODY_CHARS,
+  MAX_LEGAL_TITLE_CHARS,
+  SoundUploadUrlBodySchema,
+  SiteImageUploadUrlBodySchema,
+  type LobbyNavId,
+} from '@poker/protocol';
 import { z } from 'zod';
 import { AuthService } from '../auth/auth.service.js';
 import type { User } from '../auth/auth.types.js';
@@ -36,6 +44,7 @@ import {
 import { StorageService } from '../storage/storage.service.js';
 import { WalletError } from '../wallet/wallet.constants.js';
 import { WalletService } from '../wallet/wallet.service.js';
+import { listTrailFromQuery } from '../wallet/wallet-trail.query.js';
 
 const AnnouncementBody = z.object({
   enabled: z.boolean(),
@@ -44,6 +53,31 @@ const AnnouncementBody = z.object({
 
 const BotChatStartersBody = z.object({
   starters: z.array(z.string().max(500)).min(1).max(20),
+});
+
+const LegalDocBody = z.object({
+  title: z.string().trim().min(1).max(MAX_LEGAL_TITLE_CHARS),
+  lastUpdated: z.string().trim().regex(LEGAL_DATE_RE, 'Use YYYY-MM-DD'),
+  body: z.string().trim().min(1).max(MAX_LEGAL_BODY_CHARS),
+});
+
+const LegalBody = z.object({
+  privacy: LegalDocBody,
+  terms: LegalDocBody,
+});
+
+const LobbyNavBody = z.object({
+  items: z
+    .array(
+      z.object({
+        id: z.enum(LOBBY_NAV_IDS as unknown as [LobbyNavId, ...LobbyNavId[]]),
+        visible: z.boolean(),
+      }),
+    )
+    .max(LOBBY_NAV_IDS.length)
+    .refine((items) => new Set(items.map((i) => i.id)).size === items.length, {
+      message: 'Duplicate sidebar item',
+    }),
 });
 
 const EconomyBody = z.object({
@@ -306,6 +340,35 @@ export class AdminController {
     return { starters };
   }
 
+  @Get('legal')
+  getLegal() {
+    return this.site.getLegal();
+  }
+
+  @Patch('legal')
+  async patchLegal(@Body() body: unknown) {
+    const parsed = LegalBody.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({ error: parsed.error.message });
+    }
+    return this.site.setLegal(parsed.data);
+  }
+
+  @Get('lobby-nav')
+  getLobbyNav() {
+    return { items: this.site.getLobbyNav() };
+  }
+
+  @Patch('lobby-nav')
+  async patchLobbyNav(@Body() body: unknown) {
+    const parsed = LobbyNavBody.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({ error: parsed.error.message });
+    }
+    const items = await this.site.setLobbyNav(parsed.data.items);
+    return { items };
+  }
+
   @Get('economy')
   getEconomy() {
     return this.site.getEconomy();
@@ -515,6 +578,14 @@ export class AdminController {
         createdAt: u.createdAt,
       })),
     };
+  }
+
+  @Get('users/:userId/trail')
+  userTrail(@Param('userId') userId: string, @Query() query: Record<string, unknown>) {
+    if (!this.auth.getUser(userId)) {
+      throw new NotFoundException({ error: 'User not found' });
+    }
+    return listTrailFromQuery(this.wallet, userId, query);
   }
 
   @Post('users/:userId/credit')

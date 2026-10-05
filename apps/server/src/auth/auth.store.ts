@@ -4,6 +4,7 @@ import path from 'node:path';
 import * as argon2 from 'argon2';
 import { nanoid } from 'nanoid';
 import type { Queryable } from '../database/queryable.js';
+import type { KvStore } from '../kv/kv.store.js';
 import { avatarIdFromUserId, clampAvatarId } from '../avatars.js';
 import { clampTableColorId } from '../table-colors.js';
 import { clampUserKeyboardShortcuts } from '../keyboard-shortcuts.js';
@@ -41,6 +42,49 @@ interface PersistedSnapshot {
 
 export const VERIFY_EMAIL_TTL_MS = 24 * 60 * 60 * 1000;
 export const RESET_PASSWORD_TTL_MS = 60 * 60 * 1000;
+export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+export const WS_TICKET_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Redis key layout for auth state (used only when a KV store is attached). */
+export const AUTH_KV_KEYS = {
+  migrated: 'auth:migrated:v1',
+  session: (token: string) => `auth:sess:${token}`,
+  ticket: (ticket: string) => `auth:ticket:${ticket}`,
+  emailToken: (purpose: EmailTokenPurpose, tokenHash: string) =>
+    `auth:email:${purpose}:${tokenHash}`,
+  userSessions: (userId: string) => `auth:user:${userId}:sess`,
+  userTickets: (userId: string) => `auth:user:${userId}:tickets`,
+  userEmailTokens: (userId: string) => `auth:user:${userId}:email`,
+};
+
+interface KvGrant {
+  userId: string;
+  expiresAt: number;
+}
+
+interface KvEmailToken extends KvGrant {
+  email: string;
+}
+
+/** Whole seconds until `expiresAt`; <= 0 means already expired. */
+function ttlSecondsUntil(expiresAt: number): number {
+  return Math.ceil((expiresAt - Date.now()) / 1000);
+}
+
+function parseKvJson<T extends KvGrant>(raw: string | null): T | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as T;
+    if (typeof parsed.userId !== 'string' || typeof parsed.expiresAt !== 'number') return null;
+    return parsed.expiresAt > Date.now() ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function toEpochMs(value: Date | string): number {
+  return value instanceof Date ? value.getTime() : new Date(value).getTime();
+}
 
 const USERNAME_MAX = 24;
 
@@ -135,6 +179,8 @@ export class AuthStore {
   private loaded = false;
   private readonly filePath: string;
   private pool: Queryable | null = null;
+  /** When set, sessions / WS tickets / email tokens live only here, expired by key TTL. */
+  private kv: KvStore | null = null;
   private writeChain: Promise<void> = Promise.resolve();
   private lastExpiredCleanupAt = 0;
   private static readonly EXPIRED_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
@@ -146,6 +192,11 @@ export class AuthStore {
 
   setPool(pool: Queryable | null): void {
     this.pool = pool;
+  }
+
+  /** Must be called before `init()` so legacy sessions are migrated on load. */
+  setKv(kv: KvStore | null): void {
+    this.kv = kv;
   }
 
   setEconomyProvider(provider: EconomyProvider): void {
@@ -173,7 +224,103 @@ export class AuthStore {
       await mkdir(path.dirname(this.filePath), { recursive: true });
       await this.loadFromFile();
     }
+    if (this.kv) await this.migrateAuthStateToKv(this.kv);
     this.loaded = true;
+  }
+
+  /**
+   * Move unexpired sessions / tickets / email tokens from Postgres (or users.json) into the KV
+   * store, then drop them from the legacy store so a later KV flush can't resurrect revoked
+   * grants. Idempotent: subsequent boots find nothing left to move.
+   */
+  private async migrateAuthStateToKv(kv: KvStore): Promise<void> {
+    const sessions = [...this.sessions.values()];
+    const tickets = [...this.tickets.values()];
+    let emailTokens = [...this.emailTokens.values()];
+    if (this.pool) {
+      const res = await this.pool.query(
+        `SELECT token_hash, user_id, purpose, email, expires_at FROM auth_email_tokens
+         WHERE used_at IS NULL AND expires_at > NOW()`,
+      );
+      emailTokens = (
+        res.rows as {
+          token_hash: string;
+          user_id: string;
+          purpose: EmailTokenPurpose;
+          email: string;
+          expires_at: Date | string;
+        }[]
+      ).map((row) => ({
+        tokenHash: row.token_hash,
+        userId: row.user_id,
+        purpose: row.purpose,
+        email: row.email,
+        expiresAt: toEpochMs(row.expires_at),
+        usedAt: null,
+      }));
+    }
+
+    for (const s of sessions) await this.kvPutSession(kv, s);
+    for (const t of tickets) await this.kvPutTicket(kv, t);
+    for (const t of emailTokens) await this.kvPutEmailToken(kv, t);
+
+    this.sessions.clear();
+    this.tickets.clear();
+    this.emailTokens.clear();
+
+    const moved = sessions.length + tickets.length + emailTokens.length;
+    if (moved > 0) {
+      if (this.pool) {
+        await Promise.all([
+          this.pool.query(`DELETE FROM auth_sessions`),
+          this.pool.query(`DELETE FROM auth_tickets`),
+          this.pool.query(`DELETE FROM auth_email_tokens`),
+        ]);
+      } else {
+        await this.persistFile();
+      }
+    }
+    if (!(await kv.get(AUTH_KV_KEYS.migrated))) {
+      await kv.set(AUTH_KV_KEYS.migrated, new Date().toISOString());
+    }
+  }
+
+  private async kvIndexAdd(kv: KvStore, indexKey: string, member: string, ttlSec: number) {
+    const current = await kv.ttl(indexKey);
+    await kv.sAdd(indexKey, member, Math.max(ttlSec, current));
+  }
+
+  private async kvPutSession(kv: KvStore, s: Session): Promise<void> {
+    const ttl = ttlSecondsUntil(s.expiresAt);
+    if (ttl <= 0) return;
+    const key = AUTH_KV_KEYS.session(s.token);
+    const grant: KvGrant = { userId: s.userId, expiresAt: s.expiresAt };
+    await kv.set(key, JSON.stringify(grant), ttl);
+    await this.kvIndexAdd(kv, AUTH_KV_KEYS.userSessions(s.userId), key, ttl);
+  }
+
+  private async kvPutTicket(kv: KvStore, t: WsTicket): Promise<void> {
+    const ttl = ttlSecondsUntil(t.expiresAt);
+    if (ttl <= 0) return;
+    const key = AUTH_KV_KEYS.ticket(t.ticket);
+    const grant: KvGrant = { userId: t.userId, expiresAt: t.expiresAt };
+    await kv.set(key, JSON.stringify(grant), ttl);
+    await this.kvIndexAdd(kv, AUTH_KV_KEYS.userTickets(t.userId), key, ttl);
+  }
+
+  private async kvPutEmailToken(kv: KvStore, t: EmailToken): Promise<void> {
+    const ttl = ttlSecondsUntil(t.expiresAt);
+    if (ttl <= 0 || t.usedAt !== null) return;
+    const key = AUTH_KV_KEYS.emailToken(t.purpose, t.tokenHash);
+    const record: KvEmailToken = { userId: t.userId, email: t.email, expiresAt: t.expiresAt };
+    await kv.set(key, JSON.stringify(record), ttl);
+    await this.kvIndexAdd(kv, AUTH_KV_KEYS.userEmailTokens(t.userId), key, ttl);
+  }
+
+  /** Delete every indexed key for a user plus the index itself. */
+  private async kvDeleteIndexed(kv: KvStore, indexKey: string): Promise<void> {
+    const keys = await kv.sMembers(indexKey);
+    await kv.del(...keys, indexKey);
   }
 
   private async loadFromFile(): Promise<void> {
@@ -627,11 +774,13 @@ export class AuthStore {
   }
 
   private async issueAuthSession(user: User): Promise<AuthSessionPayload> {
-    const sessionToken = this.createSession(user.id);
-    const ticket = this.issueTicket(user.id, undefined, false);
-    const session = this.sessions.get(sessionToken)!;
-    const wsTicket = this.tickets.get(ticket)!;
-    if (this.pool) {
+    const sessionToken = await this.createSession(user.id);
+    const ticket = await this.issueTicket(user.id);
+    if (this.kv) {
+      // Already written to the KV store with TTLs.
+    } else if (this.pool) {
+      const session = this.sessions.get(sessionToken)!;
+      const wsTicket = this.tickets.get(ticket)!;
       await Promise.all([
         this.upsertSessionPostgres(session),
         this.upsertTicketPostgres(wsTicket),
@@ -875,7 +1024,9 @@ export class AuthStore {
       expiresAt: Date.now() + ttlMs,
       usedAt: null,
     };
-    if (this.pool) {
+    if (this.kv) {
+      await this.kvPutEmailToken(this.kv, record);
+    } else if (this.pool) {
       await this.pool.query(
         `INSERT INTO auth_email_tokens (token_hash, user_id, purpose, email, expires_at)
          VALUES ($1, $2, $3, $4, to_timestamp($5 / 1000.0))`,
@@ -896,6 +1047,13 @@ export class AuthStore {
     const invalid = new AuthError('invalid_token', 'This link is invalid or has expired');
     if (!token) throw invalid;
     const tokenHash = hashEmailToken(token);
+    if (this.kv) {
+      const key = AUTH_KV_KEYS.emailToken(purpose, tokenHash);
+      const record = parseKvJson<KvEmailToken>(await this.kv.getDel(key));
+      if (!record || typeof record.email !== 'string') throw invalid;
+      await this.kv.sRem(AUTH_KV_KEYS.userEmailTokens(record.userId), key);
+      return { userId: record.userId, email: record.email };
+    }
     if (this.pool) {
       const res = await this.pool.query(
         `UPDATE auth_email_tokens SET used_at = NOW()
@@ -928,6 +1086,14 @@ export class AuthStore {
   ): Promise<{ userId: string; email: string } | null> {
     if (!token) return null;
     const tokenHash = hashEmailToken(token);
+    if (this.kv) {
+      const record = parseKvJson<KvEmailToken>(
+        await this.kv.get(AUTH_KV_KEYS.emailToken(purpose, tokenHash)),
+      );
+      return record && typeof record.email === 'string'
+        ? { userId: record.userId, email: record.email }
+        : null;
+    }
     if (this.pool) {
       const res = await this.pool.query(
         `SELECT user_id, email FROM auth_email_tokens
@@ -1000,6 +1166,11 @@ export class AuthStore {
   }
 
   private async revokeAllSessions(userId: string): Promise<void> {
+    if (this.kv) {
+      await this.kvDeleteIndexed(this.kv, AUTH_KV_KEYS.userSessions(userId));
+      await this.kvDeleteIndexed(this.kv, AUTH_KV_KEYS.userTickets(userId));
+      return;
+    }
     for (const [token, session] of this.sessions) {
       if (session.userId === userId) this.sessions.delete(token);
     }
@@ -1020,14 +1191,21 @@ export class AuthStore {
     return user;
   }
 
-  createSession(userId: string, ttlMs = 30 * 24 * 60 * 60 * 1000): string {
+  /** Without a KV store the session is only in memory until the caller persists it. */
+  async createSession(userId: string, ttlMs = SESSION_TTL_MS): Promise<string> {
     const token = randomBytes(32).toString('hex');
-    this.sessions.set(token, { token, userId, expiresAt: Date.now() + ttlMs });
+    const session: Session = { token, userId, expiresAt: Date.now() + ttlMs };
+    if (this.kv) await this.kvPutSession(this.kv, session);
+    else this.sessions.set(token, session);
     return token;
   }
 
-  resolveSession(token: string): User | null {
+  async resolveSession(token: string): Promise<User | null> {
     if (!token) return null;
+    if (this.kv) {
+      const grant = parseKvJson<KvGrant>(await this.kv.get(AUTH_KV_KEYS.session(token)));
+      return grant ? (this.users.get(grant.userId) ?? null) : null;
+    }
     const s = this.sessions.get(token);
     if (!s) return null;
     if (Date.now() > s.expiresAt) {
@@ -1038,6 +1216,19 @@ export class AuthStore {
   }
 
   async revokeSession(token: string): Promise<void> {
+    if (!token) return;
+    if (this.kv) {
+      const key = AUTH_KV_KEYS.session(token);
+      const raw = await this.kv.getDel(key);
+      if (!raw) return;
+      try {
+        const { userId } = JSON.parse(raw) as KvGrant;
+        if (typeof userId === 'string') await this.kv.sRem(AUTH_KV_KEYS.userSessions(userId), key);
+      } catch {
+        // Malformed record is already deleted.
+      }
+      return;
+    }
     if (!this.sessions.delete(token)) return;
     if (this.pool) {
       await this.deleteSessionPostgres(token);
@@ -1291,6 +1482,11 @@ export class AuthStore {
     for (const [hash, record] of this.emailTokens) {
       if (record.userId === userId) this.emailTokens.delete(hash);
     }
+    if (this.kv) {
+      await this.kvDeleteIndexed(this.kv, AUTH_KV_KEYS.userSessions(userId));
+      await this.kvDeleteIndexed(this.kv, AUTH_KV_KEYS.userTickets(userId));
+      await this.kvDeleteIndexed(this.kv, AUTH_KV_KEYS.userEmailTokens(userId));
+    }
     if (this.pool) {
       await this.pool.query(`DELETE FROM auth_sessions WHERE user_id = $1`, [userId]);
       await this.pool.query(`DELETE FROM auth_tickets WHERE user_id = $1`, [userId]);
@@ -1303,14 +1499,18 @@ export class AuthStore {
     return user;
   }
 
-  issueTicket(userId: string, ttlMs = 7 * 24 * 60 * 60 * 1000, _persist = true): string {
+  /** Without a KV store the ticket is only in memory; use `issueTicketAndPersist` to persist it. */
+  async issueTicket(userId: string, ttlMs = WS_TICKET_TTL_MS): Promise<string> {
     const ticket = randomBytes(24).toString('hex');
-    this.tickets.set(ticket, { ticket, userId, expiresAt: Date.now() + ttlMs });
+    const wsTicket: WsTicket = { ticket, userId, expiresAt: Date.now() + ttlMs };
+    if (this.kv) await this.kvPutTicket(this.kv, wsTicket);
+    else this.tickets.set(ticket, wsTicket);
     return ticket;
   }
 
-  async issueTicketAndPersist(userId: string, ttlMs = 7 * 24 * 60 * 60 * 1000): Promise<string> {
-    const ticket = this.issueTicket(userId, ttlMs, false);
+  async issueTicketAndPersist(userId: string, ttlMs = WS_TICKET_TTL_MS): Promise<string> {
+    const ticket = await this.issueTicket(userId, ttlMs);
+    if (this.kv) return ticket;
     const wsTicket = this.tickets.get(ticket)!;
     if (this.pool) {
       await this.upsertTicketPostgres(wsTicket);
@@ -1321,7 +1521,12 @@ export class AuthStore {
     return ticket;
   }
 
-  consumeTicket(ticket: string): User | null {
+  async consumeTicket(ticket: string): Promise<User | null> {
+    if (!ticket) return null;
+    if (this.kv) {
+      const grant = parseKvJson<KvGrant>(await this.kv.get(AUTH_KV_KEYS.ticket(ticket)));
+      return grant ? (this.users.get(grant.userId) ?? null) : null;
+    }
     const t = this.tickets.get(ticket);
     if (!t) return null;
     if (Date.now() > t.expiresAt) {

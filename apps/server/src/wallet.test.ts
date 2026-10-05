@@ -7,8 +7,11 @@ import { MemoryKv } from './kv/kv.store.js';
 import { memoryHistoryStore, type HandHistoryStore } from './history/history.store.js';
 import { RoomManager } from './rooms/room.js';
 import { MemoryTableChipStore } from './table-chips/table-chips.store.js';
+import type { Queryable } from './database/queryable.js';
 import {
   AuthWalletStore,
+  decodeTrailCursor,
+  encodeTrailCursor,
 } from './wallet/wallet.store.js';
 import {
   REFILL_GRANT,
@@ -72,6 +75,217 @@ describe('AuthWalletStore', () => {
     const after = await wallet.claimRefill('u1');
     expect(after.balance).toBe(REFILL_THRESHOLD - 1 + REFILL_GRANT);
     await expect(wallet.claimRefill('u1')).rejects.toBeInstanceOf(WalletError);
+  });
+});
+
+type LedgerInsert = {
+  table: string;
+  userId: string;
+  tableId: string;
+  delta: number;
+  reason: string;
+  balanceAfter: number;
+};
+
+/** Records ledger inserts; answers the opening-entry probe and trail selects. */
+class FakeLedgerPool implements Queryable {
+  inserts: LedgerInsert[] = [];
+  selects: Array<{ text: string; params: unknown[] }> = [];
+  trailRows: unknown[] = [];
+
+  async query(text: string, params: unknown[] = []) {
+    const insert = /INSERT INTO (\w+)/.exec(text);
+    if (insert) {
+      const [, userId, tableId, delta, reason, balanceAfter] = params as [
+        string,
+        string,
+        string,
+        number,
+        string,
+        number,
+      ];
+      this.inserts.push({ table: insert[1]!, userId, tableId, delta, reason, balanceAfter });
+      return { rows: [] };
+    }
+    const probe = /SELECT 1 FROM (\w+)/.exec(text);
+    if (probe) {
+      const hit = this.inserts.some((r) => r.table === probe[1] && r.userId === params[0]);
+      return { rows: hit ? [{ '?column?': 1 }] : [] };
+    }
+    this.selects.push({ text, params });
+    return { rows: this.trailRows };
+  }
+}
+
+describe('AuthWalletStore ledger trail', () => {
+  let dir: string;
+  let auth: AuthStore;
+  let wallet: AuthWalletStore;
+  let pool: FakeLedgerPool;
+
+  beforeEach(async () => {
+    dir = await mkdtemp(path.join(os.tmpdir(), 'wallet-trail-'));
+    auth = new AuthStore(dir);
+    await auth.init();
+    await auth.seedUser('u1', 'alice', 'password1');
+    wallet = new AuthWalletStore(auth);
+    pool = new FakeLedgerPool();
+    wallet.setPool(pool);
+  });
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it('records chip changes with the balance after each change', async () => {
+    await wallet.credit('u1', 500, 'admin_credit');
+    await wallet.debit('u1', 200, 'admin_reset');
+    expect(pool.inserts).toEqual([
+      {
+        table: 'chip_ledger',
+        userId: 'u1',
+        tableId: '',
+        delta: STARTING_CHIP_GRANT,
+        reason: 'opening_balance',
+        balanceAfter: STARTING_CHIP_GRANT,
+      },
+      {
+        table: 'chip_ledger',
+        userId: 'u1',
+        tableId: '',
+        delta: 500,
+        reason: 'admin_credit',
+        balanceAfter: STARTING_CHIP_GRANT + 500,
+      },
+      {
+        table: 'chip_ledger',
+        userId: 'u1',
+        tableId: '',
+        delta: -200,
+        reason: 'admin_reset',
+        balanceAfter: STARTING_CHIP_GRANT + 300,
+      },
+    ]);
+  });
+
+  it('records Whuffie changes in the Whuffie ledger', async () => {
+    await wallet.creditWhuffies('u1', 250, 'contest_prize', 'c1');
+    await wallet.debitWhuffies('u1', 100, 'admin_reset');
+    expect(pool.inserts.filter((r) => r.table === 'chip_ledger')).toEqual([]);
+    expect(pool.inserts).toEqual([
+      {
+        table: 'whuffie_ledger',
+        userId: 'u1',
+        tableId: 'c1',
+        delta: 250,
+        reason: 'contest_prize',
+        balanceAfter: STARTING_WHUFFIE_GRANT + 250,
+      },
+      {
+        table: 'whuffie_ledger',
+        userId: 'u1',
+        tableId: '',
+        delta: -100,
+        reason: 'admin_reset',
+        balanceAfter: STARTING_WHUFFIE_GRANT + 150,
+      },
+    ]);
+  });
+
+  it('writes the opening entry only once', async () => {
+    await wallet.ensureStartingBalance('u1');
+    await wallet.ensureStartingBalance('u1');
+    const fresh = new AuthWalletStore(auth);
+    fresh.setPool(pool);
+    await fresh.ensureStartingBalance('u1');
+    const openings = pool.inserts.filter((r) => r.reason === 'opening_balance');
+    expect(openings).toHaveLength(1);
+    expect(openings[0]).toMatchObject({ table: 'chip_ledger', delta: STARTING_CHIP_GRANT });
+  });
+
+  it('skips the opening entry for a zero balance', async () => {
+    await wallet.ensureStartingWhuffies('u1');
+    expect(pool.inserts.filter((r) => r.table === 'whuffie_ledger')).toEqual([]);
+  });
+
+  it('pages the trail newest first with a keyset cursor', async () => {
+    const ts = '2026-10-05T12:00:00.123456Z';
+    pool.trailRows = [
+      {
+        id: 'a',
+        table_id: 'c1',
+        delta: 250,
+        reason: 'contest_prize',
+        balance_after: 400,
+        created_at: new Date('2026-10-05T12:00:01Z'),
+        cursor_ts: '2026-10-05T12:00:01.000000Z',
+      },
+      {
+        id: 'b',
+        table_id: '',
+        delta: '150',
+        reason: 'offline_win',
+        balance_after: null,
+        created_at: '2026-10-05T12:00:00.123Z',
+        cursor_ts: ts,
+      },
+      {
+        id: 'c',
+        table_id: '',
+        delta: 1,
+        reason: 'offline_win',
+        balance_after: 1,
+        created_at: '2026-10-05T11:00:00Z',
+        cursor_ts: '2026-10-05T11:00:00.000000Z',
+      },
+    ];
+    const before = encodeTrailCursor('2026-10-06T00:00:00.000000Z', 'z');
+    const page = await wallet.listTrail('u1', 'whuffies', { before, limit: 2 });
+
+    const select = pool.selects.at(-1)!;
+    expect(select.text).toContain('FROM whuffie_ledger');
+    expect(select.text).toContain('(created_at, id) < ($2::timestamptz, $3)');
+    expect(select.params).toEqual(['u1', '2026-10-06T00:00:00.000000Z', 'z', 3]);
+
+    expect(page.entries).toEqual([
+      {
+        id: 'a',
+        currency: 'whuffies',
+        delta: 250,
+        balanceAfter: 400,
+        reason: 'contest_prize',
+        refId: 'c1',
+        createdAt: Date.parse('2026-10-05T12:00:01Z'),
+      },
+      {
+        id: 'b',
+        currency: 'whuffies',
+        delta: 150,
+        balanceAfter: null,
+        reason: 'offline_win',
+        refId: '',
+        createdAt: Date.parse('2026-10-05T12:00:00.123Z'),
+      },
+    ]);
+    expect(decodeTrailCursor(page.nextCursor!)).toEqual({ ts, id: 'b' });
+  });
+
+  it('returns no cursor on the last page', async () => {
+    pool.trailRows = [];
+    const page = await wallet.listTrail('u1', 'chips');
+    expect(page).toEqual({ entries: [], nextCursor: null });
+    expect(pool.selects.at(-1)!.params).toEqual(['u1', 26]);
+  });
+
+  it('rejects a malformed cursor', async () => {
+    await expect(
+      wallet.listTrail('u1', 'chips', { before: 'not-a-cursor' }),
+    ).rejects.toMatchObject({ code: 'invalid_cursor' });
+  });
+
+  it('returns an empty trail without a database', async () => {
+    const offline = new AuthWalletStore(auth);
+    expect(await offline.listTrail('u1', 'chips')).toEqual({ entries: [], nextCursor: null });
   });
 });
 

@@ -4,12 +4,15 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BOT_CHAT_ASSISTANT_LABELS } from '@/lib/api/botChat';
+import { useLobbyNavVisible } from '@/lib/useLobbyNav';
 
 const FAB_ICON_PX = 44;
 
 /** Fixed entry to `/chat` — chip icon + label, bottom-right (above mobile tab bar). */
 export function BotChatFab() {
   const pathname = usePathname();
+  const chatVisible = useLobbyNavVisible('chat');
+  if (!chatVisible) return null;
   if (pathname === '/chat' || pathname.startsWith('/chat/')) return null;
 
   const label = `Open ${BOT_CHAT_ASSISTANT_LABELS.cohere}`;

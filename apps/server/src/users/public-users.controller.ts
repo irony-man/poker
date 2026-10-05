@@ -78,7 +78,7 @@ export class PublicUsersController {
       req.header('authorization') ?? req.header('Authorization') ?? undefined,
     );
     if (token) {
-      const viewer = this.auth.resolveSession(token);
+      const viewer = await this.auth.resolveSession(token);
       if (viewer) {
         this.presence.touch(viewer.id);
         const rel = await this.friends.getRelationship(viewer.id, user.id);

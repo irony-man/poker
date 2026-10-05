@@ -1,3 +1,5 @@
+import type { LobbyNavConfig, LobbyNavId } from '@poker/protocol';
+
 /** Lobby routes shown in the sidebar. Offline play starts at /solo; /offline is the game. */
 
 export type LobbyHref =
@@ -10,34 +12,74 @@ export type LobbyHref =
   | '/friends'
   | '/chat';
 
-export const LOBBY_NAV: { href: LobbyHref; label: string }[] = [
-  { href: '/play', label: 'Host' },
-  { href: '/play?mode=join', label: 'Join' },
-  { href: '/public', label: 'Public Tables' },
-  { href: '/contests', label: 'Contests' },
-  { href: '/friends', label: 'Friends' },
-  // /chat (Bots) — route stays live; hidden from nav until BanterBot chat is ready for everyone.
-  { href: '/solo', label: 'Offline' },
-];
+export type LobbyNavEntry = { id: LobbyNavId; href: LobbyHref; label: string };
 
-export type MobileBottomIcon = 'home' | 'play' | 'public' | 'contests' | 'friends' | 'offline';
+export const LOBBY_NAV_ITEMS: Record<LobbyNavId, LobbyNavEntry> = {
+  host: { id: 'host', href: '/play', label: 'Host' },
+  join: { id: 'join', href: '/play?mode=join', label: 'Join' },
+  public: { id: 'public', href: '/public', label: 'Public Tables' },
+  contests: { id: 'contests', href: '/contests', label: 'Contests' },
+  friends: { id: 'friends', href: '/friends', label: 'Friends' },
+  chat: { id: 'chat', href: '/chat', label: 'Chat' },
+  solo: { id: 'solo', href: '/solo', label: 'Offline' },
+};
+
+/** Visible sidebar items in admin order (Admin → Sidebar). */
+export function orderedLobbyNav(config: LobbyNavConfig): LobbyNavEntry[] {
+  return config.filter((c) => c.visible).map((c) => LOBBY_NAV_ITEMS[c.id]);
+}
+
+export type MobileBottomIcon =
+  | 'home'
+  | 'play'
+  | 'public'
+  | 'contests'
+  | 'friends'
+  | 'chat'
+  | 'offline';
 
 export type MobileBottomNavItem = {
   id: MobileBottomIcon;
-  href: Exclude<LobbyHref, '/play?mode=join'>;
+  href: LobbyHref;
   label: string;
   shortLabel: string;
   icon: MobileBottomIcon;
 };
 
-export const MOBILE_BOTTOM_NAV: MobileBottomNavItem[] = [
-  { id: 'home', href: '/', label: 'Home', shortLabel: 'Home', icon: 'home' },
-  { id: 'play', href: '/play', label: 'Host or join', shortLabel: 'Play', icon: 'play' },
-  { id: 'public', href: '/public', label: 'Public tables', shortLabel: 'Public', icon: 'public' },
-  { id: 'contests', href: '/contests', label: 'Contests', shortLabel: 'Contests', icon: 'contests' },
-  { id: 'friends', href: '/friends', label: 'Friends', shortLabel: 'Friends', icon: 'friends' },
-  { id: 'offline', href: '/solo', label: 'Offline', shortLabel: 'Offline', icon: 'offline' },
-];
+const MOBILE_SLOTS: Record<Exclude<LobbyNavId, 'host' | 'join'>, MobileBottomNavItem> = {
+  public: { id: 'public', href: '/public', label: 'Public tables', shortLabel: 'Public', icon: 'public' },
+  contests: { id: 'contests', href: '/contests', label: 'Contests', shortLabel: 'Contests', icon: 'contests' },
+  friends: { id: 'friends', href: '/friends', label: 'Friends', shortLabel: 'Friends', icon: 'friends' },
+  chat: { id: 'chat', href: '/chat', label: 'Chat', shortLabel: 'Chat', icon: 'chat' },
+  solo: { id: 'offline', href: '/solo', label: 'Offline', shortLabel: 'Offline', icon: 'offline' },
+};
+
+/** Home, then visible items in admin order; Host and Join share one Play slot. */
+export function mobileBottomNav(config: LobbyNavConfig): MobileBottomNavItem[] {
+  const out: MobileBottomNavItem[] = [
+    { id: 'home', href: '/', label: 'Home', shortLabel: 'Home', icon: 'home' },
+  ];
+  const hostVisible = config.some((c) => c.id === 'host' && c.visible);
+  const joinVisible = config.some((c) => c.id === 'join' && c.visible);
+  let playAdded = false;
+  for (const c of config) {
+    if (!c.visible) continue;
+    if (c.id === 'host' || c.id === 'join') {
+      if (playAdded) continue;
+      playAdded = true;
+      out.push({
+        id: 'play',
+        href: hostVisible ? '/play' : '/play?mode=join',
+        label: hostVisible && joinVisible ? 'Host or join' : hostVisible ? 'Host' : 'Join',
+        shortLabel: 'Play',
+        icon: 'play',
+      });
+      continue;
+    }
+    out.push(MOBILE_SLOTS[c.id]);
+  }
+  return out;
+}
 
 function isPlayPath(pathname: string): boolean {
   return (

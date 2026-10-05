@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, Suspense, useState } from 'react';
 import type { AuthSession } from '@poker/protocol';
 import { GoogleAuthPanel } from '@/components/GoogleAuthPanel';
+import { LegalLinks } from '@/components/LegalLinks';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { resolvePublicImage } from '@/lib/assets';
 import { LoadingScreen } from '@/components/LoadingScreen';
@@ -115,6 +116,10 @@ function SignInForm() {
             </Link>
           </div>
         </form>
+        <LegalLinks
+          className="mt-4 text-xs text-muted"
+          linkClassName="underline-offset-4 hover:text-primary hover:underline"
+        />
       </LobbySplitCard>
     </div>
   );

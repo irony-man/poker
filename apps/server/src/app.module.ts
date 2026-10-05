@@ -12,6 +12,7 @@ import { FriendsModule } from './friends/friends.module.js';
 import { GatewayModule } from './gateway/gateway.module.js';
 import { HealthModule } from './health/health.module.js';
 import { HistoryModule } from './history/history.module.js';
+import { KvModule } from './kv/kv.module.js';
 import { LudoModule } from './ludo/ludo.module.js';
 import { MailModule } from './mail/mail.module.js';
 import { MemoryModule } from './memory/memory.module.js';
@@ -40,6 +41,7 @@ import { WalletModule } from './wallet/wallet.module.js';
       },
     ]),
     DatabaseModule,
+    KvModule,
     StorageModule,
     MailModule,
     SiteConfigModule,

@@ -1,7 +1,9 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { AdminController } from './admin/admin.controller.js';
 import { isAdminUsername, parseAdminUsernames } from './admin/admin-allowlist.js';
 import { AuthStore } from './auth/auth.store.js';
 import { MemoryKv } from './kv/kv.store.js';
@@ -289,6 +291,49 @@ describe('site config + runtime economy', () => {
       { id: 'groups', name: 'Packs' },
       { id: 'movies', name: 'Cinema' },
     ]);
+  });
+});
+
+describe('AdminController userTrail', () => {
+  function makeController(listTrail: (...args: unknown[]) => unknown) {
+    const auth = { getUser: (id: string) => (id === 'u1' ? { id: 'u1' } : undefined) };
+    const wallet = { listTrail };
+    const none = {} as never;
+    return new AdminController(
+      none,
+      auth as never,
+      wallet as never,
+      none,
+      none,
+      none,
+      none,
+      none,
+      none,
+      none,
+      none,
+    );
+  }
+
+  it('returns 404 for an unknown user', () => {
+    const controller = makeController(async () => ({ entries: [], nextCursor: null }));
+    expect(() => controller.userTrail('ghost', {})).toThrow(NotFoundException);
+  });
+
+  it('passes currency and cursor through to the wallet', async () => {
+    const calls: unknown[][] = [];
+    const controller = makeController(async (...args: unknown[]) => {
+      calls.push(args);
+      return { entries: [], nextCursor: null };
+    });
+    await controller.userTrail('u1', { currency: 'whuffies', before: 'abc', limit: '10' });
+    expect(calls).toEqual([['u1', 'whuffies', { before: 'abc', limit: 10 }]]);
+  });
+
+  it('rejects an unknown currency', async () => {
+    const controller = makeController(async () => ({ entries: [], nextCursor: null }));
+    await expect(controller.userTrail('u1', { currency: 'gold' })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 });
 

@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { dataSourceAsQueryable } from '../database/queryable.js';
+import { KvService } from '../kv/kv.service.js';
 import { MailService } from '../mail/mail.service.js';
 import { SiteConfigService } from '../site-config/site-config.service.js';
 import { GoogleIdTokenVerifier } from './auth.google.js';
@@ -32,6 +33,7 @@ export class AuthService implements OnModuleInit {
     private readonly google: GoogleIdTokenVerifier,
     private readonly instagram: InstagramOAuth,
     private readonly mail: MailService,
+    private readonly kv: KvService,
     @InjectDataSource() private readonly dataSource: DataSource,
   ) {
     const dataDir = this.config.get<string>('DATA_DIR') ?? `${process.cwd()}/data`;
@@ -44,7 +46,10 @@ export class AuthService implements OnModuleInit {
     // Ensure site config defaults are loaded before any signup uses the grant.
     await this.siteConfig.asStore().init();
     this.store.setEconomyProvider(() => this.siteConfig.getEconomy());
+    await this.kv.ready();
+    this.store.setKv(this.kv.isRedis() ? this.kv.asStore() : null);
     await this.store.init();
+    this.logger.log(`Auth sessions stored in ${this.kv.isRedis() ? 'Redis' : 'Postgres/file'}`);
   }
 
   /** Escape hatch for modules that still take AuthStore (friends profiles). */
@@ -236,7 +241,7 @@ export class AuthService implements OnModuleInit {
     return this.store.resetPassword(token, password);
   }
 
-  resolveSession(token: string): User | null {
+  resolveSession(token: string): Promise<User | null> {
     return this.store.resolveSession(token);
   }
 
@@ -327,15 +332,15 @@ export class AuthService implements OnModuleInit {
     return this.store.deleteUser(userId);
   }
 
-  issueTicket(userId: string, ttlMs?: number, persist?: boolean): string {
-    return this.store.issueTicket(userId, ttlMs, persist);
+  issueTicket(userId: string, ttlMs?: number): Promise<string> {
+    return this.store.issueTicket(userId, ttlMs);
   }
 
   issueTicketAndPersist(userId: string, ttlMs?: number): Promise<string> {
     return this.store.issueTicketAndPersist(userId, ttlMs);
   }
 
-  consumeTicket(ticket: string): User | null {
+  consumeTicket(ticket: string): Promise<User | null> {
     return this.store.consumeTicket(ticket);
   }
 }

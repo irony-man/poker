@@ -34,6 +34,7 @@ import { HistoryService, toOwnerHandRows } from '../history/history.service.js';
 import { ALLOWED_AVATAR_CONTENT_TYPES } from '../storage/storage.constants.js';
 import { StorageService } from '../storage/storage.service.js';
 import { WalletService } from '../wallet/wallet.service.js';
+import { listTrailFromQuery } from '../wallet/wallet-trail.query.js';
 import { SiteConfigService } from '../site-config/site-config.service.js';
 import {
   clampCardThemeId,
@@ -199,6 +200,11 @@ export class UsersController {
       user.id,
     );
     return { hands };
+  }
+
+  @Get('me/wallet/trail')
+  myWalletTrail(@CurrentUser() user: User, @Query() query: Record<string, unknown>) {
+    return listTrailFromQuery(this.wallet, user.id, query);
   }
 
   @Post('me/avatar/upload-url')

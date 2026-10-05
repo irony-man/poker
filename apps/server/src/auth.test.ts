@@ -1,9 +1,10 @@
 import { mkdir, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { AuthStore, usernameBaseFromGoogle } from './auth/auth.store.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AUTH_KV_KEYS, AuthStore, usernameBaseFromGoogle } from './auth/auth.store.js';
 import { AuthError, type GoogleIdentity } from './auth/auth.types.js';
+import { MemoryKv } from './kv/kv.store.js';
 
 function googleIdentity(overrides: Partial<GoogleIdentity> = {}): GoogleIdentity {
   return {
@@ -23,7 +24,10 @@ async function verifiedEmailUser(auth: AuthStore, username: string, email: strin
   return session;
 }
 
-describe('AuthStore', () => {
+describe.each([
+  { mode: 'file-backed', useKv: false },
+  { mode: 'KV-backed sessions', useKv: true },
+])('AuthStore ($mode)', ({ useKv }) => {
   let dir: string;
   let auth: AuthStore;
 
@@ -31,6 +35,7 @@ describe('AuthStore', () => {
     dir = path.join(os.tmpdir(), `felt-auth-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     await mkdir(dir, { recursive: true });
     auth = new AuthStore(dir);
+    if (useKv) auth.setKv(new MemoryKv());
     await auth.init();
   });
 
@@ -44,13 +49,13 @@ describe('AuthStore', () => {
     expect(session.name).toBe('Alice_1');
     expect(session.sessionToken).toHaveLength(64);
     expect(session.ticket).toBeTruthy();
-    expect(auth.consumeTicket(session.ticket)?.name).toBe('Alice_1');
+    expect((await auth.consumeTicket(session.ticket))?.name).toBe('Alice_1');
 
     await expect(auth.signup('alice_1', 'otherpass')).rejects.toBeInstanceOf(AuthError);
 
     const again = await auth.login('Alice_1', 'password1');
     expect(again.userId).toBe(session.userId);
-    expect(auth.resolveSession(again.sessionToken)?.username).toBe('Alice_1');
+    expect((await auth.resolveSession(again.sessionToken))?.username).toBe('Alice_1');
   });
 
   it('rejects wrong password', async () => {
@@ -62,20 +67,21 @@ describe('AuthStore', () => {
 
   it('revokes sessions', async () => {
     const session = await auth.signup('Carol', 'secret12');
-    expect(auth.resolveSession(session.sessionToken)).toBeTruthy();
+    expect(await auth.resolveSession(session.sessionToken)).toBeTruthy();
     await auth.revokeSession(session.sessionToken);
-    expect(auth.resolveSession(session.sessionToken)).toBeNull();
+    expect(await auth.resolveSession(session.sessionToken)).toBeNull();
   });
 
   it('deletes an account, revokes sessions, and frees the username', async () => {
     const session = await auth.signup('DelUser', 'secret12');
-    expect(auth.resolveSession(session.sessionToken)?.id).toBe(session.userId);
-    expect(auth.consumeTicket(session.ticket)?.id).toBe(session.userId);
+    expect((await auth.resolveSession(session.sessionToken))?.id).toBe(session.userId);
+    expect((await auth.consumeTicket(session.ticket))?.id).toBe(session.userId);
 
     const deleted = await auth.deleteUser(session.userId);
     expect(deleted?.username).toBe('DelUser');
     expect(auth.getUser(session.userId)).toBeUndefined();
-    expect(auth.resolveSession(session.sessionToken)).toBeNull();
+    expect(await auth.resolveSession(session.sessionToken)).toBeNull();
+    expect(await auth.consumeTicket(session.ticket)).toBeNull();
     expect(auth.listUsers().some((u) => u.id === session.userId)).toBe(false);
 
     await expect(auth.login('DelUser', 'secret12')).rejects.toBeInstanceOf(AuthError);
@@ -90,10 +96,10 @@ describe('AuthStore', () => {
 
   it('issues tickets after authenticated session', async () => {
     const session = await auth.signup('Dave', 'secret12');
-    const user = auth.resolveSession(session.sessionToken)!;
-    const ticket = auth.issueTicket(user.id);
-    expect(auth.consumeTicket(ticket)?.id).toBe(user.id);
-    expect(auth.consumeTicket('nope')).toBeNull();
+    const user = (await auth.resolveSession(session.sessionToken))!;
+    const ticket = await auth.issueTicket(user.id);
+    expect((await auth.consumeTicket(ticket))?.id).toBe(user.id);
+    expect(await auth.consumeTicket('nope')).toBeNull();
   });
 
   it('persists users across restarts', async () => {
@@ -268,7 +274,7 @@ describe('AuthStore', () => {
         code: 'invalid_token',
       });
       await auth.resetPassword(token, 'newpass12');
-      expect(auth.resolveSession(s.sessionToken)).toBeNull();
+      expect(await auth.resolveSession(s.sessionToken)).toBeNull();
       await expect(auth.login('Ivy', 'secret12')).rejects.toMatchObject({
         code: 'invalid_credentials',
       });
@@ -388,5 +394,96 @@ describe('AuthStore', () => {
       await again.init();
       expect(again.getUserByInstagramId('ig-1')?.username).toBe('IgPersist');
     });
+  });
+});
+
+describe('AuthStore with KV-backed sessions', () => {
+  const DAY_S = 24 * 60 * 60;
+  let dir: string;
+  let kv: MemoryKv;
+  let auth: AuthStore;
+
+  beforeEach(async () => {
+    dir = path.join(os.tmpdir(), `felt-auth-kv-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    await mkdir(dir, { recursive: true });
+    kv = new MemoryKv();
+    auth = new AuthStore(dir);
+    auth.setKv(kv);
+    await auth.init();
+  });
+
+  afterEach(async () => {
+    vi.useRealTimers();
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it('stores sessions and tickets with TTLs and expires them', async () => {
+    const s = await auth.signup('TtlUser', 'secret12');
+    const sessTtl = await kv.ttl(AUTH_KV_KEYS.session(s.sessionToken));
+    const ticketTtl = await kv.ttl(AUTH_KV_KEYS.ticket(s.ticket));
+    expect(sessTtl).toBeGreaterThan(29 * DAY_S);
+    expect(sessTtl).toBeLessThanOrEqual(30 * DAY_S);
+    expect(ticketTtl).toBeGreaterThan(6 * DAY_S);
+    expect(ticketTtl).toBeLessThanOrEqual(7 * DAY_S);
+
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(Date.now() + 8 * DAY_S * 1000);
+    expect(await auth.consumeTicket(s.ticket)).toBeNull();
+    expect((await auth.resolveSession(s.sessionToken))?.id).toBe(s.userId);
+
+    vi.setSystemTime(Date.now() + 23 * DAY_S * 1000);
+    expect(await auth.resolveSession(s.sessionToken)).toBeNull();
+  });
+
+  it('revokes every session and ticket for a user on password reset', async () => {
+    const first = await auth.signup('Multi', 'secret12');
+    await auth.setEmail(first.userId, 'multi@example.com');
+    await auth.verifyEmail(await auth.createEmailToken(first.userId, 'verify_email', 'multi@example.com'));
+    const second = await auth.login('Multi', 'secret12');
+    expect(await kv.sMembers(AUTH_KV_KEYS.userSessions(first.userId))).toHaveLength(2);
+
+    const reset = await auth.createEmailToken(first.userId, 'reset_password', 'multi@example.com');
+    await auth.resetPassword(reset, 'newpass12');
+
+    for (const s of [first, second]) {
+      expect(await auth.resolveSession(s.sessionToken)).toBeNull();
+      expect(await auth.consumeTicket(s.ticket)).toBeNull();
+    }
+    expect(await kv.sMembers(AUTH_KV_KEYS.userSessions(first.userId))).toEqual([]);
+    expect(await kv.sMembers(AUTH_KV_KEYS.userTickets(first.userId))).toEqual([]);
+  });
+
+  it('keeps email tokens single-use and scoped to their purpose', async () => {
+    const s = await auth.signup('Mail', 'secret12');
+    await auth.setEmail(s.userId, 'mail@example.com');
+    const token = await auth.createEmailToken(s.userId, 'verify_email', 'mail@example.com');
+
+    await expect(auth.resetPassword(token, 'newpass12')).rejects.toMatchObject({
+      code: 'invalid_token',
+    });
+    const results = await Promise.allSettled([auth.verifyEmail(token), auth.verifyEmail(token)]);
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    expect(await kv.sMembers(AUTH_KV_KEYS.userEmailTokens(s.userId))).toEqual([]);
+  });
+
+  it('moves legacy file-backed sessions into the KV store once', async () => {
+    const legacy = new AuthStore(dir);
+    await legacy.init();
+    const s = await legacy.signup('Legacy', 'secret12');
+
+    const migratedKv = new MemoryKv();
+    const migrated = new AuthStore(dir);
+    migrated.setKv(migratedKv);
+    await migrated.init();
+
+    expect(await migratedKv.get(AUTH_KV_KEYS.migrated)).toBeTruthy();
+    expect((await migrated.resolveSession(s.sessionToken))?.id).toBe(s.userId);
+    expect((await migrated.consumeTicket(s.ticket))?.id).toBe(s.userId);
+    expect(await migratedKv.ttl(AUTH_KV_KEYS.session(s.sessionToken))).toBeGreaterThan(29 * DAY_S);
+
+    const afterMove = new AuthStore(dir);
+    await afterMove.init();
+    expect(await afterMove.resolveSession(s.sessionToken)).toBeNull();
+    expect(afterMove.getUser(s.userId)?.username).toBe('Legacy');
   });
 });

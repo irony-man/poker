@@ -1,5 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
+import type { WalletCurrency, WalletTrailPage } from '@poker/protocol';
 import { DataSource } from 'typeorm';
 import { AuthService } from '../auth/auth.service.js';
 import { dataSourceAsQueryable } from '../database/queryable.js';
@@ -92,5 +93,14 @@ export class WalletService implements WalletStore, OnModuleInit {
 
   refillInfo(userId: string) {
     return this.store.refillInfo(userId);
+  }
+
+  async listTrail(
+    userId: string,
+    currency: WalletCurrency,
+    opts: { before?: string | null; limit?: number } = {},
+  ): Promise<WalletTrailPage> {
+    await this.store.ensureOpeningEntry(userId, currency);
+    return this.store.listTrail(userId, currency, opts);
   }
 }

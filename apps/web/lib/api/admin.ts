@@ -1,6 +1,7 @@
-import type { ContestView } from '@poker/protocol';
+import type { ContestView, LegalDocs, LobbyNavConfig, WalletTrailPage } from '@poker/protocol';
 import type { PagesCopy } from '@/lib/pageCopy';
 import { apiBase, apiFetch, authedFetch, parseError, sessionHeaders } from './client';
+import { walletTrailQueryString, type WalletTrailQuery } from './wallet';
 import type {
   CopyTheme,
   HomeFeaturesByTheme,
@@ -206,6 +207,35 @@ export async function patchAdminBotChatStarters(
   }) as Promise<{ starters: string[] }>;
 }
 
+export async function fetchAdminLegal(sessionToken: string) {
+  return authedFetch('/api/admin/legal', { sessionToken }) as Promise<LegalDocs>;
+}
+
+export async function patchAdminLegal(sessionToken: string, docs: LegalDocs): Promise<LegalDocs> {
+  return authedFetch('/api/admin/legal', {
+    sessionToken,
+    method: 'PATCH',
+    body: docs,
+  }) as Promise<LegalDocs>;
+}
+
+export async function fetchAdminLobbyNav(sessionToken: string) {
+  return authedFetch('/api/admin/lobby-nav', { sessionToken }) as Promise<{
+    items: LobbyNavConfig;
+  }>;
+}
+
+export async function patchAdminLobbyNav(
+  sessionToken: string,
+  items: LobbyNavConfig,
+): Promise<{ items: LobbyNavConfig }> {
+  return authedFetch('/api/admin/lobby-nav', {
+    sessionToken,
+    method: 'PATCH',
+    body: { items },
+  }) as Promise<{ items: LobbyNavConfig }>;
+}
+
 export async function fetchAdminEconomy(sessionToken: string) {
   return authedFetch('/api/admin/economy', { sessionToken }) as Promise<SiteEconomy>;
 }
@@ -327,6 +357,17 @@ export async function resetAdminUserWhuffies(
     previousBalance: number;
     resetTo: number;
   }>;
+}
+
+export async function fetchAdminUserTrail(
+  sessionToken: string,
+  userId: string,
+  q: WalletTrailQuery,
+): Promise<WalletTrailPage> {
+  return authedFetch(
+    `/api/admin/users/${encodeURIComponent(userId)}/trail?${walletTrailQueryString(q)}`,
+    { sessionToken },
+  ) as Promise<WalletTrailPage>;
 }
 
 export async function deleteAdminUser(

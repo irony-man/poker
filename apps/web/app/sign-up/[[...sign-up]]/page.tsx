@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, Suspense, useState } from 'react';
-import type { AuthSession } from '@poker/protocol';
+import { LEGAL_DOC_PATHS, type AuthSession } from '@poker/protocol';
 import { GoogleAuthPanel } from '@/components/GoogleAuthPanel';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { resolvePublicImage } from '@/lib/assets';
@@ -16,6 +16,7 @@ import { signup } from '@/lib/api';
 import { authHref, safeReturnPath } from '@/lib/authRedirect';
 import { loadSavedAvatarId, saveAvatarId } from '@/lib/avatars';
 import { writeStoredSession } from '@/lib/session';
+import { LEGAL_MIN_AGE } from '@/lib/site';
 import { useSession } from '@/lib/store';
 import { usePageCopy } from '@/lib/usePageCopy';
 
@@ -135,6 +136,17 @@ function SignUpForm() {
             </Link>
           </p>
         </form>
+        <p className="mt-4 text-xs leading-relaxed text-muted">
+          By creating an account you confirm you are {LEGAL_MIN_AGE} or older and agree to the{' '}
+          <Link href={LEGAL_DOC_PATHS.terms} className="font-semibold text-sidebar hover:underline">
+            Terms &amp; Conditions
+          </Link>{' '}
+          and{' '}
+          <Link href={LEGAL_DOC_PATHS.privacy} className="font-semibold text-sidebar hover:underline">
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </LobbySplitCard>
     </div>
   );

@@ -12,6 +12,18 @@ export const SITE_DESCRIPTION =
 
 export const SITE_TITLE_DEFAULT = "Play free Texas Hold'em online | pokr.site";
 
+/**
+ * Values substituted into the admin-editable Privacy Policy and Terms (`{{operatorName}}` etc.).
+ * TODO: replace the placeholder defaults (or set NEXT_PUBLIC_LEGAL_* env vars) before launch.
+ */
+export const LEGAL_OPERATOR_NAME =
+  process.env.NEXT_PUBLIC_LEGAL_OPERATOR_NAME?.trim() || '[OPERATOR NAME]';
+export const LEGAL_CONTACT_EMAIL =
+  process.env.NEXT_PUBLIC_LEGAL_CONTACT_EMAIL?.trim() || '[CONTACT EMAIL]';
+export const LEGAL_JURISDICTION =
+  process.env.NEXT_PUBLIC_LEGAL_JURISDICTION?.trim() || '[JURISDICTION]';
+export const LEGAL_MIN_AGE = 18;
+
 /** Stable sitemap lastModified (avoids a new date on every request). */
 export const SITEMAP_LAST_MODIFIED = new Date('2026-03-01T00:00:00.000Z');
 

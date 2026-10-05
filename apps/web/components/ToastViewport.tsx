@@ -47,7 +47,9 @@ function ToastCard({ item, onDismiss }: { item: ToastItem; onDismiss: () => void
           >
             {item.title ?? style.labelText}
           </p>
-          <p className="mt-0.5 text-sm font-semibold leading-snug text-primary">{item.message}</p>
+          <p className="mt-0.5 text-sm font-semibold leading-snug text-primary [overflow-wrap:anywhere]">
+            {item.message}
+          </p>
         </div>
         <button
           type="button"

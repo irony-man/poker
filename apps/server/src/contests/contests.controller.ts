@@ -30,6 +30,7 @@ import {
   toPublicHandRows,
 } from '../history/history.service.js';
 import { ContestsService } from './contests.service.js';
+import { publicErrorMessage } from '../common/public-error.js';
 
 /** Hand numbers are counted from the oldest returned row, so keep this above any realistic contest length. */
 const CONTEST_HANDS_LIMIT = 500;
@@ -92,7 +93,7 @@ export class ContestsController {
 
       return { contest, inviteCount };
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create contest';
+      const message = publicErrorMessage(err, 'Failed to create contest');
       if (message.includes('already in use')) {
         throw new ConflictException({ error: message });
       }
@@ -169,7 +170,7 @@ export class ContestsController {
     const token = bearerToken(
       req.header('authorization') ?? req.header('Authorization') ?? undefined,
     );
-    const viewer = token ? this.auth.resolveSession(token) : null;
+    const viewer = token ? await this.auth.resolveSession(token) : null;
     const hands = viewer ? toOwnerHandRows(raw, viewer.id) : toPublicHandRows(raw);
     return { hands };
   }
@@ -183,7 +184,7 @@ export class ContestsController {
     const token = bearerToken(
       req.header('authorization') ?? req.header('Authorization') ?? undefined,
     );
-    const viewer = token ? this.auth.resolveSession(token) : null;
+    const viewer = token ? await this.auth.resolveSession(token) : null;
     const rows = viewer ? toOwnerHandRows(raw, viewer.id) : toPublicHandRows(raw);
     const total = rows.length;
     const hands = rows.map((row, i) => {

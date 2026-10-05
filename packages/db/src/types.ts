@@ -57,7 +57,7 @@ export interface ChatMessageRow {
   source: import('./entities.js').HandHistorySource;
 }
 
-export type { ChipLedgerReason } from './entities.js';
+export type { ChipLedgerReason, WhuffieLedgerReason } from './entities.js';
 
 export interface ChipLedgerRow {
   id: string;
@@ -65,6 +65,17 @@ export interface ChipLedgerRow {
   tableId: string;
   delta: number;
   reason: import('./entities.js').ChipLedgerReason;
+  balanceAfter: number | null;
+  createdAt: Date;
+}
+
+export interface WhuffieLedgerRow {
+  id: string;
+  userId: string;
+  tableId: string;
+  delta: number;
+  reason: import('./entities.js').WhuffieLedgerReason;
+  balanceAfter: number | null;
   createdAt: Date;
 }
 

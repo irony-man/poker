@@ -32,7 +32,8 @@ export type WalletReason =
   | 'cash_out'
   | 'top_up'
   | 'admin_credit'
-  | 'admin_reset';
+  | 'admin_reset'
+  | 'opening_balance';
 
 /** Reasons for Whuffie (rating) mutations — not spent at tables. */
 export type WhuffieReason =
@@ -40,11 +41,17 @@ export type WhuffieReason =
   | 'contest_prize'
   | 'offline_win'
   | 'admin_credit'
-  | 'admin_reset';
+  | 'admin_reset'
+  | 'opening_balance';
 
 export class WalletError extends Error {
   constructor(
-    public readonly code: 'insufficient' | 'not_eligible' | 'unknown_user' | 'invalid_amount',
+    public readonly code:
+      | 'insufficient'
+      | 'not_eligible'
+      | 'unknown_user'
+      | 'invalid_amount'
+      | 'invalid_cursor',
     message: string,
   ) {
     super(message);

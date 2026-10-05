@@ -8,10 +8,15 @@ import {
 import { GoogleAuthNotConfiguredError, InvalidGoogleTokenError } from './auth.google.js';
 import { InstagramAuthNotConfiguredError, InvalidInstagramAuthError } from './auth.instagram.js';
 import { AuthError } from './auth.types.js';
+import { databaseHttpError, isDatabaseError, publicErrorMessage } from '../common/public-error.js';
 
 /** Map auth-domain errors to HTTP responses (`{ error }` body like the rest of the API). */
 export function toAuthHttpError(err: unknown, fallback: string): HttpException {
   if (err instanceof HttpException) return err;
+  if (isDatabaseError(err)) {
+    publicErrorMessage(err, fallback);
+    return databaseHttpError(err);
+  }
   if (err instanceof GoogleAuthNotConfiguredError) {
     return new ServiceUnavailableException({ error: err.message });
   }
@@ -34,5 +39,5 @@ export function toAuthHttpError(err: unknown, fallback: string): HttpException {
         return new BadRequestException({ error: err.message });
     }
   }
-  return new BadRequestException({ error: err instanceof Error ? err.message : fallback });
+  return new BadRequestException({ error: publicErrorMessage(err, fallback) });
 }

@@ -8,6 +8,17 @@ import Link from 'next/link';
 import { authHref } from '@/lib/authRedirect';
 import { BOT_PERSONALITY_IDS, type BotPersonalityId } from '@poker/engine';
 import {
+  cloneLegalDocs,
+  cloneLobbyNavConfig,
+  DEFAULT_LEGAL_DOCS,
+  DEFAULT_LOBBY_NAV,
+  normalizeLobbyNavConfig,
+  type LegalDoc,
+  type LegalDocKey,
+  type LegalDocs,
+  type LobbyNavConfig,
+} from '@poker/protocol';
+import {
   creditAdminUser,
   creditAdminUserWhuffies,
   fetchAdminBotGroups,
@@ -21,10 +32,14 @@ import {
   fetchAdminAvatarPresets,
   fetchAdminCardThemes,
   fetchAdminBotChatStarters,
+  fetchAdminLegal,
+  fetchAdminLobbyNav,
   fetchAdminUsers,
   fetchMe,
   patchAdminAnnouncement,
   patchAdminBotChatStarters,
+  patchAdminLegal,
+  patchAdminLobbyNav,
   patchAdminBotGroups,
   patchAdminEconomy,
   patchAdminHomeFeatures,
@@ -37,6 +52,7 @@ import {
   requestAdminImageUploadUrl,
   resetAdminUserChips,
   resetAdminUserWhuffies,
+  fetchAdminUserTrail,
   deleteAdminUser,
   type AdminContestRow,
   type AdminRoomSettings,
@@ -100,6 +116,8 @@ import { SoundsSection } from './sections/Sounds';
 import { GamesSection } from './sections/Games';
 import { HandsSection } from './sections/Hands';
 import { ChatStartersSection } from './sections/ChatStarters';
+import { LegalSection } from './sections/Legal';
+import { SidebarSection } from './sections/Sidebar';
 import { CardPlaygroundSection, cloneThemesForAdmin } from './sections/CardPlayground';
 import { BOT_CHAT_STARTER_PROMPTS } from '@/lib/api/botChat';
 import { defaultCardFaceThemes, type CardFaceTheme } from '@/lib/cardFaceTheme';
@@ -177,6 +195,10 @@ function AdminPageInner() {
   const [botChatStarters, setBotChatStarters] = useState<string[]>(() => [
     ...BOT_CHAT_STARTER_PROMPTS,
   ]);
+  const [legalDocs, setLegalDocs] = useState<LegalDocs>(() => cloneLegalDocs(DEFAULT_LEGAL_DOCS));
+  const [lobbyNav, setLobbyNav] = useState<LobbyNavConfig>(() =>
+    cloneLobbyNavConfig(DEFAULT_LOBBY_NAV),
+  );
   const [economy, setEconomy] = useState<SiteEconomy>({
     startingChipGrant: 25000,
     refillThreshold: 1000,
@@ -277,7 +299,7 @@ function AdminPageInner() {
         return;
       }
       setIsAdmin(true);
-      const [overview, eco, games, userList, home, pages, rooms, bots, soundCfg, avatarCfg, cardCfg, chatStarters] =
+      const [overview, eco, games, userList, home, pages, rooms, bots, soundCfg, avatarCfg, cardCfg, chatStarters, legal, nav] =
         await Promise.all([
         fetchAdminOverview(token),
         fetchAdminEconomy(token),
@@ -291,8 +313,12 @@ function AdminPageInner() {
         fetchAdminAvatarPresets(token),
         fetchAdminCardThemes(token),
         fetchAdminBotChatStarters(token),
+        fetchAdminLegal(token),
+        fetchAdminLobbyNav(token),
       ]);
       setAnnouncement(overview.announcement);
+      setLegalDocs(cloneLegalDocs(legal));
+      setLobbyNav(normalizeLobbyNavConfig(nav.items));
       setBotChatStarters(
         chatStarters.starters?.length ? chatStarters.starters : [...BOT_CHAT_STARTER_PROMPTS],
       );
@@ -383,6 +409,52 @@ function AdminPageInner() {
       const next = await patchAdminBotChatStarters(token, cleaned);
       setBotChatStarters(next.starters);
       flash('Bot chat starters saved');
+    });
+  }
+
+  function updateLegalDoc(key: LegalDocKey, patch: Partial<LegalDoc>) {
+    setLegalDocs((docs) => ({ ...docs, [key]: { ...docs[key], ...patch } }));
+  }
+
+  async function resetLegalDoc(key: LegalDocKey) {
+    const ok = await confirm({
+      title: 'Reset to default text?',
+      description:
+        'This replaces the editor contents with the built-in text. Save afterward to persist.',
+      confirmLabel: 'Reset',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    setLegalDocs((docs) => ({ ...docs, [key]: { ...DEFAULT_LEGAL_DOCS[key] } }));
+  }
+
+  async function saveLegal(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token) return;
+    await withBusy('legal', async () => {
+      const next = await patchAdminLegal(token, legalDocs);
+      setLegalDocs(cloneLegalDocs(next));
+      flash('Legal pages saved');
+    });
+  }
+
+  function moveLobbyNavItem(index: number, delta: -1 | 1) {
+    setLobbyNav((items) => {
+      const target = index + delta;
+      if (target < 0 || target >= items.length) return items;
+      const next = [...items];
+      [next[index], next[target]] = [next[target]!, next[index]!];
+      return next;
+    });
+  }
+
+  async function saveLobbyNav(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token) return;
+    await withBusy('lobby-nav', async () => {
+      const next = await patchAdminLobbyNav(token, lobbyNav);
+      setLobbyNav(normalizeLobbyNavConfig(next.items));
+      flash('Sidebar saved');
     });
   }
 
@@ -1197,6 +1269,10 @@ function AdminPageInner() {
             onResetChips={(user) => void resetChips(user)}
             onResetWhuffies={(user) => void resetWhuffies(user)}
             onDeleteUser={(user) => void deleteUser(user)}
+            fetchUserTrail={(userId, currency, before) => {
+              if (!token) return Promise.reject(new Error('Sign in to view history'));
+              return fetchAdminUserTrail(token, userId, { currency, before });
+            }}
             selfUserId={selfUserId}
           />
         ) : null}
@@ -1251,6 +1327,31 @@ function AdminPageInner() {
               setBotChatStarters((list) => list.filter((_, i) => i !== index))
             }
             onSave={(e) => void saveBotChatStarters(e)}
+          />
+        ) : null}
+
+        {tab === 'sidebar' ? (
+          <SidebarSection
+            items={lobbyNav}
+            busy={busy}
+            busyKey={busyKey}
+            onMove={moveLobbyNavItem}
+            onToggle={(id, visible) =>
+              setLobbyNav((items) => items.map((i) => (i.id === id ? { ...i, visible } : i)))
+            }
+            onReset={() => setLobbyNav(cloneLobbyNavConfig(DEFAULT_LOBBY_NAV))}
+            onSave={(e) => void saveLobbyNav(e)}
+          />
+        ) : null}
+
+        {tab === 'legal' ? (
+          <LegalSection
+            docs={legalDocs}
+            busy={busy}
+            busyKey={busyKey}
+            onChange={updateLegalDoc}
+            onResetDoc={(key) => void resetLegalDoc(key)}
+            onSave={(e) => void saveLegal(e)}
           />
         ) : null}
 

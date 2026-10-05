@@ -12,6 +12,9 @@ import type {
   CopyTheme,
   HomeFeaturesByTheme,
   HomeLandingFeature,
+  LegalDocs,
+  LobbyNavConfig,
+  LobbyNavId,
   PagesByTheme,
   PagesCopy,
   RoomSettings,
@@ -157,5 +160,25 @@ export class SiteConfigService implements OnModuleInit {
 
   setBotChatStarters(starters: string[]): Promise<string[]> {
     return this.store.setBotChatStarters(starters);
+  }
+
+  getLegal(): LegalDocs {
+    return this.store.getLegal();
+  }
+
+  setLegal(next: LegalDocs): Promise<LegalDocs> {
+    return this.store.setLegal(next);
+  }
+
+  getLobbyNav(): LobbyNavConfig {
+    return this.store.getLobbyNav();
+  }
+
+  isLobbyNavVisible(id: LobbyNavId): boolean {
+    return this.store.isLobbyNavVisible(id);
+  }
+
+  setLobbyNav(next: LobbyNavConfig): Promise<LobbyNavConfig> {
+    return this.store.setLobbyNav(next);
   }
 }

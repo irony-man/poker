@@ -25,6 +25,7 @@ import type { User } from '../auth/auth.types.js';
 import { CurrentUser, SessionAuthGuard } from '../common/session-auth.guard.js';
 import { RoomsService } from '../rooms/rooms.service.js';
 import { FriendsService } from './friends.service.js';
+import { publicErrorMessage } from '../common/public-error.js';
 
 @Controller('api/friends')
 @UseGuards(SessionAuthGuard)
@@ -57,7 +58,7 @@ export class FriendsController {
       };
     } catch (err) {
       throw new BadRequestException({
-        error: err instanceof Error ? err.message : 'Failed',
+        error: publicErrorMessage(err, 'Failed'),
       });
     }
   }
@@ -88,7 +89,7 @@ export class FriendsController {
       return { request };
     } catch (err) {
       throw new BadRequestException({
-        error: err instanceof Error ? err.message : 'Failed',
+        error: publicErrorMessage(err, 'Failed'),
       });
     }
   }
@@ -165,7 +166,7 @@ export class FriendsController {
       };
     } catch (err) {
       throw new BadRequestException({
-        error: err instanceof Error ? err.message : 'Challenge failed',
+        error: publicErrorMessage(err, 'Challenge failed'),
       });
     }
   }
@@ -212,7 +213,7 @@ export class FriendsController {
       return { group };
     } catch (err) {
       throw new BadRequestException({
-        error: err instanceof Error ? err.message : 'Failed',
+        error: publicErrorMessage(err, 'Failed'),
       });
     }
   }
@@ -231,7 +232,7 @@ export class FriendsController {
       const group = await this.friends.updateGroup(user.id, id, parsed.data);
       return { group };
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed';
+      const message = publicErrorMessage(err, 'Failed');
       if (message === 'Group not found') {
         throw new NotFoundException({ error: message });
       }
@@ -245,7 +246,7 @@ export class FriendsController {
       await this.friends.deleteGroup(user.id, id);
       return { ok: true };
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed';
+      const message = publicErrorMessage(err, 'Failed');
       if (message === 'Group not found') {
         throw new NotFoundException({ error: message });
       }
@@ -313,7 +314,7 @@ export class FriendsController {
       };
     } catch (err) {
       if (err instanceof ForbiddenException) throw err;
-      const message = err instanceof Error ? err.message : 'Invite failed';
+      const message = publicErrorMessage(err, 'Invite failed');
       if (message === 'Group not found') {
         throw new NotFoundException({ error: message });
       }

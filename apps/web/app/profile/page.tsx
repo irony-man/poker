@@ -12,6 +12,7 @@ import { PendingCountBadge, useOnlineFriends } from '@/components/OnlineFriends'
 import { contestModeLabel } from '@/lib/contestLabels';
 import {
   fetchMe,
+  fetchWalletTrail,
   listMyContests,
   logout,
   requestAvatarUploadUrl,
@@ -41,7 +42,10 @@ import {
 } from '@/lib/keyboardShortcuts';
 import { isSfxMuted, setSfxMuted } from '@/lib/audio';
 import { clampUiTheme, saveUiTheme, type UiTheme } from '@/lib/uiTheme';
+import type { WalletCurrency } from '@poker/protocol';
 import { MoneyAmount } from '@/components/CurrencyIcon';
+import { WalletTrail } from '@/components/WalletTrail';
+import { parseWalletCurrency } from '@/lib/walletTrail';
 import { HandsMap } from '@/features/progress/HandsMap';
 import { PlayingCard } from '@/components/PlayingCard';
 import { DEFAULT_CARD_THEME_ID } from '@/lib/cardFaceTheme';
@@ -61,7 +65,14 @@ import { useSession } from '@/lib/store';
 import { useLobbySession } from '@/lib/useLobbySession';
 import { cn } from '@/lib/cn';
 
-type ProfileTab = 'overview' | 'hands' | 'theme' | 'shortcuts' | 'contests' | 'friends';
+type ProfileTab =
+  | 'overview'
+  | 'wallet'
+  | 'hands'
+  | 'theme'
+  | 'shortcuts'
+  | 'contests'
+  | 'friends';
 
 type ContestMatchRow = {
   contest: ContestView;
@@ -110,6 +121,7 @@ function ThemeRadioGroup<T extends string | number | boolean>({
 
 function parseProfileTab(raw: string | null): ProfileTab {
   if (
+    raw === 'wallet' ||
     raw === 'friends' ||
     raw === 'contests' ||
     raw === 'theme' ||
@@ -168,16 +180,28 @@ function ProfilePageInner() {
     setTab(parseProfileTab(searchParams.get('tab')));
   }, [searchParams]);
 
+  const walletCurrency = parseWalletCurrency(searchParams.get('currency'));
+
   const selectTab = useCallback(
-    (next: ProfileTab) => {
+    (next: ProfileTab, currency?: WalletCurrency) => {
       setTab(next);
       const params = new URLSearchParams(searchParams.toString());
       if (next === 'overview') params.delete('tab');
       else params.set('tab', next);
+      if (next !== 'wallet') params.delete('currency');
+      else if (currency) params.set('currency', currency);
       const q = params.toString();
       router.replace(q ? `/profile?${q}` : '/profile', { scroll: false });
     },
     [router, searchParams],
+  );
+
+  const fetchMyTrail = useCallback(
+    (currency: WalletCurrency, before: string | null) => {
+      if (!token) return Promise.resolve({ entries: [], nextCursor: null });
+      return fetchWalletTrail(token, { currency, before });
+    },
+    [token],
   );
 
   const load = useCallback(async () => {
@@ -582,16 +606,32 @@ function ProfilePageInner() {
                     {profile.username}
                   </h2>
                   <p className="mt-2.5 flex flex-wrap items-center gap-x-10 gap-y-1">
-                    <MoneyAmount
-                      amount={profile.chipBalance}
-                      showChips
-                      className="font-display text-xl font-bold tracking-tight text-sidebar sm:text-2xl"
-                    />
-                    <MoneyAmount
-                      amount={profile.whuffieBalance}
-                      showWhuffies
-                      className="font-display text-lg font-semibold tracking-tight text-sidebar/80 sm:text-xl"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => selectTab('wallet', 'chips')}
+                      className="rounded-md outline-none transition hover:opacity-80 focus-visible:ring-2 focus-visible:ring-sidebar/40"
+                      aria-label="View chip history"
+                      title="View chip history"
+                    >
+                      <MoneyAmount
+                        amount={profile.chipBalance}
+                        showChips
+                        className="font-display text-xl font-bold tracking-tight text-sidebar sm:text-2xl"
+                      />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => selectTab('wallet', 'whuffies')}
+                      className="rounded-md outline-none transition hover:opacity-80 focus-visible:ring-2 focus-visible:ring-sidebar/40"
+                      aria-label="View Whuffie history"
+                      title="View Whuffie history"
+                    >
+                      <MoneyAmount
+                        amount={profile.whuffieBalance}
+                        showWhuffies
+                        className="font-display text-lg font-semibold tracking-tight text-sidebar/80 sm:text-xl"
+                      />
+                    </button>
                   </p>
                   <p className="mt-3 font-prose-muted">
                     {joined ? (
@@ -656,6 +696,7 @@ function ProfilePageInner() {
               className="px-5 sm:px-7"
               options={[
                 { id: 'overview', label: 'Overview', panelId: 'profile-panel-overview' },
+                { id: 'wallet', label: 'Wallet', panelId: 'profile-panel-wallet' },
                 { id: 'hands', label: 'Hands', panelId: 'profile-panel-hands' },
                 { id: 'theme', label: 'Theme', panelId: 'profile-panel-theme' },
                 { id: 'shortcuts', label: 'Shortcuts', panelId: 'profile-panel-shortcuts' },
@@ -714,6 +755,25 @@ function ProfilePageInner() {
               <AccountRecoveryCard profile={profile} sessionToken={token} onProfile={setProfile} />
             ) : null}
             </>
+          ) : tab === 'wallet' ? (
+            <section
+              role="tabpanel"
+              id="profile-panel-wallet"
+              aria-labelledby="profile-tab-wallet"
+              className="surface-card-lg"
+            >
+              <h3 className="font-heading-section">Wallet history</h3>
+              <p className="mt-1.5 max-w-xl font-prose-muted">
+                Every change to your chips and Whuffies, newest first.
+              </p>
+              <WalletTrail
+                className="mt-5"
+                idPrefix="profile-wallet"
+                fetchPage={fetchMyTrail}
+                initialCurrency={walletCurrency}
+                onCurrencyChange={(currency) => selectTab('wallet', currency)}
+              />
+            </section>
           ) : tab === 'hands' ? (
             <section
               role="tabpanel"

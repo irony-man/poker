@@ -1,4 +1,6 @@
 import type { MetadataRoute } from 'next';
+import { isHrefHiddenByLobbyNav } from '@poker/protocol';
+import { fetchLobbyNav } from '@/lib/lobbyNavServer';
 import { SITE_URL, SITEMAP_LAST_MODIFIED } from '@/lib/site';
 
 const routes: {
@@ -16,13 +18,20 @@ const routes: {
   { path: '/snakes', changeFrequency: 'monthly', priority: 0.55 },
   { path: '/memory', changeFrequency: 'monthly', priority: 0.55 },
   { path: '/courtpiece', changeFrequency: 'monthly', priority: 0.55 },
+  { path: '/privacy', changeFrequency: 'yearly', priority: 0.3 },
+  { path: '/terms', changeFrequency: 'yearly', priority: 0.3 },
 ];
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  return routes.map(({ path, changeFrequency, priority }) => ({
-    url: path === '/' ? SITE_URL : `${SITE_URL}${path}`,
-    lastModified: SITEMAP_LAST_MODIFIED,
-    changeFrequency,
-    priority,
-  }));
+export const revalidate = 300;
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const lobbyNav = await fetchLobbyNav(revalidate);
+  return routes
+    .filter(({ path }) => !isHrefHiddenByLobbyNav(lobbyNav, path))
+    .map(({ path, changeFrequency, priority }) => ({
+      url: path === '/' ? SITE_URL : `${SITE_URL}${path}`,
+      lastModified: SITEMAP_LAST_MODIFIED,
+      changeFrequency,
+      priority,
+    }));
 }

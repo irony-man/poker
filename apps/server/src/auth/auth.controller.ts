@@ -21,7 +21,6 @@ import {
   VerifyEmailBodySchema,
 } from '@poker/protocol';
 import type { Request } from 'express';
-import { AuthError } from './auth.types.js';
 import { toAuthHttpError } from './auth.errors.js';
 import { GoogleIdTokenVerifier } from './auth.google.js';
 import { AuthService } from './auth.service.js';
@@ -83,12 +82,7 @@ export class AuthController {
     try {
       return await this.auth.login(parsed.data.username, parsed.data.password);
     } catch (err) {
-      if (err instanceof AuthError && err.code === 'invalid_credentials') {
-        throw new UnauthorizedException({ error: err.message });
-      }
-      throw new BadRequestException({
-        error: err instanceof Error ? err.message : 'Login failed',
-      });
+      throw toAuthHttpError(err, 'Login failed');
     }
   }
 
@@ -121,14 +115,14 @@ export class AuthController {
 
   @Get('auth/instagram/start')
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
-  instagramStart(
+  async instagramStart(
     @Req() req: Request,
     @Query('next') next?: string,
     @Query('intent') intentRaw?: string,
   ) {
     const intent = intentRaw === 'link' ? 'link' : 'login';
     const token = bearerToken(req.header('authorization') ?? req.header('Authorization') ?? undefined);
-    const sessionUser = token ? this.auth.resolveSession(token) : null;
+    const sessionUser = token ? await this.auth.resolveSession(token) : null;
     if (intent === 'link' && !sessionUser) {
       throw new UnauthorizedException({ error: 'Sign in required' });
     }
@@ -158,7 +152,7 @@ export class AuthController {
       const token = bearerToken(
         req.header('authorization') ?? req.header('Authorization') ?? undefined,
       );
-      const sessionUser = token ? this.auth.resolveSession(token) : null;
+      const sessionUser = token ? await this.auth.resolveSession(token) : null;
       const result = parsed.data.pendingToken
         ? await this.auth.instagramSignInFromPending(parsed.data.pendingToken, {
             username: parsed.data.username,
@@ -263,7 +257,7 @@ export class AuthController {
     if (!token) {
       throw new UnauthorizedException({ error: 'Sign in required' });
     }
-    const user = this.auth.resolveSession(token);
+    const user = await this.auth.resolveSession(token);
     if (!user) {
       throw new UnauthorizedException({ error: 'Session expired or invalid' });
     }

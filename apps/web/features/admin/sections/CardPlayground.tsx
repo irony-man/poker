@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/Button';
-import { FORM_LABEL_CLASS, TextField } from '@/components/ui/TextField';
+import { FORM_LABEL_CLASS, SelectField, TextField } from '@/components/ui/TextField';
 import { CardLayoutEditor } from '@/features/admin/CardLayoutEditor';
 import { parseCardPreviewCode, SUIT_LABEL } from '@/lib/cardCodeParse';
 import {
@@ -263,21 +263,17 @@ export function CardPlaygroundSection({
     >
       <form onSubmit={onSave} className="space-y-6">
         <div className="flex flex-wrap items-end gap-3">
-          <label className="min-w-[12rem] flex-1">
-            <span className={FORM_LABEL_CLASS}>Editing theme</span>
-            <select
-              className="mt-1 w-full rounded-lg border border-sidebar/15 bg-page px-3 py-2 text-sm"
+          <div className="min-w-[12rem] flex-1">
+            <SelectField
+              label="Editing theme"
               value={activeId}
-              onChange={(e) => setActiveId(e.target.value)}
-            >
-              {themes.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                  {t.isDefault ? ' (default)' : ''}
-                </option>
-              ))}
-            </select>
-          </label>
+              onChange={setActiveId}
+              options={themes.map((t) => ({
+                value: t.id,
+                label: `${t.name}${t.isDefault ? ' (default)' : ''}`,
+              }))}
+            />
+          </div>
           <TextField
             label="Theme name"
             value={activeTheme.name}
@@ -322,25 +318,16 @@ export function CardPlaygroundSection({
                   </button>
                 ))}
               </div>
-              <label className="block">
-                <span className={FORM_LABEL_CLASS}>Copy layout from</span>
-                <select
-                  className="mt-1 w-full rounded-lg border border-sidebar/15 bg-page px-3 py-2 text-sm"
-                  value=""
-                  onChange={(e) => {
-                    const v = e.target.value as SuitKey;
-                    if (v) copyLayoutFrom(v);
-                    e.target.value = '';
-                  }}
-                >
-                  <option value="">Choose another suit…</option>
-                  {SUIT_KEYS.filter((k) => k !== editSuit).map((key) => (
-                    <option key={key} value={key}>
-                      {SUIT_LABELS[key]}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <SelectField
+                label="Copy layout from"
+                value={null}
+                placeholder="Choose another suit…"
+                onChange={copyLayoutFrom}
+                options={SUIT_KEYS.filter((k) => k !== editSuit).map((key) => ({
+                  value: key,
+                  label: SUIT_LABELS[key],
+                }))}
+              />
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -381,14 +368,19 @@ export function CardPlaygroundSection({
                   <button
                     type="button"
                     onClick={() => setSelectedLayerId(layer.id)}
-                    className={`min-w-0 flex-1 rounded-lg px-3 py-2 text-left text-sm ${
+                    aria-pressed={selectedLayerId === layer.id}
+                    className={`min-w-0 flex-1 rounded-lg px-3 py-2 text-left text-sm transition ${
                       selectedLayerId === layer.id
-                        ? 'bg-sidebar/10 font-semibold text-sidebar'
-                        : 'hover:bg-sidebar/[0.04]'
+                        ? 'bg-sidebar font-semibold text-on-chrome shadow-[0_4px_12px_rgb(29_4_50/0.16)]'
+                        : 'hover:bg-sidebar/[0.06]'
                     }`}
                   >
                     <span className="block truncate">{layer.name}</span>
-                    <span className="block text-xs font-normal text-muted">
+                    <span
+                      className={`block text-xs font-normal ${
+                        selectedLayerId === layer.id ? 'text-on-chrome/80' : 'text-muted'
+                      }`}
+                    >
                       {layerKindLabel(layer.kind)}
                     </span>
                   </button>
@@ -477,21 +469,16 @@ export function CardPlaygroundSection({
                 title="Snap positions to grid"
                 hint="Drag and numeric X/Y/size snap to the grid on the artboard."
               />
-              <label className="block">
-                <span className={FORM_LABEL_CLASS}>Snap increment</span>
-                <select
-                  className="mt-1 w-full rounded-lg border border-sidebar/15 bg-page px-3 py-2 text-sm"
-                  value={snapStep}
-                  disabled={!snapEnabled}
-                  onChange={(e) => setSnapStep(Number(e.target.value) as CardFaceSnapStep)}
-                >
-                  {CARD_FACE_SNAP_STEPS.map((step) => (
-                    <option key={step} value={step}>
-                      {step * 100}% ({step === 0.02 ? 'fine' : step === 0.05 ? 'medium' : 'coarse'})
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <SelectField
+                label="Snap increment"
+                value={String(snapStep)}
+                disabled={!snapEnabled}
+                onChange={(v) => setSnapStep(Number(v) as CardFaceSnapStep)}
+                options={CARD_FACE_SNAP_STEPS.map((step) => ({
+                  value: String(step),
+                  label: `${step * 100}% (${step === 0.02 ? 'fine' : step === 0.05 ? 'medium' : 'coarse'})`,
+                }))}
+              />
             </div>
 
             <p className="pt-2 text-xs font-semibold uppercase tracking-wider text-muted">Suit colors</p>

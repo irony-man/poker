@@ -100,10 +100,6 @@ export class InstagramOAuth {
     return Boolean(this.appId && this.appSecret);
   }
 
-  configuredRedirectUri(): string | null {
-    return this.isConfigured() ? this.redirectUri : null;
-  }
-
   private requireSecret(): string {
     if (!this.isConfigured()) throw new InstagramAuthNotConfiguredError();
     return this.appSecret;

@@ -1,5 +1,3 @@
-import { fetchAuthConfig } from '@/lib/api/auth';
-
 /** Minimal typing for the Google Identity Services (GIS) script we use. */
 type GsiButtonConfig = {
   type?: 'standard' | 'icon';
@@ -70,9 +68,5 @@ export function loadGoogleIdentity(): Promise<GsiIdApi> {
   return scriptPromise;
 }
 
-/** Build-time `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, else the server's `GOOGLE_CLIENT_ID` via `/api/auth/config`. */
-export async function resolveGoogleClientId(): Promise<string | null> {
-  const baked = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim();
-  if (baked) return baked;
-  return (await fetchAuthConfig()).googleClientId;
-}
+/** Google OAuth web client id, baked at build time. Blank hides Google sign-in. */
+export const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim() || null;

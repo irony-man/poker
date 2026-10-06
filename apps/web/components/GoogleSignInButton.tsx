@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { loadGoogleIdentity, resolveGoogleClientId, type GsiButtonConfig } from '@/lib/googleIdentity';
+import { GOOGLE_CLIENT_ID, loadGoogleIdentity, type GsiButtonConfig } from '@/lib/googleIdentity';
 
 /**
  * Google's official "Sign in with Google" button (GIS). Renders nothing when no
  * Google client id is configured, so password auth keeps working on its own.
- * Icon layout draws the G ourselves and overlays an invisible GIS hit-target so
- * the logo stays visible (GIS icon iframes often render as a blank circle).
+ * Icon layout draws the G ourselves as a placeholder until the GIS icon renders on
+ * top. The GIS iframe must stay visible: Chrome ignores clicks on a hidden or
+ * covered Google button (clickjacking protection).
  */
 export function GoogleSignInButton({
   onCredential,
@@ -33,8 +34,7 @@ export function GoogleSignInButton({
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const clientId = await resolveGoogleClientId();
-      if (cancelled) return;
+      const clientId = GOOGLE_CLIENT_ID;
       if (!clientId) {
         setAvailable(false);
         handlers.current.onAvailable?.(false);
@@ -98,7 +98,7 @@ export function GoogleSignInButton({
         </span>
         <div
           ref={hostRef}
-          className="absolute inset-0 z-10 overflow-hidden rounded-full opacity-0"
+          className={`absolute inset-0 z-10 flex items-center justify-center ${available ? '' : 'opacity-0'}`}
           title="Continue with Google"
         />
       </div>
@@ -115,7 +115,7 @@ export function GoogleSignInButton({
   );
 }
 
-function GoogleG() {
+export function GoogleG() {
   return (
     <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
       <path

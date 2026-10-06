@@ -45,13 +45,8 @@ class ProfileViewModel @Inject constructor(
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
     init {
+        _uiState.update { it.copy(googleClientId = bakedGoogleClientId.ifBlank { null }) }
         refresh()
-        viewModelScope.launch {
-            val clientId = bakedGoogleClientId.ifBlank {
-                runCatching { api.authConfig().googleClientId }.getOrNull().orEmpty()
-            }
-            _uiState.update { it.copy(googleClientId = clientId.ifBlank { null }) }
-        }
     }
 
     fun onEmailDraftChange(value: String) =

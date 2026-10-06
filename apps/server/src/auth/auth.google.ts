@@ -38,11 +38,6 @@ export class GoogleIdTokenVerifier {
     return this.audiences.length > 0;
   }
 
-  /** Web client id clients should request ID tokens for (first `GOOGLE_CLIENT_ID` entry). */
-  webClientId(): string | null {
-    return this.audiences[0] ?? null;
-  }
-
   async verify(idToken: string): Promise<GoogleIdentity> {
     if (!this.isConfigured()) throw new GoogleAuthNotConfiguredError();
     let payload;

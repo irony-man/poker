@@ -22,7 +22,6 @@ import {
 } from '@poker/protocol';
 import type { Request } from 'express';
 import { toAuthHttpError } from './auth.errors.js';
-import { GoogleIdTokenVerifier } from './auth.google.js';
 import { AuthService } from './auth.service.js';
 import { bearerToken } from './bearer.js';
 
@@ -37,20 +36,7 @@ function safeNextPath(next: string | null | undefined): string {
 
 @Controller('api')
 export class AuthController {
-  constructor(
-    private readonly auth: AuthService,
-    private readonly google: GoogleIdTokenVerifier,
-  ) {}
-
-  /** Public auth options so clients don't need the Google client id baked in at build time. */
-  @Get('auth/config')
-  config() {
-    return {
-      googleClientId: this.google.webClientId(),
-      instagramEnabled: this.auth.instagramConfigured(),
-      instagramRedirectUri: this.auth.instagramRedirectUri(),
-    };
-  }
+  constructor(private readonly auth: AuthService) {}
 
   @Post('signup')
   @Throttle({ default: { limit: 10, ttl: 60_000 } })

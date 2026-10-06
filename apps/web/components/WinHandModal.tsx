@@ -12,10 +12,18 @@ import { cn } from '@/lib/cn';
 export type WinLine = {
   seat: number;
   name: string;
+  /** Net chips this hand (pot share minus own contribution); negative when lost. */
   amount: number;
   handName?: string;
+  /** Best five at showdown. */
   cards?: string[];
+  /** Known hole cards (revealed at showdown, or your own). */
+  holeCards?: string[] | null;
   isSelf?: boolean;
+  isWinner?: boolean;
+  userId?: string | null;
+  avatarId?: number | null;
+  avatarUrl?: string | null;
 };
 
 export type ReadyRosterPlayer = {
@@ -191,6 +199,108 @@ export function ReadyPlayersRoster({
   );
 }
 
+function NetAmount({ amount }: { amount: number }) {
+  const base = 'shrink-0 font-mono text-sm font-semibold sm:text-base';
+  if (amount > 0) {
+    return <MoneyAmount amount={amount} prefix="+" compact className={`${base} text-brass-dim`} />;
+  }
+  if (amount < 0) {
+    return <MoneyAmount amount={-amount} prefix="−" compact className={`${base} text-danger`} />;
+  }
+  return <span className={`${base} text-muted`}>0</span>;
+}
+
+const RESULT_CARD = '!h-auto min-w-0 !w-full !scale-100 aspect-[2/3]';
+
+/** One player's result: hole cards, best five at showdown, and net chips. */
+function HandResultRow({ line }: { line: WinLine }) {
+  const best = line.cards ?? [];
+  const bestSet = new Set(best);
+  const hole = line.holeCards?.length === 2 ? line.holeCards : null;
+  const handType = line.handName && line.handName !== 'Uncontested' ? line.handName : null;
+  const status = handType ?? (line.isWinner ? 'Won without showdown' : null);
+
+  return (
+    <li
+      className={cn(
+        'rounded-xl border px-3 py-2.5 sm:px-4 sm:py-3',
+        line.isWinner
+          ? 'border-brass-dim/40 bg-brass/10 shadow-[0_4px_16px_rgb(29_4_50_/_0.06)]'
+          : line.isSelf
+            ? 'border-sidebar/25 bg-page/50'
+            : 'border-sidebar/10 bg-page/30',
+      )}
+    >
+      <div className="flex items-center gap-2.5">
+        <PlayerAvatar
+          userId={line.userId}
+          avatarId={line.avatarId}
+          avatarUrl={line.avatarUrl}
+          size={32}
+          title={line.name}
+        />
+        <div className="min-w-0 flex-1">
+          <p className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate font-display text-sm font-bold text-sidebar sm:text-base">
+              {line.name}
+              {line.isSelf ? ' · you' : ''}
+            </span>
+            {line.isWinner ? (
+              <span className="shrink-0 rounded-full bg-brass/25 px-1.5 py-0.5 font-display text-[10px] font-bold uppercase tracking-wider text-brass-dim">
+                Winner
+              </span>
+            ) : null}
+          </p>
+          {status ? (
+            <p className="truncate font-display text-[11px] font-semibold uppercase tracking-wider text-sidebar/70">
+              {status}
+            </p>
+          ) : null}
+        </div>
+        <span title={line.amount < 0 ? 'Chips lost this hand' : 'Chips won this hand'}>
+          <NetAmount amount={line.amount} />
+        </span>
+      </div>
+
+      <div className="mt-2 grid w-full grid-cols-[1fr_1fr_0.4fr_1fr_1fr_1fr_1fr_1fr] items-end gap-x-1 gap-y-1 sm:gap-x-1.5">
+        <span className="col-span-2 text-[10px] font-display font-semibold uppercase tracking-wider text-muted">
+          Hole
+        </span>
+        <span className="col-span-5 col-start-4 text-[10px] font-display font-semibold uppercase tracking-wider text-muted">
+          {best.length > 0 ? 'Best hand' : ''}
+        </span>
+        {hole
+          ? hole.map((code) => (
+              <PlayingCard
+                key={`hole-${code}`}
+                code={code}
+                size="board"
+                highlight={line.isWinner && bestSet.has(code)}
+                className={RESULT_CARD}
+              />
+            ))
+          : [0, 1].map((i) => (
+              <PlayingCard key={`back-${i}`} faceDown size="board" className={RESULT_CARD} />
+            ))}
+        {best.length > 0 ? (
+          <>
+            <span aria-hidden />
+            {best.map((code) => (
+              <PlayingCard
+                key={`best-${code}`}
+                code={code}
+                size="board"
+                highlight={line.isWinner}
+                className={RESULT_CARD}
+              />
+            ))}
+          </>
+        ) : null}
+      </div>
+    </li>
+  );
+}
+
 export function WinHandModal({
   winners,
   youWon,
@@ -357,60 +467,11 @@ export function WinHandModal({
           </div>
 
           <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-3 py-3 sm:space-y-4 sm:px-5 sm:py-5">
-            {winners.map((w, i) => {
-              const cards = w.cards?.length ? w.cards : [];
-              const type =
-                w.handName && w.handName !== 'Uncontested' ? w.handName : null;
-              return (
-                <div
-                  key={`${w.seat}-${i}`}
-                  className={`rounded-xl border px-3 py-3 sm:px-4 sm:py-4 ${
-                    w.isSelf
-                      ? 'border-sidebar/25 bg-page/50 shadow-[0_4px_16px_rgb(29_4_50_/_0.05)]'
-                      : 'border-sidebar/10 bg-page/30'
-                  }`}
-                >
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="truncate font-display text-base font-bold text-sidebar sm:text-lg">
-                      {w.name}
-                      {w.isSelf ? ' · you' : ''}
-                    </span>
-                    <span title="Chips won from others">
-                      <MoneyAmount
-                        amount={w.amount}
-                        prefix="+"
-                        compact
-                        className="shrink-0 font-mono text-sm font-semibold text-brass-dim sm:text-base"
-                      />
-                    </span>
-                  </div>
-
-                  {type && (
-                    <p className="mt-1 text-[11px] font-display font-semibold uppercase tracking-wider text-sidebar/70 sm:mt-1.5 sm:text-sm">
-                      {type}
-                    </p>
-                  )}
-
-                  {cards.length > 0 ? (
-                    <div className="mt-2.5 flex w-full flex-nowrap gap-1 sm:mt-3 sm:gap-1.5">
-                      {cards.map((code) => (
-                        <PlayingCard
-                          key={`${w.seat}-${code}`}
-                          code={code}
-                          highlight
-                          size="board"
-                          className="!h-auto min-w-0 !w-full flex-1 !scale-100 aspect-[2/3]"
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-center text-xs text-muted">
-                      Won without showdown
-                    </p>
-                  )}
-                </div>
-              );
-            })}
+            <ul className="space-y-2 sm:space-y-2.5" aria-label="Hand results">
+              {winners.map((w) => (
+                <HandResultRow key={w.seat} line={w} />
+              ))}
+            </ul>
           </div>
 
           <div className="shrink-0 border-t border-sidebar/10 bg-page/25 px-3 py-2.5 sm:px-5 sm:py-3">

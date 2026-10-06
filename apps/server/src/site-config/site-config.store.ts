@@ -10,6 +10,7 @@ import {
   cloneLegalDocs,
   cloneLobbyNavConfig,
   clonePagesCopy,
+  cloneUiLooks,
   defaultSiteConfig,
   isLobbyNavVisible,
   normalizeBotGroupLabels,
@@ -23,6 +24,7 @@ import {
   normalizeSiteConfig,
   normalizeBotChatStarters,
   normalizeTableSounds,
+  normalizeUiLooks,
   resolveBotNamePool,
   resolveBotSeatingConfig,
   type BotGroup,
@@ -41,6 +43,7 @@ import {
   type SiteAnnouncement,
   type SiteConfigPayload,
   type TableSoundsConfig,
+  type UiLooksConfig,
 } from './site-config.types.js';
 
 /** Durable site settings — Postgres `site_config` when pool is set, else data/site-config.json. */
@@ -166,6 +169,7 @@ export class SiteConfigStore {
       botChatStarters: [...this.cache.botChatStarters],
       legal: cloneLegalDocs(this.cache.legal),
       lobbyNav: cloneLobbyNavConfig(this.cache.lobbyNav),
+      uiLooks: cloneUiLooks(this.cache.uiLooks),
     };
   }
 
@@ -272,6 +276,10 @@ export class SiteConfigStore {
 
   isLobbyNavVisible(id: LobbyNavId): boolean {
     return isLobbyNavVisible(this.cache.lobbyNav, id);
+  }
+
+  getUiLooks(): UiLooksConfig {
+    return cloneUiLooks(this.cache.uiLooks);
   }
 
   /** Display-name pool for seating; uses default group when id is missing. */
@@ -413,6 +421,16 @@ export class SiteConfigStore {
     };
     await this.serialized(() => this.persist());
     return this.getLegal();
+  }
+
+  async setUiLooks(next: UiLooksConfig): Promise<UiLooksConfig> {
+    await this.ensureLoaded();
+    this.cache = {
+      ...this.cache,
+      uiLooks: normalizeUiLooks(next),
+    };
+    await this.serialized(() => this.persist());
+    return this.getUiLooks();
   }
 
   async setLobbyNav(next: LobbyNavConfig): Promise<LobbyNavConfig> {

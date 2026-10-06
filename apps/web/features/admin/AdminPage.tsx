@@ -10,13 +10,17 @@ import { BOT_PERSONALITY_IDS, type BotPersonalityId } from '@poker/engine';
 import {
   cloneLegalDocs,
   cloneLobbyNavConfig,
+  cloneUiLooks,
   DEFAULT_LEGAL_DOCS,
   DEFAULT_LOBBY_NAV,
+  DEFAULT_UI_LOOKS,
   normalizeLobbyNavConfig,
+  normalizeUiLooks,
   type LegalDoc,
   type LegalDocKey,
   type LegalDocs,
   type LobbyNavConfig,
+  type UiLooksConfig,
 } from '@poker/protocol';
 import {
   creditAdminUser,
@@ -34,12 +38,14 @@ import {
   fetchAdminBotChatStarters,
   fetchAdminLegal,
   fetchAdminLobbyNav,
+  fetchAdminUiLooks,
   fetchAdminUsers,
   fetchMe,
   patchAdminAnnouncement,
   patchAdminBotChatStarters,
   patchAdminLegal,
   patchAdminLobbyNav,
+  patchAdminUiLooks,
   patchAdminBotGroups,
   patchAdminEconomy,
   patchAdminHomeFeatures,
@@ -118,6 +124,7 @@ import { HandsSection } from './sections/Hands';
 import { ChatStartersSection } from './sections/ChatStarters';
 import { LegalSection } from './sections/Legal';
 import { SidebarSection } from './sections/Sidebar';
+import { AppLooksSection } from './sections/AppLooks';
 import { CardPlaygroundSection, cloneThemesForAdmin } from './sections/CardPlayground';
 import { BOT_CHAT_STARTER_PROMPTS } from '@/lib/api/botChat';
 import { defaultCardFaceThemes, type CardFaceTheme } from '@/lib/cardFaceTheme';
@@ -199,6 +206,7 @@ function AdminPageInner() {
   const [lobbyNav, setLobbyNav] = useState<LobbyNavConfig>(() =>
     cloneLobbyNavConfig(DEFAULT_LOBBY_NAV),
   );
+  const [uiLooks, setUiLooks] = useState<UiLooksConfig>(() => cloneUiLooks(DEFAULT_UI_LOOKS));
   const [economy, setEconomy] = useState<SiteEconomy>({
     startingChipGrant: 25000,
     refillThreshold: 1000,
@@ -299,7 +307,7 @@ function AdminPageInner() {
         return;
       }
       setIsAdmin(true);
-      const [overview, eco, games, userList, home, pages, rooms, bots, soundCfg, avatarCfg, cardCfg, chatStarters, legal, nav] =
+      const [overview, eco, games, userList, home, pages, rooms, bots, soundCfg, avatarCfg, cardCfg, chatStarters, legal, nav, looks] =
         await Promise.all([
         fetchAdminOverview(token),
         fetchAdminEconomy(token),
@@ -315,10 +323,12 @@ function AdminPageInner() {
         fetchAdminBotChatStarters(token),
         fetchAdminLegal(token),
         fetchAdminLobbyNav(token),
+        fetchAdminUiLooks(token),
       ]);
       setAnnouncement(overview.announcement);
       setLegalDocs(cloneLegalDocs(legal));
       setLobbyNav(normalizeLobbyNavConfig(nav.items));
+      setUiLooks(normalizeUiLooks(looks));
       setBotChatStarters(
         chatStarters.starters?.length ? chatStarters.starters : [...BOT_CHAT_STARTER_PROMPTS],
       );
@@ -455,6 +465,26 @@ function AdminPageInner() {
       const next = await patchAdminLobbyNav(token, lobbyNav);
       setLobbyNav(normalizeLobbyNavConfig(next.items));
       flash('Sidebar saved');
+    });
+  }
+
+  function toggleUiLook(id: UiLooksConfig['defaultLook'], visible: boolean) {
+    setUiLooks((cur) => {
+      const nextVisible = visible
+        ? [...cur.visible, id]
+        : cur.visible.filter((v) => v !== id);
+      if (nextVisible.length === 0) return cur;
+      return normalizeUiLooks({ visible: nextVisible, defaultLook: cur.defaultLook });
+    });
+  }
+
+  async function saveUiLooks(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token) return;
+    await withBusy('ui-looks', async () => {
+      const next = await patchAdminUiLooks(token, uiLooks);
+      setUiLooks(normalizeUiLooks(next));
+      flash('App looks saved');
     });
   }
 
@@ -1206,12 +1236,12 @@ function AdminPageInner() {
   if (!signedIn || !token) {
     return (
       <AdminShell tab={tab} onSelectTab={selectTab} stats={null} economy={null}>
-        <Section title="Sign in required" description="Admin is limited to allowlisted operators.">
+        <Section title="Sign in required" description="Admin is limited to operators.">
           <p className="text-sm text-muted">
             <Link href={authHref('sign-in', '/admin')} className="font-semibold text-sidebar underline-offset-2 hover:underline">
               Sign in
             </Link>{' '}
-            with an allowlisted admin account.
+            with an admin account.
           </p>
         </Section>
       </AdminShell>
@@ -1221,10 +1251,10 @@ function AdminPageInner() {
   if (!isAdmin) {
     return (
       <AdminShell tab={tab} onSelectTab={selectTab} stats={null} economy={null}>
-        <Section title="No access" description="This account is not on the admin allowlist.">
+        <Section title="No access" description="This account is not an admin.">
           <p className="text-sm text-muted">
-            Ask an operator to add your username to{' '}
-            <code className="rounded bg-sidebar/5 px-1.5 py-0.5 text-xs">ADMIN_USERNAMES</code>.
+            Ask an operator to set{' '}
+            <code className="rounded bg-sidebar/5 px-1.5 py-0.5 text-xs">is_admin</code> on your account.
           </p>
         </Section>
       </AdminShell>
@@ -1269,9 +1299,9 @@ function AdminPageInner() {
             onResetChips={(user) => void resetChips(user)}
             onResetWhuffies={(user) => void resetWhuffies(user)}
             onDeleteUser={(user) => void deleteUser(user)}
-            fetchUserTrail={(userId, currency, before) => {
+            fetchUserTrail={(userId, currency, before, limit) => {
               if (!token) return Promise.reject(new Error('Sign in to view history'));
-              return fetchAdminUserTrail(token, userId, { currency, before });
+              return fetchAdminUserTrail(token, userId, { currency, before, limit });
             }}
             selfUserId={selfUserId}
           />
@@ -1341,6 +1371,17 @@ function AdminPageInner() {
             }
             onReset={() => setLobbyNav(cloneLobbyNavConfig(DEFAULT_LOBBY_NAV))}
             onSave={(e) => void saveLobbyNav(e)}
+          />
+        ) : null}
+
+        {tab === 'looks' ? (
+          <AppLooksSection
+            config={uiLooks}
+            busy={busy}
+            busyKey={busyKey}
+            onToggle={toggleUiLook}
+            onDefault={(id) => setUiLooks((cur) => ({ ...cur, defaultLook: id }))}
+            onSave={(e) => void saveUiLooks(e)}
           />
         ) : null}
 

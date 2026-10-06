@@ -5,10 +5,10 @@ import {
   useState,
   type InputHTMLAttributes,
   type ReactNode,
-  type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from 'react';
 import { cn } from '@/lib/cn';
+import { Select, type SelectProps } from './Select';
 
 /* Paper fill + fixed dark ink — do not use text-primary (Glass page ground is light-on-dusk). */
 export const FORM_FIELD_CLASS =
@@ -136,23 +136,20 @@ export function TextAreaField({
   );
 }
 
-export function SelectField({
+export function SelectField<T extends string>({
   label,
   help,
-  className = '',
   id,
-  children,
   ...props
-}: SelectHTMLAttributes<HTMLSelectElement> & {
+}: SelectProps<T> & {
   label?: ReactNode;
   help?: ReactNode;
-  children: ReactNode;
 }) {
+  const generatedId = useId();
+  const fieldId = id ?? generatedId;
   return (
-    <FieldWrap id={id} label={label} help={help} variant="form">
-      <select id={id} className={fieldClass('form', className)} {...props}>
-        {children}
-      </select>
+    <FieldWrap id={fieldId} label={label} help={help} variant="form">
+      <Select id={fieldId} {...props} />
     </FieldWrap>
   );
 }

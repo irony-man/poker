@@ -63,7 +63,7 @@ export function FriendToggleRow({
       aria-label={name}
       className={`flex w-full items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left transition disabled:opacity-45 ${
         selected
-          ? 'border-sidebar/40 bg-sidebar/[0.08] text-primary'
+          ? 'border-sidebar bg-sidebar text-on-chrome shadow-[0_4px_12px_rgb(29_4_50/0.16)]'
           : 'border-transparent bg-raised/70 text-primary hover:border-sidebar/15 hover:bg-raised'
       }`}
     >
@@ -71,7 +71,7 @@ export function FriendToggleRow({
         <span
           className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-[10px] font-bold ${
             selected
-              ? 'border-sidebar bg-sidebar text-on-chrome'
+              ? 'border-on-chrome bg-on-chrome text-sidebar'
               : 'border-sidebar/25 bg-transparent text-transparent'
           }`}
           aria-hidden
@@ -99,7 +99,11 @@ export function FriendToggleRow({
       </span>
       <span className="min-w-0 flex-1 truncate text-sm font-medium">{friend.name}</span>
       {showOnline && friend.online ? (
-        <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-emerald-800">
+        <span
+          className={`shrink-0 text-[11px] font-semibold uppercase tracking-wider ${
+            selected ? 'text-emerald-300' : 'text-emerald-800'
+          }`}
+        >
           Online
         </span>
       ) : null}

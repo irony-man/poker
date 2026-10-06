@@ -20,6 +20,8 @@ import {
   MAX_LEGAL_TITLE_CHARS,
   SoundUploadUrlBodySchema,
   SiteImageUploadUrlBodySchema,
+  UI_LOOK_IDS,
+  UiThemeSchema,
   type LobbyNavId,
 } from '@poker/protocol';
 import { z } from 'zod';
@@ -79,6 +81,15 @@ const LobbyNavBody = z.object({
       message: 'Duplicate sidebar item',
     }),
 });
+
+const UiLooksBody = z
+  .object({
+    visible: z.array(UiThemeSchema).min(1).max(UI_LOOK_IDS.length),
+    defaultLook: UiThemeSchema,
+  })
+  .refine((b) => b.visible.includes(b.defaultLook), {
+    message: 'The default look must be visible',
+  });
 
 const EconomyBody = z.object({
   startingChipGrant: z.number().int().positive().optional(),
@@ -352,6 +363,20 @@ export class AdminController {
       throw new BadRequestException({ error: parsed.error.message });
     }
     return this.site.setLegal(parsed.data);
+  }
+
+  @Get('ui-looks')
+  getUiLooks() {
+    return this.site.getUiLooks();
+  }
+
+  @Patch('ui-looks')
+  async patchUiLooks(@Body() body: unknown) {
+    const parsed = UiLooksBody.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({ error: parsed.error.message });
+    }
+    return this.site.setUiLooks(parsed.data);
   }
 
   @Get('lobby-nav')

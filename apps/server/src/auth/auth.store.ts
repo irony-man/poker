@@ -3,6 +3,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import * as argon2 from 'argon2';
 import { nanoid } from 'nanoid';
+import { USERNAME_MAX, UsernameSchema } from '@poker/protocol';
 import type { Queryable } from '../database/queryable.js';
 import type { KvStore } from '../kv/kv.store.js';
 import { avatarIdFromUserId, clampAvatarId } from '../avatars.js';
@@ -10,7 +11,7 @@ import { clampTableColorId } from '../table-colors.js';
 import { clampUserKeyboardShortcuts } from '../keyboard-shortcuts.js';
 import { clampSfxMuted } from '../sfx-muted.js';
 import { clampTableLayout } from '../table-layout.js';
-import { clampUiTheme } from '../ui-theme.js';
+import { clampUiTheme, type UiTheme } from '../ui-theme.js';
 import { DEFAULT_CARD_THEME_ID } from '../card-face-theme.js';
 import {
   defaultEconomy,
@@ -86,7 +87,8 @@ function toEpochMs(value: Date | string): number {
   return value instanceof Date ? value.getTime() : new Date(value).getTime();
 }
 
-const USERNAME_MAX = 24;
+/** Former `ADMIN_USERNAMES` allowlist, promoted once at boot while no admin exists. */
+const LEGACY_ADMIN_USERNAMES = ['shivam', 'slick'];
 
 function hashEmailToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
@@ -115,6 +117,19 @@ export function usernameBaseFromGoogle(identity: Pick<GoogleIdentity, 'name' | '
   return base.slice(0, USERNAME_MAX - 4);
 }
 
+/** Turn an Instagram handle into something `UsernameSchema` accepts. */
+export function usernameBaseFromInstagram(handle: string): string {
+  let base = handle
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._]/g, '')
+    .replace(/\.{2,}/g, '.')
+    .replace(/^\.+|\.+$/g, '');
+  if (base.startsWith('bot')) base = `p_${base}`;
+  if (!base) base = 'player';
+  return base.slice(0, USERNAME_MAX - 4).replace(/\.+$/, '');
+}
+
 function toPublic(u: User): PublicUser {
   return {
     id: u.id,
@@ -140,7 +155,10 @@ function normalizeUser(
     email: typeof u.email === 'string' && u.email.trim() ? normalizeEmail(u.email) : null,
     emailVerified: u.emailVerified === true && typeof u.email === 'string' && !!u.email.trim(),
     googleSub: typeof u.googleSub === 'string' && u.googleSub ? u.googleSub : null,
+    googleEmail: typeof u.googleEmail === 'string' && u.googleEmail ? u.googleEmail : null,
     instagramId: typeof u.instagramId === 'string' && u.instagramId ? u.instagramId : null,
+    instagramUsername:
+      typeof u.instagramUsername === 'string' && u.instagramUsername ? u.instagramUsername : null,
     avatarId: clampAvatarId(u.avatarId),
     avatarUrl: u.avatarUrl ?? null,
     tableColorId: clampTableColorId(u.tableColorId),
@@ -155,6 +173,7 @@ function normalizeUser(
     chipBalance: normalizeNonNegInt(u.chipBalance, fallbackChips),
     whuffieBalance: normalizeNonNegInt(u.whuffieBalance, fallbackWhuffies),
     handsPlayed: normalizeNonNegInt(u.handsPlayed, 0),
+    isAdmin: u.isAdmin === true,
   };
 }
 
@@ -185,6 +204,7 @@ export class AuthStore {
   private lastExpiredCleanupAt = 0;
   private static readonly EXPIRED_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
   private economyProvider: EconomyProvider = defaultEconomy;
+  private defaultUiThemeProvider: () => UiTheme = () => 'v1';
 
   constructor(dataDir = path.join(process.cwd(), 'data')) {
     this.filePath = path.join(dataDir, 'users.json');
@@ -201,6 +221,10 @@ export class AuthStore {
 
   setEconomyProvider(provider: EconomyProvider): void {
     this.economyProvider = provider;
+  }
+
+  setDefaultUiThemeProvider(provider: () => UiTheme): void {
+    this.defaultUiThemeProvider = provider;
   }
 
   private startingGrant(): number {
@@ -359,6 +383,20 @@ export class AuthStore {
     } catch {
       this.clearMemory();
     }
+    await this.backfillLegacyAdminsFile();
+  }
+
+  private async backfillLegacyAdminsFile(): Promise<void> {
+    const users = [...this.users.values()];
+    if (users.some((u) => u.isAdmin)) return;
+    let changed = false;
+    for (const u of users) {
+      if (LEGACY_ADMIN_USERNAMES.includes(u.username.toLowerCase())) {
+        u.isAdmin = true;
+        changed = true;
+      }
+    }
+    if (changed) await this.persistFile();
   }
 
   private clearMemory(): void {
@@ -399,6 +437,17 @@ export class AuthStore {
     );
     await this.pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub text`);
     await this.pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS instagram_id text`);
+    await this.pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS google_email text`);
+    await this.pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS instagram_username text`);
+    await this.pool.query(
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin boolean NOT NULL DEFAULT false`,
+    );
+    await this.pool.query(
+      `UPDATE users SET is_admin = true
+       WHERE username_lower = ANY($1)
+         AND NOT EXISTS (SELECT 1 FROM users WHERE is_admin)`,
+      [LEGACY_ADMIN_USERNAMES],
+    );
     await this.pool.query(
       `CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_verified_uidx ON users (email_lower)
        WHERE email_lower IS NOT NULL AND email_verified`,
@@ -425,7 +474,7 @@ export class AuthStore {
       `CREATE INDEX IF NOT EXISTS auth_email_tokens_user_idx ON auth_email_tokens (user_id)`,
     );
     const result = await this.pool.query(
-      `SELECT id, name, username, password_hash, email, email_verified, google_sub, instagram_id, avatar_id, avatar_url, table_color_id, card_theme_id, ui_theme, table_layout, sfx_muted, keyboard_shortcuts, chip_balance, whuffie_balance, hands_played, created_at
+      `SELECT id, name, username, password_hash, email, email_verified, google_sub, google_email, instagram_id, instagram_username, avatar_id, avatar_url, table_color_id, card_theme_id, ui_theme, table_layout, sfx_muted, keyboard_shortcuts, chip_balance, whuffie_balance, hands_played, is_admin, created_at
        FROM users
        WHERE username IS NOT NULL AND (password_hash IS NOT NULL OR google_sub IS NOT NULL OR instagram_id IS NOT NULL)`,
     );
@@ -439,7 +488,9 @@ export class AuthStore {
       email?: string | null;
       email_verified?: boolean | null;
       google_sub?: string | null;
+      google_email?: string | null;
       instagram_id?: string | null;
+      instagram_username?: string | null;
       avatar_id: number;
       avatar_url?: string | null;
       table_color_id?: number | null;
@@ -451,6 +502,7 @@ export class AuthStore {
       chip_balance?: number | null;
       whuffie_balance?: number | null;
       hands_played?: number | null;
+      is_admin?: boolean | null;
       created_at: Date | string;
     }[]) {
       const createdAt =
@@ -465,7 +517,9 @@ export class AuthStore {
         email: row.email?.trim() ? normalizeEmail(row.email) : null,
         emailVerified: row.email_verified === true && !!row.email?.trim(),
         googleSub: row.google_sub || null,
+        googleEmail: row.google_email || null,
         instagramId: row.instagram_id || null,
+        instagramUsername: row.instagram_username || null,
         avatarId: clampAvatarId(row.avatar_id ?? 0),
         avatarUrl: row.avatar_url ?? null,
         tableColorId: clampTableColorId(row.table_color_id ?? 0),
@@ -480,6 +534,7 @@ export class AuthStore {
         chipBalance: normalizeNonNegInt(row.chip_balance, STARTING_CHIP_GRANT),
         whuffieBalance: normalizeNonNegInt(row.whuffie_balance, STARTING_WHUFFIE_GRANT),
         handsPlayed: normalizeNonNegInt(row.hands_played, 0),
+        isAdmin: row.is_admin === true,
         createdAt,
       };
       this.indexUser(user);
@@ -612,8 +667,8 @@ export class AuthStore {
   private async persistUserToPostgres(user: User): Promise<void> {
     if (!this.pool) return;
     await this.pool.query(
-      `INSERT INTO users (id, name, username, username_lower, password_hash, avatar_id, avatar_url, table_color_id, card_theme_id, ui_theme, table_layout, sfx_muted, keyboard_shortcuts, chip_balance, whuffie_balance, hands_played, created_at, email, email_lower, email_verified, google_sub, instagram_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15, $16, to_timestamp($17 / 1000.0), $18, $19, $20, $21, $22)
+      `INSERT INTO users (id, name, username, username_lower, password_hash, avatar_id, avatar_url, table_color_id, card_theme_id, ui_theme, table_layout, sfx_muted, keyboard_shortcuts, chip_balance, whuffie_balance, hands_played, created_at, email, email_lower, email_verified, google_sub, instagram_id, google_email, instagram_username)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15, $16, to_timestamp($17 / 1000.0), $18, $19, $20, $21, $22, $23, $24)
        ON CONFLICT (id) DO UPDATE SET
          name = EXCLUDED.name,
          username = EXCLUDED.username,
@@ -624,6 +679,8 @@ export class AuthStore {
          email_verified = EXCLUDED.email_verified,
          google_sub = EXCLUDED.google_sub,
          instagram_id = EXCLUDED.instagram_id,
+         google_email = EXCLUDED.google_email,
+         instagram_username = EXCLUDED.instagram_username,
          avatar_id = EXCLUDED.avatar_id,
          avatar_url = EXCLUDED.avatar_url,
          table_color_id = EXCLUDED.table_color_id,
@@ -658,6 +715,8 @@ export class AuthStore {
         user.emailVerified,
         user.googleSub,
         user.instagramId,
+        user.googleEmail,
+        user.instagramUsername,
       ],
     );
   }
@@ -671,15 +730,19 @@ export class AuthStore {
         'email_verified',
         'google_sub',
         'instagram_id',
+        'google_email',
+        'instagram_username',
       ];
       const setClause = cols.map((col, i) => `${col} = $${i + 1}`).join(', ');
-      await this.pool.query(`UPDATE users SET ${setClause} WHERE id = $7`, [
+      await this.pool.query(`UPDATE users SET ${setClause} WHERE id = $${cols.length + 1}`, [
         user.passwordHash,
         user.email,
         user.email ? emailKey(user.email) : null,
         user.emailVerified,
         user.googleSub,
         user.instagramId,
+        user.googleEmail,
+        user.instagramUsername,
         user.id,
       ]);
     } else {
@@ -701,18 +764,21 @@ export class AuthStore {
       email: null,
       emailVerified: false,
       googleSub: null,
+      googleEmail: null,
       instagramId: null,
+      instagramUsername: null,
       avatarId,
       avatarUrl: null,
       tableColorId: 0,
       cardThemeId: DEFAULT_CARD_THEME_ID,
-      uiTheme: 'v1',
+      uiTheme: this.defaultUiThemeProvider(),
       tableLayout: 'v1',
       sfxMuted: false,
       keyboardShortcuts: clampUserKeyboardShortcuts({}),
       chipBalance: this.startingGrant(),
       whuffieBalance: this.startingWhuffies(),
       handsPlayed: 0,
+      isAdmin: false,
       createdAt: Date.now(),
     };
   }
@@ -812,14 +878,16 @@ export class AuthStore {
     return id ? this.users.get(id) : undefined;
   }
 
-  suggestUsername(identity: Pick<GoogleIdentity, 'name' | 'email'>): string {
-    const base = usernameBaseFromGoogle(identity);
+  /** First free username built from `base` (assumed valid), adding a numeric suffix if needed. */
+  suggestUsername(base: string): string {
     if (!this.usernameIndex.has(base.toLowerCase())) return base;
+    const stem = base.replace(/\.+$/, '');
     for (let i = 0; i < 50; i++) {
-      const candidate = `${base}${Math.floor(10 + Math.random() * 9990)}`.slice(0, USERNAME_MAX);
+      const suffix = String(Math.floor(10 + Math.random() * 9990));
+      const candidate = `${stem.slice(0, USERNAME_MAX - suffix.length)}${suffix}`;
       if (!this.usernameIndex.has(candidate.toLowerCase())) return candidate;
     }
-    return `${base.slice(0, USERNAME_MAX - 8)}${nanoid(8).replace(/[^a-zA-Z0-9]/g, '0')}`;
+    return `${stem.slice(0, USERNAME_MAX - 8)}${nanoid(8).replace(/[^a-zA-Z0-9]/g, '0')}`;
   }
 
   /**
@@ -834,6 +902,10 @@ export class AuthStore {
     await this.ensureLoaded();
     const linked = this.getUserByGoogleSub(identity.sub);
     if (linked) {
+      if (identity.email && linked.googleEmail !== identity.email) {
+        linked.googleEmail = identity.email;
+        await this.persistIdentity(linked);
+      }
       return { kind: 'session', session: await this.issueAuthSession(linked), created: false };
     }
 
@@ -841,6 +913,7 @@ export class AuthStore {
       const byEmail = this.getUserByVerifiedEmail(identity.email);
       if (byEmail && !byEmail.googleSub) {
         byEmail.googleSub = identity.sub;
+        byEmail.googleEmail = identity.email;
         this.googleSubIndex.set(identity.sub, byEmail.id);
         await this.persistIdentity(byEmail);
         return { kind: 'session', session: await this.issueAuthSession(byEmail), created: false };
@@ -849,7 +922,10 @@ export class AuthStore {
 
     const username = opts.username?.trim();
     if (!username) {
-      return { kind: 'needs_username', suggestedUsername: this.suggestUsername(identity) };
+      return {
+        kind: 'needs_username',
+        suggestedUsername: this.suggestUsername(usernameBaseFromGoogle(identity)),
+      };
     }
     if (this.usernameIndex.has(username.toLowerCase())) {
       throw new AuthError('username_taken', 'Username already taken');
@@ -863,6 +939,7 @@ export class AuthStore {
       opts.avatarId !== undefined ? clampAvatarId(opts.avatarId) : avatarIdFromUserId(id),
     );
     user.googleSub = identity.sub;
+    user.googleEmail = identity.email;
     if (identity.email && !this.emailIndex.has(emailKey(identity.email))) {
       user.email = normalizeEmail(identity.email);
       user.emailVerified = identity.emailVerified;
@@ -884,6 +961,7 @@ export class AuthStore {
       this.googleSubIndex.delete(user.googleSub);
     }
     user.googleSub = identity.sub;
+    user.googleEmail = identity.email;
     this.googleSubIndex.set(identity.sub, userId);
     if (
       !user.email &&
@@ -905,6 +983,7 @@ export class AuthStore {
     this.assertCanUnlinkSocial(user, 'google');
     if (user.googleSub) this.googleSubIndex.delete(user.googleSub);
     user.googleSub = null;
+    user.googleEmail = null;
     await this.persistIdentity(user);
     return user;
   }
@@ -921,19 +1000,24 @@ export class AuthStore {
     await this.ensureLoaded();
     const linked = this.getUserByInstagramId(identity.id);
     if (linked) {
+      if (identity.username && linked.instagramUsername !== identity.username) {
+        linked.instagramUsername = identity.username;
+        await this.persistIdentity(linked);
+      }
       return { kind: 'session', session: await this.issueAuthSession(linked), created: false };
     }
 
-    const username = opts.username?.trim();
+    let username = opts.username?.trim();
     if (!username) {
-      return {
-        kind: 'needs_username',
-        suggestedUsername: this.suggestUsername({
-          name: identity.name || identity.username,
-          email: null,
-        }),
-        identity,
-      };
+      const handle = identity.username.trim();
+      if (!UsernameSchema.safeParse(handle).success || this.usernameIndex.has(handle.toLowerCase())) {
+        return {
+          kind: 'needs_username',
+          suggestedUsername: this.suggestUsername(usernameBaseFromInstagram(handle)),
+          identity,
+        };
+      }
+      username = handle;
     }
     if (this.usernameIndex.has(username.toLowerCase())) {
       throw new AuthError('username_taken', 'Username already taken');
@@ -947,6 +1031,7 @@ export class AuthStore {
       opts.avatarId !== undefined ? clampAvatarId(opts.avatarId) : avatarIdFromUserId(id),
     );
     user.instagramId = identity.id;
+    user.instagramUsername = identity.username || null;
     this.indexUser(user);
     await this.persistUserToPostgres(user);
     if (!this.pool) await this.persistFile();
@@ -964,6 +1049,7 @@ export class AuthStore {
       this.instagramIdIndex.delete(user.instagramId);
     }
     user.instagramId = identity.id;
+    user.instagramUsername = identity.username || null;
     this.instagramIdIndex.set(identity.id, userId);
     await this.persistIdentity(user);
     return user;
@@ -975,6 +1061,7 @@ export class AuthStore {
     this.assertCanUnlinkSocial(user, 'instagram');
     if (user.instagramId) this.instagramIdIndex.delete(user.instagramId);
     user.instagramId = null;
+    user.instagramUsername = null;
     await this.persistIdentity(user);
     return user;
   }
@@ -1163,6 +1250,32 @@ export class AuthStore {
     await this.persistIdentity(user);
     await this.revokeAllSessions(userId);
     return user;
+  }
+
+  /**
+   * Change (or, for social-only accounts, set) the password. Every existing session is
+   * revoked; the caller gets a fresh one so this device stays signed in.
+   */
+  async changePassword(
+    userId: string,
+    currentPassword: string | undefined,
+    newPassword: string,
+  ): Promise<AuthSessionPayload> {
+    await this.ensureLoaded();
+    const user = this.requireUser(userId);
+    if (user.passwordHash) {
+      let ok = false;
+      try {
+        ok = Boolean(currentPassword) && (await argon2.verify(user.passwordHash, currentPassword!));
+      } catch {
+        ok = false;
+      }
+      if (!ok) throw new AuthError('invalid_credentials', 'Current password is incorrect');
+    }
+    user.passwordHash = await argon2.hash(newPassword);
+    await this.persistIdentity(user);
+    await this.revokeAllSessions(userId);
+    return this.issueAuthSession(user);
   }
 
   private async revokeAllSessions(userId: string): Promise<void> {

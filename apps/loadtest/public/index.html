@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pokr load test</title>
+<style>
+:root{color-scheme:dark;--bg:#0f131a;--panel:#161b24;--line:#232a36;--muted:#8a94a6;--text:#dde3ee;--accent:#4f8cff;--ok:#4ade80;--bad:#f87171;--warn:#fbbf24}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 22px;border-bottom:1px solid var(--line)}
+header h1{font-size:17px;margin:0}
+main{max-width:1200px;margin:0 auto;padding:20px}
+h2{font-size:15px;margin:0 0 12px;color:#fff}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+.hidden{display:none!important}
+.muted{color:var(--muted)}
+label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+input,select{background:#0f131a;border:1px solid var(--line);border-radius:8px;color:var(--text);padding:7px 9px;font:inherit;min-width:0}
+input:focus,select:focus{outline:1px solid var(--accent);border-color:var(--accent)}
+.row{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:12px}
+.checks{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}
+.check{flex-direction:row;align-items:center;gap:6px;background:#0f131a;border:1px solid var(--line);border-radius:8px;padding:7px 10px;color:var(--text);font-size:13px;cursor:pointer}
+.check input{margin:0}
+details{margin:6px 0 12px}
+details summary{cursor:pointer;color:var(--muted);margin-bottom:10px}
+fieldset{border:1px solid var(--line);border-radius:10px;padding:10px 12px 0;margin:0 0 12px}
+legend{color:var(--muted);font-size:12px;padding:0 6px}
+button{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:8px 16px;font:inherit;font-weight:600;cursor:pointer}
+button.secondary{background:#232a36;color:var(--text)}
+button.danger{background:#b91c1c}
+button:disabled{opacity:.5;cursor:not-allowed}
+.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;background:#232a36}
+.pill.running,.pill.preparing,.pill.stopping{background:#13294d;color:#93c5fd}
+.pill.finished,.pill.pass{background:#16351f;color:var(--ok)}
+.pill.failed,.pill.fail{background:#3a1717;color:var(--bad)}
+.pill.stopped{background:#3a2e12;color:var(--warn)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin:12px 0}
+.tile{background:#0f131a;border:1px solid var(--line);border-radius:10px;padding:10px}
+.tile .l{color:var(--muted);font-size:11px}.tile .v{font-size:19px;font-weight:600}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:860px){.charts{grid-template-columns:1fr}}
+.chart{background:#0f131a;border:1px solid var(--line);border-radius:10px;padding:8px}
+.chart .t{font-size:12px;color:#c9d1e0;margin:0 0 2px 4px}
+.progress{height:6px;background:#0f131a;border-radius:6px;overflow:hidden;margin:10px 0}
+.progress>div{height:100%;background:var(--accent);width:0;transition:width .4s}
+pre.log{background:#0b0e13;border:1px solid var(--line);border-radius:10px;padding:10px;max-height:220px;overflow:auto;font-size:12px;margin:12px 0 0;white-space:pre-wrap}
+table{width:100%;border-collapse:collapse}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;font-size:13px;white-space:nowrap}
+th{color:var(--muted);font-weight:500}
+td.n{text-align:right;font-variant-numeric:tabular-nums}
+a{color:#93c5fd}
+.err{color:var(--bad);margin-top:8px;white-space:pre-wrap}
+.warnbox{background:#3a2e12;color:var(--warn);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13px}
+#login{max-width:380px;margin:80px auto}
+.table-wrap{overflow-x:auto}
+</style>
+</head>
+<body>
+<header>
+  <h1>Pokr load test</h1>
+  <button id="logout" class="secondary hidden" type="button">Sign out</button>
+</header>
+<main>
+  <section id="login" class="panel hidden">
+    <h2>Admin sign in</h2>
+    <form id="login-form" class="actions">
+      <label style="flex:1">Admin token<input id="login-token" type="password" autocomplete="current-password" required></label>
+      <button type="submit">Sign in</button>
+    </form>
+    <div id="login-error" class="err"></div>
+  </section>
+
+  <div id="app" class="hidden">
+    <section class="panel">
+      <h2>New run</h2>
+      <div id="token-warning" class="warnbox hidden">LOADTEST_TOKEN is not set on this service, so the target's rate limits (signup 10/min, 10k req/min per IP) will apply.</div>
+      <form id="run-form">
+        <div class="row">
+          <label>Target<select id="f-target"></select></label>
+          <label>VUs per scenario<input id="f-vus" type="number" min="1" required></label>
+          <label>Ramp-up (s)<input id="f-ramp" type="number" min="0" required></label>
+          <label>Duration (s)<input id="f-duration" type="number" min="5" required></label>
+          <label>Target req/s (API, optional)<input id="f-rps" type="number" min="1" placeholder="closed model"></label>
+        </div>
+        <div class="checks" id="f-scenarios"></div>
+        <div class="row">
+          <label>Mixed: socket scenario<select id="f-mixed"></select></label>
+          <label>Threshold p95 (ms)<input id="f-p95" type="number" min="1" required></label>
+          <label>Threshold error rate (%)<input id="f-errpct" type="number" min="0" step="0.1" required></label>
+        </div>
+        <details>
+          <summary>Advanced scenario options</summary>
+          <fieldset><legend>API</legend>
+            <div class="row"><label>Think time (ms)<input id="o-think" type="number" min="0"></label></div>
+            <div class="row" id="o-weights"></div>
+          </fieldset>
+          <fieldset><legend>Sockets</legend>
+            <div class="row"><label>Ping interval (ms)<input id="o-ping" type="number" min="250"></label></div>
+          </fieldset>
+          <fieldset><legend>Rooms + chat</legend>
+            <div class="row">
+              <label>Seats per table<input id="o-r-seats" type="number" min="2" max="9"></label>
+              <label>Spectators per table<input id="o-r-spec" type="number" min="0"></label>
+              <label>Chat interval (ms)<input id="o-r-chat" type="number" min="600"></label>
+            </div>
+          </fieldset>
+          <fieldset><legend>Gameplay</legend>
+            <div class="row">
+              <label>Players per table<input id="o-g-seats" type="number" min="2" max="9"></label>
+              <label>Turn delay (ms)<input id="o-g-delay" type="number" min="0"></label>
+              <label>Raise chance (%)<input id="o-g-raise" type="number" min="0" max="100"></label>
+              <label>Big blind<input id="o-g-bb" type="number" min="2"></label>
+              <label>Buy-in<input id="o-g-buyin" type="number" min="20"></label>
+            </div>
+          </fieldset>
+        </details>
+        <div class="actions">
+          <button id="start" type="submit">Start run</button>
+          <span id="vu-summary" class="muted"></span>
+        </div>
+        <div id="run-error" class="err"></div>
+      </form>
+    </section>
+
+    <section id="live" class="panel hidden">
+      <div class="actions" style="justify-content:space-between">
+        <h2 style="margin:0">Run <span id="live-id"></span> <span id="live-status" class="pill"></span></h2>
+        <div class="actions">
+          <span id="live-links"></span>
+          <button id="stop" class="danger" type="button">Stop</button>
+        </div>
+      </div>
+      <div class="muted" id="live-meta"></div>
+      <div class="progress"><div id="live-progress"></div></div>
+      <div class="tiles" id="live-tiles"></div>
+      <div class="charts">
+        <div class="chart"><div class="t">Throughput (per second)</div><svg id="c-throughput" viewBox="0 0 560 180" width="100%"></svg></div>
+        <div class="chart"><div class="t">HTTP latency (ms)</div><svg id="c-http" viewBox="0 0 560 180" width="100%"></svg></div>
+        <div class="chart"><div class="t">Open WebSockets</div><svg id="c-ws" viewBox="0 0 560 180" width="100%"></svg></div>
+        <div class="chart"><div class="t">WebSocket latency p95 (ms)</div><svg id="c-wslat" viewBox="0 0 560 180" width="100%"></svg></div>
+      </div>
+      <pre class="log" id="live-log"></pre>
+    </section>
+
+    <section class="panel">
+      <div class="actions" style="justify-content:space-between;margin-bottom:8px">
+        <h2 style="margin:0">Past runs</h2>
+        <button id="refresh" class="secondary" type="button">Refresh</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Started</th><th>Target</th><th>Scenarios</th><th class="n">VUs</th><th class="n">Duration</th><th class="n">Requests</th><th class="n">req/s</th><th class="n">HTTP p95</th><th class="n">Errors</th><th class="n">Peak WS</th><th>Result</th><th>Report</th></tr></thead>
+          <tbody id="runs"></tbody>
+        </table>
+      </div>
+      <div id="runs-empty" class="muted hidden">No runs yet.</div>
+    </section>
+  </div>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>

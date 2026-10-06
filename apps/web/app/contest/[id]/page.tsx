@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ContestHandSummary } from '@poker/protocol';
 import {
   type ContestView,
@@ -161,6 +161,8 @@ export default function ContestPage() {
   const isHost = contest?.hostUserId === userId;
   const isRegistered = contest?.entrants.some((e) => e.userId === userId);
   const myAssignment = contest?.assignments.find((a) => a.userId === userId);
+  const startingStack = contest?.startingStack ?? 0;
+  const chipsWon = useMemo(() => chipsWonByUser(hands, startingStack), [hands, startingStack]);
 
   async function onRegister() {
     if (!sessionToken) {
@@ -460,25 +462,36 @@ export default function ContestPage() {
           <ol className="mt-3 space-y-1.5">
             {[...contest.placements]
               .sort((a, b) => a.place - b.place)
-              .map((p) => (
-                <li
-                  key={p.userId}
-                  className="surface-row flex items-center justify-between gap-2 py-2 text-sm"
-                >
-                  <span className="min-w-0 truncate font-medium text-primary">{p.name}</span>
-                  <span className="flex shrink-0 items-center gap-2 font-mono text-xs font-semibold text-sidebar">
-                    {(p.prizeWhuffies ?? 0) > 0 ? (
-                      <MoneyAmount
-                        amount={p.prizeWhuffies}
-                        showWhuffies
-                        prefix="+"
-                        className="text-brass-dim"
-                      />
-                    ) : null}
-                    <span>#{p.place}</span>
-                  </span>
-                </li>
-              ))}
+              .map((p) => {
+                const net = chipsWon.get(p.userId);
+                return (
+                  <li
+                    key={p.userId}
+                    className="surface-row flex items-center justify-between gap-2 py-2 text-sm"
+                  >
+                    <span className="min-w-0 truncate font-medium text-primary">{p.name}</span>
+                    <span className="flex shrink-0 items-center gap-2 font-mono text-xs font-semibold text-sidebar">
+                      {net != null && net !== 0 ? (
+                        <MoneyAmount
+                          amount={Math.abs(net)}
+                          prefix={net > 0 ? '+' : '−'}
+                          showChips
+                          className={net > 0 ? 'text-positive' : 'text-danger'}
+                        />
+                      ) : null}
+                      {(p.prizeWhuffies ?? 0) > 0 ? (
+                        <MoneyAmount
+                          amount={p.prizeWhuffies}
+                          showWhuffies
+                          prefix="+"
+                          className="text-brass-dim"
+                        />
+                      ) : null}
+                      <span>#{p.place}</span>
+                    </span>
+                  </li>
+                );
+              })}
           </ol>
         </section>
       )}
@@ -542,6 +555,29 @@ function mergeContestHandDetails(
       startedAt: hand.startedAt ?? (Number.isFinite(started) ? started : hand.endedAt),
     };
   });
+}
+
+/** Net chips per player: stack after their latest hand minus the starting stack. */
+function chipsWonByUser(hands: ContestHandSummary[], startingStack: number): Map<string, number> {
+  const out = new Map<string, number>();
+  const newestFirst = [...hands].sort((a, b) => b.handNumber - a.handNumber);
+  for (const hand of newestFirst) {
+    let result: unknown = hand.resultJson;
+    if (typeof result === 'string') {
+      try {
+        result = JSON.parse(result);
+      } catch {
+        continue;
+      }
+    }
+    const players = (result as { players?: unknown } | null)?.players;
+    if (!Array.isArray(players)) continue;
+    for (const p of players as Array<{ userId?: unknown; stack?: unknown }>) {
+      if (typeof p?.userId !== 'string' || typeof p.stack !== 'number') continue;
+      if (!out.has(p.userId)) out.set(p.userId, p.stack - startingStack);
+    }
+  }
+  return out;
 }
 
 function parseContestHand(

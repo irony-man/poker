@@ -1,9 +1,12 @@
 'use client';
 
 import { useEffect, useId, useState } from 'react';
-import { fetchAuthConfig, startInstagramAuth } from '@/lib/api';
+import { startInstagramAuth } from '@/lib/api';
 import { currentPathWithQuery } from '@/lib/authRedirect';
 import { readStoredSession } from '@/lib/session';
+
+/** Baked at build time; set only when the server has `INSTAGRAM_APP_ID` + `INSTAGRAM_APP_SECRET`. */
+const INSTAGRAM_ENABLED = process.env.NEXT_PUBLIC_INSTAGRAM_ENABLED?.trim() === 'true';
 
 export function InstagramSignInButton({
   next,
@@ -22,23 +25,15 @@ export function InstagramSignInButton({
   label?: string;
   layout?: 'full' | 'icon';
 }) {
-  const [available, setAvailable] = useState<boolean | null>(null);
+  const available = INSTAGRAM_ENABLED;
   const [busy, setBusy] = useState(false);
   const gradientId = useId().replace(/:/g, '');
 
   useEffect(() => {
-    let cancelled = false;
-    void fetchAuthConfig().then((cfg) => {
-      if (cancelled) return;
-      setAvailable(cfg.instagramEnabled);
-      onAvailable?.(cfg.instagramEnabled);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [onAvailable]);
+    onAvailable?.(available);
+  }, [available, onAvailable]);
 
-  if (available === false) return null;
+  if (!available) return null;
 
   const caption = label ?? 'Continue with Instagram';
 
@@ -64,7 +59,7 @@ export function InstagramSignInButton({
     return (
       <button
         type="button"
-        disabled={disabled || busy || available !== true}
+        disabled={disabled || busy}
         onClick={() => void onClick()}
         aria-label={busy ? 'Redirecting to Instagram' : caption}
         title={caption}
@@ -78,7 +73,7 @@ export function InstagramSignInButton({
   return (
     <button
       type="button"
-      disabled={disabled || busy || available !== true}
+      disabled={disabled || busy}
       onClick={() => void onClick()}
       className="flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-sidebar/15 bg-white px-4 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50 disabled:opacity-60"
     >
@@ -88,7 +83,7 @@ export function InstagramSignInButton({
   );
 }
 
-function InstagramGlyph({ gradientId }: { gradientId: string }) {
+export function InstagramGlyph({ gradientId }: { gradientId: string }) {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
       <defs>

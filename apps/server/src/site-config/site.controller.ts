@@ -37,6 +37,7 @@ export class SiteController {
       cardThemes: this.site.getCardThemes(),
       botChatStarters: this.site.getBotChatStarters(),
       lobbyNav: this.site.getLobbyNav(),
+      uiLooks: this.site.getUiLooks(),
     };
   }
 

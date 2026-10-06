@@ -203,7 +203,7 @@ export function TableView({
     highlightMode,
     showWinModal,
     youWon,
-  } = useHandPresentation(table, userId, dismissedWinHandId);
+  } = useHandPresentation(table, userId, dismissedWinHandId, priv?.holeCards);
   const winPctBySeat = useRevealedWinPct(
     table?.players,
     table?.community,

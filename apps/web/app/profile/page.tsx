@@ -42,10 +42,17 @@ import {
 } from '@/lib/keyboardShortcuts';
 import { isSfxMuted, setSfxMuted } from '@/lib/audio';
 import { clampUiTheme, saveUiTheme, type UiTheme } from '@/lib/uiTheme';
-import type { WalletCurrency } from '@poker/protocol';
+import { useUiLooks } from '@/lib/useUiTheme';
+import { UI_LOOK_LABELS, type WalletCurrency } from '@poker/protocol';
 import { MoneyAmount } from '@/components/CurrencyIcon';
 import { WalletTrail } from '@/components/WalletTrail';
-import { parseWalletCurrency } from '@/lib/walletTrail';
+import {
+  DEFAULT_WALLET_TRAIL_RANGE,
+  DEFAULT_WALLET_TRAIL_VIEW,
+  parseWalletCurrency,
+  parseWalletTrailRange,
+  parseWalletTrailView,
+} from '@/lib/walletTrail';
 import { HandsMap } from '@/features/progress/HandsMap';
 import { PlayingCard } from '@/components/PlayingCard';
 import { DEFAULT_CARD_THEME_ID } from '@/lib/cardFaceTheme';
@@ -56,6 +63,7 @@ import {
 } from '@/lib/cardThemesRegistry';
 import { Button } from '@/components/ui/Button';
 import { SelectedCheck } from '@/components/ui/SelectedCheck';
+import { choiceCardClass } from '@/components/ui/choiceStyles';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { Tabs } from '@/components/ui/Tabs';
 import { useRadioGroupKeyboard } from '@/lib/useRadioGroupKeyboard';
@@ -80,6 +88,12 @@ type ContestMatchRow = {
   prizeWhuffies: number;
   playedAt: number;
 };
+
+function formatLookChoices(ids: readonly UiTheme[]): string {
+  const labels = ids.map((id) => UI_LOOK_LABELS[id]);
+  if (labels.length <= 2) return labels.join(' or ');
+  return `${labels.slice(0, -1).join(', ')}, or ${labels[labels.length - 1]}`;
+}
 
 function ThemeRadioGroup<T extends string | number | boolean>({
   label,
@@ -164,6 +178,7 @@ function ProfilePageInner() {
   const [savingCardTheme, setSavingCardTheme] = useState(false);
   const [draftUiTheme, setDraftUiTheme] = useState<UiTheme>('v1');
   const [savingUiTheme, setSavingUiTheme] = useState(false);
+  const uiLooks = useUiLooks();
   const [draftTableLayout, setDraftTableLayout] = useState<TableLayout>('v1');
   const [savingTableLayout, setSavingTableLayout] = useState(false);
   const [draftSfxMuted, setDraftSfxMuted] = useState(isSfxMuted);
@@ -188,18 +203,34 @@ function ProfilePageInner() {
       const params = new URLSearchParams(searchParams.toString());
       if (next === 'overview') params.delete('tab');
       else params.set('tab', next);
-      if (next !== 'wallet') params.delete('currency');
-      else if (currency) params.set('currency', currency);
+      if (next !== 'wallet') {
+        params.delete('currency');
+        params.delete('view');
+        params.delete('range');
+      } else if (currency) params.set('currency', currency);
       const q = params.toString();
       router.replace(q ? `/profile?${q}` : '/profile', { scroll: false });
     },
     [router, searchParams],
   );
 
+  const walletView = parseWalletTrailView(searchParams.get('view'));
+  const walletRange = parseWalletTrailRange(searchParams.get('range'));
+
+  const setWalletParam = useCallback(
+    (key: 'view' | 'range', value: string, defaultValue: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value === defaultValue) params.delete(key);
+      else params.set(key, value);
+      router.replace(`/profile?${params.toString()}`, { scroll: false });
+    },
+    [router, searchParams],
+  );
+
   const fetchMyTrail = useCallback(
-    (currency: WalletCurrency, before: string | null) => {
+    (currency: WalletCurrency, before: string | null, limit?: number) => {
       if (!token) return Promise.resolve({ entries: [], nextCursor: null });
-      return fetchWalletTrail(token, { currency, before });
+      return fetchWalletTrail(token, { currency, before, limit });
     },
     [token],
   );
@@ -745,7 +776,7 @@ function ProfilePageInner() {
                   type="button"
                   onClick={() => void handleSignOut()}
                   disabled={signingOut}
-                  className={cn('btn-pill bg-danger')}
+                  className="btn-pill border-danger/45 text-danger hover:border-danger hover:bg-danger hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/40 disabled:hover:bg-transparent disabled:hover:text-danger sm:ml-auto"
                 >
                   {signingOut ? 'Signing out…' : 'Sign out'}
                 </button>
@@ -772,6 +803,13 @@ function ProfilePageInner() {
                 fetchPage={fetchMyTrail}
                 initialCurrency={walletCurrency}
                 onCurrencyChange={(currency) => selectTab('wallet', currency)}
+                initialView={walletView}
+                onViewChange={(view) => setWalletParam('view', view, DEFAULT_WALLET_TRAIL_VIEW)}
+                initialRange={walletRange}
+                onRangeChange={(range) =>
+                  setWalletParam('range', range, DEFAULT_WALLET_TRAIL_RANGE)
+                }
+                balances={{ chips: profile.chipBalance, whuffies: profile.whuffieBalance }}
               />
             </section>
           ) : tab === 'hands' ? (
@@ -798,11 +836,14 @@ function ProfilePageInner() {
               aria-labelledby="profile-tab-theme"
               className="surface-card-lg"
             >
+              {uiLooks.visible.length > 1 ? (
+              <>
               <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
                 <div className="min-w-0">
                   <h3 className="font-heading-section">App look</h3>
                   <p className="mt-1.5 max-w-lg font-prose-muted">
-                    Classic, Arcade, or Glass. Only you see this. Gameplay stays the same.
+                    {formatLookChoices(uiLooks.visible)}. Only you see this. Gameplay stays the
+                    same.
                   </p>
                 </div>
                 {savingUiTheme ? (
@@ -815,7 +856,7 @@ function ProfilePageInner() {
               <ThemeRadioGroup
                 label="App look"
                 className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3"
-                options={['v1', 'v2', 'v3'] as const}
+                options={uiLooks.visible}
                 selected={draftUiTheme}
                 onSelect={(id) => void saveLook(id)}
                 disabled={savingUiTheme}
@@ -845,7 +886,9 @@ function ProfilePageInner() {
                       accentClass: 'bg-white/70',
                     },
                   ] as const
-                ).map((look) => {
+                )
+                  .filter((look) => uiLooks.visible.includes(look.id))
+                  .map((look) => {
                   const selected = draftUiTheme === look.id;
                   return (
                     <button
@@ -858,11 +901,10 @@ function ProfilePageInner() {
                       aria-label={`${look.label}, ${look.hint}`}
                       disabled={savingUiTheme}
                       onClick={() => void saveLook(look.id)}
-                      className={`flex flex-col overflow-hidden rounded-2xl border-2 text-left transition disabled:opacity-60 ${
-                        selected
-                          ? 'border-sidebar bg-sidebar/[0.06] shadow-[0_0_0_1px_rgb(29_4_50_/_0.1)]'
-                          : 'border-sidebar/10 bg-page/30 hover:border-sidebar/22'
-                      }`}
+                      className={choiceCardClass(
+                        selected,
+                        'flex flex-col overflow-hidden rounded-2xl border-2 text-left transition disabled:opacity-60',
+                      )}
                     >
                       <span
                         className={`relative block h-16 w-full ${look.swatchClass} ${look.id === 'v2' ? 'border-b-2 border-black' : ''}`}
@@ -902,15 +944,19 @@ function ProfilePageInner() {
                             {look.hint}
                           </span>
                         </span>
-                        {selected ? <SelectedCheck /> : null}
+                        {selected ? <SelectedCheck tone="inverse" /> : null}
                       </span>
                     </button>
                   );
                 })
                 }
               </ThemeRadioGroup>
+              </>
+              ) : null}
 
-              <div className="mt-8 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+              <div
+                className={`${uiLooks.visible.length > 1 ? 'mt-8 ' : ''}flex flex-wrap items-end justify-between gap-x-4 gap-y-2`}
+              >
                 <div className="min-w-0">
                   <h3 className="font-heading-section">Table layout</h3>
                   <p className="mt-1.5 max-w-lg font-prose-muted">
@@ -960,11 +1006,10 @@ function ProfilePageInner() {
                       aria-label={`${layout.label}, ${layout.hint}`}
                       disabled={savingTableLayout}
                       onClick={() => void saveLayout(layout.id)}
-                      className={`flex flex-col overflow-hidden rounded-2xl border-2 text-left transition disabled:opacity-60 ${
-                        selected
-                          ? 'border-sidebar bg-sidebar/[0.06] shadow-[0_0_0_1px_rgb(29_4_50_/_0.1)]'
-                          : 'border-sidebar/10 bg-page/30 hover:border-sidebar/22'
-                      }`}
+                      className={choiceCardClass(
+                        selected,
+                        'flex flex-col overflow-hidden rounded-2xl border-2 text-left transition disabled:opacity-60',
+                      )}
                     >
                       <span
                         className="table-theme relative block h-16 w-full"
@@ -995,7 +1040,7 @@ function ProfilePageInner() {
                             {layout.hint}
                           </span>
                         </span>
-                        {selected ? <SelectedCheck /> : null}
+                        {selected ? <SelectedCheck tone="inverse" /> : null}
                       </span>
                     </button>
                   );
@@ -1039,13 +1084,12 @@ function ProfilePageInner() {
                         aria-label={theme.name}
                         disabled={savingCardTheme}
                         onClick={() => void saveCardTheme(theme.id)}
-                        className={`flex flex-col overflow-hidden rounded-2xl border-2 text-left transition disabled:opacity-60 ${
-                          selected
-                            ? 'border-sidebar bg-sidebar/[0.06] shadow-[0_0_0_1px_rgb(29_4_50_/_0.1)]'
-                            : 'border-sidebar/10 bg-page/30 hover:border-sidebar/22'
-                        }`}
+                        className={choiceCardClass(
+                          selected,
+                          'flex flex-col overflow-hidden rounded-2xl border-2 text-left transition disabled:opacity-60',
+                        )}
                       >
-                        <span className="flex items-center justify-center bg-page/40 py-4">
+                        <span className="flex items-center justify-center bg-page py-4">
                           <PlayingCard
                             code="Ah"
                             size="sm"
@@ -1055,7 +1099,7 @@ function ProfilePageInner() {
                         </span>
                         <span className="flex items-center justify-between gap-2 px-3 py-2.5">
                           <span className="text-sm font-semibold text-sidebar">{theme.name}</span>
-                          {selected ? <SelectedCheck /> : null}
+                          {selected ? <SelectedCheck tone="inverse" /> : null}
                         </span>
                       </button>
                     );
@@ -1180,11 +1224,10 @@ function ProfilePageInner() {
                       aria-label={preset.label}
                       disabled={savingTableColor}
                       onClick={() => void saveTableColor(preset.id)}
-                      className={`group relative flex flex-col items-center gap-2 rounded-xl border px-2 py-3 transition disabled:opacity-60 sm:px-3 sm:py-3.5 ${
-                        selected
-                          ? 'border-sidebar bg-sidebar/[0.06] shadow-[0_0_0_1px_rgb(29_4_50_/_0.1)]'
-                          : 'border-sidebar/10 bg-page/30 hover:border-sidebar/22 hover:bg-page/55'
-                      }`}
+                      className={choiceCardClass(
+                        selected,
+                        'group relative flex flex-col items-center gap-2 rounded-xl border px-2 py-3 transition disabled:opacity-60 sm:px-3 sm:py-3.5',
+                      )}
                     >
                       <span
                         className={`table-theme relative block w-full max-w-[5.5rem] transition-transform duration-200 group-hover:scale-[1.03] ${
@@ -1195,7 +1238,7 @@ function ProfilePageInner() {
                       >
                         <span className="felt-surface table-rim block h-10 w-full rounded-[42%] border-[5px] shadow-[inset_0_0_0_1.5px_rgb(var(--felt-rim-edge)/0.55),0_2px_8px_rgb(29_4_50/0.18)] sm:h-11 sm:border-[6px]" />
                         {selected ? (
-                          <SelectedCheck className="absolute -right-1 -top-1" />
+                          <SelectedCheck tone="inverse" className="absolute -right-1 -top-1" />
                         ) : null}
                       </span>
                       <span
@@ -1260,11 +1303,10 @@ function ProfilePageInner() {
                       aria-label={`${option.label}, ${option.hint}`}
                       disabled={savingSfxMuted}
                       onClick={() => void saveSounds(option.muted)}
-                      className={`flex items-center justify-between gap-2 rounded-2xl border-2 px-3 py-3 text-left transition disabled:opacity-60 ${
-                        selected
-                          ? 'border-sidebar bg-sidebar/[0.06] shadow-[0_0_0_1px_rgb(29_4_50_/_0.1)]'
-                          : 'border-sidebar/10 bg-page/30 hover:border-sidebar/22'
-                      }`}
+                      className={choiceCardClass(
+                        selected,
+                        'flex items-center justify-between gap-2 rounded-2xl border-2 px-3 py-3 text-left transition disabled:opacity-60',
+                      )}
                     >
                       <span>
                         <span className="block text-sm font-semibold text-sidebar">
@@ -1274,7 +1316,7 @@ function ProfilePageInner() {
                           {option.hint}
                         </span>
                       </span>
-                      {selected ? <SelectedCheck /> : null}
+                      {selected ? <SelectedCheck tone="inverse" /> : null}
                     </button>
                   );
                 })

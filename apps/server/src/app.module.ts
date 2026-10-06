@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AdminModule } from './admin/admin.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { BotBanterModule } from './bot/bot-banter.module.js';
 import { ApiExceptionFilter } from './common/api-exception.filter.js';
+import { LoadtestThrottlerGuard } from './common/loadtest-throttler.guard.js';
 import { ContestsModule } from './contests/contests.module.js';
 import { DatabaseModule } from './database/database.module.js';
 import { FriendsModule } from './friends/friends.module.js';
@@ -66,7 +67,7 @@ import { WalletModule } from './wallet/wallet.module.js';
   providers: [
     { provide: APP_FILTER, useClass: ApiExceptionFilter },
     // Only apply throttling when decorators set limits — global guard still needed for @Throttle
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: LoadtestThrottlerGuard },
   ],
 })
 export class AppModule {}

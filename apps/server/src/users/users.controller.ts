@@ -13,16 +13,17 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
 import {
   AvatarUploadUrlBodySchema,
+  ChangePasswordBodySchema,
   GoogleLinkBodySchema,
   SetEmailBodySchema,
   UpdateMeBodySchema,
   clampKeyboardShortcuts,
+  resolveUiLook,
+  type UiLooksConfig,
 } from '@poker/protocol';
-import { isAdminUsername, parseAdminUsernames } from '../admin/admin-allowlist.js';
 import { toAuthHttpError } from '../auth/auth.errors.js';
 import { AuthError } from '../auth/auth.types.js';
 import { CurrentUser } from '../common/session-auth.guard.js';
@@ -46,7 +47,7 @@ function toMeProfile(
   chipBalance: number,
   whuffieBalance: number,
   friendCount: number,
-  isAdmin: boolean,
+  uiLooks: UiLooksConfig,
 ) {
   return {
     id: user.id,
@@ -56,21 +57,23 @@ function toMeProfile(
     avatarUrl: user.avatarUrl,
     tableColorId: user.tableColorId,
     cardThemeId: user.cardThemeId,
-    uiTheme: user.uiTheme ?? 'v1',
+    uiTheme: resolveUiLook(uiLooks, user.uiTheme),
     tableLayout: user.tableLayout ?? 'v1',
     sfxMuted: user.sfxMuted === true,
     keyboardShortcuts: clampKeyboardShortcuts(user.keyboardShortcuts ?? {}),
     email: user.email,
     emailVerified: user.emailVerified,
     googleLinked: user.googleSub !== null,
+    googleEmail: user.googleSub !== null ? user.googleEmail : null,
     instagramLinked: user.instagramId !== null,
+    instagramUsername: user.instagramId !== null ? user.instagramUsername : null,
     hasPassword: user.passwordHash !== null,
     createdAt: user.createdAt,
     chipBalance,
     whuffieBalance,
     handsPlayed: user.handsPlayed ?? 0,
     friendCount,
-    isAdmin,
+    isAdmin: user.isAdmin === true,
   };
 }
 
@@ -82,17 +85,9 @@ export class UsersController {
     private readonly wallet: WalletService,
     private readonly friends: FriendsService,
     private readonly history: HistoryService,
-    private readonly config: ConfigService,
     private readonly storage: StorageService,
     private readonly site: SiteConfigService,
   ) {}
-
-  private isAdmin(user: User): boolean {
-    return isAdminUsername(
-      user.username,
-      parseAdminUsernames(this.config.get<string>('ADMIN_USERNAMES')),
-    );
-  }
 
   @Get('me')
   async me(@CurrentUser() user: User) {
@@ -108,7 +103,7 @@ export class UsersController {
       this.wallet.getBalance(user.id),
       this.wallet.getWhuffieBalance(user.id),
       friendCount,
-      this.isAdmin(fresh),
+      this.site.getUiLooks(),
     );
   }
 
@@ -119,7 +114,7 @@ export class UsersController {
       this.wallet.getBalance(user.id),
       this.wallet.getWhuffieBalance(user.id),
       friendCount,
-      this.isAdmin(user),
+      this.site.getUiLooks(),
     );
   }
 
@@ -156,6 +151,30 @@ export class UsersController {
       throw new ServiceUnavailableException({
         error: 'Could not send the confirmation email. Try again later.',
       });
+    }
+  }
+
+  /** Change the password (or set one on a social-only account); returns a fresh session. */
+  @Post('me/password')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  async changePassword(@CurrentUser() user: User, @Body() body: unknown) {
+    const parsed = ChangePasswordBodySchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({ error: 'New password must be 6–128 characters' });
+    }
+    try {
+      return await this.auth.changePassword(
+        user.id,
+        parsed.data.currentPassword,
+        parsed.data.newPassword,
+      );
+    } catch (err) {
+      // 400, not 401: a wrong current password must not look like an expired session.
+      if (err instanceof AuthError && err.code === 'invalid_credentials') {
+        throw new BadRequestException({ error: err.message });
+      }
+      throw toAuthHttpError(err, 'Could not change password');
     }
   }
 
@@ -283,7 +302,8 @@ export class UsersController {
       updated = await this.auth.setCardThemeId(user.id, nextId);
     }
     if (parsed.data.uiTheme !== undefined) {
-      updated = await this.auth.setUiTheme(user.id, parsed.data.uiTheme);
+      const nextLook = resolveUiLook(this.site.getUiLooks(), parsed.data.uiTheme);
+      updated = await this.auth.setUiTheme(user.id, nextLook);
     }
     if (parsed.data.tableLayout !== undefined) {
       updated = await this.auth.setTableLayout(user.id, parsed.data.tableLayout);
@@ -306,7 +326,7 @@ export class UsersController {
       this.wallet.getBalance(user.id),
       this.wallet.getWhuffieBalance(user.id),
       friendCount,
-      this.isAdmin(updated),
+      this.site.getUiLooks(),
     );
   }
 }

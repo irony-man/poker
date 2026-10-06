@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import type { WinLine } from '@/components/WinHandModal';
 import { chipsFromOthers } from '@/lib/chipsFromOthers';
+import { coerceMoney } from '@/lib/currency';
 import type { PublicTable } from '@/lib/store';
 
 export type WinBySeat = Map<number, { amount: number; handName?: string }>;
@@ -12,6 +13,8 @@ export function useHandPresentation(
   table: PublicTable | null | undefined,
   userId: string | null | undefined,
   dismissedWinHandId: string | null,
+  /** Your hole cards from the private view (not public unless shown). */
+  myHoleCards?: readonly string[] | null,
 ) {
   const winBySeat = useMemo(() => {
     const map: WinBySeat = new Map();
@@ -36,27 +39,41 @@ export function useHandPresentation(
     return map;
   }, [table]);
 
+  /** Players still in at the end of the hand (folds omitted): winners first, then by net. */
   const winLines = useMemo((): WinLine[] => {
     if (!table) return [];
-    const bySeat = new Map<number, WinLine>();
+    const wonBySeat = new Map<number, { amount: number; handName?: string }>();
     for (const w of table.winners) {
-      const prev = bySeat.get(w.seat);
-      const cards =
-        table.showdownHands?.find((h) => h.seat === w.seat)?.cards ?? prev?.cards;
-      bySeat.set(w.seat, {
-        seat: w.seat,
-        name: table.players[w.seat]?.name ?? `Seat ${w.seat}`,
+      const prev = wonBySeat.get(w.seat);
+      wonBySeat.set(w.seat, {
         amount: (prev?.amount ?? 0) + w.amount,
         handName: w.handName ?? prev?.handName,
-        cards,
-        isSelf: table.players[w.seat]?.userId === userId,
       });
     }
-    return [...bySeat.values()].map((line) => ({
-      ...line,
-      amount: chipsFromOthers(line.amount, table.players[line.seat]?.committed),
-    }));
-  }, [table, userId]);
+    const stillIn = table.players.filter(
+      (p) => wonBySeat.has(p.seat) || p.status === 'active' || p.status === 'allin',
+    );
+    const lines = stillIn.map((p): WinLine => {
+      const won = wonBySeat.get(p.seat);
+      const shown = table.showdownHands?.find((h) => h.seat === p.seat);
+      const isSelf = !!userId && p.userId === userId;
+      const committed = coerceMoney(p.committed);
+      return {
+        seat: p.seat,
+        name: p.name ?? `Seat ${p.seat}`,
+        amount: won ? (p.committed == null ? won.amount : won.amount - committed) : -committed,
+        handName: shown?.handName ?? won?.handName,
+        cards: shown?.cards,
+        holeCards: p.holeCards ?? (isSelf && myHoleCards?.length ? [...myHoleCards] : null),
+        isSelf,
+        isWinner: !!won,
+        userId: p.userId,
+        avatarId: p.avatarId,
+        avatarUrl: p.avatarUrl,
+      };
+    });
+    return lines.sort((a, b) => Number(!!b.isWinner) - Number(!!a.isWinner) || b.amount - a.amount);
+  }, [table, userId, myHoleCards]);
 
   const handNameBySeat = useMemo(() => {
     const map = new Map<number, string>();

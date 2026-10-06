@@ -7,6 +7,7 @@ import { ReadyPlayersRoster, type ReadyRosterPlayer } from './WinHandModal';
 import { useSession, type PrivateView, type PublicTable } from '@/lib/store';
 import { formatMoneyAmount } from '@/lib/currency';
 import { Button } from '@/components/ui/Button';
+import { Select } from '@/components/ui/Select';
 import { useIsLandscapePhone, useIsNarrow } from '@/lib/tableLayout';
 import { formatShortcutKey, isTypingTarget, useKeyboardShortcuts } from '@/lib/keyboardShortcuts';
 import type { PlayHotkeyHandlers } from '@/lib/useTableHotkeys';
@@ -25,11 +26,11 @@ function waitingCopy(opts: {
   }
   if (opts.spectating) return 'Spectating — you are not seated';
   if (opts.contestOver) return 'Contest complete';
+  if (opts.youWonHand) return 'You won the game — start a new game when ready';
   if (opts.street === 'waiting') {
     return 'Waiting for players…';
   }
   if (opts.street === 'payout' || opts.street === 'showdown') {
-    if (opts.youWonHand) return 'You won the game — start a new game when ready';
     return 'Hand complete — start next when ready';
   }
   if (!opts.isTurn) return 'Waiting for your turn…';
@@ -219,21 +220,19 @@ function TableToolsPanel({
       {hostRow ? (
         <div className="flex flex-col items-center gap-1.5">
           {tools.canAddBot && tools.botGroups && tools.botGroups.length > 0 && tools.onBotGroupChange ? (
-            <label className="flex items-center gap-1.5 text-[10px] font-display font-semibold uppercase tracking-wide text-muted">
-              <span className="sr-only sm:not-sr-only">Bots</span>
-              <select
+            <div className="flex items-center gap-1.5 text-[10px] font-display font-semibold uppercase tracking-wide text-muted">
+              <span className="sr-only sm:not-sr-only" aria-hidden>
+                Bots
+              </span>
+              <Select
+                size="xs"
                 value={tools.botGroupId ?? tools.botGroups[0]!.id}
-                onChange={(e) => tools.onBotGroupChange?.(e.target.value)}
-                className="max-w-[10rem] rounded border border-sidebar/20 bg-white px-1.5 py-1 text-[10px] font-semibold normal-case tracking-normal text-[rgb(29_4_50)] outline-none focus:border-sidebar/40 [color-scheme:light]"
+                onChange={(id) => tools.onBotGroupChange?.(id)}
+                options={tools.botGroups.map((g) => ({ value: g.id, label: g.name }))}
+                className="w-auto max-w-[10rem] normal-case tracking-normal"
                 aria-label="Bot name pack"
-              >
-                {tools.botGroups.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+              />
+            </div>
           ) : null}
           <div className="flex flex-wrap items-center justify-center gap-1">
           {tools.canAddBot && tools.onAddBot ? (

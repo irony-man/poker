@@ -285,14 +285,18 @@ body > * {
 
 .lobby-shell .choice-chip-selected {
   border-color: rgb(var(--sidebar));
-  background-color: rgb(var(--sidebar) / 0.1);
-  color: rgb(var(--sidebar));
-  box-shadow: 0 0 0 1px rgb(var(--sidebar));
+  background-color: rgb(var(--sidebar));
+  color: rgb(var(--on-chrome));
+  box-shadow: 0 4px 14px rgb(var(--sidebar) / 0.18);
 }
 
 .lobby-shell .choice-chip-selected:hover {
   border-color: rgb(var(--sidebar));
-  color: rgb(var(--sidebar));
+  color: rgb(var(--on-chrome));
+}
+
+.lobby-shell .choice-chip-selected .text-muted {
+  color: rgb(var(--on-chrome) / 0.8);
 }
 
 .lobby-shell .btn-primary {
@@ -428,14 +432,14 @@ body > * {
 
   .choice-chip-selected {
     @apply font-bold;
-    border-color: rgb(var(--border-subtle) / 0.55);
-    background-color: rgb(var(--on-chrome) / 0.15);
-    color: rgb(var(--on-chrome));
+    border-color: rgb(var(--on-chrome));
+    background-color: rgb(var(--on-chrome));
+    color: rgb(var(--bg-chrome));
   }
 
   .choice-chip-selected:hover {
-    border-color: rgb(var(--border-subtle));
-    color: rgb(var(--on-chrome));
+    border-color: rgb(var(--on-chrome));
+    color: rgb(var(--bg-chrome));
   }
 
   .bet-slider {
@@ -2040,7 +2044,7 @@ html[data-ui-theme='v3'] .lobby-shell .choice-chip {
 
 html[data-ui-theme='v3'] .choice-chip-selected,
 html[data-ui-theme='v3'] .lobby-shell .choice-chip-selected {
-  background-color: rgb(var(--sidebar) / 0.55);
+  background-color: rgb(var(--sidebar));
   color: #fff;
   border-color: rgb(var(--glass-highlight) / 0.5);
 }
@@ -2063,9 +2067,20 @@ html[data-ui-theme='v3'] .play-chrome-control,
 html[data-ui-theme='v3'] .play-chrome-control-icon {
   border-color: rgb(var(--glass-highlight) / 0.35);
   background-color: rgb(var(--ink-panel) / 0.55);
+  color: rgb(255 252 250);
   box-shadow: 0 1px 0 0 rgb(var(--glass-highlight) / 0.35) inset;
   backdrop-filter: blur(12px) saturate(1.25);
   -webkit-backdrop-filter: blur(12px) saturate(1.25);
+}
+
+html[data-ui-theme='v3'] .play-chrome-control:hover,
+html[data-ui-theme='v3'] .play-chrome-control-icon:hover {
+  border-color: rgb(var(--glass-highlight) / 0.55);
+  background-color: rgb(var(--ink-panel) / 0.8);
+}
+
+html[data-ui-theme='v3'] .play-chrome-control.text-danger {
+  color: rgb(255 150 140);
 }
 
 html[data-ui-theme='v3'] .play-chrome-control-active {

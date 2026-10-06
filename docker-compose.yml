@@ -86,7 +86,6 @@ services:
       DATA_DIR: /app/data
       # Required: Supabase Session pooler URI (IPv4). Do not use docker `postgres` hostname in prod.
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env to your Supabase pooler URL}
-      ADMIN_USERNAMES: ${ADMIN_USERNAMES:-}
       AWS_REGION: ${AWS_REGION:-}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
@@ -119,6 +118,8 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-}
+      # Blank → no rate-limit bypass. Set (same value as the loadtest service) only while load testing.
+      LOADTEST_TOKEN: ${LOADTEST_TOKEN:-}
     volumes:
       - poker-data:/app/data
     restart: unless-stopped
@@ -135,6 +136,39 @@ services:
       retries: 8
       start_period: 15s
 
+  # Load-test dashboard: docker compose --profile loadtest up -d --build loadtest  → http://<host>:4100
+  # Set LOADTEST_TOKEN to the same value here and on the target server to bypass its rate limits.
+  loadtest:
+    profiles: ["loadtest"]
+    build:
+      context: .
+      dockerfile: apps/loadtest/Dockerfile
+    ports:
+      - "${LOADTEST_PORT:-4100}:4100"
+    environment:
+      # Required (≥12 chars); the service refuses to start without it.
+      LOADTEST_ADMIN_TOKEN: ${LOADTEST_ADMIN_TOKEN:-}
+      LOADTEST_TOKEN: ${LOADTEST_TOKEN:-}
+      LOADTEST_TARGETS: ${LOADTEST_TARGETS:-local=http://server:4000|ws://server:4000/ws}
+      LOADTEST_MAX_VUS: ${LOADTEST_MAX_VUS:-500}
+      LOADTEST_COOKIE_SECURE: ${LOADTEST_COOKIE_SECURE:-false}
+      REPORTS_DIR: /app/data
+    volumes:
+      - poker-loadtest:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4100/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   web:
     build:
       context: .
@@ -147,8 +181,9 @@ services:
         NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ${NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION:-}
         NEXT_PUBLIC_BING_SITE_VERIFICATION: ${NEXT_PUBLIC_BING_SITE_VERIFICATION:-}
         NEXT_PUBLIC_YANDEX_VERIFICATION: ${NEXT_PUBLIC_YANDEX_VERIFICATION:-}
-        # Optional: blank → the web app reads GOOGLE_CLIENT_ID from GET /api/auth/config at runtime.
+        # Blank hides the Google / Instagram sign-in buttons.
         NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-}
+        NEXT_PUBLIC_INSTAGRAM_ENABLED: ${NEXT_PUBLIC_INSTAGRAM_ENABLED:-}
         NEXT_PUBLIC_LEGAL_OPERATOR_NAME: ${NEXT_PUBLIC_LEGAL_OPERATOR_NAME:-}
         NEXT_PUBLIC_LEGAL_CONTACT_EMAIL: ${NEXT_PUBLIC_LEGAL_CONTACT_EMAIL:-}
         NEXT_PUBLIC_LEGAL_JURISDICTION: ${NEXT_PUBLIC_LEGAL_JURISDICTION:-}
@@ -170,3 +205,4 @@ volumes:
   poker-data:
   poker-pg:
   poker-redis:
+  poker-loadtest:

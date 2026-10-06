@@ -113,11 +113,11 @@ export function GoogleAuthPanel({
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           required
-          minLength={3}
-          maxLength={24}
+          minLength={1}
+          maxLength={30}
           autoComplete="username"
-          pattern="[a-zA-Z0-9_]+"
-          help="Letters, numbers, and underscores · 3–24 characters"
+          pattern="[a-zA-Z0-9._]+"
+          help="Letters, numbers, periods, and underscores · up to 30 characters"
           autoFocus
         />
         <AvatarPicker

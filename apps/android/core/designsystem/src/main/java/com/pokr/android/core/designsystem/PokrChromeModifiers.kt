@@ -67,12 +67,12 @@ fun Modifier.pokrChoiceChipSurface(
     }
     val (bg, border, width) = when (chrome) {
         PokrChrome.Lobby -> if (selected) {
-            Triple(PokrColors.Sidebar.copy(alpha = 0.1f), PokrColors.Sidebar, 2.dp)
+            Triple(PokrColors.Sidebar, PokrColors.Sidebar, 1.dp)
         } else {
             Triple(PokrColors.Mushroom.copy(alpha = 0.5f), PokrColors.Sidebar.copy(alpha = 0.14f), 1.dp)
         }
         PokrChrome.Play -> if (selected) {
-            Triple(PokrColors.Mushroom.copy(alpha = 0.15f), PokrColors.Mushroom.copy(alpha = 0.55f), 2.dp)
+            Triple(PokrColors.Mushroom, PokrColors.Mushroom, 1.dp)
         } else {
             Triple(PokrColors.Ink.copy(alpha = 0.45f), PokrColors.Mushroom.copy(alpha = 0.15f), 1.dp)
         }
@@ -95,9 +95,9 @@ fun pokrChoiceForeground(
     arcade -> if (muted) PokrColors.InkStrongMuted else PokrColors.InkStrong.copy(alpha = 0.85f)
     glass && selected -> if (muted) Color.White.copy(alpha = 0.75f) else Color.White
     glass -> if (muted) PokrColors.InkStrongMuted else PokrColors.InkStrong.copy(alpha = 0.85f)
-    chrome == PokrChrome.Play && selected -> PokrColors.Mushroom
+    chrome == PokrChrome.Play && selected -> if (muted) PokrColors.Ink.copy(alpha = 0.7f) else PokrColors.Ink
     chrome == PokrChrome.Play -> if (muted) PokrColors.Cream.copy(alpha = 0.65f) else PokrColors.Cream.copy(alpha = 0.8f)
-    selected -> PokrColors.Sidebar
+    selected -> if (muted) Color.White.copy(alpha = 0.75f) else Color.White
     muted -> PokrColors.InkStrongMuted
     else -> PokrColors.InkStrong.copy(alpha = 0.85f)
 }

@@ -120,10 +120,25 @@ export default {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.45' },
         },
+        'select-menu-in': {
+          from: { opacity: '0', transform: 'scale(0.97)' },
+          to: { opacity: '1', transform: 'scale(1)' },
+        },
+        'chart-draw': {
+          from: { strokeDashoffset: '1' },
+          to: { strokeDashoffset: '0' },
+        },
+        'chart-fade': {
+          from: { opacity: '0' },
+          to: { opacity: '1' },
+        },
       },
       animation: {
         'hud-pulse': 'hud-pulse 1.6s var(--ease-out) infinite',
         'live-blink': 'live-blink 1.4s ease-in-out infinite',
+        'select-menu-in': 'select-menu-in 120ms var(--ease-out)',
+        'chart-draw': 'chart-draw 700ms var(--ease-out) both',
+        'chart-fade': 'chart-fade 500ms ease-out 200ms both',
       },
     },
   },

@@ -2,7 +2,13 @@ import { mkdir, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AUTH_KV_KEYS, AuthStore, usernameBaseFromGoogle } from './auth/auth.store.js';
+import { UsernameSchema } from '@poker/protocol';
+import {
+  AUTH_KV_KEYS,
+  AuthStore,
+  usernameBaseFromGoogle,
+  usernameBaseFromInstagram,
+} from './auth/auth.store.js';
 import { AuthError, type GoogleIdentity } from './auth/auth.types.js';
 import { MemoryKv } from './kv/kv.store.js';
 
@@ -343,22 +349,37 @@ describe.each([
       return { id: 'ig-1', username: 'alice.ig', name: 'Alice Ig', ...overrides };
     }
 
-    it('asks a new Instagram user for a username, then creates a password-less account', async () => {
-      const first = await auth.instagramSignIn(ig());
-      expect(first.kind).toBe('needs_username');
-      if (first.kind !== 'needs_username') return;
-      expect(first.suggestedUsername).toMatch(/^Alice_Ig/);
-
-      const created = await auth.instagramSignIn(ig(), { username: 'Alice_Ig' });
+    it('creates a password-less account named after the Instagram handle', async () => {
+      const created = await auth.instagramSignIn(ig());
       expect(created.kind).toBe('session');
       if (created.kind !== 'session') return;
       expect(created.created).toBe(true);
+      expect(created.session.username).toBe('alice.ig');
       const user = auth.getUser(created.session.userId)!;
       expect(user.passwordHash).toBeNull();
       expect(user.instagramId).toBe('ig-1');
 
       const again = await auth.instagramSignIn(ig());
       expect(again.kind === 'session' && again.session.userId).toBe(created.session.userId);
+    });
+
+    it('asks for a username when the Instagram handle is already taken', async () => {
+      await auth.signup('Alice.IG', 'secret12');
+      const first = await auth.instagramSignIn(ig());
+      expect(first.kind).toBe('needs_username');
+      if (first.kind !== 'needs_username') return;
+      expect(first.suggestedUsername).toMatch(/^alice\.ig\d+$/);
+      expect(UsernameSchema.safeParse(first.suggestedUsername).success).toBe(true);
+
+      const created = await auth.instagramSignIn(ig(), { username: first.suggestedUsername });
+      expect(created.kind === 'session' && created.session.username).toBe(first.suggestedUsername);
+    });
+
+    it('asks for a username when the Instagram handle uses the reserved bot prefix', async () => {
+      const first = await auth.instagramSignIn(ig({ username: 'botany.fan' }));
+      expect(first).toMatchObject({ kind: 'needs_username', suggestedUsername: 'p_botany.fan' });
+      expect(usernameBaseFromInstagram('..Weird..Name.')).toBe('weird.name');
+      expect(usernameBaseFromInstagram('')).toBe('player');
     });
 
     it('links and unlinks Instagram from the profile', async () => {
@@ -393,6 +414,53 @@ describe.each([
       const again = new AuthStore(dir);
       await again.init();
       expect(again.getUserByInstagramId('ig-1')?.username).toBe('IgPersist');
+    });
+
+    it('remembers the linked handle and refreshes it on sign-in', async () => {
+      const res = await auth.instagramSignIn(ig(), { username: 'IgHandle' });
+      if (res.kind !== 'session') throw new Error('expected session');
+      expect(auth.getUser(res.session.userId)?.instagramUsername).toBe('alice.ig');
+      await auth.instagramSignIn(ig({ username: 'alice.new' }));
+      expect(auth.getUser(res.session.userId)?.instagramUsername).toBe('alice.new');
+      await auth.linkGoogle(res.session.userId, googleIdentity({ sub: 'g-handle' }));
+      const unlinked = await auth.unlinkInstagram(res.session.userId);
+      expect(unlinked.instagramUsername).toBeNull();
+    });
+  });
+
+  describe('linked Google email', () => {
+    it('is stored on link and cleared on unlink', async () => {
+      const a = await auth.signup('GmailUser', 'secret12');
+      const linked = await auth.linkGoogle(a.userId, googleIdentity({ email: 'g@example.com' }));
+      expect(linked.googleEmail).toBe('g@example.com');
+      const unlinked = await auth.unlinkGoogle(a.userId);
+      expect(unlinked.googleEmail).toBeNull();
+    });
+  });
+
+  describe('change password', () => {
+    it('requires the current password and keeps only the new session', async () => {
+      const a = await auth.signup('Changer', 'secret12');
+      await expect(auth.changePassword(a.userId, 'wrong-pass', 'newpass1')).rejects.toMatchObject({
+        code: 'invalid_credentials',
+      });
+      const fresh = await auth.changePassword(a.userId, 'secret12', 'newpass1');
+      expect(await auth.resolveSession(a.sessionToken)).toBeNull();
+      expect((await auth.resolveSession(fresh.sessionToken))?.id).toBe(a.userId);
+      await expect(auth.login('Changer', 'secret12')).rejects.toMatchObject({
+        code: 'invalid_credentials',
+      });
+      expect((await auth.login('Changer', 'newpass1')).userId).toBe(a.userId);
+    });
+
+    it('lets a social-only account set its first password', async () => {
+      const res = await auth.instagramSignIn(
+        { id: 'ig-pw', username: 'sets.pw', name: null },
+        { username: 'IgSetsPw' },
+      );
+      if (res.kind !== 'session') throw new Error('expected session');
+      await auth.changePassword(res.session.userId, undefined, 'firstpw1');
+      expect((await auth.login('IgSetsPw', 'firstpw1')).userId).toBe(res.session.userId);
     });
   });
 });
@@ -485,5 +553,16 @@ describe('AuthStore with KV-backed sessions', () => {
     await afterMove.init();
     expect(await afterMove.resolveSession(s.sessionToken)).toBeNull();
     expect(afterMove.getUser(s.userId)?.username).toBe('Legacy');
+  });
+});
+
+describe('UsernameSchema', () => {
+  it('follows Instagram username rules', () => {
+    for (const ok of ['a', 'john.doe', 'x_y.z', 'Legacy_24', 'a'.repeat(30)]) {
+      expect(UsernameSchema.safeParse(ok).success, ok).toBe(true);
+    }
+    for (const bad of ['', '.a', 'a.', 'a..b', 'a'.repeat(31), 'a-b', 'é', 'bot_x']) {
+      expect(UsernameSchema.safeParse(bad).success, bad).toBe(false);
+    }
   });
 });

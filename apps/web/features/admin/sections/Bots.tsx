@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { BOT_PERSONALITY_IDS } from '@poker/engine';
 import { Button } from '@/components/ui/Button';
+import { Select } from '@/components/ui/Select';
 import { SelectField, TextAreaField, TextField } from '@/components/ui/TextField';
 import type { BotGroup, BotGroupLabels } from '@/lib/api';
 import {
@@ -28,6 +29,16 @@ import {
   SplitItem,
   SplitPane,
 } from '../ui';
+
+const IMPORT_MODE_OPTIONS: { value: BotGroupsImportMode; label: string }[] = [
+  { value: 'merge', label: 'Merge (add / update by id)' },
+  { value: 'replace', label: 'Replace all groups' },
+];
+
+const PERSONALITY_OPTIONS = BOT_PERSONALITY_IDS.map((id) => ({
+  value: id as string,
+  label: PERSONALITY_LABELS[id],
+}));
 
 export function BotsSection({
   botGroups,
@@ -259,12 +270,10 @@ export function BotsSection({
                 <SelectField
                   label="Import mode"
                   value={importMode}
-                  onChange={(e) => onImportMode(e.target.value as BotGroupsImportMode)}
+                  onChange={onImportMode}
                   disabled={busy}
-                >
-                  <option value="merge">Merge (add / update by id)</option>
-                  <option value="replace">Replace all groups</option>
-                </SelectField>
+                  options={IMPORT_MODE_OPTIONS}
+                />
               </div>
               <Button
                 type="button"
@@ -512,30 +521,19 @@ function BotGroupEditor({
         <SelectField
           label="Label"
           value={labelValue}
-          onChange={(e) => onUpdateGroup(group.id, { labelId: e.target.value })}
+          onChange={(labelId) => onUpdateGroup(group.id, { labelId })}
           disabled={busy || labels.length === 0}
           help="Which picker row this pack appears on."
-        >
-          {labels.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.name}
-            </option>
-          ))}
-        </SelectField>
+          options={labels.map((l) => ({ value: l.id, label: l.name }))}
+        />
         <SelectField
           label="Default style"
           value={group.defaultPersonality ?? ''}
-          onChange={(e) => onDefaultPersonality(group.id, e.target.value)}
+          onChange={(v) => onDefaultPersonality(group.id, v)}
           disabled={busy}
           help="Used when a name has no style override. Auto keeps classic name map."
-        >
-          <option value="">Auto (by name / hash)</option>
-          {BOT_PERSONALITY_IDS.map((id) => (
-            <option key={id} value={id}>
-              {PERSONALITY_LABELS[id]}
-            </option>
-          ))}
-        </SelectField>
+          options={[{ value: '', label: 'Auto (by name / hash)' }, ...PERSONALITY_OPTIONS]}
+        />
       </div>
 
       <div>
@@ -594,24 +592,23 @@ function BotGroupEditor({
                   <span className="font-row-label min-w-0 flex-1">
                     {n}
                   </span>
-                  <select
+                  <Select
+                    size="xs"
                     value={displayPersonalities[n] ?? ''}
-                    onChange={(e) => onNamePersonality(group.id, n, e.target.value)}
-                    className="min-h-8 max-w-[11rem] rounded-md border border-sidebar/20 bg-white/90 px-2 text-xs text-primary"
+                    onChange={(v) => onNamePersonality(group.id, n, v)}
+                    className="w-auto max-w-[11rem]"
                     aria-label={`Style for ${n}`}
                     disabled={busy}
-                  >
-                    <option value="">
-                      {group.defaultPersonality
-                        ? `Default (${PERSONALITY_LABELS[group.defaultPersonality]})`
-                        : 'Default (auto)'}
-                    </option>
-                    {BOT_PERSONALITY_IDS.map((id) => (
-                      <option key={id} value={id}>
-                        {PERSONALITY_LABELS[id]}
-                      </option>
-                    ))}
-                  </select>
+                    options={[
+                      {
+                        value: '',
+                        label: group.defaultPersonality
+                          ? `Default (${PERSONALITY_LABELS[group.defaultPersonality]})`
+                          : 'Default (auto)',
+                      },
+                      ...PERSONALITY_OPTIONS,
+                    ]}
+                  />
                   <button
                     type="button"
                     onClick={() => onRemoveName(group.id, n)}

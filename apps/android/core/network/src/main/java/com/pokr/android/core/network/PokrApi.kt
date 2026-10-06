@@ -57,7 +57,6 @@ import com.pokr.android.core.model.PatchHomeFeaturesBody
 import com.pokr.android.core.model.PatchPagesBody
 import com.pokr.android.core.model.PublicProfile
 import com.pokr.android.core.model.PublicTablesResponse
-import com.pokr.android.core.model.AuthConfigResponse
 import com.pokr.android.core.model.ForgotPasswordRequest
 import com.pokr.android.core.model.GoogleAuthRequest
 import com.pokr.android.core.model.GoogleAuthResponse
@@ -99,10 +98,6 @@ interface PokrApi {
     @POST("api/logout")
     @Headers(ApiErrorToastInterceptor.SILENT)
     suspend fun logout(@Body body: EmptyBody = EmptyBody()): Unit
-
-    @GET("api/auth/config")
-    @Headers(ApiErrorToastInterceptor.SILENT)
-    suspend fun authConfig(): AuthConfigResponse
 
     @POST("api/auth/google")
     suspend fun googleAuth(@Body body: GoogleAuthRequest): GoogleAuthResponse

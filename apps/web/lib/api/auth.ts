@@ -25,7 +25,11 @@ export interface MeProfile {
   email: string | null;
   emailVerified: boolean;
   googleLinked: boolean;
+  /** Email of the linked Google account (null until its next sign-in for older links). */
+  googleEmail: string | null;
   instagramLinked: boolean;
+  /** Handle of the linked Instagram account (null until its next sign-in for older links). */
+  instagramUsername: string | null;
   hasPassword: boolean;
   createdAt: number;
   chipBalance: number;
@@ -69,40 +73,14 @@ function normalizeMe(data: MeProfile): MeProfile {
     email: typeof data.email === 'string' && data.email ? data.email : null,
     emailVerified: data.emailVerified === true,
     googleLinked: data.googleLinked === true,
+    googleEmail: typeof data.googleEmail === 'string' && data.googleEmail ? data.googleEmail : null,
     instagramLinked: data.instagramLinked === true,
+    instagramUsername:
+      typeof data.instagramUsername === 'string' && data.instagramUsername
+        ? data.instagramUsername
+        : null,
     hasPassword: data.hasPassword !== false,
   };
-}
-
-let authConfigPromise: Promise<{
-  googleClientId: string | null;
-  instagramEnabled: boolean;
-}> | null = null;
-
-/** Public auth options (cached for the page lifetime). */
-export function fetchAuthConfig(): Promise<{
-  googleClientId: string | null;
-  instagramEnabled: boolean;
-}> {
-  if (!authConfigPromise) {
-    authConfigPromise = apiFetch(`${apiBase()}/api/auth/config`, { silent: true })
-      .then(async (res) => {
-        if (!res.ok) return { googleClientId: null, instagramEnabled: false };
-        const data = (await res.json()) as { googleClientId?: unknown; instagramEnabled?: unknown };
-        return {
-          googleClientId:
-            typeof data.googleClientId === 'string' && data.googleClientId
-              ? data.googleClientId
-              : null,
-          instagramEnabled: data.instagramEnabled === true,
-        };
-      })
-      .catch(() => {
-        authConfigPromise = null;
-        return { googleClientId: null, instagramEnabled: false };
-      });
-  }
-  return authConfigPromise;
 }
 
 export type GoogleAuthResult = AuthSession | GoogleNeedsUsername;
@@ -217,6 +195,22 @@ export async function resetPassword(
   });
   if (!res.ok) throw new Error(await parseError(res, 'Could not reset password'));
   return res.json() as Promise<{ username: string }>;
+}
+
+/** Change (or set) the password. Other sessions are signed out; returns this device's new session. */
+export async function changePassword(
+  sessionToken: string,
+  newPassword: string,
+  currentPassword?: string,
+): Promise<AuthSession> {
+  const res = await apiFetch(`${apiBase()}/api/me/password`, {
+    method: 'POST',
+    headers: sessionHeaders(sessionToken),
+    body: JSON.stringify({ currentPassword: currentPassword || undefined, newPassword }),
+    silent: true,
+  });
+  if (!res.ok) await failFromResponse(res, 'Could not change password');
+  return res.json() as Promise<AuthSession>;
 }
 
 export async function verifyEmail(token: string): Promise<{ email: string | null }> {

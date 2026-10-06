@@ -126,10 +126,10 @@ If the LLM is down, table bots fall back to templates; `/chat` returns 503.
 2. **Credentials → Create credentials → OAuth client ID → Web application**:
    - Authorized JavaScript origins: `https://pokr.site`, `https://www.pokr.site`, `http://localhost:3000`
    - No redirect URIs are needed (the web app uses the Google Identity Services popup).
-3. Set `GOOGLE_CLIENT_ID=<web client id>.apps.googleusercontent.com` in `~/poker/.env` and redeploy. The server verifies ID tokens against it, and the web app reads it at runtime from `GET /api/auth/config` (so `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is optional).
-4. **Android:** create a second OAuth client of type **Android** with package `com.pokr.android` and the SHA-1 of each signing key (`./gradlew signingReport` for debug; Play Console → App integrity for release). The app still asks for tokens with the *web* client id: it uses `pokr.google.client.id` from `apps/android/local.properties` if set, otherwise `GET /api/auth/config`.
+3. Set both `GOOGLE_CLIENT_ID=<web client id>.apps.googleusercontent.com` (the server verifies ID tokens against it) and `NEXT_PUBLIC_GOOGLE_CLIENT_ID=<same id>` (baked into the web build to show the button) in `~/poker/.env`, then redeploy with `--build`.
+4. **Android:** create a second OAuth client of type **Android** with package `com.pokr.android` and the SHA-1 of each signing key (`./gradlew signingReport` for debug; Play Console → App integrity for release). The app still asks for tokens with the *web* client id, set as `pokr.google.client.id` in `apps/android/local.properties`; without it the Google button is hidden.
 
-Multiple accepted audiences can be given as a comma-separated `GOOGLE_CLIENT_ID`; the first one is served to clients.
+Multiple accepted audiences can be given as a comma-separated `GOOGLE_CLIENT_ID`; clients use the web client id.
 
 ## Instagram sign-in
 
@@ -151,7 +151,7 @@ INSTAGRAM_APP_SECRET=<instagram app secret>
 
 Local Instagram login needs HTTPS. Use `https://localhost:<web-port>/auth/instagram/callback` as `INSTAGRAM_REDIRECT_URI` and start Next with `--experimental-https`.
 
-The web app reads `instagramEnabled` from `GET /api/auth/config` and only shows the button when both id and secret are set.
+The web app only shows the Instagram button when `NEXT_PUBLIC_INSTAGRAM_ENABLED=true` is set at build time (redeploy with `--build` after changing it).
 
 ## Recovery email (SMTP)
 

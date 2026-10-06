@@ -23,6 +23,7 @@ import type {
   SiteAnnouncement,
   SiteConfigPayload,
   TableSoundsConfig,
+  UiLooksConfig,
 } from './site-config.types.js';
 
 @Injectable()
@@ -180,5 +181,13 @@ export class SiteConfigService implements OnModuleInit {
 
   setLobbyNav(next: LobbyNavConfig): Promise<LobbyNavConfig> {
     return this.store.setLobbyNav(next);
+  }
+
+  getUiLooks(): UiLooksConfig {
+    return this.store.getUiLooks();
+  }
+
+  setUiLooks(next: UiLooksConfig): Promise<UiLooksConfig> {
+    return this.store.setUiLooks(next);
   }
 }

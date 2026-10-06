@@ -42,3 +42,14 @@ export function choiceOptionClass(
 ): string {
   return cn(selected ? option[style].selected : option[style].idle, className);
 }
+
+/** Radio cards / toggle rows: selected fills with primary and flips nested text tokens. */
+const card = {
+  idle: 'border-sidebar/10 bg-page/30 hover:border-sidebar/22 hover:bg-page/55',
+  selected:
+    'border-sidebar bg-sidebar text-on-chrome shadow-[0_6px_18px_rgb(29_4_50/0.18)] [&_.text-primary]:text-on-chrome [&_.text-sidebar]:text-on-chrome [&_.text-muted]:text-on-chrome/80',
+} as const;
+
+export function choiceCardClass(selected: boolean, className = ''): string {
+  return cn(selected ? card.selected : card.idle, className);
+}

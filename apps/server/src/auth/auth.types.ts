@@ -26,14 +26,20 @@ export interface User {
   emailVerified: boolean;
   /** Linked Google account subject id. */
   googleSub: string | null;
+  /** Email of the linked Google account, shown on the profile. */
+  googleEmail: string | null;
   /** Linked Instagram user id. */
   instagramId: string | null;
+  /** Handle of the linked Instagram account, shown on the profile. */
+  instagramUsername: string | null;
   /** Global play-money balance (chips). */
   chipBalance: number;
   /** Contest ranking rating (Whuffies); not spendable. */
   whuffieBalance: number;
   /** Completed online hands this user was dealt into. */
   handsPlayed: number;
+  /** Grants access to /admin and the admin API. */
+  isAdmin: boolean;
   createdAt: number;
 }
 

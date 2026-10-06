@@ -109,6 +109,27 @@ Create with optional friend invites and bot fill. Share the contest code, or ope
 npm test
 ```
 
+## Load testing (`apps/loadtest`)
+
+A standalone service with an admin dashboard that load-tests the REST API and `/ws` socket of an allowlisted target, then writes an HTML + JSON report per run. It talks to the target only over public HTTP/WS, so it can run on another VM.
+
+```bash
+# .env (see .env.example): same LOADTEST_TOKEN on the target server and here,
+# LOADTEST_ADMIN_TOKEN for the dashboard, LOADTEST_TARGETS=name=apiUrl|wsUrl
+npm run loadtest:up            # docker compose --profile loadtest → http://localhost:4100
+npm run dev:loadtest           # or run from source
+```
+
+Scenarios (pick one or more per run; each gets `vus` virtual users):
+
+- **api** — weighted mix of `/health`, `/api/site`, `/api/tables`, `/api/contests`, `/api/me`, `/api/users/:username`, `POST /api/ticket`. Closed model (think time) or open model at a target req/s.
+- **socket-basic** — connect, lobby sync, auth, ping/pong; reconnects on drop.
+- **socket-rooms** — private tables (seated players + spectators) with chat; measures chat fan-out latency and delivery.
+- **gameplay** — real players ready up and act on their turns (check/call, occasional min raise); measures action → state latency and hands/min.
+- **mixed** — `api` plus one socket scenario.
+
+Accounts `lt_<tag>_<n>` are created once per target and cached in the reports volume, so later runs reuse them. The target server skips rate limits only for requests carrying `x-loadtest-token` equal to its `LOADTEST_TOKEN`; leave that blank in production when not testing. Only one run executes at a time, and `LOADTEST_MAX_VUS` caps the total.
+
 ## Deploy (Docker)
 
 No cloud credentials are required for local/LAN deploy:
@@ -152,6 +173,10 @@ For a public URL (Vercel/Railway/Fly), you’ll need accounts + `NEXT_PUBLIC_API
 | `BOT_CHAT_TIMEOUT_MS` | `60000` | Lobby `/chat` LLM timeout |
 | `BANTERBOT_WEIGHTS_ROOT` | `./apps/fungpt/weights` | Host dir mounted into sidecar (`BanterBot_1_8b-chat/` inside) |
 | `BANTERBOT_WEIGHTS_DIR` | sidecar default path | Override checkpoint dir inside the sidecar process (Compose sets this) |
+| `LOADTEST_TOKEN` | unset | Shared secret: server skips rate limits for requests with a matching `x-loadtest-token` header; the load-test service sends it. Blank → no bypass |
+| `LOADTEST_ADMIN_TOKEN` | unset | Load-test dashboard sign-in secret (≥ 12 chars; service refuses to start without it) |
+| `LOADTEST_TARGETS` | `local=http://server:4000\|ws://server:4000/ws` | Allowlisted targets, comma-separated `name=apiUrl\|wsUrl` (`\|wsUrl` optional) |
+| `LOADTEST_MAX_VUS` | `500` | Cap on VUs × scenarios per run |
 
 ### Search consoles (external)
 

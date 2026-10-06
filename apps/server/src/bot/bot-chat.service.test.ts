@@ -122,6 +122,7 @@ describe('BotChatService', () => {
   });
 
   it('uses BANTER_LLM_MODEL for hosted OpenAI-style APIs', async () => {
+    const prev = process.env.BANTER_LLM_MODEL;
     process.env.BANTER_LLM_MODEL = 'gpt-4o-mini';
     try {
       const fetchFn = vi.fn(async () =>
@@ -135,9 +136,10 @@ describe('BotChatService', () => {
       const body = JSON.parse(
         ((fetchFn as ReturnType<typeof vi.fn>).mock.calls[0]![1] as RequestInit).body as string,
       ) as { model: string };
-      expect(body.model).toBe('banterbot');
+      expect(body.model).toBe('gpt-4o-mini');
     } finally {
-      delete process.env.BANTER_LLM_MODEL;
+      if (prev === undefined) delete process.env.BANTER_LLM_MODEL;
+      else process.env.BANTER_LLM_MODEL = prev;
     }
   });
 });

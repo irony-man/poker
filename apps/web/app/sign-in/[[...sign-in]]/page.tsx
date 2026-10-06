@@ -78,10 +78,10 @@ function SignInForm() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
-            minLength={3}
-            maxLength={24}
+            minLength={1}
+            maxLength={30}
             autoComplete="username"
-            pattern="[a-zA-Z0-9_]+"
+            pattern="[a-zA-Z0-9._]+"
           />
           <TextField
             variant="hud"

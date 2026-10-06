@@ -18,13 +18,13 @@ import {
   readStoredSession,
 } from '@/lib/session';
 import { useSession } from '@/lib/store';
-import { fetchMe, logout as apiLogout } from '@/lib/api';
+import { fetchMe, fetchPublicSite, logout as apiLogout } from '@/lib/api';
 import { loadSavedAvatarId, saveAvatarId } from '@/lib/avatars';
 import { saveTableColorId } from '@/lib/tableColors';
 import { setSfxMuted } from '@/lib/audio';
 import { saveKeyboardShortcuts } from '@/lib/keyboardShortcuts';
 import { loadSavedTableLayout, saveTableLayout } from '@/lib/tableLayoutPref';
-import { loadSavedUiTheme, saveUiTheme } from '@/lib/uiTheme';
+import { applyUiTheme, configureUiLooks, loadSavedUiTheme, saveUiTheme } from '@/lib/uiTheme';
 import { attachPlayFullscreen } from '@/lib/mobileFullscreen';
 import { ConfirmProvider } from '@/components/ConfirmPopover';
 import { AvatarPresetsLoader } from '@/components/AvatarPresetsLoader';
@@ -162,8 +162,13 @@ export function AppChrome({ children }: { children: ReactNode }) {
   }, [sessionName, sessionToken]);
 
   useEffect(() => {
-    saveUiTheme(loadSavedUiTheme());
+    applyUiTheme(loadSavedUiTheme());
     saveTableLayout(loadSavedTableLayout());
+    void fetchPublicSite()
+      .then((site) => configureUiLooks(site.uiLooks))
+      .catch(() => {
+        /* keep cached look visibility */
+      });
   }, []);
 
   useEffect(() => {

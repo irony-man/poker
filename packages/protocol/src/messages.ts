@@ -570,15 +570,28 @@ export type UpdateFriendGroupBody = z.infer<typeof UpdateFriendGroupBodySchema>;
 export type InviteFriendGroupBody = z.infer<typeof InviteFriendGroupBodySchema>;
 export type InviteFriendsBody = z.infer<typeof InviteFriendsBodySchema>;
 
-/** Unique login + display name: 3–24 alphanumerics/underscore; not bot:… */
+export const USERNAME_MAX = 30;
+
+/**
+ * Unique login + display name, following Instagram's rules: 1–30 letters, numbers,
+ * periods, or underscores; no leading/trailing/consecutive periods. Not bot:…
+ */
 export const UsernameSchema = z
   .string()
-  .min(3)
-  .max(24)
-  .regex(/^[a-zA-Z0-9_]+$/, 'Username must be letters, numbers, or underscore')
+  .min(1)
+  .max(USERNAME_MAX)
+  .regex(/^[a-zA-Z0-9._]+$/, 'Username can only use letters, numbers, periods, and underscores')
+  .refine((u) => !u.startsWith('.') && !u.endsWith('.'), "Username can't start or end with a period")
+  .refine((u) => !u.includes('..'), "Username can't have two periods in a row")
   .refine((u) => !u.toLowerCase().startsWith('bot'), 'Reserved username prefix');
 
 export const PasswordSchema = z.string().min(6).max(128);
+
+/** `currentPassword` is required unless the account has no password yet (social-only). */
+export const ChangePasswordBodySchema = z.object({
+  currentPassword: z.string().max(128).optional(),
+  newPassword: PasswordSchema,
+});
 
 export const EmailSchema = z.string().trim().email('Enter a valid email address').max(254);
 

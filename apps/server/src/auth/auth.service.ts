@@ -40,12 +40,14 @@ export class AuthService implements OnModuleInit {
     this.store = new AuthStore(dataDir);
     this.store.setPool(dataSourceAsQueryable(this.dataSource));
     this.store.setEconomyProvider(() => this.siteConfig.getEconomy());
+    this.store.setDefaultUiThemeProvider(() => this.siteConfig.getUiLooks().defaultLook);
   }
 
   async onModuleInit(): Promise<void> {
     // Ensure site config defaults are loaded before any signup uses the grant.
     await this.siteConfig.asStore().init();
     this.store.setEconomyProvider(() => this.siteConfig.getEconomy());
+    this.store.setDefaultUiThemeProvider(() => this.siteConfig.getUiLooks().defaultLook);
     await this.kv.ready();
     this.store.setKv(this.kv.isRedis() ? this.kv.asStore() : null);
     await this.store.init();
@@ -116,14 +118,6 @@ export class AuthService implements OnModuleInit {
   }): string {
     const state = this.instagram.createState(input);
     return this.instagram.authorizeUrl(state);
-  }
-
-  instagramConfigured(): boolean {
-    return this.instagram.isConfigured();
-  }
-
-  instagramRedirectUri(): string | null {
-    return this.instagram.configuredRedirectUri();
   }
 
   async instagramSignInFromCode(
@@ -239,6 +233,14 @@ export class AuthService implements OnModuleInit {
 
   resetPassword(token: string, password: string): Promise<User> {
     return this.store.resetPassword(token, password);
+  }
+
+  changePassword(
+    userId: string,
+    currentPassword: string | undefined,
+    newPassword: string,
+  ): Promise<AuthSessionPayload> {
+    return this.store.changePassword(userId, currentPassword, newPassword);
   }
 
   resolveSession(token: string): Promise<User | null> {

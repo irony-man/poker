@@ -8,6 +8,7 @@ import { NestFactory } from '@nestjs/core';
 import { WsAdapter } from '@nestjs/platform-ws';
 import { AppModule } from './app.module.js';
 import { isAllowedOrigin, parseExtraOrigins } from './config/cors.js';
+import { requestLogger, requestLoggingEnabled } from './common/request-logger.js';
 
 // Load monorepo root .env then apps/server/.env (later wins) before Nest boot.
 const serverDir = path.dirname(fileURLToPath(import.meta.url));
@@ -19,6 +20,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log'],
   });
+
+  if (requestLoggingEnabled()) app.use(requestLogger());
 
   const config = app.get(ConfigService);
   const extraOrigins = parseExtraOrigins(config.get<string>('WEB_ORIGIN'));

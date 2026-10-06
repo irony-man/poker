@@ -93,7 +93,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('pokr-ui-theme');if(t==='v2'||t==='v3')document.documentElement.setAttribute('data-ui-theme',t);}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('pokr-ui-theme');var c=JSON.parse(localStorage.getItem('pokr-ui-looks')||'null');if(c&&Array.isArray(c.visible)&&c.visible.indexOf(t)<0)t=c.defaultLook;if(t==='v2'||t==='v3')document.documentElement.setAttribute('data-ui-theme',t);}catch(e){}})();`,
           }}
         />
       </head>

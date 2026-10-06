@@ -855,8 +855,10 @@ export function OfflineTableView({
     setState(result.state);
   };
 
+  const offlineGameComplete = isOfflineGameComplete(state, HUMAN_ID);
   const canStartHand =
     betweenHands &&
+    !offlineGameComplete &&
     myPlayer?.status !== 'sittingOut' &&
     myPlayer?.status !== 'empty' &&
     coerceMoney(myPlayer?.stack) > 0;
@@ -871,13 +873,14 @@ export function OfflineTableView({
       sfxMute: () => setSfxMutedPref(!sfxMuted),
       help: () => setHelpOpen((v) => !v),
       ready: () => {
-        if (canStartHand) start();
+        if (offlineGameComplete) startNextOfflineGame();
+        else if (canStartHand) start();
       },
       sitOut: () => {
-        if (canSitOut) doSitOut();
+        if (canSitOut && !offlineGameComplete) doSitOut();
       },
       sitIn: () => {
-        if (canSitIn) doSitIn();
+        if (canSitIn && !offlineGameComplete) doSitIn();
       },
     },
   });
@@ -894,9 +897,8 @@ export function OfflineTableView({
     highlightMode,
     showWinModal,
     youWon,
-  } = useHandPresentation(publicTable, HUMAN_ID, dismissedWinHandId);
+  } = useHandPresentation(publicTable, HUMAN_ID, dismissedWinHandId, priv?.holeCards);
   const signedIn = !!readStoredSession()?.sessionToken;
-  const offlineGameComplete = isOfflineGameComplete(state, HUMAN_ID);
   const showHandWinModal = showWinModal;
   const showGameWonModal =
     offlineGameComplete && !dismissedGameWonModal && !showHandWinModal;
@@ -964,14 +966,14 @@ export function OfflineTableView({
       onClick: () => setChatOpen(true),
       tone: 'accent',
     });
-    if (canSitOut) {
+    if (canSitOut && !offlineGameComplete) {
       offlineOverflow.push({
         id: 'sit-out',
         label: 'Sit out',
         onClick: doSitOut,
       });
     }
-    if (canSitIn) {
+    if (canSitIn && !offlineGameComplete) {
       offlineOverflow.push({
         id: 'sit-in',
         label: 'Sit in',
@@ -1012,16 +1014,20 @@ export function OfflineTableView({
           connection="open"
           playHotkeysRef={playHotkeysRef}
           tableTools={{
-            onStart: canStartHand && !offlineGameComplete ? start : undefined,
-            startLabel: publicTable.street === 'waiting' ? 'Start hand' : 'Next hand',
+            onStart: offlineGameComplete ? startNextOfflineGame : canStartHand ? start : undefined,
+            startLabel: offlineGameComplete
+              ? 'Next game'
+              : publicTable.street === 'waiting'
+                ? 'Start hand'
+                : 'Next hand',
             readyCount,
             readyTotal: eligiblePlayers.length,
             readyPlayers: showDockReadyRoster ? readyRosterPlayers : undefined,
             readyHeading: dockReadyHeading,
-            canSitOut,
+            canSitOut: canSitOut && !offlineGameComplete,
             sitOutLabel: 'Sit out',
             onSitOut: doSitOut,
-            canSitIn,
+            canSitIn: canSitIn && !offlineGameComplete,
             sitInLabel: 'Sit in',
             onSitIn: doSitIn,
             canTopUp,
@@ -1058,7 +1064,7 @@ export function OfflineTableView({
       chatOpen={chatOpen}
       onChatOpenChange={setChatOpen}
       chatFocusRequestId={chatFocusRequestId}
-      actionsExpanded={!!isMyTurn || canStartHand || canSitIn}
+      actionsExpanded={!!isMyTurn || canStartHand || canSitIn || offlineGameComplete}
       actions={actionControls}
     >
       <div className="flex min-h-0 flex-1 flex-col">
@@ -1083,8 +1089,8 @@ export function OfflineTableView({
               <Button type="button" variant="chrome" onClick={startNewGame}>
                 New game
               </Button>
-              <Button href="/" variant="chrome" className="no-underline">
-                Lobby
+              <Button href="/" variant="chromeLeave" className="no-underline">
+                Leave
               </Button>
             </div>
           )}
@@ -1195,15 +1201,15 @@ export function OfflineTableView({
           whuffieSignInHint={!signedIn && !!whuffiesTeaser}
           offlineGameComplete={offlineGameComplete}
           canStartNext={
-            myPlayer?.status !== 'sittingOut' &&
-            myPlayer?.status !== 'empty' &&
-            coerceMoney(myPlayer?.stack) > 0 &&
-            (!offlineGameComplete || showPlayNextGame)
+            showPlayNextGame ||
+            (myPlayer?.status !== 'sittingOut' &&
+              myPlayer?.status !== 'empty' &&
+              coerceMoney(myPlayer?.stack) > 0)
           }
-          nextHandLabel={showPlayNextGame ? 'Play next Game' : undefined}
+          nextHandLabel={showPlayNextGame ? 'Play next game' : undefined}
           canTopUp={canTopUp}
-          canSitOut={canSitOut}
-          canSitIn={canSitIn}
+          canSitOut={canSitOut && !showPlayNextGame}
+          canSitIn={canSitIn && !showPlayNextGame}
           readyCount={readyCount}
           readyTotal={eligiblePlayers.length}
           readyPlayers={readyRosterPlayers}
@@ -1216,13 +1222,12 @@ export function OfflineTableView({
                     name: myPlayer?.name ?? playerName,
                     amount: coerceMoney(myPlayer?.stack),
                     isSelf: true,
+                    isWinner: true,
                   },
                 ]
           }
           onNextHand={() => {
             if (showPlayNextGame) {
-              setDismissedGameWonModal(true);
-              setDismissedWinHandId(publicTable.handId);
               startNextOfflineGame();
               return;
             }

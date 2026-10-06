@@ -1,11 +1,19 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+  UnauthorizedException,
+  type ExecutionContext,
+} from '@nestjs/common';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { AdminController } from './admin/admin.controller.js';
-import { isAdminUsername, parseAdminUsernames } from './admin/admin-allowlist.js';
 import { AuthStore } from './auth/auth.store.js';
+import type { User } from './auth/auth.types.js';
+import { AdminGuard } from './common/admin.guard.js';
+import { SESSION_USER_KEY } from './common/session-auth.guard.js';
 import { MemoryKv } from './kv/kv.store.js';
 import { memoryHistoryStore, type HandHistoryStore } from './history/history.store.js';
 import { RoomManager } from './rooms/room.js';
@@ -23,14 +31,46 @@ function memoryHistory(): HandHistoryStore {
   return memoryHistoryStore();
 }
 
-describe('admin allowlist', () => {
-  it('parses usernames and fails closed when empty', () => {
-    expect(parseAdminUsernames(undefined).size).toBe(0);
-    expect(parseAdminUsernames('').size).toBe(0);
-    expect(parseAdminUsernames(' alice, Bob ')).toEqual(new Set(['alice', 'bob']));
-    expect(isAdminUsername('Alice', parseAdminUsernames('alice,bob'))).toBe(true);
-    expect(isAdminUsername('charlie', parseAdminUsernames('alice,bob'))).toBe(false);
-    expect(isAdminUsername('alice', parseAdminUsernames(null))).toBe(false);
+describe('AdminGuard', () => {
+  function ctx(user: Partial<User> | undefined): ExecutionContext {
+    const req = { [SESSION_USER_KEY]: user };
+    return { switchToHttp: () => ({ getRequest: () => req }) } as unknown as ExecutionContext;
+  }
+
+  it('allows users flagged is_admin', () => {
+    expect(new AdminGuard().canActivate(ctx({ id: 'u1', isAdmin: true }))).toBe(true);
+  });
+
+  it('rejects non-admins and anonymous requests', () => {
+    expect(() => new AdminGuard().canActivate(ctx({ id: 'u1', isAdmin: false }))).toThrow(
+      ForbiddenException,
+    );
+    expect(() => new AdminGuard().canActivate(ctx(undefined))).toThrow(UnauthorizedException);
+  });
+});
+
+describe('legacy admin backfill', () => {
+  let dir: string;
+
+  beforeEach(async () => {
+    dir = await mkdtemp(path.join(os.tmpdir(), 'admin-backfill-'));
+  });
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it('promotes former allowlisted usernames once when no admin exists', async () => {
+    const auth = new AuthStore(dir);
+    await auth.init();
+    const shivam = await auth.seedUser('u1', 'Shivam', 'password1');
+    await auth.seedUser('u2', 'alice', 'password1');
+    expect(shivam.isAdmin).toBe(false);
+
+    const reloaded = new AuthStore(dir);
+    await reloaded.init();
+    expect(reloaded.getUser('u1')?.isAdmin).toBe(true);
+    expect(reloaded.getUser('u2')?.isAdmin).toBe(false);
   });
 });
 

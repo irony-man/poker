@@ -169,6 +169,7 @@ export function UsersSection({
     userId: string,
     currency: WalletCurrency,
     before: string | null,
+    limit?: number,
   ) => Promise<WalletTrailPage>;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
@@ -355,7 +356,10 @@ export function UsersSection({
                       className="mt-2"
                       idPrefix={`user-history-${u.id}-tabs`}
                       refreshKey={`${u.chipBalance}:${u.whuffieBalance}`}
-                      fetchPage={(currency, before) => fetchUserTrail(u.id, currency, before)}
+                      balances={{ chips: u.chipBalance, whuffies: u.whuffieBalance }}
+                      fetchPage={(currency, before, limit) =>
+                        fetchUserTrail(u.id, currency, before, limit)
+                      }
                     />
                   </AdminExpandPanel>
                 ) : null}

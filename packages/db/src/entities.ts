@@ -57,9 +57,17 @@ export class UserEntity {
   @Column({ name: 'google_sub', type: 'text', nullable: true })
   googleSub!: string | null;
 
+  /** Email of the linked Google account (display only). */
+  @Column({ name: 'google_email', type: 'text', nullable: true })
+  googleEmail!: string | null;
+
   /** Instagram user id when linked. */
   @Column({ name: 'instagram_id', type: 'text', nullable: true })
   instagramId!: string | null;
+
+  /** Handle of the linked Instagram account (display only). */
+  @Column({ name: 'instagram_username', type: 'text', nullable: true })
+  instagramUsername!: string | null;
 
   @Column({ name: 'avatar_id', type: 'int', default: 0 })
   avatarId!: number;
@@ -101,6 +109,10 @@ export class UserEntity {
   /** Completed online hands this user was dealt into. */
   @Column({ name: 'hands_played', type: 'int', default: 0 })
   handsPlayed!: number;
+
+  /** Grants access to /admin and the admin API. */
+  @Column({ name: 'is_admin', type: 'boolean', default: false })
+  isAdmin!: boolean;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;

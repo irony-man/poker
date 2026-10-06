@@ -58,6 +58,7 @@ export type PublicSitePayload = {
   avatarPresets?: AvatarPresetsConfig;
   cardThemes?: import('@/lib/cardFaceTheme').CardFaceTheme[];
   lobbyNav?: import('@poker/protocol').LobbyNavConfig;
+  uiLooks?: import('@poker/protocol').UiLooksConfig;
 };
 
 export { DEFAULT_AVATAR_PRESET_URLS } from '@/lib/avatars';

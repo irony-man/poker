@@ -109,12 +109,7 @@ class LobbyViewModel @Inject constructor(
     val openFriends = social.openFriends
 
     init {
-        viewModelScope.launch {
-            val clientId = bakedGoogleClientId.ifBlank {
-                runCatching { api.authConfig().googleClientId }.getOrNull().orEmpty()
-            }
-            _uiState.update { it.copy(googleClientId = clientId.ifBlank { null }) }
-        }
+        _uiState.update { it.copy(googleClientId = bakedGoogleClientId.ifBlank { null }) }
         viewModelScope.launch {
             social.snapshot.collect { snap ->
                 _uiState.update { it.copy(friends = snap.friends, groups = snap.groups) }
@@ -156,7 +151,7 @@ class LobbyViewModel @Inject constructor(
         }
     }
 
-    fun onUsernameChange(value: String) = _uiState.update { it.copy(username = value.filter { ch -> ch.isLetterOrDigit() || ch == '_' }.take(24)) }
+    fun onUsernameChange(value: String) = _uiState.update { it.copy(username = value.filter { ch -> ch.isLetterOrDigit() || ch == '_' || ch == '.' }.take(30)) }
     fun onPasswordChange(value: String) = _uiState.update { it.copy(password = value.take(128)) }
     fun onSignupEmailChange(value: String) = _uiState.update { it.copy(signupEmail = value.trim().take(254)) }
     fun onAuthModeChange(mode: String) = _uiState.update { it.copy(authMode = mode, error = null) }
@@ -253,8 +248,8 @@ class LobbyViewModel @Inject constructor(
         val state = _uiState.value
         val username = state.username.trim()
         val password = state.password
-        if (username.length < 3) {
-            _uiState.update { it.copy(error = "Username must be at least 3 characters") }
+        if (username.isEmpty()) {
+            _uiState.update { it.copy(error = "Enter a username") }
             return
         }
         if (password.length < 6) {
@@ -340,7 +335,7 @@ class LobbyViewModel @Inject constructor(
     }
 
     fun onGoogleUsernameChange(value: String) =
-        _uiState.update { it.copy(googleUsername = value.take(24)) }
+        _uiState.update { it.copy(googleUsername = value.take(30)) }
 
     fun cancelGoogleUsername() = _uiState.update {
         it.copy(googlePendingToken = null, googlePendingEmail = null, googleUsername = "", error = null)
@@ -350,9 +345,9 @@ class LobbyViewModel @Inject constructor(
         val state = _uiState.value
         val token = state.googlePendingToken ?: return
         val username = state.googleUsername.trim()
-        if (!Regex("^[a-zA-Z0-9_]{3,24}$").matches(username)) {
+        if (!Regex("^(?!\\.)(?!.*\\.\\.)(?!.*\\.$)[a-zA-Z0-9._]{1,30}$").matches(username)) {
             _uiState.update {
-                it.copy(error = "Username must be 3–24 letters, numbers, or underscores")
+                it.copy(error = "Username must be up to 30 letters, numbers, periods, or underscores, with no period at the start, end, or twice in a row")
             }
             return
         }

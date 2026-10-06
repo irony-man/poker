@@ -11,12 +11,16 @@ import {
 import {
   cloneLegalDocs,
   cloneLobbyNavConfig,
+  cloneUiLooks,
   DEFAULT_LEGAL_DOCS,
   DEFAULT_LOBBY_NAV,
+  DEFAULT_UI_LOOKS,
   normalizeLegalDocs,
   normalizeLobbyNavConfig,
+  normalizeUiLooks,
   type LegalDocs,
   type LobbyNavConfig,
+  type UiLooksConfig,
 } from '@poker/protocol';
 import {
   defaultEconomy,
@@ -48,6 +52,8 @@ export type { LegalDoc, LegalDocKey, LegalDocs } from '@poker/protocol';
 export { cloneLegalDocs, normalizeLegalDocs } from '@poker/protocol';
 export type { LobbyNavConfig, LobbyNavId, LobbyNavItemConfig } from '@poker/protocol';
 export { cloneLobbyNavConfig, isLobbyNavVisible, normalizeLobbyNavConfig } from '@poker/protocol';
+export type { UiLooksConfig } from '@poker/protocol';
+export { cloneUiLooks, normalizeUiLooks } from '@poker/protocol';
 
 export interface SiteAnnouncement {
   enabled: boolean;
@@ -343,6 +349,8 @@ export interface SiteConfigPayload {
   legal: LegalDocs;
   /** Lobby sidebar order + visibility; hidden items' pages 404. */
   lobbyNav: LobbyNavConfig;
+  /** App looks players can pick + the default for new players and hidden choices. */
+  uiLooks: UiLooksConfig;
 }
 
 /** Ordered picker rows; packs reference a row via `BotGroup.labelId`. */
@@ -674,6 +682,7 @@ export function defaultSiteConfig(): SiteConfigPayload {
     botChatStarters: [...DEFAULT_BOT_CHAT_STARTERS],
     legal: cloneLegalDocs(DEFAULT_LEGAL_DOCS),
     lobbyNav: cloneLobbyNavConfig(DEFAULT_LOBBY_NAV),
+    uiLooks: cloneUiLooks(DEFAULT_UI_LOOKS),
   };
 }
 
@@ -1144,6 +1153,8 @@ export function normalizeSiteConfig(raw: unknown): SiteConfigPayload {
 
   const lobbyNav = normalizeLobbyNavConfig(o.lobbyNav);
 
+  const uiLooks = normalizeUiLooks(o.uiLooks);
+
   return {
     announcement,
     economy,
@@ -1160,5 +1171,6 @@ export function normalizeSiteConfig(raw: unknown): SiteConfigPayload {
     botChatStarters,
     legal,
     lobbyNav,
+    uiLooks,
   };
 }

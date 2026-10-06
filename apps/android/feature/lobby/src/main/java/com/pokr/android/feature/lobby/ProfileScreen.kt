@@ -188,17 +188,17 @@ private fun ProfileTabChip(
         modifier = Modifier
             .clip(shape)
             .background(
-                if (selected) PokrColors.Sidebar.copy(alpha = 0.1f)
+                if (selected) PokrColors.Sidebar
                 else PokrColors.Mushroom.copy(alpha = 0.5f),
             )
             .border(
-                width = if (selected) 2.dp else 1.dp,
+                width = 1.dp,
                 color = if (selected) PokrColors.Sidebar else PokrColors.Sidebar.copy(alpha = 0.14f),
                 shape = shape,
             )
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 8.dp),
-        color = if (selected) PokrColors.Sidebar else PokrColors.InkStrong.copy(alpha = 0.85f),
+        color = if (selected) PokrColors.White else PokrColors.InkStrong.copy(alpha = 0.85f),
         fontFamily = PokrFonts.Display,
         fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
         fontSize = 13.sp,

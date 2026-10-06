@@ -1,4 +1,10 @@
-import type { ContestView, LegalDocs, LobbyNavConfig, WalletTrailPage } from '@poker/protocol';
+import type {
+  ContestView,
+  LegalDocs,
+  LobbyNavConfig,
+  UiLooksConfig,
+  WalletTrailPage,
+} from '@poker/protocol';
 import type { PagesCopy } from '@/lib/pageCopy';
 import { apiBase, apiFetch, authedFetch, parseError, sessionHeaders } from './client';
 import { walletTrailQueryString, type WalletTrailQuery } from './wallet';
@@ -217,6 +223,21 @@ export async function patchAdminLegal(sessionToken: string, docs: LegalDocs): Pr
     method: 'PATCH',
     body: docs,
   }) as Promise<LegalDocs>;
+}
+
+export async function fetchAdminUiLooks(sessionToken: string) {
+  return authedFetch('/api/admin/ui-looks', { sessionToken }) as Promise<UiLooksConfig>;
+}
+
+export async function patchAdminUiLooks(
+  sessionToken: string,
+  config: UiLooksConfig,
+): Promise<UiLooksConfig> {
+  return authedFetch('/api/admin/ui-looks', {
+    sessionToken,
+    method: 'PATCH',
+    body: config,
+  }) as Promise<UiLooksConfig>;
 }
 
 export async function fetchAdminLobbyNav(sessionToken: string) {

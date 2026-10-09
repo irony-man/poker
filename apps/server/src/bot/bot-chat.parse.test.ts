@@ -30,13 +30,6 @@ describe('parseBotChatBody', () => {
     expect(boost.ok).toBe(true);
     if (boost.ok) expect(boost.value.llmProvider).toBe('boost');
 
-    const legacy = parseBotChatBody({
-      messages: [{ role: 'user', content: 'hi' }],
-      llmProvider: 'fungpt',
-    });
-    expect(legacy.ok).toBe(true);
-    if (legacy.ok) expect(legacy.value.llmProvider).toBe('boost');
-
     expect(
       parseBotChatBody({
         messages: [{ role: 'user', content: 'hi' }],

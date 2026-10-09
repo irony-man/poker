@@ -54,7 +54,7 @@ describe('BotChatService', () => {
       const svc = BotChatService.create({
         baseUrl: 'http://llm.test',
         apiKey: 'secret',
-        model: 'banterbot',
+        model: 'test-model',
         fetchFn,
       });
       const text = await svc.complete(
@@ -73,7 +73,7 @@ describe('BotChatService', () => {
         model: string;
         messages: Array<{ role: string; content: string }>;
       };
-      expect(body.model).toBe('banterbot');
+      expect(body.model).toBe('test-model');
       expect(body.messages[0]?.role).toBe('system');
       expect(body.messages[0]?.content).toContain('BanterBot');
       expect(body.messages[0]?.content).toContain('poker only');
@@ -92,7 +92,7 @@ describe('BotChatService', () => {
     };
     process.env.BOT_CHAT_LLM_BASE_URL = 'https://api.cohere.ai/compatibility/v1';
     process.env.BOT_CHAT_LLM_API_KEY = 'cohere-key';
-    process.env.BANTER_LLM_BASE_URL = 'http://fungpt:8000';
+    process.env.BANTER_LLM_BASE_URL = 'http://banter.test';
     process.env.BOT_CHAT_MODEL = 'command-r-plus-08-2024';
     try {
       const fetchFn = vi.fn(async () =>

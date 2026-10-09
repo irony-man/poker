@@ -60,7 +60,7 @@ export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
   },
   {
     title: 'Chat with Bots',
-    body: 'Talk to BanterBot for sharp roasts — FunGPT personality, no table required.',
+    body: 'Talk to BanterBot for sharp roasts — no table required.',
     cta: 'Open Chat',
     href: '/chat',
     image: imageAssetUrl('home-offline.webp'),

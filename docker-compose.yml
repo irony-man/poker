@@ -1,7 +1,5 @@
 # Production Compose: Nest + Next. DB is external (Supabase) via DATABASE_URL in `.env`.
 # Optional local Postgres: docker compose --profile local-db up -d postgres
-# Optional FunGPT sidecar: docker compose --profile fungpt up -d --build
-#   (run ./scripts/download-banterbot-weights.sh first; prefer GPU. Oracle CPU: use hosted API instead.)
 
 services:
   postgres:
@@ -42,36 +40,6 @@ services:
       start_period: 5s
     restart: unless-stopped
 
-  fungpt:
-    profiles: ["fungpt"]
-    build:
-      context: .
-      dockerfile: apps/fungpt/Dockerfile
-    ports:
-      - "8000:8000"
-    environment:
-      BANTERBOT_WEIGHTS_DIR: /app/weights/BanterBot_1_8b-chat
-      # Keep in sync with server + auth.py (either var; not BOT_CHAT_LLM_API_KEY / Cohere).
-      FUNGPT_API_KEY: ${FUNGPT_API_KEY:-${BANTER_LLM_API_KEY:-}}
-      BANTER_LLM_API_KEY: ${BANTER_LLM_API_KEY:-${FUNGPT_API_KEY:-}}
-      FUNGPT_HOST: 0.0.0.0
-      FUNGPT_PORT: "8000"
-    volumes:
-      - ${BANTERBOT_WEIGHTS_ROOT:-./apps/fungpt/weights}:/app/weights:ro
-    restart: unless-stopped
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "python",
-          "-c",
-          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')",
-        ]
-      interval: 30s
-      timeout: 5s
-      retries: 5
-      start_period: 90s
-
   server:
     build:
       context: .
@@ -93,10 +61,9 @@ services:
       S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:-}
       SUPABASE_REGION: ${SUPABASE_REGION:-}
       REDIS_URL: ${REDIS_URL:-}
-      # OpenAI-compatible LLM (hosted API or FunGPT sidecar). Unset → template banter; /chat unavailable.
+      # OpenAI-compatible hosted LLM. Unset → template banter; /chat unavailable.
       BANTER_LLM_BASE_URL: ${BANTER_LLM_BASE_URL:-}
-      BANTER_LLM_API_KEY: ${BANTER_LLM_API_KEY:-${FUNGPT_API_KEY:-}}
-      FUNGPT_API_KEY: ${FUNGPT_API_KEY:-${BANTER_LLM_API_KEY:-}}
+      BANTER_LLM_API_KEY: ${BANTER_LLM_API_KEY:-}
       BANTER_LLM_MODEL: ${BANTER_LLM_MODEL:-}
       BANTER_LLM_PATH: ${BANTER_LLM_PATH:-/v1/chat/completions}
       BANTER_LLM_TIMEOUT_MS: ${BANTER_LLM_TIMEOUT_MS:-8000}

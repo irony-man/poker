@@ -10,6 +10,7 @@ import {
 } from './bot-chat.providers.js';
 import {
   BOOST_SYSTEM_PROMPT_FULL,
+  DEFAULT_COHERE_CHAT_MODEL,
   PERSONA_SYSTEM_PROMPT,
   type BotChatPersona,
 } from './bot-chat.prompts.js';
@@ -60,7 +61,7 @@ async function readUpstreamError(res: globalThis.Response): Promise<string> {
       const detail = json.detail;
       const detailText = Array.isArray(detail) ? detail.join('; ') : detail;
       if (detailText === 'Missing Bearer token' || detailText === 'Invalid API key') {
-        return `${detailText} — use one shared sidecar secret in .env (FUNGPT_API_KEY or BANTER_LLM_API_KEY, not your Cohere key), then recreate server and fungpt: docker compose --profile fungpt up -d --force-recreate server fungpt`;
+        return `${detailText} — check BANTER_LLM_API_KEY / BOT_CHAT_LLM_API_KEY in .env, then recreate the server`;
       }
       if (detailText) return detailText;
     } catch {
@@ -143,7 +144,7 @@ function withPersonaSystem(
 }
 
 /**
- * Lobby FunGPT chat client (OpenAI-compatible chat completions).
+ * Lobby BanterBot chat client (OpenAI-compatible chat completions).
  * Nest constructs from env; tests use `create()`.
  */
 @Injectable()
@@ -169,7 +170,7 @@ export class BotChatService {
         model:
           config.model?.trim() ||
           process.env.BANTER_LLM_MODEL?.trim() ||
-          'banterbot',
+          DEFAULT_COHERE_CHAT_MODEL,
       };
     }
     return svc;

@@ -1,11 +1,10 @@
 import {
-  DEFAULT_BANTER_MODEL,
   DEFAULT_BOOST_CHAT_MODEL,
   DEFAULT_COHERE_CHAT_MODEL,
   type BotChatPersona,
 } from './bot-chat.prompts.js';
 
-/** Lobby `/chat` backends (hosted only in UI; table banter may still use FunGPT sidecar). */
+/** Lobby `/chat` backends. */
 export type BotChatLlmProvider = 'cohere' | 'boost';
 
 export const BOT_CHAT_LLM_PROVIDERS: readonly BotChatLlmProvider[] = ['cohere', 'boost'] as const;
@@ -20,11 +19,9 @@ export interface BotChatRuntimeConfig {
 
 const DEFAULT_PATH = '/v1/chat/completions';
 
-/** Bearer for FunGPT sidecar / table banter (not lobby boost). */
-export function resolveSidecarApiKey(): string | null {
-  const key =
-    process.env.FUNGPT_API_KEY?.trim() || process.env.BANTER_LLM_API_KEY?.trim() || '';
-  return key || null;
+/** Bearer for table banter LLM (not lobby chat). */
+export function resolveBanterApiKey(): string | null {
+  return process.env.BANTER_LLM_API_KEY?.trim() || null;
 }
 
 function resolveChatPath(baseUrl: string, explicitPath?: string): string {
@@ -54,8 +51,6 @@ function resolveCohereLobbyConfig(): BotChatRuntimeConfig | null {
 
 export function parseBotChatProvider(raw: unknown): BotChatLlmProvider | null {
   if (raw === 'cohere' || raw === 'boost') return raw;
-  /** Legacy clients / stored prefs. */
-  if (raw === 'fungpt') return 'boost';
   return null;
 }
 
@@ -87,8 +82,7 @@ export function providerConfigError(provider: BotChatLlmProvider): string | null
   }
   const hosted =
     !cfg.baseUrl.includes('127.0.0.1') &&
-    !cfg.baseUrl.includes('localhost') &&
-    !cfg.baseUrl.includes('fungpt:');
+    !cfg.baseUrl.includes('localhost');
   if (hosted && !cfg.apiKey) {
     return 'Chat API key missing (set BOT_CHAT_LLM_API_KEY)';
   }
@@ -116,11 +110,7 @@ export function listAvailableBotChatProviders(): BotChatLlmProvider[] {
 /** Hosted APIs: use non-streaming completions (Next /api rewrite buffers SSE). */
 export function providerPrefersNonStream(baseUrl: string): boolean {
   return (
-    !baseUrl.includes('fungpt:') &&
     !baseUrl.includes('127.0.0.1') &&
     !baseUrl.includes('localhost')
   );
 }
-
-/** @deprecated Sidecar model id — table banter only. */
-export { DEFAULT_BANTER_MODEL };

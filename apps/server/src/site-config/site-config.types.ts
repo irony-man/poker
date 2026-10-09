@@ -490,7 +490,7 @@ export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
   },
   {
     title: 'Chat with Bots',
-    body: 'Talk to BanterBot for sharp roasts — FunGPT personality, no table required.',
+    body: 'Talk to BanterBot for sharp roasts — no table required.',
     cta: 'Open Chat',
     href: '/chat',
     image: '/home-offline.webp',
@@ -563,7 +563,7 @@ export const DEFAULT_PAGES_COPY: PagesCopy = {
   chat: {
     title: 'Chat with Bots',
     subtitle:
-      'Talk to BanterBot for sharp roasts — FunGPT personality, no table required.',
+      'Talk to BanterBot for sharp roasts — no table required.',
     image: '/home-offline.webp',
     imageAlt: 'Chat with BanterBot',
   },

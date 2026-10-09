@@ -556,7 +556,7 @@ describe('RoomManager', () => {
     rooms.setBanterLlm(
       BotBanterLlmService.create({
         baseUrl: 'http://llm.test',
-        model: 'banterbot',
+        model: 'test-model',
         fetchFn,
       }),
     );

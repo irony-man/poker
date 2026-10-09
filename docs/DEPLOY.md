@@ -81,7 +81,7 @@ git pull origin main
 
 ## Bot chat / LLM on the VM
 
-Default deploy (Nest + Next) does **not** start FunGPT. To enable lobby `/chat` and LLM table banter:
+LLM features are off by default. To enable lobby `/chat` and LLM table banter:
 
 1. **Hosted API (recommended on Oracle CPU):** set in `~/poker/.env`:
 
@@ -94,29 +94,17 @@ BOT_CHAT_MODEL=gpt-4o-mini
 
 Then `docker compose up -d` (or `./scripts/deploy-vm.sh`). No web rebuild.
 
-2. **Cohere lobby chat + FunGPT table banter** (typical CPU VM):
+2. **Cohere lobby chat + hosted table banter:**
 
 ```bash
 BOT_CHAT_LLM_BASE_URL=https://api.cohere.ai/compatibility/v1
 BOT_CHAT_LLM_API_KEY=your-cohere-key
 BOT_CHAT_MODEL=command-r-plus-08-2024
 
-BANTER_LLM_BASE_URL=http://fungpt:8000
-BANTER_LLM_MODEL=banterbot
-BANTER_LLM_TIMEOUT_MS=20000
+BANTER_LLM_BASE_URL=https://api.openai.com
+BANTER_LLM_API_KEY=sk-...
+BANTER_LLM_MODEL=gpt-4o-mini
 docker compose up -d
-docker compose --profile fungpt up -d --build
-```
-
-3. **BanterBot sidecar only** (download weights once; GPU strongly preferred):
-
-```bash
-sudo apt update && sudo apt install -y git-lfs
-git lfs install
-./scripts/download-banterbot-weights.sh
-BANTER_LLM_BASE_URL=http://fungpt:8000
-BANTER_LLM_MODEL=banterbot
-docker compose --profile fungpt up -d --build
 ```
 
 If the LLM is down, table bots fall back to templates; `/chat` returns 503.

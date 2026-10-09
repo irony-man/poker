@@ -1,4 +1,4 @@
-/** FunGPT BanterBot system prompt (from FunGPT LLM/templates/template.py). */
+/** BanterBot system prompts and model resolution. */
 
 export type BotChatPersona = 'banter';
 
@@ -8,20 +8,18 @@ export function isBotChatPersona(value: string | null | undefined): value is Bot
   return value === 'banter';
 }
 
-export const DEFAULT_BANTER_MODEL = 'banterbot';
-
-/** Default Cohere model when lobby chat uses `BOT_CHAT_LLM_BASE_URL` without `BOT_CHAT_MODEL`. */
+/** Default Cohere model when no explicit chat / banter model is configured. */
 export const DEFAULT_COHERE_CHAT_MODEL = 'command-r-plus-08-2024';
 
 /**
  * Resolve the OpenAI `model` id for lobby BanterBot chat.
- * Precedence: `BOT_CHAT_MODEL` → (hosted chat URL → Cohere default) → `BANTER_LLM_MODEL` → `banterbot`.
+ * Precedence: `BOT_CHAT_MODEL` → (hosted chat URL → Cohere default) → `BANTER_LLM_MODEL` → Cohere default.
  */
 export function resolvePersonaModel(_persona: BotChatPersona = 'banter'): string {
   const explicit = process.env.BOT_CHAT_MODEL?.trim();
   if (explicit) return explicit;
   if (process.env.BOT_CHAT_LLM_BASE_URL?.trim()) return DEFAULT_COHERE_CHAT_MODEL;
-  return process.env.BANTER_LLM_MODEL?.trim() || DEFAULT_BANTER_MODEL;
+  return process.env.BANTER_LLM_MODEL?.trim() || DEFAULT_COHERE_CHAT_MODEL;
 }
 
 /** Appended to every lobby bot system prompt — poker-only scope and off-topic handling. */

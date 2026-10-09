@@ -79,7 +79,7 @@ function AdminBrand({ onClick }: { onClick?: () => void }) {
         alt="POKR"
         width={160}
         height={48}
-        className="h-11 w-auto object-contain object-left mix-blend-screen"
+        className="h-11 w-auto object-contain object-left"
         priority
       />
       <p className="mt-2 font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-on-chrome/90">

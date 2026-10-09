@@ -53,7 +53,6 @@ function readStoredProvider(): BotChatLlmProvider | null {
   if (typeof window === 'undefined') return null;
   const raw = localStorage.getItem(BOT_CHAT_LLM_STORAGE_KEY);
   if (raw === 'cohere' || raw === 'boost') return raw;
-  if (raw === 'fungpt') return 'boost';
   return null;
 }
 

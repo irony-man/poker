@@ -15,7 +15,7 @@ export function PlayTableLogo() {
       alt="POKR"
       width={140}
       height={40}
-      className={onDark ? 'play-table-logo mix-blend-screen' : 'play-table-logo'}
+      className={onDark ? 'play-table-logo' : 'play-table-logo'}
       priority
     />
   );

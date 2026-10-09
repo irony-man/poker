@@ -9,7 +9,6 @@ Private No-Limit Texas Hold'em for casual home games.
 - **Server** (`apps/server`) — Express + native `ws`, Redis-optional KV (sessions with TTL), file/Postgres hand history
 - **Web** (`apps/web`) — Next.js 15, React 19, Tailwind, Framer Motion
 - **Android** (`apps/android`) — Jetpack Compose client (lobby, online WS table, offline engine)
-- **FunGPT sidecar** (`apps/fungpt`) — optional local BanterBot LLM for `/chat` and table banter
 
 ## Prerequisites
 
@@ -34,7 +33,7 @@ Open http://localhost:3000 — sign up or sign in with a username and password, 
 
 ### Bot chat / table banter LLM (optional)
 
-Lobby **Bots** (`/chat`) and seated-bot table banter use OpenAI-compatible chat completions. You can point **lobby chat** and **table banter** at different hosts (e.g. Cohere for `/chat`, FunGPT for table lines). When unset, table bots use phrase templates and `/chat` returns unavailable.
+Lobby **Bots** (`/chat`) and seated-bot table banter use OpenAI-compatible chat completions. You can point **lobby chat** and **table banter** at different hosts (e.g. Cohere for `/chat`, OpenAI for table lines). When unset, table bots use phrase templates and `/chat` returns unavailable.
 
 **Recommended for the Oracle VM (no GPU):** a hosted API. Nest already sends the BanterBot system prompt; only the model id changes.
 
@@ -51,23 +50,7 @@ BOT_CHAT_TIMEOUT_MS=60000
 
 Same pattern works with OpenRouter, Together, Fireworks, etc. (set `BANTER_LLM_BASE_URL` + model id for that host).
 
-**Local BanterBot sidecar (dev or GPU host):**
-
-```bash
-# Hugging Face weights use Git LFS (sudo apt install git-lfs && git lfs install)
-./scripts/download-banterbot-weights.sh
-pip install -r apps/fungpt/requirements.txt
-# plus torch/transformers (see apps/fungpt/Dockerfile)
-
-npm run dev:fungpt
-
-# In .env:
-BANTER_LLM_BASE_URL=http://127.0.0.1:8000
-BANTER_LLM_MODEL=banterbot
-# or omit BOT_CHAT_MODEL / BANTER_LLM_MODEL to default to banterbot
-```
-
-**Cohere for lobby `/chat` + FunGPT for table banter** (recommended on CPU VM):
+**Cohere for lobby `/chat` + a hosted API for table banter:**
 
 ```bash
 # .env — restart server only (no web rebuild)
@@ -75,24 +58,12 @@ BOT_CHAT_LLM_BASE_URL=https://api.cohere.ai/compatibility/v1
 BOT_CHAT_LLM_API_KEY=your-cohere-api-key
 BOT_CHAT_MODEL=command-r-plus-08-2024
 
-BANTER_LLM_BASE_URL=http://fungpt:8000
-BANTER_LLM_MODEL=banterbot
-BANTER_LLM_TIMEOUT_MS=20000
+BANTER_LLM_BASE_URL=https://api.openai.com
+BANTER_LLM_API_KEY=sk-...
+BANTER_LLM_MODEL=gpt-4o-mini
 ```
 
-**Compose sidecar** (optional profile; mounts `apps/fungpt/weights`):
-
-```bash
-./scripts/download-banterbot-weights.sh
-
-# .env (table banter)
-BANTER_LLM_BASE_URL=http://fungpt:8000
-BANTER_LLM_MODEL=banterbot
-
-docker compose --profile fungpt up -d --build
-```
-
-Prefer a GPU for the sidecar. CPU float32 is slow and may miss table-banter timeouts.
+When `BANTER_LLM_MODEL` is unset, table banter uses `BOT_CHAT_MODEL`, then `command-r-plus-08-2024`.
 
 ### Contests (tournaments)
 
@@ -161,9 +132,9 @@ For a public URL (Vercel/Railway/Fly), you’ll need accounts + `NEXT_PUBLIC_API
 | `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` | unset | Google Search Console HTML tag content |
 | `NEXT_PUBLIC_BING_SITE_VERIFICATION` | unset | Bing Webmaster `msvalidate.01` content |
 | `NEXT_PUBLIC_YANDEX_VERIFICATION` | unset | Yandex site verification content |
-| `BANTER_LLM_BASE_URL` | unset | Table banter LLM (e.g. `http://fungpt:8000`). Unset → template banter only |
-| `BANTER_LLM_API_KEY` | unset | Bearer for table banter / FunGPT sidecar auth |
-| `BANTER_LLM_MODEL` | unset | Table banter model id (FunGPT default: `banterbot`) |
+| `BANTER_LLM_BASE_URL` | unset | Table banter hosted OpenAI-compatible API (e.g. `https://api.openai.com`). Unset → template banter only |
+| `BANTER_LLM_API_KEY` | unset | Bearer for the table banter API |
+| `BANTER_LLM_MODEL` | unset | Table banter model id (falls back to `BOT_CHAT_MODEL`, then `command-r-plus-08-2024`) |
 | `BOT_CHAT_LLM_BASE_URL` | unset | Lobby `/chat` only (e.g. Cohere compatibility API). Falls back to `BANTER_LLM_BASE_URL` |
 | `BOT_CHAT_LLM_API_KEY` | unset | Lobby `/chat` API key (falls back to `BANTER_LLM_API_KEY`) |
 | `BOT_CHAT_MODEL` | unset | Lobby model id (Cohere default when `BOT_CHAT_LLM_BASE_URL` set: `command-r-plus-08-2024`) |
@@ -171,8 +142,6 @@ For a public URL (Vercel/Railway/Fly), you’ll need accounts + `NEXT_PUBLIC_API
 | `BANTER_LLM_PATH` | `/v1/chat/completions` | Chat completions path |
 | `BANTER_LLM_TIMEOUT_MS` | `8000` | Table-banter LLM timeout |
 | `BOT_CHAT_TIMEOUT_MS` | `60000` | Lobby `/chat` LLM timeout |
-| `BANTERBOT_WEIGHTS_ROOT` | `./apps/fungpt/weights` | Host dir mounted into sidecar (`BanterBot_1_8b-chat/` inside) |
-| `BANTERBOT_WEIGHTS_DIR` | sidecar default path | Override checkpoint dir inside the sidecar process (Compose sets this) |
 | `LOADTEST_TOKEN` | unset | Shared secret: server skips rate limits for requests with a matching `x-loadtest-token` header; the load-test service sends it. Blank → no bypass |
 | `LOADTEST_ADMIN_TOKEN` | unset | Load-test dashboard sign-in secret (≥ 12 chars; service refuses to start without it) |
 | `LOADTEST_TARGETS` | `local=http://server:4000\|ws://server:4000/ws` | Allowlisted targets, comma-separated `name=apiUrl\|wsUrl` (`\|wsUrl` optional) |

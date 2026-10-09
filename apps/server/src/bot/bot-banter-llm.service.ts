@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { resolveSidecarApiKey } from './bot-chat.providers.js';
+import { resolveBanterApiKey } from './bot-chat.providers.js';
+import { DEFAULT_COHERE_CHAT_MODEL } from './bot-chat.prompts.js';
 import type {
   BotBanterContext,
   BotBanterTrigger,
@@ -131,9 +132,11 @@ export class BotBanterLlmService {
     const base = (config.baseUrl ?? process.env.BANTER_LLM_BASE_URL ?? '').replace(/\/$/, '');
     this.baseUrl = base || null;
     this.apiKey =
-      (config.apiKey ?? resolveSidecarApiKey() ?? undefined)?.trim() || null;
+      (config.apiKey ?? resolveBanterApiKey() ?? undefined)?.trim() || null;
     this.model =
-      (config.model ?? process.env.BANTER_LLM_MODEL)?.trim() || 'banterbot';
+      (config.model ?? process.env.BANTER_LLM_MODEL)?.trim() ||
+      process.env.BOT_CHAT_MODEL?.trim() ||
+      DEFAULT_COHERE_CHAT_MODEL;
     this.path = config.path ?? process.env.BANTER_LLM_PATH?.trim() ?? DEFAULT_PATH;
     this.timeoutMs = resolveBanterTimeoutMs(config.timeoutMs);
     this.fetchFn = config.fetchFn ?? fetch;

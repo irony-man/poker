@@ -70,7 +70,7 @@ describe('BotBanterLlmService', () => {
     ) as unknown as typeof fetch;
     const svc = BotBanterLlmService.create({
       baseUrl: 'http://llm.test',
-      model: 'banterbot',
+      model: 'test-model',
       fetchFn,
     });
     const line = await svc.generateBanter({
@@ -85,7 +85,7 @@ describe('BotBanterLlmService', () => {
       model: string;
       messages: Array<{ content: string }>;
     };
-    expect(body.model).toBe('banterbot');
+    expect(body.model).toBe('test-model');
     expect(body.messages[1]?.content).toContain('nice hand');
   });
 

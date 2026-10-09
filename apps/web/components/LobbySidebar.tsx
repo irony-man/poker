@@ -150,7 +150,7 @@ export function LobbySidebar({
           alt="POKR"
           width={160}
           height={48}
-          className="h-16 w-auto object-contain object-left mix-blend-screen sm:h-11"
+          className="h-16 w-auto object-contain object-left sm:h-11"
           priority
         />
       </Link>

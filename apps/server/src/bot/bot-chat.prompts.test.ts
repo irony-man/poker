@@ -8,8 +8,8 @@ afterEach(() => {
 });
 
 describe('resolvePersonaModel', () => {
-  it('defaults to FunGPT banterbot', () => {
-    expect(resolvePersonaModel('banter')).toBe('banterbot');
+  it('defaults to the Cohere model', () => {
+    expect(resolvePersonaModel('banter')).toBe('command-r-plus-08-2024');
   });
 
   it('uses a hosted model when set', () => {
@@ -25,7 +25,7 @@ describe('resolvePersonaModel', () => {
 
   it('defaults to Cohere model when BOT_CHAT_LLM_BASE_URL is set', () => {
     process.env.BOT_CHAT_LLM_BASE_URL = 'https://api.cohere.ai/compatibility/v1';
-    process.env.BANTER_LLM_MODEL = 'banterbot';
+    process.env.BANTER_LLM_MODEL = 'table-model';
     expect(resolvePersonaModel()).toBe('command-r-plus-08-2024');
   });
 });

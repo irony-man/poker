@@ -53,12 +53,7 @@ export function readStoredBotChatThreads(): BotChatThreadsByProvider {
     const raw = sessionStorage.getItem(BOT_CHAT_THREADS_STORAGE_KEY);
     if (!raw) return emptyBotChatThreads();
     const parsed = JSON.parse(raw) as Partial<Record<string, unknown>>;
-    const cohere = normalizeTurns(parsed.cohere);
-    const boost =
-      normalizeTurns(parsed.boost).length > 0
-        ? normalizeTurns(parsed.boost)
-        : normalizeTurns(parsed.fungpt);
-    return { cohere, boost };
+    return { cohere: normalizeTurns(parsed.cohere), boost: normalizeTurns(parsed.boost) };
   } catch {
     return emptyBotChatThreads();
   }
@@ -109,7 +104,6 @@ export async function fetchBotChatProviders(sessionToken: string): Promise<{
   const defRaw = data.default;
   let def: BotChatLlmProvider | null = null;
   if (defRaw === 'cohere' || defRaw === 'boost') def = defRaw;
-  else if (defRaw === 'fungpt') def = 'boost';
   const starters = normalizeStarterList(data.starters);
   return { providers, default: def, starters };
 }

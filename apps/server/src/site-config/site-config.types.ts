@@ -28,7 +28,10 @@ import {
   REFILL_GRANT,
   REFILL_THRESHOLD,
   STARTING_CHIP_GRANT,
+  MAX_TABLE_GAME_MIN_HANDS,
   STARTING_WHUFFIE_GRANT,
+  TABLE_GAME_MIN_HANDS,
+  TABLE_GAME_WHUFFIES,
 } from '../wallet/wallet.constants.js';
 import { assetUrl } from '../assets.js';
 import {
@@ -100,11 +103,36 @@ export interface PageCopy {
 
 export type PagesCopy = Record<PageCopyKey, PageCopy>;
 
+/** Public matchmade poker table timings (admin-configurable, seconds). */
+export interface PublicTableTimings {
+  /** Queue wait before remaining seats are filled with bots. */
+  botFillSeconds: number;
+  /** Pause between hands (and before the first hand) — public tables auto-deal. */
+  nextHandSeconds: number;
+  /** Per-player action clock. */
+  turnSeconds: number;
+  /** Close a matchmade table after this long with no humans. */
+  idleCloseSeconds: number;
+}
+
+/** Same timings in ms; snapshotted per table at creation. */
+export interface PublicTableTimingsMs {
+  botFillMs: number;
+  nextHandMs: number;
+  turnMs: number;
+  idleCloseMs: number;
+}
+
 /** Cash/public room idle timeout (admin-configurable). */
 export interface RoomSettings {
   /** Minutes without human presence before the room is closed. Default 15. */
   inactivityMinutes: number;
+  publicTable: PublicTableTimings;
 }
+
+export type RoomSettingsPatch = Partial<Omit<RoomSettings, 'publicTable'>> & {
+  publicTable?: Partial<PublicTableTimings>;
+};
 
 /** Playing styles admins can assign to a bot set or individual name. */
 export type BotPersonalityId =
@@ -174,6 +202,44 @@ export const DEFAULT_ROOM_INACTIVITY_MINUTES = 15;
 export const MIN_ROOM_INACTIVITY_MINUTES = 1;
 /** Cap at 24 hours. */
 export const MAX_ROOM_INACTIVITY_MINUTES = 24 * 60;
+
+export const DEFAULT_PUBLIC_TABLE_TIMINGS: PublicTableTimings = {
+  botFillSeconds: 15,
+  nextHandSeconds: 10,
+  turnSeconds: 20,
+  idleCloseSeconds: 60,
+};
+
+/** Inclusive [min, max] per public table timing. */
+export const PUBLIC_TABLE_TIMING_LIMITS: Record<keyof PublicTableTimings, [number, number]> = {
+  botFillSeconds: [3, 120],
+  nextHandSeconds: [2, 60],
+  turnSeconds: [5, 120],
+  idleCloseSeconds: [10, 3600],
+};
+
+export function publicTableTimingsToMs(t: PublicTableTimings): PublicTableTimingsMs {
+  return {
+    botFillMs: t.botFillSeconds * 1000,
+    nextHandMs: t.nextHandSeconds * 1000,
+    turnMs: t.turnSeconds * 1000,
+    idleCloseMs: t.idleCloseSeconds * 1000,
+  };
+}
+
+export const DEFAULT_PUBLIC_TABLE_TIMINGS_MS = publicTableTimingsToMs(DEFAULT_PUBLIC_TABLE_TIMINGS);
+
+export function normalizePublicTableTimings(raw: unknown): PublicTableTimings {
+  const o = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const out = { ...DEFAULT_PUBLIC_TABLE_TIMINGS };
+  for (const key of Object.keys(PUBLIC_TABLE_TIMING_LIMITS) as (keyof PublicTableTimings)[]) {
+    const v = o[key];
+    if (typeof v !== 'number' || !Number.isFinite(v)) continue;
+    const [min, max] = PUBLIC_TABLE_TIMING_LIMITS[key];
+    out[key] = Math.min(max, Math.max(min, Math.floor(v)));
+  }
+  return out;
+}
 
 export const MAX_BOT_GROUPS = 20;
 export const MAX_BOT_NAMES_PER_GROUP = 40;
@@ -673,7 +739,10 @@ export function defaultSiteConfig(): SiteConfigPayload {
       v1: clonePages(pages),
       v2: clonePages(pages),
     },
-    rooms: { inactivityMinutes: DEFAULT_ROOM_INACTIVITY_MINUTES },
+    rooms: {
+      inactivityMinutes: DEFAULT_ROOM_INACTIVITY_MINUTES,
+      publicTable: { ...DEFAULT_PUBLIC_TABLE_TIMINGS },
+    },
     botGroups: DEFAULT_BOT_GROUPS.map((g) => cloneBotGroup(g)),
     botGroupLabels: DEFAULT_BOT_GROUP_LABELS.map((l) => ({ ...l })),
     sounds: defaultTableSounds(),
@@ -1022,7 +1091,10 @@ export function normalizePagesByTheme(raw: unknown, v1Fallback: PagesCopy): Page
 }
 
 export function normalizeRoomSettings(raw: unknown): RoomSettings {
-  const defaults: RoomSettings = { inactivityMinutes: DEFAULT_ROOM_INACTIVITY_MINUTES };
+  const defaults: RoomSettings = {
+    inactivityMinutes: DEFAULT_ROOM_INACTIVITY_MINUTES,
+    publicTable: { ...DEFAULT_PUBLIC_TABLE_TIMINGS },
+  };
   if (!raw || typeof raw !== 'object') return defaults;
   const o = raw as Record<string, unknown>;
   let minutes = defaults.inactivityMinutes;
@@ -1031,7 +1103,7 @@ export function normalizeRoomSettings(raw: unknown): RoomSettings {
   }
   if (minutes < MIN_ROOM_INACTIVITY_MINUTES) minutes = MIN_ROOM_INACTIVITY_MINUTES;
   if (minutes > MAX_ROOM_INACTIVITY_MINUTES) minutes = MAX_ROOM_INACTIVITY_MINUTES;
-  return { inactivityMinutes: minutes };
+  return { inactivityMinutes: minutes, publicTable: normalizePublicTableTimings(o.publicTable) };
 }
 
 function isAllowedSoundUrl(value: string): boolean {
@@ -1118,6 +1190,11 @@ export function normalizeSiteConfig(raw: unknown): SiteConfigPayload {
       refillThreshold: clampPositiveInt(e.refillThreshold, REFILL_THRESHOLD),
       refillGrant: clampPositiveInt(e.refillGrant, REFILL_GRANT),
       startingWhuffieGrant: clampNonNegInt(e.startingWhuffieGrant, STARTING_WHUFFIE_GRANT),
+      tableGameWhuffies: clampNonNegInt(e.tableGameWhuffies, TABLE_GAME_WHUFFIES),
+      tableGameMinHands: Math.min(
+        clampNonNegInt(e.tableGameMinHands, TABLE_GAME_MIN_HANDS),
+        MAX_TABLE_GAME_MIN_HANDS,
+      ),
     };
   }
 

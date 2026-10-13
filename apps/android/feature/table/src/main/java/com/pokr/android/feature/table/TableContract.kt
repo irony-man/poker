@@ -49,7 +49,7 @@ object TableContract {
         val loading: Boolean = true,
         val spectating: Boolean = false,
         val tableColorId: Int = 0,
-        val tableLayout: String = "v1",
+        val tableLayout: String = "v2",
         val sfxMuted: Boolean = false,
         val botGroups: List<PublicBotGroup> = emptyList(),
         val botGroupId: String? = null,

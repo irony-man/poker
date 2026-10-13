@@ -36,6 +36,15 @@ export const SITE_HOST = (() => {
   }
 })();
 
+/** GA4 measurement id (G-…) — loaded in production only unless `NEXT_PUBLIC_GA_ENABLE_IN_DEV=1`. */
+export function gaMeasurementId(): string | undefined {
+  const raw = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim();
+  if (!raw || !/^G-[A-Z0-9]+$/i.test(raw)) return undefined;
+  const allowDev = process.env.NEXT_PUBLIC_GA_ENABLE_IN_DEV === '1';
+  if (process.env.NODE_ENV !== 'production' && !allowDev) return undefined;
+  return raw;
+}
+
 export function siteVerification(): {
   google?: string | string[];
   other?: Record<string, string | string[]>;
@@ -92,6 +101,55 @@ export function publicPageMetadata({
       title: ogTitle,
       description,
     },
+  };
+}
+
+export const HOME_FAQ_ITEMS: { question: string; answer: string }[] = [
+  {
+    question: 'Is pokr.site free to play?',
+    answer:
+      'Yes. POKR is free to use. You play with virtual chips for fun — not real money gambling.',
+  },
+  {
+    question: 'Do I need to download an app?',
+    answer:
+      'No install is required. Open pokr.site in a modern browser on desktop or mobile. An Android app is also available for lobby and table play.',
+  },
+  {
+    question: "How do I play Texas Hold'em with friends?",
+    answer:
+      'Create a private table from Host or join, set stakes and seats, then share the invite code. Friends enter the code on Join with code to take a seat.',
+  },
+  {
+    question: 'What are contests on POKR?',
+    answer:
+      'Contests are Knockout freezeouts (play until you bust) or fixed-round games with a set number of hands. They are free competitive formats with standings on pokr.site.',
+  },
+  {
+    question: 'Can I practice poker offline?',
+    answer:
+      "Yes. Offline arena runs No-Limit Hold'em against bots on your device with no connection, using the same rules as live tables.",
+  },
+  {
+    question: 'Who can use pokr.site?',
+    answer:
+      'You must meet the minimum age in our Terms (typically 18+) and follow fair-play rules. See the Terms and Privacy pages for eligibility and data use.',
+  },
+];
+
+/** FAQ structured data for the homepage (play money, privacy, eligibility). */
+export function homeFaqJsonLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: HOME_FAQ_ITEMS.map(({ question, answer }) => ({
+      '@type': 'Question',
+      name: question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: answer,
+      },
+    })),
   };
 }
 

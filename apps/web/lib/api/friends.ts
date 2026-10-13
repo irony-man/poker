@@ -173,7 +173,7 @@ export async function inviteFriendGroup(
   return authedFetch(`/api/friends/groups/${groupId}/invite`, {
     ...options,
     method: 'POST',
-    body: body ?? {},
+    body: { ...body, lobby: true },
   }) as Promise<{
     tableId: string;
     inviteCode: string;
@@ -186,7 +186,7 @@ export async function challengeFriend(friendUserId: string, options: AuthOptions
   return authedFetch('/api/friends/challenge', {
     ...options,
     method: 'POST',
-    body: { friendUserId },
+    body: { friendUserId, lobby: true },
   }) as Promise<{ tableId: string; inviteCode: string; challengeId: string }>;
 }
 

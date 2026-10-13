@@ -10,7 +10,7 @@ import { avatarIdFromUserId, clampAvatarId } from '../avatars.js';
 import { clampTableColorId } from '../table-colors.js';
 import { clampUserKeyboardShortcuts } from '../keyboard-shortcuts.js';
 import { clampSfxMuted } from '../sfx-muted.js';
-import { clampTableLayout } from '../table-layout.js';
+import { DEFAULT_TABLE_LAYOUT, clampTableLayout } from '../table-layout.js';
 import { clampUiTheme, type UiTheme } from '../ui-theme.js';
 import { DEFAULT_CARD_THEME_ID } from '../card-face-theme.js';
 import {
@@ -419,7 +419,24 @@ export class AuthStore {
       `ALTER TABLE users ADD COLUMN IF NOT EXISTS ui_theme text NOT NULL DEFAULT 'v1'`,
     );
     await this.pool.query(
-      `ALTER TABLE users ADD COLUMN IF NOT EXISTS table_layout text NOT NULL DEFAULT 'v1'`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS table_layout text NOT NULL DEFAULT 'v2'`,
+    );
+    await this.pool.query(`ALTER TABLE users ALTER COLUMN table_layout SET DEFAULT 'v2'`);
+    await this.pool.query(
+      `CREATE TABLE IF NOT EXISTS app_migrations (
+         id text PRIMARY KEY,
+         applied_at timestamptz NOT NULL DEFAULT now()
+       )`,
+    );
+    // Claim + update in one statement so the switch runs once, even with several servers booting.
+    await this.pool.query(
+      `WITH claimed AS (
+         INSERT INTO app_migrations (id) VALUES ('table_layout_default_v2')
+         ON CONFLICT (id) DO NOTHING
+         RETURNING id
+       )
+       UPDATE users SET table_layout = 'v2'
+       WHERE table_layout <> 'v2' AND EXISTS (SELECT 1 FROM claimed)`,
     );
     await this.pool.query(
       `ALTER TABLE users ADD COLUMN IF NOT EXISTS sfx_muted boolean NOT NULL DEFAULT false`,
@@ -772,7 +789,7 @@ export class AuthStore {
       tableColorId: 0,
       cardThemeId: DEFAULT_CARD_THEME_ID,
       uiTheme: this.defaultUiThemeProvider(),
-      tableLayout: 'v1',
+      tableLayout: DEFAULT_TABLE_LAYOUT,
       sfxMuted: false,
       keyboardShortcuts: clampUserKeyboardShortcuts({}),
       chipBalance: this.startingGrant(),

@@ -14,6 +14,7 @@ type TableView = {
   street: string;
   toAct: number | null;
   actionSeq: number;
+  config?: { buyIn: number };
   players: { seat: number; userId: string | null; stack: number; status: string; ready?: boolean }[];
 };
 
@@ -92,7 +93,12 @@ async function player(
       const key = `${table.handId}:${table.street}`;
       if (me && me.stack <= 0 && topUpKey !== key) {
         topUpKey = key;
-        sock.send({ type: 'top_up', tableId, seat: mySeat, amount: opts.buyIn });
+        sock.send({
+          type: 'top_up',
+          tableId,
+          seat: mySeat,
+          amount: table.config?.buyIn ?? opts.buyIn,
+        });
         ctx.metrics.count('poker.top_ups');
       } else if (me && me.stack > 0 && me.status !== 'sittingOut' && !me.ready && readyKey !== key) {
         readyKey = key;

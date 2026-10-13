@@ -6,7 +6,8 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
+import { errorText } from './error-text.js';
 import {
   GENERIC_ERROR_MESSAGE,
   databaseHttpError,
@@ -38,20 +39,25 @@ export class ApiExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const res = ctx.getResponse<Response>();
+    const req = ctx.getRequest<Request>();
+    const route = `${req.method} ${req.originalUrl || req.url}`;
 
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       const message = httpExceptionMessage(exception);
       if (looksLikeInternalMessage(message) || isDatabaseError(exception.cause)) {
-        this.logger.error(`Suppressed internal error (${status}): ${message}`);
+        const cause = exception.cause ? `\n${errorText(exception.cause)}` : '';
+        this.logger.error(`${route} ${status} suppressed internal error: ${message}${cause}`);
         res.status(status).json({ error: GENERIC_ERROR_MESSAGE });
         return;
       }
+      if (status >= 500) this.logger.error(`${route} ${status}: ${message}`);
+      else this.logger.warn(`${route} ${status}: ${message}`);
       res.status(status).json({ error: message });
       return;
     }
 
-    this.logger.error(exception instanceof Error ? (exception.stack ?? exception.message) : String(exception));
+    this.logger.error(`${route} unhandled: ${errorText(exception)}`);
 
     if (isDatabaseError(exception)) {
       const mapped = databaseHttpError(exception);

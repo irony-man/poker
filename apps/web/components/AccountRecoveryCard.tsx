@@ -2,7 +2,11 @@
 
 import { FormEvent, useEffect, useId, useState, type ReactNode } from 'react';
 import { GoogleG, GoogleSignInButton } from '@/components/GoogleSignInButton';
-import { InstagramGlyph, InstagramSignInButton } from '@/components/InstagramSignInButton';
+import {
+  INSTAGRAM_ENABLED,
+  InstagramGlyph,
+  InstagramSignInButton,
+} from '@/components/InstagramSignInButton';
 import { Button } from '@/components/ui/Button';
 import { Notice } from '@/components/ui/Notice';
 import { StatusChip } from '@/components/ui/StatusChip';
@@ -66,6 +70,7 @@ export function AccountRecoveryCard({
 
   const canUnlinkGoogle = profile.hasPassword || profile.instagramLinked;
   const canUnlinkInstagram = profile.hasPassword || profile.googleLinked;
+  const showInstagram = INSTAGRAM_ENABLED || profile.instagramLinked;
 
   return (
     <section className="surface-card-lg" aria-labelledby="account-security-heading">
@@ -90,7 +95,7 @@ export function AccountRecoveryCard({
           detail={
             profile.hasPassword
               ? `Sign in with your username @${profile.username} and password.`
-              : 'You sign in with Google or Instagram only. Add a password to use your username too.'
+              : `You sign in with ${showInstagram ? 'Google or Instagram' : 'Google'} only. Add a password to use your username too.`
           }
           action={
             <Button href="/change-password" variant="ghost" size="sm">
@@ -208,76 +213,78 @@ export function AccountRecoveryCard({
         >
           {profile.googleLinked && !canUnlinkGoogle ? (
             <p className="mt-2 text-xs text-muted">
-              Google is your only way to sign in. Set a password or connect Instagram before
-              disconnecting it.
+              Google is your only way to sign in. Set a password
+              {INSTAGRAM_ENABLED ? ' or connect Instagram' : ''} before disconnecting it.
             </p>
           ) : null}
         </AccountRow>
 
-        <AccountRow
-          icon={<InstagramGlyph gradientId={igGradientId} />}
-          title="Instagram"
-          status={
-            profile.instagramLinked ? <StatusChip tone="positive">Connected</StatusChip> : null
-          }
-          detail={
-            profile.instagramLinked ? (
-              profile.instagramUsername ? (
-                <a
-                  href={`https://www.instagram.com/${encodeURIComponent(profile.instagramUsername)}/`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:underline"
-                >
-                  @{profile.instagramUsername}
-                </a>
+        {showInstagram ? (
+          <AccountRow
+            icon={<InstagramGlyph gradientId={igGradientId} />}
+            title="Instagram"
+            status={
+              profile.instagramLinked ? <StatusChip tone="positive">Connected</StatusChip> : null
+            }
+            detail={
+              profile.instagramLinked ? (
+                profile.instagramUsername ? (
+                  <a
+                    href={`https://www.instagram.com/${encodeURIComponent(profile.instagramUsername)}/`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:underline"
+                  >
+                    @{profile.instagramUsername}
+                  </a>
+                ) : (
+                  'Connected. Your Instagram handle shows here after your next Instagram sign-in.'
+                )
               ) : (
-                'Connected. Your Instagram handle shows here after your next Instagram sign-in.'
+                'Sign in with your professional Instagram account.'
               )
-            ) : (
-              'Sign in with your professional Instagram account.'
-            )
-          }
-          detailStrong={profile.instagramLinked && Boolean(profile.instagramUsername)}
-          action={
-            profile.instagramLinked ? (
-              canUnlinkInstagram ? (
-                <Button
-                  type="button"
-                  variant="dangerQuiet"
-                  size="sm"
-                  disabled={busy !== null}
-                  onClick={() =>
-                    void run(
-                      'instagram',
-                      () => unlinkInstagram(sessionToken),
-                      'Instagram disconnected.',
-                    )
-                  }
-                >
-                  {busy === 'instagram' ? 'Disconnecting…' : 'Disconnect'}
-                </Button>
+            }
+            detailStrong={profile.instagramLinked && Boolean(profile.instagramUsername)}
+            action={
+              profile.instagramLinked ? (
+                canUnlinkInstagram ? (
+                  <Button
+                    type="button"
+                    variant="dangerQuiet"
+                    size="sm"
+                    disabled={busy !== null}
+                    onClick={() =>
+                      void run(
+                        'instagram',
+                        () => unlinkInstagram(sessionToken),
+                        'Instagram disconnected.',
+                      )
+                    }
+                  >
+                    {busy === 'instagram' ? 'Disconnecting…' : 'Disconnect'}
+                  </Button>
+                ) : null
+              ) : INSTAGRAM_ENABLED ? (
+                <div className="w-full sm:w-60">
+                  <InstagramSignInButton
+                    intent="link"
+                    next="/profile"
+                    disabled={busy !== null}
+                    onError={setError}
+                    label="Connect Instagram"
+                  />
+                </div>
               ) : null
-            ) : (
-              <div className="w-full sm:w-60">
-                <InstagramSignInButton
-                  intent="link"
-                  next="/profile"
-                  disabled={busy !== null}
-                  onError={setError}
-                  label="Connect Instagram"
-                />
-              </div>
-            )
-          }
-        >
-          {profile.instagramLinked && !canUnlinkInstagram ? (
-            <p className="mt-2 text-xs text-muted">
-              Instagram is your only way to sign in. Set a password or connect Google before
-              disconnecting it.
-            </p>
-          ) : null}
-        </AccountRow>
+            }
+          >
+            {profile.instagramLinked && !canUnlinkInstagram ? (
+              <p className="mt-2 text-xs text-muted">
+                Instagram is your only way to sign in. Set a password or connect Google before
+                disconnecting it.
+              </p>
+            ) : null}
+          </AccountRow>
+        ) : null}
       </ul>
 
       {notice && (

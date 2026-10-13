@@ -4,15 +4,28 @@ export const STARTING_CHIP_GRANT = 25_000;
 export const REFILL_THRESHOLD = 1_000;
 /** Amount added on a successful free refill claim (default). */
 export const REFILL_GRANT = 5_000;
-/** Whuffies (rating) granted on signup (default 0 — purely earned). */
-export const STARTING_WHUFFIE_GRANT = 0;
+/** Whuffies (rating) granted on signup (default 5 — purely earned). */
+export const STARTING_WHUFFIE_GRANT = 5;
+/** Whuffies per completed table game: busting out or winning every chip (0 = disabled). */
+export const TABLE_GAME_WHUFFIES = 1;
+/** Hands a game must last before it earns table-game Whuffies (stops bust-and-rebuy farming). */
+export const TABLE_GAME_MIN_HANDS = 10;
+export const MAX_TABLE_GAME_MIN_HANDS = 1_000;
 
 export type EconomySnapshot = {
   startingChipGrant: number;
   refillThreshold: number;
   refillGrant: number;
   startingWhuffieGrant: number;
+  tableGameWhuffies: number;
+  tableGameMinHands: number;
 };
+
+export type TableGameRules = { whuffies: number; minHands: number };
+
+export function tableGameRules(eco: EconomySnapshot): TableGameRules {
+  return { whuffies: eco.tableGameWhuffies, minHands: eco.tableGameMinHands };
+}
 
 export function defaultEconomy(): EconomySnapshot {
   return {
@@ -20,6 +33,8 @@ export function defaultEconomy(): EconomySnapshot {
     refillThreshold: REFILL_THRESHOLD,
     refillGrant: REFILL_GRANT,
     startingWhuffieGrant: STARTING_WHUFFIE_GRANT,
+    tableGameWhuffies: TABLE_GAME_WHUFFIES,
+    tableGameMinHands: TABLE_GAME_MIN_HANDS,
   };
 }
 
@@ -30,6 +45,7 @@ export type WalletReason =
   | 'free_refill'
   | 'buy_in'
   | 'cash_out'
+  | 'table_cash_out'
   | 'top_up'
   | 'admin_credit'
   | 'admin_reset'
@@ -40,6 +56,7 @@ export type WhuffieReason =
   | 'signup_grant'
   | 'contest_prize'
   | 'offline_win'
+  | 'table_game'
   | 'admin_credit'
   | 'admin_reset'
   | 'opening_balance';

@@ -1,5 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { InstagramIdentity } from './auth.types.js';
 
@@ -65,6 +65,20 @@ function normalizeInstagramRedirectUri(raw: string): string {
     return raw.replace(/\/+$/, '');
   }
 }
+
+async function readBody(res: Response): Promise<{ json: Record<string, unknown> | null; text: string }> {
+  const text = await res.text().catch(() => '');
+  try {
+    const parsed: unknown = JSON.parse(text);
+    return {
+      json: parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null,
+      text,
+    };
+  } catch {
+    return { json: null, text };
+  }
+}
+
 function parseUserId(raw: unknown): string | null {
   if (typeof raw === 'number' && Number.isFinite(raw)) return String(Math.trunc(raw));
   if (typeof raw === 'string' && raw.trim()) return raw.trim();
@@ -77,6 +91,7 @@ function parseUserId(raw: unknown): string | null {
  */
 @Injectable()
 export class InstagramOAuth {
+  private readonly logger = new Logger(InstagramOAuth.name);
   private readonly appId: string;
   private readonly appSecret: string;
   private readonly redirectUri: string;
@@ -100,6 +115,16 @@ export class InstagramOAuth {
     return Boolean(this.appId && this.appSecret);
   }
 
+  /** Never pass access tokens, codes, or the app secret in `detail`. */
+  private fail(reason: string, detail?: unknown, message?: string): InvalidInstagramAuthError {
+    const suffix =
+      detail === undefined
+        ? ''
+        : ` ${detail instanceof Error ? (detail.stack ?? detail.message) : typeof detail === 'string' ? detail : JSON.stringify(detail)}`;
+    this.logger.warn(`Instagram sign-in failed: ${reason}${suffix}`);
+    return new InvalidInstagramAuthError(message);
+  }
+
   private requireSecret(): string {
     if (!this.isConfigured()) throw new InstagramAuthNotConfiguredError();
     return this.appSecret;
@@ -117,19 +142,25 @@ export class InstagramOAuth {
   private decodeSigned<T>(token: string, ttlMs: number): T {
     const secret = this.requireSecret();
     const dot = token.lastIndexOf('.');
-    if (dot <= 0) throw new InvalidInstagramAuthError();
+    if (dot <= 0) throw this.fail('signed token has no signature');
     const body = token.slice(0, dot);
     const mac = token.slice(dot + 1);
     const expected = createHmac('sha256', secret).update(body).digest('base64url');
-    if (!safeEqual(mac, expected)) throw new InvalidInstagramAuthError();
+    if (!safeEqual(mac, expected)) {
+      throw this.fail('signed token signature mismatch (app secret changed or token tampered)');
+    }
     let parsed: T & { t?: unknown };
     try {
       parsed = JSON.parse(Buffer.from(body, 'base64url').toString('utf8')) as T & { t?: unknown };
-    } catch {
-      throw new InvalidInstagramAuthError();
+    } catch (err) {
+      throw this.fail('signed token payload is not valid JSON', err);
     }
     if (typeof parsed.t !== 'number' || Date.now() - parsed.t > ttlMs) {
-      throw new InvalidInstagramAuthError('Instagram sign-in expired. Please try again.');
+      throw this.fail(
+        `signed token expired (issued ${typeof parsed.t === 'number' ? new Date(parsed.t).toISOString() : 'unknown'}, ttl ${ttlMs}ms)`,
+        undefined,
+        'Instagram sign-in expired. Please try again.',
+      );
     }
     return parsed;
   }
@@ -149,9 +180,9 @@ export class InstagramOAuth {
   parseState(state: string): InstagramOauthState {
     const parsed = this.decodeSigned<InstagramOauthState>(state, STATE_TTL_MS);
     if (parsed.v !== 1 || (parsed.intent !== 'login' && parsed.intent !== 'link')) {
-      throw new InvalidInstagramAuthError();
+      throw this.fail('OAuth state has unexpected version or intent', { v: parsed.v, intent: parsed.intent });
     }
-    if (typeof parsed.next !== 'string') throw new InvalidInstagramAuthError();
+    if (typeof parsed.next !== 'string') throw this.fail('OAuth state is missing next path');
     return parsed;
   }
 
@@ -169,7 +200,9 @@ export class InstagramOAuth {
 
   parsePending(token: string): InstagramIdentity & { next: string } {
     const parsed = this.decodeSigned<InstagramPendingPayload>(token, PENDING_TTL_MS);
-    if (parsed.v !== 1 || !parsed.id) throw new InvalidInstagramAuthError();
+    if (parsed.v !== 1 || !parsed.id) {
+      throw this.fail('pending token has unexpected version or no Instagram id', { v: parsed.v });
+    }
     return {
       id: parsed.id,
       username: typeof parsed.username === 'string' ? parsed.username : '',
@@ -193,7 +226,7 @@ export class InstagramOAuth {
   async exchangeCode(code: string): Promise<InstagramIdentity> {
     if (!this.isConfigured()) throw new InstagramAuthNotConfiguredError();
     const trimmed = code.trim();
-    if (!trimmed) throw new InvalidInstagramAuthError();
+    if (!trimmed) throw this.fail('empty authorization code');
 
     const body = new URLSearchParams({
       grant_type: 'authorization_code',
@@ -209,17 +242,28 @@ export class InstagramOAuth {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body,
       });
-    } catch {
-      throw new InvalidInstagramAuthError();
+    } catch (err) {
+      throw this.fail('token exchange request to api.instagram.com failed', err);
     }
-    const tokenJson = (await tokenRes.json().catch(() => null)) as Record<string, unknown> | null;
-    if (!tokenRes.ok || !tokenJson) throw new InvalidInstagramAuthError();
+    const token = await readBody(tokenRes);
+    if (!tokenRes.ok || !token.json) {
+      throw this.fail(
+        `token exchange returned HTTP ${tokenRes.status} (redirect_uri=${this.redirectUri})`,
+        token.text || '(empty body)',
+      );
+    }
+    const tokenJson = token.json;
 
     const data = Array.isArray(tokenJson.data) ? tokenJson.data[0] : tokenJson;
     const row = data && typeof data === 'object' ? (data as Record<string, unknown>) : {};
     const accessToken = typeof row.access_token === 'string' ? row.access_token : null;
     const tokenUserId = parseUserId(row.user_id) ?? parseUserId(row.id);
-    if (!accessToken) throw new InvalidInstagramAuthError();
+    if (!accessToken) {
+      throw this.fail('token exchange response has no access_token', {
+        keys: Object.keys(row),
+        topLevelKeys: Object.keys(tokenJson),
+      });
+    }
 
     const meUrl = new URL('https://graph.instagram.com/me');
     meUrl.searchParams.set('fields', 'id,user_id,username,name');
@@ -227,14 +271,20 @@ export class InstagramOAuth {
     let meRes: Response;
     try {
       meRes = await fetch(meUrl);
-    } catch {
-      throw new InvalidInstagramAuthError();
+    } catch (err) {
+      throw this.fail('profile request to graph.instagram.com/me failed', err);
     }
-    const me = (await meRes.json().catch(() => null)) as Record<string, unknown> | null;
-    if (!meRes.ok || !me) throw new InvalidInstagramAuthError();
+    const meBody = await readBody(meRes);
+    if (!meRes.ok || !meBody.json) {
+      throw this.fail(
+        `profile lookup returned HTTP ${meRes.status} (token user_id=${tokenUserId ?? 'unknown'})`,
+        meBody.text || '(empty body)',
+      );
+    }
+    const me = meBody.json;
 
     const id = parseUserId(me.user_id) ?? parseUserId(me.id) ?? tokenUserId;
-    if (!id) throw new InvalidInstagramAuthError();
+    if (!id) throw this.fail('profile response has no user id', me);
     const username = typeof me.username === 'string' ? me.username : '';
     const name = typeof me.name === 'string' && me.name.trim() ? me.name.trim() : null;
     return { id, username, name };

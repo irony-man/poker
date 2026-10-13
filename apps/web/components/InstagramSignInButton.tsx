@@ -6,7 +6,7 @@ import { currentPathWithQuery } from '@/lib/authRedirect';
 import { readStoredSession } from '@/lib/session';
 
 /** Baked at build time; set only when the server has `INSTAGRAM_APP_ID` + `INSTAGRAM_APP_SECRET`. */
-const INSTAGRAM_ENABLED = process.env.NEXT_PUBLIC_INSTAGRAM_ENABLED?.trim() === 'true';
+export const INSTAGRAM_ENABLED = process.env.NEXT_PUBLIC_INSTAGRAM_ENABLED?.trim() === 'true';
 
 export function InstagramSignInButton({
   next,
@@ -75,7 +75,7 @@ export function InstagramSignInButton({
       type="button"
       disabled={disabled || busy}
       onClick={() => void onClick()}
-      className="flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-sidebar/15 bg-white px-4 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50 disabled:opacity-60"
+      className="flex h-10 w-full items-center justify-center gap-2 rounded-full border border-[#dadce0] bg-white px-4 text-sm font-medium text-[#3c4043] hover:bg-zinc-50 disabled:opacity-60"
     >
       {icon}
       {busy ? 'Redirecting…' : caption}

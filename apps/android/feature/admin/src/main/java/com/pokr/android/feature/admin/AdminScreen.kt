@@ -283,6 +283,8 @@ private fun EconomyPane(state: AdminUiState, viewModel: AdminViewModel) {
     NumberField("Refill threshold", eco.refillThreshold) { patch { copy(refillThreshold = it) } }
     NumberField("Refill grant", eco.refillGrant) { patch { copy(refillGrant = it) } }
     NumberField("Starting whuffies", eco.startingWhuffieGrant) { patch { copy(startingWhuffieGrant = it) } }
+    NumberField("Whuffies per completed game", eco.tableGameWhuffies) { patch { copy(tableGameWhuffies = it) } }
+    NumberField("Minimum hands per game", eco.tableGameMinHands) { patch { copy(tableGameMinHands = it) } }
     PokrPrimaryButton(text = "Save economy", onClick = viewModel::saveEconomy, modifier = Modifier.fillMaxWidth())
 }
 

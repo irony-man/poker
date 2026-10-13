@@ -17,7 +17,9 @@ import {
   CreateFriendGroupBodySchema,
   FriendRequestBodySchema,
   FriendRespondBodySchema,
+  DEFAULT_STAKE_ID,
   InviteFriendGroupBodySchema,
+  stakeById,
   UpdateFriendGroupBodySchema,
 } from '@poker/protocol';
 import { AuthService } from '../auth/auth.service.js';
@@ -26,6 +28,8 @@ import { CurrentUser, SessionAuthGuard } from '../common/session-auth.guard.js';
 import { RoomsService } from '../rooms/rooms.service.js';
 import { FriendsService } from './friends.service.js';
 import { publicErrorMessage } from '../common/public-error.js';
+
+const defaultStake = stakeById(DEFAULT_STAKE_ID)!;
 
 @Controller('api/friends')
 @UseGuards(SessionAuthGuard)
@@ -145,11 +149,12 @@ export class FriendsController {
         name: `${challenger.name} vs ${opponent.name}`,
         hostUserId: challenger.id,
         isPrivate: true,
+        lobby: parsed.data.lobby,
         config: {
           maxSeats: 2,
-          smallBlind: 5,
-          bigBlind: 10,
-          buyIn: 1000,
+          smallBlind: defaultStake.smallBlind,
+          bigBlind: defaultStake.bigBlind,
+          buyIn: defaultStake.buyIn,
           turnTimeMs: 20000,
         },
       });
@@ -281,14 +286,15 @@ export class FriendsController {
 
       const seatsNeeded = Math.min(9, Math.max(2, inviteeIds.length + 1));
       const maxSeats = parsed.data.maxSeats ?? seatsNeeded;
-      const smallBlind = parsed.data.smallBlind ?? 5;
-      const bigBlind = parsed.data.bigBlind ?? 10;
-      const buyIn = parsed.data.buyIn ?? 1000;
+      const smallBlind = parsed.data.smallBlind ?? defaultStake.smallBlind;
+      const bigBlind = parsed.data.bigBlind ?? defaultStake.bigBlind;
+      const buyIn = parsed.data.buyIn ?? defaultStake.buyIn;
 
       const meta = this.rooms.create({
         name: `${group.name}`,
         hostUserId: user.id,
         isPrivate: true,
+        lobby: parsed.data.lobby,
         config: {
           maxSeats,
           smallBlind,

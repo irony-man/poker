@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { stakeById } from '@poker/protocol';
 import { Button } from '@/components/ui/Button';
 import type { AdminContestRow, AdminTableRow } from '@/lib/api';
 import {
@@ -69,7 +70,13 @@ export function GamesSection({
                   {t.seatedCount}/{t.maxSeats}
                 </Td>
                 <Td className={ADMIN_CELL_SECONDARY}>
-                  {t.contestId ? 'Contest table' : t.playMoney ? 'Private (play)' : 'Private'}
+                  {t.contestId
+                    ? 'Contest table'
+                    : t.matchmade
+                      ? `Public · ${(t.stakeId && stakeById(t.stakeId)?.label) || 'matchmade'}`
+                      : t.playMoney
+                        ? 'Private (play)'
+                        : 'Private'}
                 </Td>
                 <Td className={ADMIN_CELL_SECONDARY}>
                   {t.handInProgress ? (t.street ? t.street : 'In hand') : t.idle ? 'Idle' : 'Waiting'}

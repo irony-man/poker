@@ -6,6 +6,8 @@ const REASON_LABELS: Record<string, string> = {
   buy_in: 'Table buy-in',
   top_up: 'Table top-up',
   cash_out: 'Contest refund',
+  table_cash_out: 'Table cash-out',
+  table_game: 'Completed table game',
   hand_win: 'Hand won',
   hand_loss: 'Hand lost',
   admin_credit: 'Bonus from staff',
@@ -118,7 +120,9 @@ export type WalletTrailSource = 'all' | 'games' | 'other';
 const GAME_REASONS = new Set([
   'buy_in',
   'cash_out',
+  'table_cash_out',
   'top_up',
+  'table_game',
   'hand_win',
   'hand_loss',
   'contest_prize',

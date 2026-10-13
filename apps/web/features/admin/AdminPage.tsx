@@ -212,9 +212,17 @@ function AdminPageInner() {
     refillThreshold: 1000,
     refillGrant: 5000,
     startingWhuffieGrant: 0,
+    tableGameWhuffies: 1,
+    tableGameMinHands: 10,
   });
   const [roomSettings, setRoomSettings] = useState<AdminRoomSettings>({
     inactivityMinutes: 15,
+    publicTable: {
+      botFillSeconds: 15,
+      nextHandSeconds: 10,
+      turnSeconds: 20,
+      idleCloseSeconds: 60,
+    },
   });
   const [sounds, setSounds] = useState<TableSoundsConfig>(() => defaultTableSoundsConfig());
   const [uploadingSound, setUploadingSound] = useState<TableSoundKind | null>(null);
@@ -498,9 +506,17 @@ function AdminPageInner() {
           refillThreshold: Math.floor(Number(economy.refillThreshold)),
           refillGrant: Math.floor(Number(economy.refillGrant)),
           startingWhuffieGrant: Math.floor(Number(economy.startingWhuffieGrant)),
+          tableGameWhuffies: Math.floor(Number(economy.tableGameWhuffies)),
+          tableGameMinHands: Math.floor(Number(economy.tableGameMinHands)),
         }),
         patchAdminRoomSettings(token, {
           inactivityMinutes: Math.floor(Number(roomSettings.inactivityMinutes)),
+          publicTable: {
+            botFillSeconds: Math.floor(Number(roomSettings.publicTable.botFillSeconds)),
+            nextHandSeconds: Math.floor(Number(roomSettings.publicTable.nextHandSeconds)),
+            turnSeconds: Math.floor(Number(roomSettings.publicTable.turnSeconds)),
+            idleCloseSeconds: Math.floor(Number(roomSettings.publicTable.idleCloseSeconds)),
+          },
         }),
       ]);
       setEconomy(nextEco);
@@ -1540,7 +1556,13 @@ function AdminPageInner() {
             busy={busy}
             busyKey={busyKey}
             onEconomy={(patch) => setEconomy((eco) => ({ ...eco, ...patch }))}
-            onRoomSettings={setRoomSettings}
+            onRoomSettings={(patch) =>
+              setRoomSettings((cur) => ({
+                ...cur,
+                ...patch,
+                publicTable: { ...cur.publicTable, ...patch.publicTable },
+              }))
+            }
             onSave={(e) => void saveEconomy(e)}
           />
         ) : null}

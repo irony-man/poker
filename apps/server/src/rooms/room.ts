@@ -23,6 +23,14 @@ import type { KvStore } from '../kv/kv.store.js';
 import type { HandHistoryStore } from '../history/history.store.js';
 import type { TableChipStore } from '../table-chips/table-chips.store.js';
 import { MemoryTableChipStore } from '../table-chips/table-chips.store.js';
+import type { TableStakeStore } from '../table-chips/table-stakes.store.js';
+import {
+  TABLE_GAME_MIN_HANDS,
+  TABLE_GAME_WHUFFIES,
+  type TableGameRules,
+  type WalletStore,
+} from '../wallet/wallet.constants.js';
+import { UnlimitedWalletStore, WalletError } from '../wallet/wallet.store.js';
 import { avatarIdFromUserId, clampAvatarId } from '../avatars.js';
 import {
   botThinkDelayMs,
@@ -55,6 +63,10 @@ import {
 } from '@poker/engine';
 import type { BotBanterLlmService } from '../bot/bot-banter-llm.service.js';
 import type { PlayerExploitLlmService } from '../bot/player-exploit-llm.service.js';
+import {
+  DEFAULT_PUBLIC_TABLE_TIMINGS_MS,
+  type PublicTableTimingsMs,
+} from '../site-config/site-config.types.js';
 
 export interface TournamentTableRules {
   contestId: string;
@@ -75,18 +87,51 @@ export interface TableMeta {
   name: string;
   hostUserId: string;
   isPrivate: boolean;
-  /** Links public ring tables to a stake preset id. */
+  /** Public tables formed by the matchmaking queue (auto-deal, system bots). */
+  matchmade?: boolean;
+  /** Stake preset of a matchmade table (queues and backfill are per stake). */
   stakeId?: string;
+  /** Matchmade timings snapshotted from admin settings at creation (also cached in KV). */
+  timings?: PublicTableTimingsMs;
   config: TableConfig;
   createdAt: number;
   /** Present when this room is owned by a tournament contest. */
   tournament?: TournamentTableRules;
   /**
    * Sticky free-play flag for private host tables seated with bots before any human.
-   * Never set on public stake or tournament tables. No table touches the chip wallet.
+   * Never set on public stake or tournament tables. Hosted tables without it charge the
+   * buy-in to the chip wallet and pay the stack back on leave.
    */
   playMoney?: boolean;
+  /** Hosted pre-game lobby: nothing deals until the host starts the game. */
+  lobby?: boolean;
 }
+
+/** Largest table the engine and UI support. */
+export const MAX_TABLE_SEATS = 9;
+
+type GameSeat = { userId: string | null; stack: number; status: string };
+
+/**
+ * Humans whose table game just ended: everyone dealt in who is now out of chips, plus the
+ * last player holding chips when this hand knocked someone out.
+ */
+export function completedTableGames(players: readonly GameSeat[], dealtIn: ReadonlySet<string>): string[] {
+  const seated = players.filter((p) => p.userId && p.status !== 'empty');
+  const busted = seated.filter((p) => dealtIn.has(p.userId!) && p.stack <= 0);
+  if (busted.length === 0) return [];
+  const withChips = seated.filter((p) => p.stack > 0);
+  const winner =
+    withChips.length === 1 && dealtIn.has(withChips[0]!.userId!) ? withChips[0]! : null;
+  return [...busted, ...(winner ? [winner] : [])]
+    .map((p) => p.userId!)
+    .filter((userId) => !isBotUserId(userId));
+}
+
+const DEFAULT_TABLE_GAME_RULES: TableGameRules = {
+  whuffies: TABLE_GAME_WHUFFIES,
+  minHands: TABLE_GAME_MIN_HANDS,
+};
 
 /** Called after a tournament table hand reaches payout (before next-hand scheduling). */
 export type TournamentHandEndedHook = (room: Room) => void;
@@ -110,6 +155,12 @@ const DISCONNECT_GRACE_MS = 120_000;
 export const ROOM_INACTIVITY_MS = 15 * 60 * 1000;
 /** How often RoomManager checks idle rooms. */
 export const ROOM_IDLE_SWEEP_MS = 30_000;
+/** Same lifetime as the `table:{id}` snapshot; refreshed on every persist. */
+const TABLE_KV_TTL_SECONDS = 3600;
+
+export function tableTimingsKey(tableId: string): string {
+  return `table:${tableId}:timings`;
+}
 
 export class Room {
   meta: TableMeta;
@@ -141,10 +192,24 @@ export class Room {
   private kv: KvStore;
   private history: HandHistoryStore;
   private chips: TableChipStore;
+  private wallet: WalletStore;
+  private stakes: TableStakeStore | null = null;
+  /** Orders stake writes so a late hold can never land after the release that ends it. */
+  private stakeChain: Promise<unknown> = Promise.resolve();
+  private tableGameRules: () => TableGameRules = () => DEFAULT_TABLE_GAME_RULES;
+  /** Players dealt into the current hand (game-completion Whuffies). */
+  private dealtIn = new Set<string>();
+  /** Hands each player has been dealt since their game started (buy-in, top-up, or last finish). */
+  private gameHands = new Map<string, number>();
+  /** One game-completion check per hand. */
+  private lastGameCheckedHandId: string | null = null;
   private handStartedAt = 0;
   private tournamentHook: TournamentHandEndedHook | null = null;
   private tournamentStacksHook: TournamentStacksChangedHook | null = null;
   private autoStartTimer: NodeJS.Timeout | null = null;
+  /** Matchmade tables: deal timer between hands (no Ready gate). */
+  private autoDealTimer: NodeJS.Timeout | null = null;
+  private nextHandAt: number | null = null;
   /** Tournament: one hand → payout transition already notified. */
   private lastNotifiedHandId: string | null = null;
   /** History: one hand → payout already persisted. */
@@ -173,6 +238,10 @@ export class Room {
   private botGroupId: string | null = null;
   private exploitCounters = new Map<string, TendencyCounters>();
   private exploitLlmOverrides = new Map<string, PersonalityKnobOverrides>();
+  /** Seat count to grow to once the current hand ends (invites sent mid-hand). */
+  private pendingMaxSeats: number | null = null;
+  /** Invited friends to seat as soon as a seat exists for them. */
+  private invitedUserIds = new Set<string>();
 
   /** Resolved name pool used for bots on this room (or null if not set). */
   getBotNamePool(): string[] | null {
@@ -194,6 +263,7 @@ export class Room {
     history: HandHistoryStore,
     tournamentHook: TournamentHandEndedHook | null = null,
     chips: TableChipStore = new MemoryTableChipStore(),
+    wallet: WalletStore = new UnlimitedWalletStore(),
     onSeatingChange: (() => void) | null = null,
     banterLlm: BotBanterLlmService | null = null,
     exploitLlm: PlayerExploitLlmService | null = null,
@@ -203,6 +273,7 @@ export class Room {
     this.kv = kv;
     this.history = history;
     this.chips = chips;
+    this.wallet = wallet;
     this.tournamentHook = tournamentHook;
     this.onSeatingChange = onSeatingChange;
     this.banterLlm = banterLlm;
@@ -210,6 +281,151 @@ export class Room {
     this.lastLobbySeats = this.seatedCount();
     // Empty until a human joins — age from creation.
     this.idleSince = meta.createdAt;
+    if (meta.matchmade && !meta.timings) void this.hydrateTimings();
+  }
+
+  /** Matchmade timings for this table (snapshot, else defaults). */
+  timings(): PublicTableTimingsMs {
+    return this.meta.timings ?? DEFAULT_PUBLIC_TABLE_TIMINGS_MS;
+  }
+
+  private async hydrateTimings(): Promise<void> {
+    try {
+      const raw = await this.kv.get(tableTimingsKey(this.meta.id));
+      if (!raw || this.meta.timings) return;
+      const parsed = JSON.parse(raw) as Partial<PublicTableTimingsMs>;
+      this.meta.timings = { ...DEFAULT_PUBLIC_TABLE_TIMINGS_MS, ...parsed };
+    } catch (err) {
+      console.error('[rooms] failed to load table timings', err);
+    }
+  }
+
+  /** Matchmade public tables deal on a timer instead of waiting for Ready. */
+  isAutoDeal(): boolean {
+    return Boolean(this.meta.matchmade) && !this.isTournament();
+  }
+
+  isSeated(userId: string): boolean {
+    return this.seatOf(userId) !== null;
+  }
+
+  emptySeatCount(): number {
+    return this.state.players.filter((p) => p.status === 'empty').length;
+  }
+
+  isClosed(): boolean {
+    return this.closed;
+  }
+
+  isLobby(): boolean {
+    return Boolean(this.meta.lobby);
+  }
+
+  /** Host leaves the pre-game lobby; the first hand deals without a Ready round. */
+  startGame(userId: string): { ok: boolean; error?: string } {
+    if (!this.isLobby()) return { ok: false, error: 'Game already started' };
+    if (userId !== this.meta.hostUserId) {
+      return { ok: false, error: 'Only the host can start the game' };
+    }
+    const eligible = this.eligibleForNextHand();
+    if (eligible.length < 2 || !eligible.some((e) => e.human)) {
+      return { ok: false, error: 'Need at least 2 players to start' };
+    }
+    this.meta.lobby = false;
+    this.systemChat('Dealer', 'Game started');
+    const result = this.dealHand();
+    if (!result.ok) {
+      this.meta.lobby = true;
+      void this.afterStateChange();
+      return result;
+    }
+    return { ok: true };
+  }
+
+  /** Lobby only: change the seat count, packing seated players into the first seats. */
+  resizeSeats(userId: string, maxSeats: number): { ok: boolean; error?: string } {
+    if (!this.isLobby()) return { ok: false, error: 'Seats can only change before the game starts' };
+    if (userId !== this.meta.hostUserId) {
+      return { ok: false, error: 'Only the host can change seats' };
+    }
+    const target = Math.floor(maxSeats);
+    if (target < 2 || target > MAX_TABLE_SEATS) {
+      return { ok: false, error: `Seats must be between 2 and ${MAX_TABLE_SEATS}` };
+    }
+    const occupied = this.state.players.filter((p) => p.status !== 'empty');
+    if (target < occupied.length) {
+      return { ok: false, error: `${occupied.length} players are seated` };
+    }
+    if (target === this.config.maxSeats) return { ok: true };
+    const config = { ...this.config, maxSeats: target };
+    const empty = createEmptyTable(config).players;
+    const players = empty.map((seat, i) => {
+      const p = occupied[i];
+      return p ? { ...p, seat: i } : seat;
+    });
+    this.meta.config = config;
+    this.state = { ...this.state, players, version: this.state.version + 1 };
+    this.systemChat('Dealer', `Table now has ${target} seats`);
+    void this.afterStateChange();
+    return { ok: true };
+  }
+
+  /**
+   * Make room for invited friends (never past MAX_TABLE_SEATS). New seats are appended so
+   * existing seat numbers never move; mid-hand growth waits until the hand ends.
+   */
+  growSeatsForInvites(invitedUserIds: readonly string[]): { added: number; deferred: boolean } {
+    for (const id of invitedUserIds) this.invitedUserIds.add(id);
+    const base = this.pendingMaxSeats ?? this.config.maxSeats;
+    const free = this.emptySeatCount() + (base - this.config.maxSeats);
+    const needed = invitedUserIds.length - free;
+    const add = Math.min(needed, MAX_TABLE_SEATS - base);
+    if (add <= 0) return { added: 0, deferred: false };
+    const target = base + add;
+    if (this.isBetweenHands()) {
+      this.applySeatGrowth(target);
+      void this.afterStateChange();
+      return { added: add, deferred: false };
+    }
+    this.pendingMaxSeats = target;
+    return { added: add, deferred: true };
+  }
+
+  private isBetweenHands(): boolean {
+    return this.state.street === 'waiting' || this.state.street === 'payout';
+  }
+
+  private applySeatGrowth(target: number): void {
+    this.pendingMaxSeats = null;
+    const current = this.state.players.length;
+    if (target <= current) return;
+    const config = { ...this.config, maxSeats: target };
+    const extra = createEmptyTable(config).players.slice(current);
+    this.meta.config = config;
+    this.state = {
+      ...this.state,
+      players: [...this.state.players, ...extra],
+      version: this.state.version + 1,
+    };
+    this.systemChat('Dealer', `Table now has ${target} seats`);
+    this.seatInvitedSpectators();
+  }
+
+  /** Seat invited friends who are already watching once a seat is free for them. */
+  private seatInvitedSpectators(): void {
+    let free = this.emptySeatCount();
+    for (const userId of [...this.invitedUserIds]) {
+      if (free <= 0) return;
+      if (this.seatOf(userId) !== null) {
+        this.invitedUserIds.delete(userId);
+        continue;
+      }
+      const conn = this.connections.get(userId);
+      if (!conn) continue;
+      this.invitedUserIds.delete(userId);
+      free -= 1;
+      void this.autoSit(userId, conn.name);
+    }
   }
 
   setBanterLlm(llm: BotBanterLlmService | null): void {
@@ -321,7 +537,7 @@ export class Room {
   }
 
   private notifyLobbySeatingIfChanged(): void {
-    if (this.meta.isPrivate || !this.meta.stakeId) return;
+    if (!this.meta.matchmade) return;
     const n = this.seatedCount();
     if (n === this.lastLobbySeats) return;
     this.lastLobbySeats = n;
@@ -347,13 +563,106 @@ export class Room {
     this.connections.get(userId)?.send(payload);
   }
 
+  setTableGameRules(provider: () => TableGameRules): void {
+    this.tableGameRules = provider;
+  }
+
+  /** Host-created cash tables (incl. friend challenges) — not matchmade or contest tables. */
+  isHostedTable(): boolean {
+    return !this.meta.matchmade && !this.isTournament();
+  }
+
+  /** Hosted tables move real chips: buy-in debits the wallet, leaving credits the stack. */
+  private usesWallet(userId: string): boolean {
+    return this.isHostedTable() && !this.meta.playMoney && !isBotUserId(userId);
+  }
+
+  setStakeStore(store: TableStakeStore | null): void {
+    this.stakes = store;
+  }
+
+  private queueStake<T>(op: (store: TableStakeStore) => Promise<T>): Promise<T | null> {
+    const store = this.stakes;
+    if (!store) return Promise.resolve(null);
+    const run = this.stakeChain.then(() => op(store));
+    this.stakeChain = run.catch((err) => {
+      console.error('[wallet] table stake write failed', this.meta.id, err);
+    });
+    return run.catch(() => null);
+  }
+
+  /** Durably record a wallet player's stack so a crash refunds it on the next boot. */
+  private recordStake(userId: string, stack: number): void {
+    if (!this.usesWallet(userId)) return;
+    void this.queueStake((store) => store.hold(this.meta.id, userId, stack));
+  }
+
+  /** At hand end: snapshot every wallet stack (a crash mid-hand refunds these, voiding it). */
+  private recordStakes(): void {
+    for (const p of this.state.players) {
+      if (p.userId && p.status !== 'empty') this.recordStake(p.userId, p.stack);
+    }
+  }
+
+  private async cashOut(userId: string, stack: number): Promise<void> {
+    if (!this.usesWallet(userId)) return;
+    await this.queueStake((store) => store.release(this.meta.id, userId));
+    if (!Number.isFinite(stack) || stack <= 0) return;
+    try {
+      const result = await this.wallet.credit(userId, stack, 'table_cash_out', this.meta.id);
+      this.notifyWallet(userId, result.balance);
+    } catch (err) {
+      console.error('[wallet] table cash-out failed', this.meta.id, userId, err);
+      this.recordStake(userId, stack);
+    }
+  }
+
+  private async refundBuyIn(userId: string, amount: number): Promise<void> {
+    try {
+      const result = await this.wallet.credit(userId, amount, 'table_cash_out', this.meta.id);
+      this.notifyWallet(userId, result.balance);
+    } catch (err) {
+      console.error('[wallet] buy-in refund failed', this.meta.id, userId, err);
+    }
+  }
+
+  /**
+   * After a hand: Whuffies for every human whose game ended (busted or took every chip),
+   * if that game lasted the minimum number of hands. Practice tables are skipped.
+   */
+  private awardCompletedGames(): void {
+    const finished = completedTableGames(this.state.players, this.dealtIn);
+    const lasted = new Map(finished.map((userId) => [userId, this.gameHands.get(userId) ?? 0]));
+    for (const userId of finished) this.gameHands.set(userId, 0);
+
+    if (this.isTournament() || this.meta.playMoney) return;
+    const rules = this.tableGameRules();
+    const amount = Math.max(0, Math.floor(rules.whuffies));
+    if (amount <= 0) return;
+    const minHands = Math.max(0, Math.floor(rules.minHands));
+    const label = amount === 1 ? 'Whuffie' : 'Whuffies';
+    for (const userId of finished) {
+      if ((lasted.get(userId) ?? 0) < minHands) continue;
+      const name = this.state.players.find((p) => p.userId === userId)?.name ?? 'Player';
+      void this.wallet
+        .creditWhuffies(userId, amount, 'table_game', this.meta.id)
+        .then((result) => {
+          this.notifyWallet(userId, { whuffieBalance: result.balance });
+          this.systemChat('Dealer', `${name} completes the game and earns ${amount} ${label}`);
+        })
+        .catch((err) => {
+          console.error('[wallet] table game Whuffies failed', this.meta.id, userId, err);
+        });
+    }
+  }
+
   /**
    * Mark private host rooms as free-play when bots are added before any human sits.
-   * Public stake and tournament tables never become play-money.
+   * Public and tournament tables never become play-money.
    */
   private maybeEnablePlayMoneyForBots(): void {
     if (this.meta.playMoney) return;
-    if (this.meta.tournament || this.meta.stakeId || !this.meta.isPrivate) return;
+    if (this.meta.tournament || !this.meta.isPrivate) return;
     const humanSeated = this.state.players.some(
       (p) => p.userId && p.status !== 'empty' && !isBotUserId(p.userId),
     );
@@ -531,8 +840,8 @@ export class Room {
    * Tear down the live room: cash out humans, clear timers, notify sockets.
    * RoomManager removes the room from maps after this.
    */
-  shutdown(message = 'Table closed due to inactivity'): void {
-    if (this.closed) return;
+  shutdown(message = 'Table closed due to inactivity'): Promise<void> {
+    if (this.closed) return Promise.resolve();
     this.closed = true;
 
     this.clearTurnTimer();
@@ -543,21 +852,33 @@ export class Room {
       clearTimeout(this.autoStartTimer);
       this.autoStartTimer = null;
     }
+    this.clearAutoDeal();
     for (const timer of this.disconnectTimers.values()) clearTimeout(timer);
     this.disconnectTimers.clear();
     for (const timer of this.timers.values()) clearTimeout(timer);
     this.timers.clear();
 
     if (this.state.street !== 'waiting' && this.state.street !== 'payout') {
+      // Void the unfinished hand: everyone still seated gets back what they put in.
+      const committed = this.state.players.map((p) => p.committed);
       this.state = returnToWaiting(this.state);
+      for (const p of this.state.players) {
+        if (p.userId && p.status !== 'empty') p.stack += committed[p.seat] ?? 0;
+      }
     } else if (this.state.street === 'payout') {
       this.state = returnToWaiting(this.state);
     }
 
+    const cashOuts: Promise<void>[] = [];
     for (const p of [...this.state.players]) {
       if (!p.userId || p.status === 'empty') continue;
+      const userId = p.userId;
+      const stack = p.stack;
       const vacated = standUp(this.state, p.seat);
-      if (vacated.ok) this.state = vacated.state;
+      if (vacated.ok) {
+        this.state = vacated.state;
+        cashOuts.push(this.cashOut(userId, stack));
+      }
     }
 
     this.readyUserIds.clear();
@@ -574,6 +895,7 @@ export class Room {
     }
     this.connections.clear();
     this.spectators.clear();
+    return Promise.all(cashOuts).then(() => undefined);
   }
 
   attach(conn: ConnectionContext): void {
@@ -663,11 +985,13 @@ export class Room {
     const seat = this.seatOf(userId);
     if (seat !== null) {
       const name = this.state.players[seat]?.name ?? 'Player';
+      const stack = this.state.players[seat]?.stack ?? 0;
       const result = leaveSeat(this.state, seat);
       if (result.ok) {
         this.state = result.state;
         this.announceEngineEvents(result.events);
         this.systemChat('Dealer', `${name} leaves the table`);
+        void this.cashOut(userId, stack);
         void this.afterStateChange();
       } else if (result.error?.includes('All-in')) {
         this.systemChat('Dealer', `${name} disconnects (all-in — seat stays until hand ends)`);
@@ -679,7 +1003,36 @@ export class Room {
     }
     this.detach(userId);
     this.refreshIdleClock();
+    if (userId === this.meta.hostUserId) this.handOffHost(userId);
     return { ok: true };
+  }
+
+  /**
+   * Host left a private hosted table: promote a seated human (connected first), else a
+   * watching human. With nobody to promote the host is kept so they can return.
+   */
+  private handOffHost(leaverId: string): void {
+    if (!this.meta.isPrivate || !this.isHostedTable()) return;
+    const seatedHumans = this.state.players.filter(
+      (p) =>
+        p.userId &&
+        p.status !== 'empty' &&
+        p.userId !== leaverId &&
+        !isBotUserId(p.userId),
+    );
+    const next =
+      seatedHumans.find((p) => this.connections.has(p.userId!))?.userId ??
+      seatedHumans[0]?.userId ??
+      [...this.connections.keys()].find((id) => id !== leaverId && !isBotUserId(id));
+    if (!next) return;
+    this.meta.hostUserId = next;
+    const name =
+      this.state.players.find((p) => p.userId === next)?.name ??
+      this.connections.get(next)?.name ??
+      'A player';
+    this.systemChat('Dealer', `${name} is now the host`);
+    this.broadcast();
+    void this.persist().catch((err) => console.error('[rooms] persist after host hand-off failed', err));
   }
 
   private rateLimit(key: string, max = 20, windowMs = 5000): boolean {
@@ -804,19 +1157,42 @@ export class Room {
     styles?: BotStyleOptions | null,
     botGroupId?: string | null,
   ): { ok: boolean; error?: string; added?: number } {
-    // Public cash tables are humans-only (bots are private host / practice).
+    // Players can't seat bots on public tables; matchmaking uses `seatSystemBots`.
     if (!this.meta.isPrivate) {
       return { ok: false, error: 'Bots are only allowed on private tables' };
     }
-    // Allowed mid-hand — new bots sit as `seated` and join on the next deal.
-    if (this.state.street === 'payout') {
-      this.state = returnToWaiting(this.state);
-    }
-
     const amount = buyIn ?? this.config.buyIn;
     if (amount !== this.config.buyIn) {
       return { ok: false, error: 'Buy-in must match table buy-in' };
     }
+    return this.seatBots(seat, count, namePool, styles, botGroupId);
+  }
+
+  /** Matchmaking: fill seats on a matchmade public table with house bots. */
+  seatSystemBots(
+    count: number,
+    namePool?: readonly string[],
+    styles?: BotStyleOptions | null,
+  ): { ok: boolean; error?: string; added?: number } {
+    if (!this.meta.matchmade) {
+      return { ok: false, error: 'Only matchmade tables accept system bots' };
+    }
+    if (count <= 0) return { ok: true, added: 0 };
+    return this.seatBots(undefined, count, namePool, styles, null);
+  }
+
+  private seatBots(
+    seat: number | undefined,
+    count: number,
+    namePool?: readonly string[],
+    styles?: BotStyleOptions | null,
+    botGroupId?: string | null,
+  ): { ok: boolean; error?: string; added?: number } {
+    // Allowed mid-hand — new bots sit as `seated` and join on the next deal.
+    if (this.state.street === 'payout') {
+      this.state = returnToWaiting(this.state);
+    }
+    const amount = this.config.buyIn;
 
     if (namePool && namePool.length > 0) {
       this.botNamePool = [...namePool];
@@ -927,7 +1303,10 @@ export class Room {
       pot: this.state.pot,
       public: toPublicView(this.meta.id, this.state, this.config),
     };
-    await this.kv.set(`table:${this.meta.id}`, JSON.stringify(snapshot), 3600);
+    await this.kv.set(`table:${this.meta.id}`, JSON.stringify(snapshot), TABLE_KV_TTL_SECONDS);
+    if (this.meta.matchmade) {
+      await this.kv.expire(tableTimingsKey(this.meta.id), TABLE_KV_TTL_SECONDS);
+    }
     await this.kv.publish(`table:${this.meta.id}:events`, JSON.stringify({ version: this.state.version }));
   }
 
@@ -940,6 +1319,11 @@ export class Room {
       hostUserId: this.meta.hostUserId,
       isPrivate: this.meta.isPrivate,
       turnEndsAt: this.turnEndsAt,
+      autoDeal: this.isAutoDeal(),
+      nextHandAt: this.nextHandAt,
+      lobby: this.isLobby(),
+      playMoney: Boolean(this.meta.playMoney),
+      name: this.meta.name,
       tournament: this.meta.tournament
         ? {
             contestId: this.meta.tournament.contestId,
@@ -996,12 +1380,20 @@ export class Room {
   }
 
   private async afterStateChange(): Promise<void> {
+    if (this.pendingMaxSeats !== null && this.isBetweenHands()) {
+      this.applySeatGrowth(this.pendingMaxSeats);
+    }
     // After a hand (or when waiting), apply "sit out next" flags.
     if (this.state.street === 'payout' || this.state.street === 'waiting') {
       this.applyPendingSitOuts();
       this.scheduleBotAutoReady();
     }
     if (this.state.street === 'payout') {
+      if (this.state.handId && this.state.handId !== this.lastGameCheckedHandId) {
+        this.lastGameCheckedHandId = this.state.handId;
+        this.recordStakes();
+        this.awardCompletedGames();
+      }
       if (this.state.handId && this.state.handId !== this.lastRecordedHandId) {
         this.lastRecordedHandId = this.state.handId;
         try {
@@ -1050,6 +1442,7 @@ export class Room {
       }
       // Cash: stay on payout until Next Hand. Tournament: hook schedules next deal.
     }
+    if (this.isAutoDeal()) this.scheduleAutoDeal();
     this.armTurnTimer();
     this.broadcast();
     this.notifyLobbySeatingIfChanged();
@@ -1057,8 +1450,64 @@ export class Room {
   }
 
   maybeAutoStart(): void {
-    // Cash and contest tables require every human to ready up (no auto-deal).
+    // Private cash and contest tables require every human to ready up.
+    if (this.isAutoDeal()) {
+      this.scheduleAutoDeal();
+      return;
+    }
     this.scheduleBotAutoReady();
+  }
+
+  private clearAutoDeal(): void {
+    if (this.autoDealTimer) {
+      clearTimeout(this.autoDealTimer);
+      this.autoDealTimer = null;
+    }
+    this.nextHandAt = null;
+  }
+
+  /** Broke bots will be rebought at deal time, so they still count toward a game. */
+  private canAutoDeal(): boolean {
+    if (this.closed) return false;
+    if (this.state.street !== 'waiting' && this.state.street !== 'payout') return false;
+    let humans = 0;
+    let players = 0;
+    for (const p of this.state.players) {
+      if (!p.userId || p.status === 'empty') continue;
+      // The engine marks busted seats sittingOut; bots are rebought before the deal.
+      if (isBotUserId(p.userId)) {
+        players += 1;
+      } else if (p.stack > 0 && p.status !== 'sittingOut') {
+        humans += 1;
+        players += 1;
+      }
+    }
+    return humans >= 1 && players >= 2;
+  }
+
+  /**
+   * Matchmade tables: deal `nextHandMs` after a hand ends (or once a game is possible).
+   * Keeps an armed timer across unrelated state changes; clears it when no game is possible.
+   */
+  private scheduleAutoDeal(): void {
+    if (!this.canAutoDeal()) {
+      this.clearAutoDeal();
+      return;
+    }
+    if (this.autoDealTimer) return;
+    const delay = this.timings().nextHandMs;
+    this.nextHandAt = Date.now() + delay;
+    this.autoDealTimer = setTimeout(() => {
+      this.autoDealTimer = null;
+      this.nextHandAt = null;
+      if (!this.canAutoDeal()) {
+        this.broadcast();
+        return;
+      }
+      this.topUpBrokeBotsInPlace();
+      const result = this.dealHand();
+      if (!result.ok) void this.afterStateChange();
+    }, delay);
   }
 
   private clearBotReadyTimers(): void {
@@ -1082,6 +1531,7 @@ export class Room {
 
   /** Stagger bot ready badges between hands (deal gating still treats bots as always ready). */
   private scheduleBotAutoReady(): void {
+    if (this.isAutoDeal() || this.isLobby()) return;
     if (this.meta.tournament?.frozen) return;
     if (this.state.street !== 'waiting' && this.state.street !== 'payout') return;
 
@@ -1113,6 +1563,12 @@ export class Room {
   }
 
   setReady(userId: string, ready: boolean): { ok: boolean; error?: string } {
+    if (this.isLobby()) {
+      return { ok: false, error: 'Waiting for the host to start' };
+    }
+    if (this.isAutoDeal()) {
+      return { ok: false, error: 'Hands deal automatically on public tables' };
+    }
     if (this.meta.tournament?.frozen) {
       return { ok: false, error: 'Match is over' };
     }
@@ -1156,6 +1612,7 @@ export class Room {
   }
 
   private tryDealIfAllReady(): void {
+    if (this.isAutoDeal() || this.isLobby()) return;
     if (this.meta.tournament?.frozen) return;
     if (this.state.street !== 'waiting' && this.state.street !== 'payout') return;
     const eligible = this.eligibleForNextHand();
@@ -1194,6 +1651,12 @@ export class Room {
     const result = startHand(this.state, this.config, handId, (n) => randomBytes(n));
     if (!result.ok) return { ok: false, error: result.error };
     this.state = result.state;
+    this.dealtIn = new Set(
+      this.state.players.filter((p) => p.userId && p.holeCards).map((p) => p.userId!),
+    );
+    for (const userId of this.dealtIn) {
+      this.gameHands.set(userId, (this.gameHands.get(userId) ?? 0) + 1);
+    }
     this.announceEngineEvents(result.events);
     void this.afterStateChange();
     return { ok: true };
@@ -1231,13 +1694,16 @@ export class Room {
       return { ok: true };
     }
 
-    // Human: vacate seat, persist stack for rejoin, and drop connection if present.
+    // Human: vacate seat, return or hold the stack, and drop connection if present.
     const result = leaveSeat(this.state, seat);
     if (!result.ok) return { ok: false, error: result.error };
     this.state = result.state;
     this.announceEngineEvents(result.events);
-    // Only hold a positive stack for rejoin. Zero means busted — next sit does a fresh buy-in.
-    if (reservedStack > 0) {
+    if (this.usesWallet(kickedId)) {
+      // A table reservation would be lost when the room closes; the wallet is durable.
+      await this.cashOut(kickedId, reservedStack);
+    } else if (reservedStack > 0) {
+      // Only hold a positive stack for rejoin. Zero means busted — next sit does a fresh buy-in.
       try {
         await this.chips.reserve(this.meta.id, kickedId, reservedStack);
       } catch (err) {
@@ -1307,40 +1773,50 @@ export class Room {
       return { ok: false, error: 'Buy-in must match table buy-in' };
     }
 
-    // Re-check after awaits: a queued peer sit may have seated us already.
-    const seatedAfterAwait = this.seatOf(userId);
-    if (seatedAfterAwait !== null) {
+    const paid = reserved == null && this.usesWallet(userId) ? stack : 0;
+    if (paid > 0) {
+      try {
+        const debited = await this.wallet.debit(userId, paid, 'buy_in', this.meta.id);
+        this.notifyWallet(userId, debited.balance);
+      } catch (err) {
+        if (err instanceof WalletError && err.code === 'insufficient') {
+          return { ok: false, error: 'Not enough chips for this buy-in' };
+        }
+        console.error('[wallet] table buy-in failed', this.meta.id, userId, err);
+        return { ok: false, error: 'Could not take the buy-in' };
+      }
+    }
+
+    // Give back whatever this attempt took (reserved stack or wallet buy-in).
+    const undoAttempt = async (context: string): Promise<void> => {
       if (reserved != null) {
         try {
           await this.chips.reserve(this.meta.id, userId, reserved);
         } catch (err) {
-          console.error('[chips] failed to restore reserved stack after concurrent sit', err);
+          console.error(`[chips] failed to restore reserved stack after ${context}`, err);
         }
       }
+      if (paid > 0) await this.refundBuyIn(userId, paid);
+    };
+
+    if (this.closed) {
+      await undoAttempt('table closed');
+      return { ok: false, error: 'Table closed' };
+    }
+
+    // Re-check after awaits: a queued peer sit may have seated us already.
+    const seatedAfterAwait = this.seatOf(userId);
+    if (seatedAfterAwait !== null) {
+      await undoAttempt('concurrent sit');
       if (seatedAfterAwait === seat) return { ok: true };
       return { ok: false, error: 'Already seated' };
     }
 
     const result = sitDown(this.state, seat, userId, name, stack);
     if (!result.ok) {
+      await undoAttempt('sit failure');
       // Lost a same-seat race to our own sit — treat as success after undoing this attempt.
-      if (this.seatOf(userId) === seat) {
-        if (reserved != null) {
-          try {
-            await this.chips.reserve(this.meta.id, userId, reserved);
-          } catch (err) {
-            console.error('[chips] failed to restore reserved stack after sit race', err);
-          }
-        }
-        return { ok: true };
-      }
-      if (reserved != null) {
-        try {
-          await this.chips.reserve(this.meta.id, userId, reserved);
-        } catch (err) {
-          console.error('[chips] failed to restore reserved stack after sit failure', err);
-        }
-      }
+      if (this.seatOf(userId) === seat) return { ok: true };
       return { ok: false, error: result.error };
     }
     this.state = result.state;
@@ -1349,6 +1825,8 @@ export class Room {
     else if (!this.avatarByUser.has(userId)) {
       this.avatarByUser.set(userId, avatarIdFromUserId(userId));
     }
+    this.recordStake(userId, stack);
+    this.gameHands.set(userId, 0);
     this.refreshIdleClock();
     this.onHumanSeated(userId);
     void this.afterStateChange();
@@ -1359,9 +1837,11 @@ export class Room {
   stand(userId: string, seat: number): { ok: boolean; error?: string } {
     if (this.seatOf(userId) !== seat) return { ok: false, error: 'Not your seat' };
     this.readyUserIds.delete(userId);
+    const stack = this.state.players[seat]?.stack ?? 0;
     const result = standUp(this.state, seat);
     if (!result.ok) return { ok: false, error: result.error };
     this.state = result.state;
+    void this.cashOut(userId, stack);
     this.refreshIdleClock();
     void this.afterStateChange();
     return { ok: true };
@@ -1446,9 +1926,35 @@ export class Room {
       return { ok: false, error: 'Invalid top-up amount' };
     }
 
-    const result = topUp(this.state, seat, n, this.config.buyIn);
-    if (!result.ok) return { ok: false, error: result.error };
+    const check = topUp(this.state, seat, n, this.config.buyIn);
+    if (!check.ok) return { ok: false, error: check.error };
+
+    const paid = this.usesWallet(userId) ? n : 0;
+    if (paid > 0) {
+      try {
+        const debited = await this.wallet.debit(userId, paid, 'top_up', this.meta.id);
+        this.notifyWallet(userId, debited.balance);
+      } catch (err) {
+        if (err instanceof WalletError && err.code === 'insufficient') {
+          return { ok: false, error: 'Not enough chips for this top-up' };
+        }
+        console.error('[wallet] table top-up failed', this.meta.id, userId, err);
+        return { ok: false, error: 'Could not take the top-up' };
+      }
+    }
+
+    // State may have moved on while the wallet debit was awaited.
+    const result =
+      this.closed || this.seatOf(userId) !== seat
+        ? { ok: false as const, error: 'Not your seat' }
+        : topUp(this.state, seat, n, this.config.buyIn);
+    if (!result.ok) {
+      if (paid > 0) await this.refundBuyIn(userId, paid);
+      return { ok: false, error: result.error };
+    }
     this.state = result.state;
+    this.recordStake(userId, this.state.players[seat]?.stack ?? 0);
+    this.gameHands.set(userId, 0);
     if (this.isTournament()) this.tournamentStacksHook?.(this);
     void this.afterStateChange();
     return { ok: true };
@@ -1456,7 +1962,13 @@ export class Room {
 
   /** Between hands: rebuy bots to full buy-in when top-ups are allowed. */
   autoTopUpBrokeBots(): number {
-    if (!this.meta.tournament?.allowTopUp) return 0;
+    if (!this.meta.tournament?.allowTopUp && !this.meta.matchmade) return 0;
+    const count = this.topUpBrokeBotsInPlace();
+    if (count > 0) void this.afterStateChange();
+    return count;
+  }
+
+  private topUpBrokeBotsInPlace(): number {
     if (this.state.street !== 'waiting' && this.state.street !== 'payout') return 0;
     let count = 0;
     for (const p of this.state.players) {
@@ -1468,7 +1980,6 @@ export class Room {
         count += 1;
       }
     }
-    if (count > 0) void this.afterStateChange();
     return count;
   }
 
@@ -1812,6 +2323,9 @@ export class RoomManager {
   private kv: KvStore;
   private history: HandHistoryStore;
   private chips: TableChipStore;
+  private wallet: WalletStore;
+  private stakes: TableStakeStore | null = null;
+  private tableGameRules: () => TableGameRules = () => DEFAULT_TABLE_GAME_RULES;
   private tournamentHook: TournamentHandEndedHook | null = null;
   private tournamentStacksHook: TournamentStacksChangedHook | null = null;
   private onPublicLobbyChange: (() => void) | null = null;
@@ -1822,10 +2336,28 @@ export class RoomManager {
     kv: KvStore,
     history: HandHistoryStore,
     chips: TableChipStore = new MemoryTableChipStore(),
+    wallet: WalletStore = new UnlimitedWalletStore(),
   ) {
     this.kv = kv;
     this.history = history;
     this.chips = chips;
+    this.wallet = wallet;
+  }
+
+  /** Durable stake records for hosted wallet tables (crash recovery). */
+  setStakeStore(store: TableStakeStore | null): void {
+    this.stakes = store;
+    for (const room of this.rooms.values()) {
+      room.setStakeStore(store);
+    }
+  }
+
+  /** Admin-configured table-game Whuffie rules (read live on each award). */
+  setTableGameRules(provider: () => TableGameRules): void {
+    this.tableGameRules = provider;
+    for (const room of this.rooms.values()) {
+      room.setTableGameRules(provider);
+    }
   }
 
   setTournamentHook(hook: TournamentHandEndedHook | null): void {
@@ -1872,12 +2404,17 @@ export class RoomManager {
     hostUserId: string;
     config: TableConfig;
     isPrivate: boolean;
+    /** Public matchmaking table (auto-deal; timings cached in KV). */
+    matchmade?: boolean;
     stakeId?: string;
+    timings?: PublicTableTimingsMs;
     /** Optional custom numerical invite code. */
     inviteCode?: string;
     tournament?: TournamentTableRules;
     /** Free practice chips (private host + bots). */
     playMoney?: boolean;
+    /** Private hosted tables only: wait in a lobby until the host starts. */
+    lobby?: boolean;
   }): TableMeta {
     const inviteCode = opts.inviteCode ?? this.allocateInviteCode();
     if (this.byInvite.has(inviteCode)) {
@@ -1890,29 +2427,43 @@ export class RoomManager {
       name: opts.name,
       hostUserId: opts.hostUserId,
       isPrivate: opts.isPrivate,
-      stakeId: opts.stakeId,
+      matchmade: opts.matchmade || undefined,
+      stakeId: opts.matchmade ? opts.stakeId : undefined,
+      timings: opts.matchmade
+        ? { ...(opts.timings ?? DEFAULT_PUBLIC_TABLE_TIMINGS_MS) }
+        : undefined,
       config: opts.config,
       createdAt: Date.now(),
       tournament: opts.tournament,
       playMoney: opts.playMoney || undefined,
+      lobby:
+        opts.lobby && opts.isPrivate && !opts.matchmade && !opts.tournament ? true : undefined,
     };
+    if (meta.timings) {
+      void this.kv
+        .set(tableTimingsKey(id), JSON.stringify(meta.timings), TABLE_KV_TTL_SECONDS)
+        .catch((err) => console.error('[rooms] failed to cache table timings', err));
+    }
     const room = new Room(
       meta,
       this.kv,
       this.history,
       this.tournamentHook,
       this.chips,
+      this.wallet,
       this.onPublicLobbyChange,
       this.banterLlm,
       this.exploitLlm,
     );
     room.setTournamentStacksHook(this.tournamentStacksHook);
+    room.setTableGameRules(this.tableGameRules);
+    room.setStakeStore(this.stakes);
     this.rooms.set(id, room);
     this.byInvite.set(inviteCode, id);
     void this.history.recordTable(meta).catch((err) => {
       console.error('[history] recordTable failed', err);
     });
-    if (!meta.isPrivate && meta.stakeId) {
+    if (meta.matchmade) {
       this.firePublicLobbyChange();
     }
     return meta;
@@ -1943,26 +2494,44 @@ export class RoomManager {
     return id ? this.rooms.get(id) : undefined;
   }
 
-  findPublicByStake(stakeId: string): Room | undefined {
-    return [...this.rooms.values()].find(
-      (r) => !r.meta.isPrivate && r.meta.stakeId === stakeId,
-    );
+  /** Live matchmade public tables, oldest first. */
+  listMatchmade(): Room[] {
+    return [...this.rooms.values()]
+      .filter((r) => r.meta.matchmade && !r.isClosed())
+      .sort((a, b) => a.meta.createdAt - b.meta.createdAt);
   }
 
-  /** Drop a live room immediately (caller may re-seed public tables). */
+  /** Drop a live room immediately. */
   destroy(tableId: string, message?: string): boolean {
     const room = this.rooms.get(tableId);
     if (!room) return false;
-    const wasPublic = !room.meta.isPrivate && Boolean(room.meta.stakeId);
+    const wasPublic = Boolean(room.meta.matchmade);
     room.shutdown(message);
     this.rooms.delete(tableId);
     this.byInvite.delete(room.meta.inviteCode);
-    if (wasPublic) this.firePublicLobbyChange();
+    if (wasPublic) {
+      void this.kv.del(tableTimingsKey(tableId)).catch((err) => {
+        console.error('[rooms] failed to drop table timings', err);
+      });
+      this.firePublicLobbyChange();
+    }
     return true;
   }
 
+  /** Close every live room and wait for hosted-table stacks to be credited back. */
+  async shutdownAll(message = 'Server restarting'): Promise<void> {
+    const rooms = [...this.rooms.values()];
+    this.rooms.clear();
+    this.byInvite.clear();
+    await Promise.all(rooms.map((room) => room.shutdown(message)));
+  }
+
+  private idleLimitMs(room: Room, inactivityMs: number): number {
+    return room.meta.matchmade ? room.timings().idleCloseMs : inactivityMs;
+  }
+
   /**
-   * Shut down cash/public rooms idle for {@link ROOM_INACTIVITY_MS}.
+   * Shut down cash rooms idle for `inactivityMs` (matchmade: their own `idleCloseMs`).
    * Returns closed table ids (tournament rooms are never removed here).
    */
   terminateIdleRooms(
@@ -1971,7 +2540,7 @@ export class RoomManager {
   ): string[] {
     const closed: string[] = [];
     for (const room of [...this.rooms.values()]) {
-      if (!room.isIdle(inactivityMs, now)) continue;
+      if (!room.isIdle(this.idleLimitMs(room, inactivityMs), now)) continue;
       const id = room.meta.id;
       if (this.destroy(id, 'Table closed due to inactivity')) {
         closed.push(id);
@@ -1984,31 +2553,29 @@ export class RoomManager {
     tableId: string;
     inviteCode: string;
     name: string;
-    stakeId: string;
+    stakeId: string | null;
     seatedCount: number;
     maxSeats: number;
     config: TableConfig;
   }[] {
-    return [...this.rooms.values()]
-      .filter((r) => !r.meta.isPrivate && r.meta.stakeId)
-      .sort((a, b) => (a.meta.stakeId ?? '').localeCompare(b.meta.stakeId ?? ''))
-      .map((r) => ({
-        tableId: r.meta.id,
-        inviteCode: r.meta.inviteCode,
-        name: r.meta.name,
-        stakeId: r.meta.stakeId!,
-        seatedCount: r.seatedCount(),
-        maxSeats: r.meta.config.maxSeats,
-        config: r.meta.config,
-      }));
+    return this.listMatchmade().map((r) => ({
+      tableId: r.meta.id,
+      inviteCode: r.meta.inviteCode,
+      name: r.meta.name,
+      stakeId: r.meta.stakeId ?? null,
+      seatedCount: r.seatedCount(),
+      maxSeats: r.meta.config.maxSeats,
+      config: r.meta.config,
+    }));
   }
 
-  /** In-process rooms for admin — excludes permanent public stake lobbies. */
+  /** Every in-process room for admin (private, matchmade public, contest). */
   listAllAdmin(inactivityMs: number = ROOM_INACTIVITY_MS): {
     tableId: string;
     inviteCode: string;
     name: string;
     isPrivate: boolean;
+    matchmade: boolean;
     stakeId: string | null;
     seatedCount: number;
     maxSeats: number;
@@ -2022,11 +2589,6 @@ export class RoomManager {
     createdAt: number;
   }[] {
     return [...this.rooms.values()]
-      .filter((r) => {
-        // Always-on public cash tables are not "live games" for ops.
-        if (!r.meta.isPrivate && r.meta.stakeId) return false;
-        return true;
-      })
       .map((r) => {
         const street = r.state.street;
         const handInProgress = street !== 'waiting' && street !== 'payout';
@@ -2035,13 +2597,14 @@ export class RoomManager {
           inviteCode: r.meta.inviteCode,
           name: r.meta.name,
           isPrivate: r.meta.isPrivate,
+          matchmade: Boolean(r.meta.matchmade),
           stakeId: r.meta.stakeId ?? null,
           seatedCount: r.seatedCount(),
           maxSeats: r.meta.config.maxSeats,
           hostUserId: r.meta.hostUserId,
           handInProgress,
           street,
-          idle: r.isIdle(inactivityMs),
+          idle: r.isIdle(this.idleLimitMs(r, inactivityMs)),
           playMoney: Boolean(r.meta.playMoney),
           contestId: r.meta.tournament?.contestId ?? null,
           contestFrozen: Boolean(r.meta.tournament?.frozen),

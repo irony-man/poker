@@ -75,6 +75,17 @@ export const ClientMessageSchema = z.discriminatedUnion('type', [
     tableId: z.string().min(1),
     seat: z.number().int().min(0).max(9),
   }),
+  /** Host only: leave the pre-game lobby and deal the first hand. */
+  z.object({
+    type: z.literal('start_game'),
+    tableId: z.string().min(1),
+  }),
+  /** Host only, pre-game lobby: change the seat count. */
+  z.object({
+    type: z.literal('set_table_seats'),
+    tableId: z.string().min(1),
+    maxSeats: z.number().int().min(2).max(9),
+  }),
   z.object({
     type: z.literal('action'),
     tableId: z.string().min(1),
@@ -114,6 +125,15 @@ export const ClientMessageSchema = z.discriminatedUnion('type', [
   }),
   z.object({
     type: z.literal('ping'),
+  }),
+  /** Public poker: queue for a matchmade table (bots fill seats after a timeout). */
+  z.object({
+    type: z.literal('matchmaking_join'),
+    /** Stake preset id; unknown or missing falls back to the default stake. */
+    stakeId: z.string().max(32).optional(),
+  }),
+  z.object({
+    type: z.literal('matchmaking_cancel'),
   }),
   z.object({
     type: z.literal('voice_join'),
@@ -415,6 +435,24 @@ export const ServerMessageSchema = z.discriminatedUnion('type', [
     type: z.literal('public_tables_sync'),
     tables: z.array(z.unknown()),
   }),
+  /** Public poker queue: still searching; bots fill the table at `botFillAt`. */
+  z.object({
+    type: z.literal('matchmaking_status'),
+    status: z.literal('searching'),
+    stakeId: z.string(),
+    queuedAt: z.number(),
+    botFillAt: z.number(),
+    humansWaiting: z.number().int().nonnegative(),
+  }),
+  /** Public poker queue: a seat is ready — join this table. */
+  z.object({
+    type: z.literal('matchmaking_found'),
+    tableId: z.string(),
+    inviteCode: z.string(),
+  }),
+  z.object({
+    type: z.literal('matchmaking_cancelled'),
+  }),
   /** Lobby: open public contests (same as GET /api/contests). */
   z.object({
     type: z.literal('public_contests_sync'),
@@ -516,6 +554,8 @@ export const CreateTableBodySchema = z.object({
   /** Admin-configured bot name group (uses site default when omitted). */
   botGroupId: z.string().min(1).max(64).optional(),
   isPrivate: z.boolean().default(true),
+  /** Open in a pre-game lobby; the host starts the first hand. */
+  lobby: z.boolean().default(false),
   /** Optional custom numerical invite / room code (4–8 digits). */
   inviteCode: z
     .string()
@@ -537,6 +577,8 @@ export const FriendRespondBodySchema = z.object({
 
 export const ChallengeFriendBodySchema = z.object({
   friendUserId: z.string().min(1).max(128),
+  /** Open in a pre-game lobby; the host starts the first hand. */
+  lobby: z.boolean().default(false),
 });
 
 export const CreateFriendGroupBodySchema = z.object({
@@ -558,6 +600,8 @@ export const InviteFriendGroupBodySchema = z.object({
   smallBlind: z.number().int().positive().optional(),
   bigBlind: z.number().int().positive().optional(),
   buyIn: z.number().int().positive().optional(),
+  /** Open in a pre-game lobby; the host starts the first hand. */
+  lobby: z.boolean().default(false),
 });
 
 /** Invite selected friends to an existing table or contest. */

@@ -10,6 +10,7 @@ export async function generateMetadata({
   return {
     title: handle,
     description: `${handle} on Pokr`,
+    robots: { index: false, follow: false },
   };
 }
 

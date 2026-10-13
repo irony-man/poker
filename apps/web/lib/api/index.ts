@@ -194,6 +194,7 @@ export {
   type AdminTableRow,
   type AdminContestRow,
   type AdminRoomSettings,
+  type AdminPublicTableTimings,
   type BotPersonalityId,
   type BotGroup,
   type BotGroupLabel,

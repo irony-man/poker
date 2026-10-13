@@ -246,60 +246,71 @@ body > * {
   );
 }
 
-.lobby-shell .hud-input {
+.lobby-shell .hud-input,
+.lobby-paper .hud-input {
   border-color: rgb(var(--sidebar) / 0.15);
   background-color: rgb(var(--bg-page) / 0.55);
   color: rgb(var(--text-primary));
 }
 
-.lobby-shell .hud-input::placeholder {
+.lobby-shell .hud-input::placeholder,
+.lobby-paper .hud-input::placeholder {
   color: rgb(var(--text-muted) / 0.85);
 }
 
-.lobby-shell .hud-input:focus {
+.lobby-shell .hud-input:focus,
+.lobby-paper .hud-input:focus {
   border-color: rgb(var(--sidebar) / 0.45);
   box-shadow: 0 0 0 3px rgb(var(--sidebar) / 0.1);
 }
 
-.lobby-shell .hud-label {
+.lobby-shell .hud-label,
+.lobby-paper .hud-label {
   color: rgb(var(--text-primary));
   letter-spacing: 0.12em;
 }
 
-.lobby-shell .field-help {
+.lobby-shell .field-help,
+.lobby-paper .field-help {
   color: rgb(var(--text-muted));
   font-size: 0.8125rem;
   line-height: 1.45;
 }
 
-.lobby-shell .choice-chip {
+.lobby-shell .choice-chip,
+.lobby-paper .choice-chip {
   border-color: rgb(var(--sidebar) / 0.18);
   background-color: rgb(var(--bg-page) / 0.72);
   color: rgb(var(--text-primary));
 }
 
-.lobby-shell .choice-chip:hover {
+.lobby-shell .choice-chip:hover,
+.lobby-paper .choice-chip:hover {
   border-color: rgb(var(--sidebar) / 0.3);
   color: rgb(var(--text-primary));
 }
 
-.lobby-shell .choice-chip-selected {
+.lobby-shell .choice-chip-selected,
+.lobby-paper .choice-chip-selected {
   border-color: rgb(var(--sidebar));
   background-color: rgb(var(--sidebar));
   color: rgb(var(--on-chrome));
   box-shadow: 0 4px 14px rgb(var(--sidebar) / 0.18);
 }
 
-.lobby-shell .choice-chip-selected:hover {
+.lobby-shell .choice-chip-selected:hover,
+.lobby-paper .choice-chip-selected:hover {
   border-color: rgb(var(--sidebar));
   color: rgb(var(--on-chrome));
 }
 
-.lobby-shell .choice-chip-selected .text-muted {
+.lobby-shell .choice-chip-selected .text-muted,
+.lobby-paper .choice-chip-selected .text-muted {
   color: rgb(var(--on-chrome) / 0.8);
 }
 
-.lobby-shell .btn-primary {
+.lobby-shell .btn-primary,
+.lobby-paper .btn-primary {
   border-color: rgb(var(--sidebar) / 0.35);
   background-image: linear-gradient(
     to bottom,
@@ -310,39 +321,46 @@ body > * {
   box-shadow: 0 8px 20px rgb(var(--sidebar) / 0.22);
 }
 
-.lobby-shell .btn-primary:hover {
+.lobby-shell .btn-primary:hover,
+.lobby-paper .btn-primary:hover {
   filter: brightness(1.08);
 }
 
-.lobby-shell .btn-ghost {
+.lobby-shell .btn-ghost,
+.lobby-paper .btn-ghost {
   border-color: rgb(var(--sidebar) / 0.22);
   background-color: rgb(var(--bg-page) / 0.65);
   color: rgb(var(--text-primary));
 }
 
-.lobby-shell .btn-ghost:hover {
+.lobby-shell .btn-ghost:hover,
+.lobby-paper .btn-ghost:hover {
   border-color: rgb(var(--sidebar) / 0.4);
   background-color: rgb(var(--sidebar) / 0.06);
 }
 
-.lobby-shell .field-select {
+.lobby-shell .field-select,
+.lobby-paper .field-select {
   border-color: rgb(var(--sidebar) / 0.18);
   background-color: rgb(var(--bg-page) / 0.55);
   color: rgb(var(--text-primary));
   color-scheme: light;
 }
 
-.lobby-shell .field-select:focus {
+.lobby-shell .field-select:focus,
+.lobby-paper .field-select:focus {
   border-color: rgb(var(--sidebar) / 0.45);
   box-shadow: 0 0 0 3px rgb(var(--sidebar) / 0.1);
 }
 
-.lobby-shell .field-select option {
+.lobby-shell .field-select option,
+.lobby-paper .field-select option {
   background-color: rgb(255 252 250);
   color: rgb(var(--text-primary));
 }
 
-.lobby-shell .status-chip {
+.lobby-shell .status-chip,
+.lobby-paper .status-chip {
   border-color: rgb(var(--sidebar) / 0.18);
   background-color: rgb(var(--sidebar) / 0.06);
   color: rgb(var(--sidebar));

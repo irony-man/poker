@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
+import { DEFAULT_PAGES_COPY } from '@/lib/pageCopy';
 import { pageJsonLd, publicPageMetadata } from '@/lib/site';
 
 const title = 'Contests & tournaments';
-const description =
-  "Enter Knockout freezeouts and fixed-round Texas Hold'em contests. Free competitive play on pokr.site.";
+const description = DEFAULT_PAGES_COPY.contests.subtitle;
 const path = '/contests';
 
 export const metadata: Metadata = publicPageMetadata({ title, description, path });

@@ -3,6 +3,7 @@
 import { useRef, type ReactNode } from 'react';
 import { Button } from '@/components/ui/Button';
 import { MoneyAmount } from './CurrencyIcon';
+import { NextHandCountdown } from './NextHandCountdown';
 import { PlayerAvatar } from './PlayerAvatar';
 import { PlayingCard } from './PlayingCard';
 import { useModalFocus } from '@/lib/useModalFocus';
@@ -325,8 +326,11 @@ export function WinHandModal({
   whuffieSignInHint = false,
   offlineGameComplete = false,
   nextHandLabel,
+  nextHandAt = null,
 }: {
   winners: WinLine[];
+  /** Auto-deal (public) tables: epoch ms of the next deal. */
+  nextHandAt?: number | null;
   youWon: boolean;
   /** Whuffies credited this hand (signed-in offline win). */
   whuffiesEarned?: number | null;
@@ -419,6 +423,8 @@ export function WinHandModal({
         Need chips
       </Button>
     );
+  } else if (nextHandAt != null) {
+    primary = <NextHandCountdown at={nextHandAt} className="flex-1" />;
   } else {
     primary = (
       <p className="flex-1 text-center text-xs text-muted">Waiting…</p>

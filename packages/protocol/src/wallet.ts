@@ -9,11 +9,13 @@ export type WalletTrailReason =
   | 'free_refill'
   | 'buy_in'
   | 'cash_out'
+  | 'table_cash_out'
   | 'top_up'
   | 'hand_win'
   | 'hand_loss'
   | 'contest_prize'
   | 'offline_win'
+  | 'table_game'
   | 'admin_credit'
   | 'admin_reset';
 

@@ -5,6 +5,7 @@ import { FriendsModule } from '../friends/friends.module.js';
 import { LudoModule } from '../ludo/ludo.module.js';
 import { MemoryModule } from '../memory/memory.module.js';
 import { CourtpieceModule } from '../courtpiece/courtpiece.module.js';
+import { MatchmakingModule } from '../matchmaking/matchmaking.module.js';
 import { RoomsModule } from '../rooms/rooms.module.js';
 import { SiteConfigModule } from '../site-config/site-config.module.js';
 import { SnakesModule } from '../snakes/snakes.module.js';
@@ -16,6 +17,7 @@ import { PokerGateway } from './poker.gateway.js';
     forwardRef(() => AuthModule),
     forwardRef(() => WalletModule),
     RoomsModule,
+    MatchmakingModule,
     ContestsModule,
     LudoModule,
     SnakesModule,

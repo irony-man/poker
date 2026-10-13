@@ -9,6 +9,7 @@ import { authHref } from '@/lib/authRedirect';
 import { loadSavedAvatarId } from '@/lib/avatars';
 import { MoneyAmount } from '@/components/CurrencyIcon';
 import { LegalLinks } from '@/components/LegalLinks';
+import { NewBadge } from '@/components/NewBadge';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 import { PendingCountBadge, useOnlineFriends } from '@/components/OnlineFriends';
 import { fetchPublicBotGroups } from '@/lib/api';
@@ -19,6 +20,7 @@ import {
   orderedLobbyNav,
 } from '@/lib/lobbyNav';
 import { useLobbyNav } from '@/lib/useLobbyNav';
+import { useNewFeature } from '@/lib/useNewFeature';
 import { useSession } from '@/lib/store';
 import { cn } from '@/lib/cn';
 
@@ -93,6 +95,9 @@ export function LobbySidebar({
   const whuffieBalance = useSession((s) => s.whuffieBalance);
   const { pendingCount, sentCount } = useOnlineFriends();
   const lobbyNav = useLobbyNav();
+  const hostBotGroupsNew = useNewFeature('host-bot-groups');
+  const soloBotGroupsNew = useNewFeature('solo-bot-groups');
+  const themeNew = useNewFeature('profile-theme');
   const [avatarId, setAvatarId] = useState(0);
   const [copied, setCopied] = useState(false);
   const [hotOfflineGroups, setHotOfflineGroups] = useState<
@@ -159,6 +164,8 @@ export function LobbySidebar({
         {orderedLobbyNav(lobbyNav).map((t) => {
           const active = isLobbyNavActive(pathname, t.href, searchParams.toString());
           const isFriends = signedIn && t.href === '/friends';
+          const isNew =
+            (t.id === 'host' && hostBotGroupsNew) || (t.id === 'solo' && soloBotGroupsNew);
           if (t.href === '/solo' && hotOfflineGroups.length > 0) {
             return (
               <div key={t.href}>
@@ -167,13 +174,14 @@ export function LobbySidebar({
                     href={t.href}
                     aria-current={active ? 'page' : undefined}
                     className={cn(
-                      'nav-sidebar-item flex-1',
+                      'nav-sidebar-item flex flex-1 items-center justify-between gap-2',
                       active
                         ? 'nav-sidebar-item-active bg-on-chrome/15 text-on-chrome'
                         : 'text-on-chrome/90 hover:bg-on-chrome/12 hover:text-on-chrome',
                     )}
                   >
-                    {t.label}
+                    <span>{t.label}</span>
+                    {isNew ? <NewBadge /> : null}
                   </Link>
                   <button
                     type="button"
@@ -241,6 +249,8 @@ export function LobbySidebar({
                   <PendingCountBadge count={pendingCount} />
                   <PendingCountBadge count={sentCount} tone="sent" />
                 </span>
+              ) : isNew ? (
+                <NewBadge />
               ) : null}
             </Link>
           );
@@ -296,8 +306,11 @@ export function LobbySidebar({
                     />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-display text-sm font-semibold leading-tight text-on-chrome">
-                      {handle || 'Player'}
+                    <span className="flex items-center gap-1.5">
+                      <span className="min-w-0 truncate font-display text-sm font-semibold leading-tight text-on-chrome">
+                        {handle || 'Player'}
+                      </span>
+                      {themeNew ? <NewBadge /> : null}
                     </span>
                     {chipBalance != null ? (
                       <span className="mt-1 flex flex-col gap-0.5">

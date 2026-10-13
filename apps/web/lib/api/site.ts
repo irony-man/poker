@@ -14,6 +14,8 @@ export interface SiteEconomy {
   refillThreshold: number;
   refillGrant: number;
   startingWhuffieGrant: number;
+  tableGameWhuffies: number;
+  tableGameMinHands: number;
 }
 
 export interface HomeLandingFeature {

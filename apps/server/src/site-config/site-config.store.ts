@@ -39,6 +39,7 @@ import {
   type PagesByTheme,
   type PagesCopy,
   type RoomSettings,
+  type RoomSettingsPatch,
   type AvatarPresetsConfig,
   type SiteAnnouncement,
   type SiteConfigPayload,
@@ -214,7 +215,7 @@ export class SiteConfigStore {
   }
 
   getRoomSettings(): RoomSettings {
-    return { ...this.cache.rooms };
+    return { ...this.cache.rooms, publicTable: { ...this.cache.rooms.publicTable } };
   }
 
   getBotGroups(): BotGroup[] {
@@ -347,11 +348,15 @@ export class SiteConfigStore {
     return this.getPages(t);
   }
 
-  async setRoomSettings(partial: Partial<RoomSettings>): Promise<RoomSettings> {
+  async setRoomSettings(partial: RoomSettingsPatch): Promise<RoomSettings> {
     await this.ensureLoaded();
     this.cache = {
       ...this.cache,
-      rooms: normalizeRoomSettings({ ...this.cache.rooms, ...partial }),
+      rooms: normalizeRoomSettings({
+        ...this.cache.rooms,
+        ...partial,
+        publicTable: { ...this.cache.rooms.publicTable, ...partial.publicTable },
+      }),
     };
     await this.serialized(() => this.persist());
     return this.getRoomSettings();

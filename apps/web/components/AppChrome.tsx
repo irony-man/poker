@@ -7,6 +7,7 @@ import { Suspense, useCallback, useEffect, useState, type ReactNode } from 'reac
 import { imageAssetUrl } from '@/lib/assets';
 import { LobbySidebar } from '@/components/LobbySidebar';
 import { LobbyBottomNav } from '@/components/LobbyBottomNav';
+import { NewBadge } from '@/components/NewBadge';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 import {
   OnlineFriendsProvider,
@@ -18,6 +19,7 @@ import {
   readStoredSession,
 } from '@/lib/session';
 import { useSession } from '@/lib/store';
+import { useNewFeature } from '@/lib/useNewFeature';
 import { fetchMe, fetchPublicSite, logout as apiLogout } from '@/lib/api';
 import { loadSavedAvatarId, saveAvatarId } from '@/lib/avatars';
 import { saveTableColorId } from '@/lib/tableColors';
@@ -60,6 +62,7 @@ function MobileProfileButton({ signedIn }: { signedIn: boolean }) {
   const userId = useSession((s) => s.userId);
   const [avatarId, setAvatarId] = useState(0);
   const profileActive = pathname === '/profile' || pathname.startsWith('/profile/');
+  const themeNew = useNewFeature('profile-theme');
 
   useEffect(() => {
     if (!signedIn) return;
@@ -88,6 +91,7 @@ function MobileProfileButton({ signedIn }: { signedIn: boolean }) {
       aria-current={profileActive ? 'page' : undefined}
     >
       <PlayerAvatar avatarId={avatarId} userId={userId} size={40} title="Profile" />
+      {themeNew ? <NewBadge variant="dot" className="absolute -right-0.5 -top-0.5" /> : null}
     </Link>
   );
 }

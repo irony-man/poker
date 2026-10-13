@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@letele/playing-cards": "^0.1.0",
+    "@next/third-parties": "^16.4.0",
     "@poker/engine": "*",
     "@poker/protocol": "*",
     "@react-three/drei": "^10.7.7",

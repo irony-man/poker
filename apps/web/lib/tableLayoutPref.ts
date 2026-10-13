@@ -2,11 +2,15 @@
 
 export type TableLayout = 'v1' | 'v2';
 
-export const TABLE_LAYOUT_STORAGE_KEY = 'pokr-table-layout';
+/** Stacked HUD; Classic oval (`v1`) is opt-in from Profile. */
+export const DEFAULT_TABLE_LAYOUT: TableLayout = 'v2';
+
+/** Versioned: browsers cached `v1` before Stacked became the default, so the old key is ignored. */
+export const TABLE_LAYOUT_STORAGE_KEY = 'pokr-table-layout-v2';
 export const TABLE_LAYOUT_EVENT = 'pokr-table-layout';
 
 export function clampTableLayout(value: unknown): TableLayout {
-  return value === 'v2' ? 'v2' : 'v1';
+  return value === 'v1' ? 'v1' : DEFAULT_TABLE_LAYOUT;
 }
 
 export function applyTableLayout(layout: TableLayout): void {
@@ -57,11 +61,11 @@ export function subscribeTableLayout(listener: (layout: TableLayout) => void): (
 }
 
 export function loadSavedTableLayout(): TableLayout {
-  if (typeof window === 'undefined') return 'v1';
+  if (typeof window === 'undefined') return DEFAULT_TABLE_LAYOUT;
   try {
     return clampTableLayout(window.localStorage.getItem(TABLE_LAYOUT_STORAGE_KEY));
   } catch {
-    return 'v1';
+    return DEFAULT_TABLE_LAYOUT;
   }
 }
 

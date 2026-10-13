@@ -53,8 +53,18 @@ export type PublicTable = Omit<PublicTableView, 'players' | 'showdownHands'> & {
   turnEndsAt?: number | null;
   /** Table creator (cash host). */
   hostUserId?: string | null;
-  /** Private host tables allow bots; public stake tables do not. */
+  /** Private host tables allow bots; public matchmade tables do not. */
   isPrivate?: boolean;
+  /** Public matchmade tables deal on a timer (no Ready step). */
+  autoDeal?: boolean;
+  /** Epoch ms of the next automatic deal (auto-deal tables, between hands). */
+  nextHandAt?: number | null;
+  /** Hosted pre-game lobby: nothing deals until the host starts. */
+  lobby?: boolean;
+  /** Free practice chips (private host + bots). */
+  playMoney?: boolean;
+  /** Table display name. */
+  name?: string;
   /** Present on tournament tables. */
   tournament?: {
     contestId: string;

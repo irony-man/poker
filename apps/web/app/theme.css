@@ -126,8 +126,12 @@
   --focus-ring: 29 4 50;
 }
 
-/* Lobby: paper panels + dark body copy on page ground */
-.lobby-shell {
+/*
+ * Lobby: paper panels + dark body copy on page ground.
+ * `.lobby-paper` gives the same scope to lobby-style screens inside `.play-shell`.
+ */
+.lobby-shell,
+.lobby-paper {
   --bg-panel: 255 252 250;
   --bg-raised: 237 228 226;
   --text-primary: 29 4 50;
@@ -202,7 +206,8 @@ html[data-ui-theme='v2'] {
   --scrollbar-thumb-hover: rgb(var(--bg-chrome) / 0.75);
 }
 
-html[data-ui-theme='v2'] .lobby-shell {
+html[data-ui-theme='v2'] .lobby-shell,
+html[data-ui-theme='v2'] .lobby-paper {
   --bg-panel: 255 255 255;
   --bg-raised: 255 245 157;
   --text-primary: 26 16 40;
@@ -292,7 +297,8 @@ html[data-ui-theme='v3'] {
  * Base `.lobby-shell` assumes Classic/Arcade light pages (dark ink); override here.
  * Frost panels below re-bind dark ink for paper surfaces.
  */
-html[data-ui-theme='v3'] .lobby-shell {
+html[data-ui-theme='v3'] .lobby-shell,
+html[data-ui-theme='v3'] .lobby-paper {
   --text-primary: 255 255 255;
   /* Brighter muted for captions/help on dusk (≥4.5:1 on --bg-page). */
   --text-muted: 226 218 242;

@@ -8,6 +8,7 @@ import { NestFactory } from '@nestjs/core';
 import { WsAdapter } from '@nestjs/platform-ws';
 import { AppModule } from './app.module.js';
 import { isAllowedOrigin, parseExtraOrigins } from './config/cors.js';
+import { errorText } from './common/error-text.js';
 import { requestLogger, requestLoggingEnabled } from './common/request-logger.js';
 
 // Load monorepo root .env then apps/server/.env (later wins) before Nest boot.
@@ -16,10 +17,25 @@ loadEnv({ path: path.resolve(serverDir, '../../../.env') });
 loadEnv({ path: path.resolve(serverDir, '../../.env') });
 loadEnv({ path: path.resolve(serverDir, '../.env') });
 
+const processLogger = new Logger('Process');
+
+// Fire-and-forget promises (WS handlers, background DB writes) must not take the server down.
+process.on('unhandledRejection', (reason) => {
+  processLogger.error(`Unhandled promise rejection: ${errorText(reason)}`);
+});
+
+process.on('uncaughtException', (err) => {
+  processLogger.error(`Uncaught exception: ${errorText(err)}`);
+  process.exit(1);
+});
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log'],
   });
+
+  // SIGTERM/SIGINT (docker stop, deploys) run onModuleDestroy, which cashes out hosted tables.
+  app.enableShutdownHooks();
 
   if (requestLoggingEnabled()) app.use(requestLogger());
 
@@ -49,6 +65,6 @@ async function bootstrap() {
 }
 
 bootstrap().catch((err) => {
-  console.error(err);
+  processLogger.error(`Bootstrap failed: ${errorText(err)}`);
   process.exit(1);
 });

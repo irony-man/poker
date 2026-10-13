@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { errorText } from '../common/error-text.js';
 
 export type SocketSend = (msg: unknown) => void;
 
@@ -8,6 +9,7 @@ export type SocketSend = (msg: unknown) => void;
  */
 @Injectable()
 export class RealtimeService {
+  private readonly logger = new Logger(RealtimeService.name);
   private readonly allSends = new Set<SocketSend>();
   private readonly userSends = new Map<string, Set<SocketSend>>();
 
@@ -111,8 +113,8 @@ export class RealtimeService {
       try {
         const payload = await this.socialLoader(userId);
         send(payload);
-      } catch {
-        /* ignore social load failures on auth */
+      } catch (err) {
+        this.logger.error(`Social snapshot failed for ${userId}: ${errorText(err)}`);
       }
     }
     if (this.myContestsLoader) {
@@ -121,8 +123,8 @@ export class RealtimeService {
           type: 'my_contests_sync',
           contests: this.myContestsLoader(userId),
         });
-      } catch {
-        /* ignore */
+      } catch (err) {
+        this.logger.error(`Contests snapshot failed for ${userId}: ${errorText(err)}`);
       }
     }
   }
@@ -132,8 +134,8 @@ export class RealtimeService {
     try {
       const payload = await this.socialLoader(userId);
       this.sendToUser(userId, payload);
-    } catch {
-      /* ignore */
+    } catch (err) {
+      this.logger.error(`Social push failed for ${userId}: ${errorText(err)}`);
     }
   }
 
@@ -143,7 +145,8 @@ export class RealtimeService {
     let ids: string[] = [];
     try {
       ids = await this.friendIdsLoader(userId);
-    } catch {
+    } catch (err) {
+      this.logger.error(`Friend list load failed for ${userId}: ${errorText(err)}`);
       return;
     }
     await Promise.all(ids.map((id) => this.pushSocial(id)));
@@ -156,8 +159,8 @@ export class RealtimeService {
         type: 'my_contests_sync',
         contests: this.myContestsLoader(userId),
       });
-    } catch {
-      /* ignore */
+    } catch (err) {
+      this.logger.error(`Contests push failed for ${userId}: ${errorText(err)}`);
     }
   }
 

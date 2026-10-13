@@ -5,6 +5,7 @@ import { DataSource } from 'typeorm';
 import { dataSourceAsQueryable } from '../database/queryable.js';
 import type { EconomySnapshot } from '../wallet/wallet.constants.js';
 import { SiteConfigStore } from './site-config.store.js';
+import { publicTableTimingsToMs } from './site-config.types.js';
 import type {
   BotGroup,
   BotGroupLabels,
@@ -17,7 +18,9 @@ import type {
   LobbyNavId,
   PagesByTheme,
   PagesCopy,
+  PublicTableTimingsMs,
   RoomSettings,
+  RoomSettingsPatch,
   AvatarPresetsConfig,
   CardFaceTheme,
   SiteAnnouncement,
@@ -136,7 +139,12 @@ export class SiteConfigService implements OnModuleInit {
     return this.store.setPages(pages, theme);
   }
 
-  setRoomSettings(partial: Partial<RoomSettings>): Promise<RoomSettings> {
+  /** Matchmade public table timings in ms (snapshotted per table at creation). */
+  getPublicTableTimings(): PublicTableTimingsMs {
+    return publicTableTimingsToMs(this.store.getRoomSettings().publicTable);
+  }
+
+  setRoomSettings(partial: RoomSettingsPatch): Promise<RoomSettings> {
     return this.store.setRoomSettings(partial);
   }
 

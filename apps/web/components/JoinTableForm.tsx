@@ -94,11 +94,11 @@ export function JoinTableForm({
         autoComplete="off"
         disabled={disabled || busy}
       />
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="">
         <Button disabled={disabled || busy} type="submit" className="min-h-12 w-full">
           Enter table
         </Button>
-        <Button
+        {/* <Button
           disabled={disabled || busy || !invite.trim()}
           type="button"
           variant="ghost"
@@ -106,7 +106,7 @@ export function JoinTableForm({
           className="min-h-12 w-full"
         >
           Spectate
-        </Button>
+        </Button> */}
       </div>
     </form>
   );

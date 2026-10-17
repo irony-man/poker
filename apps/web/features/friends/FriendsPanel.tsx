@@ -10,6 +10,8 @@ import { IconButton } from '@/components/ui/IconButton';
 import { Tabs } from '@/components/ui/Tabs';
 import { TextField } from '@/components/ui/TextField';
 import { imageAssetUrl, resolvePublicImage } from '@/lib/assets';
+import { authHref } from '@/lib/authRedirect';
+import { cn } from '@/lib/cn';
 import { markFeatureSeen } from '@/lib/newFeatures';
 import { useNewFeature } from '@/lib/useNewFeature';
 import {
@@ -42,7 +44,7 @@ import { EmailInviteDialog } from './EmailInviteDialog';
 import { FriendLinkDialog } from './FriendLinkDialog';
 import { FriendList } from './FriendList';
 import { FriendSuggestions } from './FriendSuggestions';
-import { LinkIcon, MailIcon } from './icons';
+import { AddFriendIcon, LinkIcon, MailIcon } from './icons';
 
 type SocialTab = 'pending' | 'friends' | 'groups';
 
@@ -54,6 +56,36 @@ function parseSocialTab(raw: string | null | undefined): SocialTab | null {
 function tabFromLocation(): SocialTab | null {
   if (typeof window === 'undefined') return null;
   return parseSocialTab(new URLSearchParams(window.location.search).get('tab'));
+}
+
+function TabCount({
+  count,
+  selected,
+  alert = false,
+  title,
+}: {
+  count: number;
+  selected: boolean;
+  alert?: boolean;
+  title?: string;
+}) {
+  if (count <= 0) return null;
+  return (
+    <span
+      title={title}
+      className={cn(
+        'ml-1 inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full px-1 text-[10px] font-bold leading-none tracking-normal tabular-nums sm:ml-2 sm:h-[18px] sm:min-w-[18px] sm:px-1.5',
+        alert
+          ? 'bg-danger text-on-chrome'
+          : cn(
+              'max-[359px]:hidden',
+              selected ? 'bg-white/20 text-on-chrome' : 'bg-sidebar/10 text-sidebar',
+            ),
+      )}
+    >
+      {count}
+    </span>
+  );
 }
 
 /** Friends, groups & challenges for the main lobby content area. */
@@ -118,14 +150,6 @@ export function FriendsPanel({
 
   const incomingPendingCount = incoming.length + challenges.length;
   const sentPendingCount = outgoing.length + outgoingChallenges.length;
-  const pendingTabLabel =
-    incomingPendingCount > 0 && sentPendingCount > 0
-      ? `Pending (${incomingPendingCount} · ${sentPendingCount} sent)`
-      : incomingPendingCount > 0
-        ? `Pending (${incomingPendingCount})`
-        : sentPendingCount > 0
-          ? `Pending (${sentPendingCount} sent)`
-          : 'Pending';
   const [socialTab, setSocialTab] = useState<SocialTab>(() => {
     const fromUrl = tabFromLocation();
     if (fromUrl) return fromUrl;
@@ -439,10 +463,10 @@ export function FriendsPanel({
   }
 
   const playerSearch = (
-    <div className="flex w-full flex-col gap-3">
+    <div className="flex w-full flex-col gap-2">
       <TextField
         variant="hud"
-        label={<span className="!font-bold">Find a Friend</span>}
+        label="Find a friend"
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
         placeholder="Enter exact username…"
@@ -458,7 +482,10 @@ export function FriendsPanel({
           {searchResults.map((u) => {
             const handle = u.username ?? u.name;
             return (
-              <li key={u.userId} className="flex items-center gap-3 bg-raised/60 px-3 py-2.5">
+              <li
+                key={u.userId}
+                className="flex items-center gap-3 bg-raised/60 px-3 py-2.5 transition-colors hover:bg-raised"
+              >
                 <Link
                   href={publicProfileHref(handle)}
                   className="shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-sidebar/40"
@@ -468,7 +495,7 @@ export function FriendsPanel({
                     userId={u.userId}
                     avatarId={u.avatarId}
                     avatarUrl={u.avatarUrl}
-                    size={32}
+                    size={36}
                     title={handle}
                   />
                 </Link>
@@ -478,14 +505,20 @@ export function FriendsPanel({
                 >
                   {handle}
                 </Link>
-                <Button
-                  variant="ghost"
-                  disabled={disabled || busy === u.userId}
-                  onClick={() => void onAddFriend(u.userId)}
-                  className="py-1.5 px-3 text-xs"
-                >
-                  Add friend
-                </Button>
+                {friendIds.has(u.userId) ? (
+                  <span className="shrink-0 text-xs font-semibold text-positive">Friends</span>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={disabled || busy === u.userId}
+                    onClick={() => void onAddFriend(u.userId)}
+                    className="inline-flex shrink-0 items-center gap-1.5"
+                  >
+                    <AddFriendIcon className="h-3.5 w-3.5" />
+                    Add friend
+                  </Button>
+                )}
               </li>
             );
           })}
@@ -503,67 +536,81 @@ export function FriendsPanel({
   const inviteButtons = (
     <>
       {userId && (
-        <div className="grid grid-cols-2 gap-2">
-          <div className="relative min-w-0">
-            <IconButton
-              className="w-full px-3"
-              variant='chrome'
-              icon={<LinkIcon />}
-              label="Friend Link"
-              disabled={disabled}
-              onClick={() => {
-                markFeatureSeen('friends-link-invite');
-                setInviteDialog('link');
-              }}
-            >
-              Friend Link
-            </IconButton>
-            {linkInviteNew ? (
-              <NewBadge tone="light" className="pointer-events-none absolute -right-1.5 -top-2" />
-            ) : null}
+        <section aria-labelledby="friend-invite-heading" className="flex flex-col gap-2">
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 id="friend-invite-heading" className="hud-label">
+              Invite someone new
+            </h2>
+            <span className="hidden text-[11px] text-muted sm:inline">
+              Share a link or email an invite
+            </span>
           </div>
-          <IconButton
-            className="w-full px-3"
-            variant='chrome'
-            icon={<MailIcon />}
-            label="Email Invite"
-            disabled={disabled}
-            onClick={() => setInviteDialog('email')}
-          >
-            Email Invite
-          </IconButton>
-        </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="relative min-w-0">
+              <IconButton
+                className="w-full"
+                variant="ghost"
+                size="sm"
+                icon={<LinkIcon />}
+                label="Friend Link"
+                disabled={disabled}
+                onClick={() => {
+                  markFeatureSeen('friends-link-invite');
+                  setInviteDialog('link');
+                }}
+              >
+                Friend Link
+              </IconButton>
+              {linkInviteNew ? (
+                <NewBadge tone="light" className="pointer-events-none absolute -right-1.5 -top-2" />
+              ) : null}
+            </div>
+            <IconButton
+              className="w-full"
+              variant="ghost"
+              size="sm"
+              icon={<MailIcon />}
+              label="Email Invite"
+              disabled={disabled}
+              onClick={() => setInviteDialog('email')}
+            >
+              Email Invite
+            </IconButton>
+          </div>
+        </section>
       )}
       <FriendLinkDialog open={inviteDialog === 'link'} onClose={closeInviteDialog} />
       <EmailInviteDialog open={inviteDialog === 'email'} onClose={closeInviteDialog} />
     </>
   );
 
+  const errorAlert =
+    error || loadError ? (
+      <div
+        role="alert"
+        className="flex items-start justify-between gap-2 rounded-xl border border-danger/25 bg-danger/10 px-3 py-2 text-sm text-danger"
+      >
+        <p className="min-w-0 flex-1 leading-snug">{error ?? loadError}</p>
+        <button
+          type="button"
+          className="shrink-0 text-xs font-semibold opacity-70 hover:opacity-100"
+          onClick={() => {
+            setError(null);
+            setLoadError(null);
+          }}
+        >
+          Dismiss
+        </button>
+      </div>
+    ) : null;
+
   const socialBody = (
     <>
-      {(error || loadError) && (
-        <div
-          role="alert"
-          className="flex items-start justify-between gap-2 rounded-xl border border-danger/25 bg-danger/10 px-3 py-2 text-sm text-danger"
-        >
-          <p className="min-w-0 flex-1 leading-snug">{error ?? loadError}</p>
-          <button
-            type="button"
-            className="shrink-0 text-xs font-semibold opacity-70 hover:opacity-100"
-            onClick={() => {
-              setError(null);
-              setLoadError(null);
-            }}
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-
-      <div className="min-w-0">
+      <div className="min-w-0 border-t border-sidebar/10 pt-5 sm:pt-6">
         <Tabs
           label="Friends, pending, and groups"
           variant="segmented"
+          className="gap-0.5 [&>button]:min-w-0 [&>button]:px-1.5 [&>button]:text-[11px] [&>button]:tracking-[0.06em] sm:gap-0 sm:[&>button]:px-3 sm:[&>button]:text-xs sm:[&>button]:tracking-[0.14em]"
           idPrefix="social-tab"
           selected={socialTab}
           onSelect={setSocialTab}
@@ -571,11 +618,38 @@ export function FriendsPanel({
           options={[
             {
               id: 'pending',
-              label: pendingTabLabel,
+              label: 'Pending',
               panelId: 'social-panel-pending',
+              badge:
+                incomingPendingCount > 0 ? (
+                  <TabCount
+                    count={incomingPendingCount}
+                    selected={socialTab === 'pending'}
+                    alert
+                    title={`${incomingPendingCount} waiting on you${
+                      sentPendingCount > 0 ? ` · ${sentPendingCount} sent` : ''
+                    }`}
+                  />
+                ) : (
+                  <TabCount
+                    count={sentPendingCount}
+                    selected={socialTab === 'pending'}
+                    title={`${sentPendingCount} sent`}
+                  />
+                ),
             },
-            { id: 'friends', label: 'Friends', panelId: 'social-panel-friends' },
-            { id: 'groups', label: 'Groups', panelId: 'social-panel-groups' },
+            {
+              id: 'friends',
+              label: 'Friends',
+              panelId: 'social-panel-friends',
+              badge: <TabCount count={friends.length} selected={socialTab === 'friends'} />,
+            },
+            {
+              id: 'groups',
+              label: 'Groups',
+              panelId: 'social-panel-groups',
+              badge: <TabCount count={groups.length} selected={socialTab === 'groups'} />,
+            },
           ]}
         />
 
@@ -652,15 +726,29 @@ export function FriendsPanel({
           </section>
         )}
       </div>
-
-      {!userId && (
-        <p className="text-sm text-muted">Sign in to use friends and groups.</p>
-      )}
     </>
+  );
+
+  const signedOutNote = (
+    <div className="surface-empty-lg">
+      <p className="text-sm font-medium text-primary">Sign in to see your friends</p>
+      <p className="mt-1 text-xs leading-relaxed text-muted">
+        Your friends list, pending requests and groups live on your account.
+      </p>
+      <div className="mt-4 flex justify-center gap-2">
+        <Button href={authHref('sign-in', '/friends')} size="sm">
+          Sign in
+        </Button>
+        <Button href={authHref('sign-up', '/friends')} variant="ghost" size="sm">
+          Create account
+        </Button>
+      </div>
+    </div>
   );
 
   const friendsPages = (
     <>
+      {errorAlert}
       {inviteButtons}
       {playerSearch}
       {userId && !searchQuery.trim() && (
@@ -672,25 +760,21 @@ export function FriendsPanel({
           onDismiss={(s) => void onDismissSuggestion(s)}
         />
       )}
-      {socialBody}
+      {userId ? socialBody : signedOutNote}
     </>
   );
 
   if (variant === 'embedded') {
-    return (
-      <div className="flex min-w-0 flex-col gap-4 sm:gap-5">   
-        {friendsPages}
-      </div>
-    );
+    return <div className="flex min-w-0 flex-col gap-4 sm:gap-5">{friendsPages}</div>;
   }
 
   return (
     <LobbySplitCard
       imageSrc={resolvePublicImage(imageSrc || imageAssetUrl('home-host.webp'))}
       imageAlt={imageAlt || 'Invite friends to your table'}
-      // mediaHeader={playerSearch}
       imageRight
       alignTop
+      stickyMedia
     >
       {friendsPages}
     </LobbySplitCard>

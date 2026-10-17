@@ -1,12 +1,18 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { LoadingScreen } from '@/components/LoadingScreen';
-import { useOnlineFriends } from '@/components/OnlineFriends';
-import { choiceOptionClass } from '@/components/ui/choiceStyles';
-import { FriendToggleRow } from '@/features/friends/rows';
-import type { FriendGroup } from '@/lib/api';
-import { useSession } from '@/lib/store';
+import { useEffect, useMemo, useState } from "react";
+import { LoadingScreen } from "@/components/LoadingScreen";
+import { useOnlineFriends } from "@/components/OnlineFriends";
+import { choiceOptionClass } from "@/components/ui/choiceStyles";
+import { FriendToggleRow } from "@/features/friends/rows";
+import {
+  FriendSearchField,
+  NoFriendMatches,
+  matchesFriendQuery,
+  normalizeQuery,
+} from "@/features/friends/search";
+import type { FriendGroup } from "@/lib/api";
+import { useSession } from "@/lib/store";
 
 const SOCIAL_LOAD_TIMEOUT_MS = 10_000;
 
@@ -37,6 +43,7 @@ export function FriendInvitePicker({
   const friends = social?.friends ?? [];
   const groups = social?.groups ?? [];
   const [onlineOnly, setOnlineOnly] = useState(false);
+  const [query, setQuery] = useState("");
   const [loadTimedOut, setLoadTimedOut] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
@@ -52,7 +59,9 @@ export function FriendInvitePicker({
     return () => clearTimeout(t);
   }, [sessionToken, socialLoaded, loadAttempt]);
 
-  const loading = Boolean(sessionToken && !socialLoaded && (retrying || !loadTimedOut));
+  const loading = Boolean(
+    sessionToken && !socialLoaded && (retrying || !loadTimedOut),
+  );
 
   const selected = useMemo(() => new Set(selectedIds), [selectedIds]);
   const excluded = useMemo(() => new Set(excludeUserIds), [excludeUserIds]);
@@ -62,16 +71,31 @@ export function FriendInvitePicker({
     [friends, excluded],
   );
 
+  const invitableCount = useMemo(
+    () => friends.filter((f) => !excluded.has(f.userId)).length,
+    [friends, excluded],
+  );
+
+  const q = normalizeQuery(query);
+  const availableFriends = useMemo(
+    () =>
+      friends.filter(
+        (f) => !excluded.has(f.userId) && (!onlineOnly || f.online),
+      ),
+    [friends, excluded, onlineOnly],
+  );
+
   const visibleFriends = useMemo(() => {
-    const base = friends.filter((f) => !excluded.has(f.userId));
-    const list = onlineOnly ? base.filter((f) => f.online) : base;
+    const list = q
+      ? availableFriends.filter((f) => matchesFriendQuery(f, q))
+      : availableFriends;
     return [...list].sort((a, b) => {
       const oa = a.online ? 1 : 0;
       const ob = b.online ? 1 : 0;
       if (oa !== ob) return ob - oa;
       return a.name.localeCompare(b.name);
     });
-  }, [friends, excluded, onlineOnly]);
+  }, [availableFriends, q]);
 
   // Drop selections that became excluded (joined).
   useEffect(() => {
@@ -93,7 +117,9 @@ export function FriendInvitePicker({
     if (disabled) return;
     const memberIds = group.members
       .map((m) => m.userId)
-      .filter((id) => friends.some((f) => f.userId === id) && !excluded.has(id));
+      .filter(
+        (id) => friends.some((f) => f.userId === id) && !excluded.has(id),
+      );
     const next = new Set(selected);
     for (const id of memberIds) {
       if (next.size >= maxSelect) break;
@@ -130,8 +156,12 @@ export function FriendInvitePicker({
       ) : null}
       <p className="field-help mt-1.5">
         {help ??
-          'Selected friends get a notification to join. Optional — you can also share the code.'}
+          "Selected friends get a notification to join. Optional — you can also share the code."}
       </p>
+
+      {invitableCount > 0 ? (
+        <FriendSearchField value={query} onChange={setQuery} className="mt-3" />
+      ) : null}
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <button
@@ -140,11 +170,13 @@ export function FriendInvitePicker({
           aria-checked={onlineOnly}
           disabled={disabled}
           onClick={() => setOnlineOnly((v) => !v)}
-          className={choiceOptionClass('chip', onlineOnly)}
+          className={choiceOptionClass("chip", onlineOnly)}
         >
           Online only
           {onlineFriends.length > 0 ? (
-            <span className="ml-1 tabular-nums opacity-80">· {onlineFriends.length}</span>
+            <span className="ml-1 tabular-nums opacity-80">
+              · {onlineFriends.length}
+            </span>
           ) : null}
         </button>
         {onlineFriends.length > 0 ? (
@@ -152,7 +184,7 @@ export function FriendInvitePicker({
             type="button"
             disabled={disabled || selectedIds.length >= maxSelect}
             onClick={selectOnline}
-            className={choiceOptionClass('chip', false)}
+            className={choiceOptionClass("chip", false)}
           >
             Select online
           </button>
@@ -167,7 +199,7 @@ export function FriendInvitePicker({
               type="button"
               disabled={disabled}
               onClick={() => selectGroup(g)}
-              className={choiceOptionClass('chip', false)}
+              className={choiceOptionClass("chip", false)}
               title={`Select friends in ${g.name}`}
             >
               {g.name}
@@ -184,28 +216,32 @@ export function FriendInvitePicker({
           <button
             type="button"
             disabled={disabled || retrying}
-            className={choiceOptionClass('chip', false)}
+            className={choiceOptionClass("chip", false)}
             onClick={() => {
               setRetrying(true);
               setLoadAttempt((n) => n + 1);
               void refreshSocial().finally(() => setRetrying(false));
             }}
           >
-            {retrying ? 'Retrying…' : 'Retry'}
+            {retrying ? "Retrying…" : "Retry"}
           </button>
+        </div>
+      ) : visibleFriends.length === 0 && q && availableFriends.length > 0 ? (
+        <div className="mt-2.5">
+          <NoFriendMatches query={query} onClear={() => setQuery("")} />
         </div>
       ) : visibleFriends.length === 0 ? (
         <p className="surface-empty mt-2.5 text-xs text-muted">
           {friends.length === 0
-            ? 'No friends yet. Add people from Friends, then invite them here.'
+            ? "No friends yet. Add people from Friends, then invite them here."
             : onlineOnly
-              ? 'No online friends right now. Turn off “Online only” to invite anyone on your list.'
-              : 'Everyone on your list already joined.'}
+              ? "No online friends right now. Turn off “Online only” to invite anyone on your list."
+              : "Everyone on your list already joined."}
         </p>
       ) : (
         <ul
           className="mt-2.5 max-h-44 space-y-1 overflow-y-auto pr-0.5"
-          aria-label={title ?? 'Friends to invite'}
+          aria-label={title ?? "Friends to invite"}
         >
           {visibleFriends.map((f) => {
             const isOn = selected.has(f.userId);

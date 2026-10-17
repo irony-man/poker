@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { NewBadge } from '@/components/NewBadge';
 import { PendingCountBadge, useOnlineFriends } from '@/components/OnlineFriends';
 import {
   isMobileNavActive,
@@ -9,6 +10,7 @@ import {
   type MobileBottomIcon,
 } from '@/lib/lobbyNav';
 import { useLobbyNav } from '@/lib/useLobbyNav';
+import { useNewFeature } from '@/lib/useNewFeature';
 import { useSession } from '@/lib/store';
 
 function NavIcon({ name, active }: { name: MobileBottomIcon; active: boolean }) {
@@ -111,6 +113,9 @@ export function LobbyBottomNav() {
   const signedIn = !!useSession((s) => s.sessionToken);
   const { pendingCount, sentCount } = useOnlineFriends();
   const lobbyNav = useLobbyNav();
+  const hostBotGroupsNew = useNewFeature('host-bot-groups');
+  const soloBotGroupsNew = useNewFeature('solo-bot-groups');
+  const friendsLinkInviteNew = useNewFeature('friends-link-invite');
 
   return (
     <nav
@@ -122,6 +127,10 @@ export function LobbyBottomNav() {
         {mobileBottomNav(lobbyNav).map((item) => {
           const active = isMobileNavActive(pathname, item);
           const isFriends = signedIn && item.id === 'friends';
+          const isNew =
+            (item.href === '/play' && hostBotGroupsNew) ||
+            (item.id === 'offline' && soloBotGroupsNew) ||
+            (isFriends && friendsLinkInviteNew);
           return (
             <Link
               key={item.id}
@@ -140,6 +149,8 @@ export function LobbyBottomNav() {
                     tone="sent"
                     className="absolute -right-2.5 -top-1.5"
                   />
+                ) : isNew ? (
+                  <NewBadge variant="dot" className="absolute -right-1.5 -top-0.5" />
                 ) : null}
               </span>
               <SlotLabel text={item.shortLabel} active={active} />

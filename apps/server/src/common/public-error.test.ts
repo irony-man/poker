@@ -26,7 +26,10 @@ function runFilter(exception: unknown) {
   const json = vi.fn();
   const status = vi.fn(() => ({ json }));
   const host = {
-    switchToHttp: () => ({ getResponse: () => ({ status }) }),
+    switchToHttp: () => ({
+      getResponse: () => ({ status }),
+      getRequest: () => ({ method: 'GET', url: '/test' }),
+    }),
   } as unknown as ArgumentsHost;
   new ApiExceptionFilter().catch(exception, host);
   return { status: status.mock.calls[0]?.[0], body: json.mock.calls[0]?.[0] };

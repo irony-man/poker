@@ -33,6 +33,7 @@ export interface AdminTableRow {
   inviteCode: string;
   name: string;
   isPrivate: boolean;
+  matchmade: boolean;
   stakeId: string | null;
   seatedCount: number;
   maxSeats: number;
@@ -52,8 +53,17 @@ export type AdminContestRow = ContestView & {
   eliminatedCount?: number;
 };
 
+/** Matchmade public table timings in seconds (applied to newly matched tables). */
+export interface AdminPublicTableTimings {
+  botFillSeconds: number;
+  nextHandSeconds: number;
+  turnSeconds: number;
+  idleCloseSeconds: number;
+}
+
 export interface AdminRoomSettings {
   inactivityMinutes: number;
+  publicTable: AdminPublicTableTimings;
 }
 
 export type BotPersonalityId =

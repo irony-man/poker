@@ -87,8 +87,8 @@ export class UserEntity {
   @Column({ name: 'ui_theme', type: 'text', default: 'v1' })
   uiTheme!: string;
 
-  /** Table layout: Classic oval (`v1`) or stacked HUD (`v2`). */
-  @Column({ name: 'table_layout', type: 'text', default: 'v1' })
+  /** Table layout: stacked HUD (`v2`, default) or Classic oval (`v1`). */
+  @Column({ name: 'table_layout', type: 'text', default: 'v2' })
   tableLayout!: string;
 
   /** Viewer mute for table SFX. */
@@ -299,9 +299,12 @@ export type ChipLedgerReason =
   | 'free_refill'
   | 'buy_in'
   | 'cash_out'
+  | 'table_cash_out'
   | 'top_up'
   | 'hand_win'
   | 'hand_loss'
+  | 'contest_entry'
+  | 'contest_payout'
   | 'admin_credit'
   | 'admin_reset'
   | 'opening_balance';
@@ -337,6 +340,7 @@ export type WhuffieLedgerReason =
   | 'signup_grant'
   | 'contest_prize'
   | 'offline_win'
+  | 'table_game'
   | 'admin_credit'
   | 'admin_reset'
   | 'opening_balance';
@@ -369,6 +373,22 @@ export class WhuffieLedgerEntity {
 @Entity({ name: 'table_chip_balances' })
 @Index('table_chip_balances_table_idx', ['tableId'])
 export class TableChipBalanceEntity {
+  @PrimaryColumn({ name: 'user_id', type: 'text' })
+  userId!: string;
+
+  @PrimaryColumn({ name: 'table_id', type: 'text' })
+  tableId!: string;
+
+  @Column({ type: 'int' })
+  stack!: number;
+
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  updatedAt!: Date;
+}
+
+/** Chips a player has on a hosted wallet table, refunded on boot if the process died. */
+@Entity({ name: 'table_stakes' })
+export class TableStakeEntity {
   @PrimaryColumn({ name: 'user_id', type: 'text' })
   userId!: string;
 
@@ -439,6 +459,7 @@ export const ALL_ENTITIES = [
   ChipLedgerEntity,
   WhuffieLedgerEntity,
   TableChipBalanceEntity,
+  TableStakeEntity,
   SocialStoreEntity,
   SiteConfigEntity,
   ContestEntity,

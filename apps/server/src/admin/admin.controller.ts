@@ -44,7 +44,7 @@ import {
   ALLOWED_SOUND_CONTENT_TYPES,
 } from '../storage/storage.constants.js';
 import { StorageService } from '../storage/storage.service.js';
-import { WalletError } from '../wallet/wallet.constants.js';
+import { MAX_TABLE_GAME_MIN_HANDS, WalletError } from '../wallet/wallet.constants.js';
 import { WalletService } from '../wallet/wallet.service.js';
 import { listTrailFromQuery } from '../wallet/wallet-trail.query.js';
 
@@ -96,10 +96,21 @@ const EconomyBody = z.object({
   refillThreshold: z.number().int().positive().optional(),
   refillGrant: z.number().int().positive().optional(),
   startingWhuffieGrant: z.number().int().nonnegative().optional(),
+  tableGameWhuffies: z.number().int().nonnegative().max(100_000).optional(),
+  tableGameMinHands: z.number().int().nonnegative().max(MAX_TABLE_GAME_MIN_HANDS).optional(),
 });
 
+/** Out-of-range public table timings are clamped by `normalizePublicTableTimings`. */
 const RoomSettingsBody = z.object({
-  inactivityMinutes: z.number().int().min(1).max(24 * 60),
+  inactivityMinutes: z.number().int().min(1).max(24 * 60).optional(),
+  publicTable: z
+    .object({
+      botFillSeconds: z.number().int().positive().optional(),
+      nextHandSeconds: z.number().int().positive().optional(),
+      turnSeconds: z.number().int().positive().optional(),
+      idleCloseSeconds: z.number().int().positive().optional(),
+    })
+    .optional(),
 });
 
 const CreditBody = z.object({
@@ -409,7 +420,9 @@ export class AdminController {
       parsed.data.startingChipGrant === undefined &&
       parsed.data.refillThreshold === undefined &&
       parsed.data.refillGrant === undefined &&
-      parsed.data.startingWhuffieGrant === undefined
+      parsed.data.startingWhuffieGrant === undefined &&
+      parsed.data.tableGameWhuffies === undefined &&
+      parsed.data.tableGameMinHands === undefined
     ) {
       throw new BadRequestException({ error: 'No economy fields provided' });
     }
@@ -589,7 +602,7 @@ export class AdminController {
     }
     users = users
       .slice()
-      .sort((a, b) => a.username.localeCompare(b.username))
+      .sort((a, b) => b.createdAt - a.createdAt)
       .slice(0, 50);
     return {
       users: users.map((u) => ({

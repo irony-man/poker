@@ -5,6 +5,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { useConfirm } from '@/components/ConfirmPopover';
 import Link from 'next/link';
+import { adminBasePath } from '@/lib/adminHost';
 import { authHref } from '@/lib/authRedirect';
 import { BOT_PERSONALITY_IDS, type BotPersonalityId } from '@poker/engine';
 import {
@@ -212,9 +213,17 @@ function AdminPageInner() {
     refillThreshold: 1000,
     refillGrant: 5000,
     startingWhuffieGrant: 0,
+    tableGameWhuffies: 1,
+    tableGameMinHands: 10,
   });
   const [roomSettings, setRoomSettings] = useState<AdminRoomSettings>({
     inactivityMinutes: 15,
+    publicTable: {
+      botFillSeconds: 15,
+      nextHandSeconds: 10,
+      turnSeconds: 20,
+      idleCloseSeconds: 60,
+    },
   });
   const [sounds, setSounds] = useState<TableSoundsConfig>(() => defaultTableSoundsConfig());
   const [uploadingSound, setUploadingSound] = useState<TableSoundKind | null>(null);
@@ -280,7 +289,8 @@ function AdminPageInner() {
       if (next === 'users') params.delete('tab');
       else params.set('tab', next);
       const q = params.toString();
-      router.replace(q ? `/admin?${q}` : '/admin', { scroll: false });
+      const base = adminBasePath();
+      router.replace(q ? `${base}?${q}` : base, { scroll: false });
     },
     [router, searchParams],
   );
@@ -498,9 +508,17 @@ function AdminPageInner() {
           refillThreshold: Math.floor(Number(economy.refillThreshold)),
           refillGrant: Math.floor(Number(economy.refillGrant)),
           startingWhuffieGrant: Math.floor(Number(economy.startingWhuffieGrant)),
+          tableGameWhuffies: Math.floor(Number(economy.tableGameWhuffies)),
+          tableGameMinHands: Math.floor(Number(economy.tableGameMinHands)),
         }),
         patchAdminRoomSettings(token, {
           inactivityMinutes: Math.floor(Number(roomSettings.inactivityMinutes)),
+          publicTable: {
+            botFillSeconds: Math.floor(Number(roomSettings.publicTable.botFillSeconds)),
+            nextHandSeconds: Math.floor(Number(roomSettings.publicTable.nextHandSeconds)),
+            turnSeconds: Math.floor(Number(roomSettings.publicTable.turnSeconds)),
+            idleCloseSeconds: Math.floor(Number(roomSettings.publicTable.idleCloseSeconds)),
+          },
         }),
       ]);
       setEconomy(nextEco);
@@ -1238,7 +1256,7 @@ function AdminPageInner() {
       <AdminShell tab={tab} onSelectTab={selectTab} stats={null} economy={null}>
         <Section title="Sign in required" description="Admin is limited to operators.">
           <p className="text-sm text-muted">
-            <Link href={authHref('sign-in', '/admin')} className="font-semibold text-sidebar underline-offset-2 hover:underline">
+            <Link href={authHref('sign-in', adminBasePath())} className="font-semibold text-sidebar underline-offset-2 hover:underline">
               Sign in
             </Link>{' '}
             with an admin account.
@@ -1540,7 +1558,13 @@ function AdminPageInner() {
             busy={busy}
             busyKey={busyKey}
             onEconomy={(patch) => setEconomy((eco) => ({ ...eco, ...patch }))}
-            onRoomSettings={setRoomSettings}
+            onRoomSettings={(patch) =>
+              setRoomSettings((cur) => ({
+                ...cur,
+                ...patch,
+                publicTable: { ...cur.publicTable, ...patch.publicTable },
+              }))
+            }
             onSave={(e) => void saveEconomy(e)}
           />
         ) : null}

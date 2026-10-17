@@ -8,6 +8,7 @@ import { useSession, type PrivateView, type PublicTable } from '@/lib/store';
 import { formatMoneyAmount } from '@/lib/currency';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
+import { NextHandCountdown } from '@/components/NextHandCountdown';
 import { useIsLandscapePhone, useIsNarrow } from '@/lib/tableLayout';
 import { formatShortcutKey, isTypingTarget, useKeyboardShortcuts } from '@/lib/keyboardShortcuts';
 import type { PlayHotkeyHandlers } from '@/lib/useTableHotkeys';
@@ -20,6 +21,7 @@ function waitingCopy(opts: {
   isTournament?: boolean;
   contestOver?: boolean;
   youWonHand?: boolean;
+  autoDeal?: boolean;
 }): string {
   if (opts.connection && opts.connection !== 'open') {
     return opts.connection === 'connecting' ? 'Reconnecting…' : 'Disconnected — actions paused';
@@ -31,7 +33,7 @@ function waitingCopy(opts: {
     return 'Waiting for players…';
   }
   if (opts.street === 'payout' || opts.street === 'showdown') {
-    return 'Hand complete — start next when ready';
+    return opts.autoDeal ? 'Hand complete' : 'Hand complete — start next when ready';
   }
   if (!opts.isTurn) return 'Waiting for your turn…';
   return '—';
@@ -48,6 +50,8 @@ export type ActionTableTools = {
   readyPlayers?: ReadyRosterPlayer[];
   readyHeading?: string;
   onReady?: () => void;
+  /** Auto-deal (public) tables: epoch ms of the next deal. */
+  nextHandAt?: number | null;
   /** Offline / alternate primary start (e.g. “Next hand”). */
   startLabel?: string;
   onStart?: () => void;
@@ -83,6 +87,7 @@ function hasTableTools(t: ActionTableTools | undefined): boolean {
   if (!t) return false;
   return Boolean(
     t.canReady ||
+      t.nextHandAt != null ||
       t.onStart ||
       t.canSitOut ||
       t.canCancelSitOut ||
@@ -165,6 +170,7 @@ function TableToolsPanel({
       <p className="px-1 text-center text-[10px] font-medium leading-snug text-sidebar/75">
         {copy}
       </p>
+      {tools.nextHandAt != null ? <NextHandCountdown at={tools.nextHandAt} /> : null}
       {tools.readyPlayers && tools.readyPlayers.length > 0 ? (
         <ReadyPlayersRoster
           players={tools.readyPlayers}
@@ -521,6 +527,7 @@ export function ActionControls({
       isTournament,
       contestOver,
       youWonHand: tableTools?.youWonHand,
+      autoDeal: table?.autoDeal === true,
     });
     // Between-hand / sit tools beat the spinner when connection is live and tools exist.
     if (connectionOpen && hasTableTools(tableTools) && tableTools) {

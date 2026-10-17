@@ -147,7 +147,7 @@ fun ProfileScreen(
                             "theme" -> ThemePane(
                                 selectedColor = state.profile?.tableColorId ?: 0,
                                 selectedLook = state.profile?.uiTheme ?: "v1",
-                                selectedLayout = state.profile?.tableLayout ?: "v1",
+                                selectedLayout = state.profile?.tableLayout ?: "v2",
                                 sfxMuted = state.profile?.sfxMuted == true,
                                 saving = state.saving,
                                 onSelectColor = viewModel::saveTableColor,

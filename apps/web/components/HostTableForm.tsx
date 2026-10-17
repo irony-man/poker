@@ -5,14 +5,21 @@ import { useRouter } from 'next/navigation';
 import { ChoiceRow } from '@/components/ChoiceRow';
 import { BotGroupPicker } from '@/components/BotGroupPicker';
 import { FriendInvitePicker } from '@/components/FriendInvitePicker';
-import { MoneyAmount } from '@/components/CurrencyIcon';
+import { NewBadge } from '@/components/NewBadge';
+import {
+  presetStakeSelection,
+  StakeChoiceRow,
+  type StakeSelection,
+} from '@/components/StakeChoiceRow';
 import { Button } from '@/components/ui/Button';
 import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
 import { TextField } from '@/components/ui/TextField';
 import { createTable, fetchPublicBotGroupsWithLabels, type BotGroupLabels, type PublicBotGroup } from '@/lib/api';
 import { DEFAULT_BOT_GROUP_LABELS } from '@/lib/api';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
-import { DEFAULT_STAKE_ID, STAKE_PRESETS, stakeById } from '@poker/protocol';
+import { markFeatureSeen } from '@/lib/newFeatures';
+import { useNewFeature } from '@/lib/useNewFeature';
+import { DEFAULT_STAKE_ID } from '@poker/protocol';
 
 const SEAT_OPTIONS = [2, 3, 4, 5, 6, 7, 8, 9] as const;
 
@@ -36,9 +43,13 @@ export function HostTableForm({
   ]);
   const [botGroupId, setBotGroupId] = useState<string | null>(null);
   const [hostStakeId, setHostStakeId] = useState(DEFAULT_STAKE_ID);
+  const [stakes, setStakes] = useState<StakeSelection>(() =>
+    presetStakeSelection(DEFAULT_STAKE_ID),
+  );
   const [customRoomCode, setCustomRoomCode] = useState('');
   const [inviteFriendIds, setInviteFriendIds] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const botGroupsNew = useNewFeature('host-bot-groups');
 
   const maxBots = Math.max(0, maxSeats - 1);
   const maxFriendInvites = Math.min(8, Math.max(0, maxSeats - botCount - 1));
@@ -75,12 +86,15 @@ export function HostTableForm({
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
+    if (stakes.error) {
+      onError(stakes.error);
+      return;
+    }
     enterMobileFullscreen();
     setBusy(true);
     onError(null);
     try {
       const session = await ensureSession();
-      const stake = stakeById(hostStakeId) ?? STAKE_PRESETS[1]!;
       const code = customRoomCode.trim();
       if (code && !/^\d{4,8}$/.test(code)) {
         onError('Room code must be 4–8 digits');
@@ -90,14 +104,15 @@ export function HostTableForm({
       const table = await createTable(
         {
           name: `${session.name}'s Table`,
-          smallBlind: stake.smallBlind,
-          bigBlind: stake.bigBlind,
-          buyIn: stake.buyIn,
+          smallBlind: stakes.smallBlind,
+          bigBlind: stakes.bigBlind,
+          buyIn: stakes.stack,
           turnTimeMs: 20000,
           maxSeats,
           botCount,
           ...(botCount > 0 && botGroupId ? { botGroupId } : {}),
           isPrivate: true,
+          lobby: true,
           ...(code ? { inviteCode: code } : {}),
           inviteFriendIds,
         },
@@ -113,33 +128,13 @@ export function HostTableForm({
 
   return (
     <form onSubmit={onCreate} className="flex flex-col gap-6">
-      <ChoiceRow
-        label="Stakes"
+      <StakeChoiceRow
         name="host-stakes"
         selected={hostStakeId}
-        options={STAKE_PRESETS.map((s) => s.id)}
         onSelect={setHostStakeId}
+        onStakesChange={setStakes}
         disabled={disabled || busy}
-        trackClassName="gap-2.5"
-        optionClassName="min-h-14 min-w-[5.5rem] px-3.5 py-2.5"
-        format={(id) => {
-          const s = stakeById(id)!;
-          return (
-            <div className="inline-flex flex-col items-start gap-0.5 leading-tight">
-              <div className="text-sm font-bold">{s.label}</div>
-              <div className="flex items-center gap-1 text-[11px] font-semibold tabular-nums opacity-80 sm:text-xs">
-                <MoneyAmount
-                  amount={s.buyIn}
-                  showChips
-                  chipsClassName="!h-3.5 sm:!h-3.5"
-                />
-                <div>
-                  {s.smallBlind}/{s.bigBlind}
-                </div>
-              </div>
-            </div>
-          );
-        }}
+        allowCustom
       />
       <ChoiceRow
         label="Seats"
@@ -152,7 +147,14 @@ export function HostTableForm({
         optionClassName="inline-flex min-h-11 min-w-11 items-center justify-center px-0 py-0 text-base font-bold tabular-nums"
       />
 
-      <CollapsibleSection title="Bots & room code" summary={moreSummary}>
+      <CollapsibleSection
+        title="Bots & room code"
+        summary={moreSummary}
+        badge={botGroupsNew && botGroups.length > 0 ? <NewBadge tone="light" /> : null}
+        onOpenChange={(open) => {
+          if (open && botGroups.length > 0) markFeatureSeen('host-bot-groups');
+        }}
+      >
         <ChoiceRow
           label="Starting bots"
           name="host-bots"

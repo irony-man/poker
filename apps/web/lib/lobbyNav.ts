@@ -47,7 +47,7 @@ export type MobileBottomNavItem = {
 };
 
 const MOBILE_SLOTS: Record<Exclude<LobbyNavId, 'host' | 'join'>, MobileBottomNavItem> = {
-  public: { id: 'public', href: '/public', label: 'Public tables', shortLabel: 'Public', icon: 'public' },
+  public: { id: 'public', href: '/public', label: 'Public table', shortLabel: 'Public', icon: 'public' },
   contests: { id: 'contests', href: '/contests', label: 'Contests', shortLabel: 'Contests', icon: 'contests' },
   friends: { id: 'friends', href: '/friends', label: 'Friends', shortLabel: 'Friends', icon: 'friends' },
   chat: { id: 'chat', href: '/chat', label: 'Chat', shortLabel: 'Chat', icon: 'chat' },

@@ -306,7 +306,7 @@ describe('RoomManager', () => {
     expect(room.detachIfActive('u1', newSend)).toBe(true);
   });
 
-  it('reseat after kick restores reserved chip stack, not table buy-in', async () => {
+  it('practice table: reseat after kick restores reserved chip stack, not table buy-in', async () => {
     const kv = new MemoryKv();
     const history = new FileHistoryStore(path.join(os.tmpdir(), `poker-kick-stack-${Date.now()}`));
     const chips = new MemoryTableChipStore();
@@ -315,6 +315,7 @@ describe('RoomManager', () => {
       name: 'KickStack',
       hostUserId: 'host1',
       isPrivate: true,
+      playMoney: true,
       config: { ...cashConfig() },
     });
     const room = rooms.get(meta.id)!;

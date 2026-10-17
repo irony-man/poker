@@ -20,3 +20,35 @@ export function stakeById(id: string): StakePreset | undefined {
 }
 
 export const DEFAULT_STAKE_ID = 'low';
+
+/** Bounds for host-chosen blinds and starting stack (hosted tables and contests). */
+export const CUSTOM_STAKE_LIMITS = {
+  minSmallBlind: 1,
+  maxBigBlind: 10_000,
+  minStackBigBlinds: 10,
+  maxStackBigBlinds: 500,
+  maxStack: 1_000_000,
+} as const;
+
+/** Returns a user-facing error, or null when blinds and stack are within `CUSTOM_STAKE_LIMITS`. */
+export function validateStakes(smallBlind: number, bigBlind: number, stack: number): string | null {
+  const L = CUSTOM_STAKE_LIMITS;
+  if (![smallBlind, bigBlind, stack].every(Number.isInteger)) {
+    return 'Blinds and starting stack must be whole numbers';
+  }
+  if (smallBlind < L.minSmallBlind) return `Small blind must be at least ${L.minSmallBlind}`;
+  if (bigBlind < smallBlind) return 'Big blind must be at least the small blind';
+  if (bigBlind > L.maxBigBlind) {
+    return `Big blind can be at most ${L.maxBigBlind.toLocaleString('en-US')}`;
+  }
+  if (stack < bigBlind * L.minStackBigBlinds) {
+    return `Starting stack must be at least ${L.minStackBigBlinds} big blinds`;
+  }
+  if (stack > bigBlind * L.maxStackBigBlinds) {
+    return `Starting stack can be at most ${L.maxStackBigBlinds} big blinds`;
+  }
+  if (stack > L.maxStack) {
+    return `Starting stack can be at most ${L.maxStack.toLocaleString('en-US')}`;
+  }
+  return null;
+}

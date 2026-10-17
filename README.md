@@ -129,6 +129,7 @@ For a public URL (Vercel/Railway/Fly), you’ll need accounts + `NEXT_PUBLIC_API
 | `NEXT_PUBLIC_API_URL` | `http://localhost:4000` | Absolute API host (SSR + rewrite target fallback) |
 | `API_REWRITE_TARGET` | same as `NEXT_PUBLIC_API_URL` | Next.js `/api` proxy upstream (Docker: `http://server:4000`) |
 | `NEXT_PUBLIC_WS_URL` | `ws://localhost:4000/ws` | Browser → WebSocket |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | unset | GA4 measurement id (`G-…`); production only unless `NEXT_PUBLIC_GA_ENABLE_IN_DEV=1` |
 | `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` | unset | Google Search Console HTML tag content |
 | `NEXT_PUBLIC_BING_SITE_VERIFICATION` | unset | Bing Webmaster `msvalidate.01` content |
 | `NEXT_PUBLIC_YANDEX_VERIFICATION` | unset | Yandex site verification content |
@@ -142,6 +143,10 @@ For a public URL (Vercel/Railway/Fly), you’ll need accounts + `NEXT_PUBLIC_API
 | `BANTER_LLM_PATH` | `/v1/chat/completions` | Chat completions path |
 | `BANTER_LLM_TIMEOUT_MS` | `8000` | Table-banter LLM timeout |
 | `BOT_CHAT_TIMEOUT_MS` | `60000` | Lobby `/chat` LLM timeout |
+| `LOG_DB_QUERIES` | on | Log every SQL query with duration and row count. `0` hides successful queries; failed and slow queries always log |
+| `LOG_DB_PARAMS` | off | Include query param values in DB logs (they contain password hashes, tokens, emails — debug only) |
+| `DB_SLOW_QUERY_MS` | `500` | Queries at or above this duration log as warnings |
+| `LOG_REQUESTS` | on outside production | One log line per HTTP request; `1` forces it on in production |
 | `LOADTEST_TOKEN` | unset | Shared secret: server skips rate limits for requests with a matching `x-loadtest-token` header; the load-test service sends it. Blank → no bypass |
 | `LOADTEST_ADMIN_TOKEN` | unset | Load-test dashboard sign-in secret (≥ 12 chars; service refuses to start without it) |
 | `LOADTEST_TARGETS` | `local=http://server:4000\|ws://server:4000/ws` | Allowlisted targets, comma-separated `name=apiUrl\|wsUrl` (`\|wsUrl` optional) |

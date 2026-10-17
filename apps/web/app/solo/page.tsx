@@ -19,6 +19,7 @@ import { DEFAULT_BOT_GROUP_LABELS } from '@/lib/api';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { useLobbySession } from '@/lib/useLobbySession';
 import { usePageCopy } from '@/lib/usePageCopy';
+import { markFeatureSeen } from '@/lib/newFeatures';
 
 /** Full local range supported by the offline table. */
 const SEAT_OPTIONS = [2, 3, 4, 5, 6, 7, 8, 9] as const;
@@ -57,6 +58,10 @@ function SoloPageInner() {
       cancelled = true;
     };
   }, [searchParams]);
+
+  useEffect(() => {
+    if (botGroups.length > 0) markFeatureSeen('solo-bot-groups');
+  }, [botGroups.length]);
 
   const hotGroups = botGroups.filter((g) => g.hotOfflineNav);
   const featuredIds = hotGroups.map((g) => g.id);

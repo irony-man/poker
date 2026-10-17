@@ -29,6 +29,7 @@ import {
   tableColorPreset,
 } from '@/lib/tableColors';
 import {
+  DEFAULT_TABLE_LAYOUT,
   clampTableLayout,
   saveTableLayout,
   type TableLayout,
@@ -43,7 +44,7 @@ import {
 import { isSfxMuted, setSfxMuted } from '@/lib/audio';
 import { clampUiTheme, saveUiTheme, type UiTheme } from '@/lib/uiTheme';
 import { useUiLooks } from '@/lib/useUiTheme';
-import { UI_LOOK_LABELS, type WalletCurrency } from '@poker/protocol';
+import type { WalletCurrency } from '@poker/protocol';
 import { MoneyAmount } from '@/components/CurrencyIcon';
 import { WalletTrail } from '@/components/WalletTrail';
 import {
@@ -63,6 +64,7 @@ import {
 } from '@/lib/cardThemesRegistry';
 import { Button } from '@/components/ui/Button';
 import { SelectedCheck } from '@/components/ui/SelectedCheck';
+import { NewBadge } from '@/components/NewBadge';
 import { choiceCardClass } from '@/components/ui/choiceStyles';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { Tabs } from '@/components/ui/Tabs';
@@ -71,6 +73,8 @@ import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { clearStoredSession, readStoredSession, writeStoredSession } from '@/lib/session';
 import { useSession } from '@/lib/store';
 import { useLobbySession } from '@/lib/useLobbySession';
+import { markFeatureSeen } from '@/lib/newFeatures';
+import { useNewFeature } from '@/lib/useNewFeature';
 import { cn } from '@/lib/cn';
 
 type ProfileTab =
@@ -89,10 +93,37 @@ type ContestMatchRow = {
   playedAt: number;
 };
 
-function formatLookChoices(ids: readonly UiTheme[]): string {
-  const labels = ids.map((id) => UI_LOOK_LABELS[id]);
-  if (labels.length <= 2) return labels.join(' or ');
-  return `${labels.slice(0, -1).join(', ')}, or ${labels[labels.length - 1]}`;
+function SettingsSection({
+  title,
+  description,
+  saving,
+  children,
+}: {
+  title: string;
+  description: ReactNode;
+  saving?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div className="mt-7 border-t border-sidebar/10 pt-7">
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+        <div className="min-w-0">
+          <h3 className="font-heading-section">{title}</h3>
+          <p className="mt-1 max-w-xl text-sm leading-relaxed text-muted">{description}</p>
+        </div>
+        {saving ? (
+          <p
+            className="inline-flex items-center gap-1.5 rounded-full bg-sidebar/[0.06] px-2.5 py-1 text-xs font-medium text-muted"
+            role="status"
+          >
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-sidebar/60" aria-hidden />
+            Saving…
+          </p>
+        ) : null}
+      </div>
+      {children}
+    </div>
+  );
 }
 
 function ThemeRadioGroup<T extends string | number | boolean>({
@@ -179,7 +210,7 @@ function ProfilePageInner() {
   const [draftUiTheme, setDraftUiTheme] = useState<UiTheme>('v1');
   const [savingUiTheme, setSavingUiTheme] = useState(false);
   const uiLooks = useUiLooks();
-  const [draftTableLayout, setDraftTableLayout] = useState<TableLayout>('v1');
+  const [draftTableLayout, setDraftTableLayout] = useState<TableLayout>(DEFAULT_TABLE_LAYOUT);
   const [savingTableLayout, setSavingTableLayout] = useState(false);
   const [draftSfxMuted, setDraftSfxMuted] = useState(isSfxMuted);
   const [savingSfxMuted, setSavingSfxMuted] = useState(false);
@@ -283,6 +314,11 @@ function ProfilePageInner() {
   }, [authReady, signedIn, load]);
 
   useEffect(() => subscribeCardThemes(setPublishedCardThemes), []);
+
+  const themeNew = useNewFeature('profile-theme');
+  useEffect(() => {
+    if (tab === 'theme' && profile) markFeatureSeen('profile-theme');
+  }, [tab, profile]);
 
   const contestHistory = useMemo((): ContestMatchRow[] => {
     if (!profile) return [];
@@ -729,7 +765,12 @@ function ProfilePageInner() {
                 { id: 'overview', label: 'Overview', panelId: 'profile-panel-overview' },
                 { id: 'wallet', label: 'Wallet', panelId: 'profile-panel-wallet' },
                 { id: 'hands', label: 'Hands', panelId: 'profile-panel-hands' },
-                { id: 'theme', label: 'Theme', panelId: 'profile-panel-theme' },
+                {
+                  id: 'theme',
+                  label: 'Theme',
+                  panelId: 'profile-panel-theme',
+                  badge: themeNew ? <NewBadge tone="light" /> : null,
+                },
                 { id: 'shortcuts', label: 'Shortcuts', panelId: 'profile-panel-shortcuts' },
                 { id: 'contests', label: 'Contests', panelId: 'profile-panel-contests' },
                 {
@@ -836,23 +877,20 @@ function ProfilePageInner() {
               aria-labelledby="profile-tab-theme"
               className="surface-card-lg"
             >
-              {uiLooks.visible.length > 1 ? (
-              <>
-              <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
-                <div className="min-w-0">
-                  <h3 className="font-heading-section">App look</h3>
-                  <p className="mt-1.5 max-w-lg font-prose-muted">
-                    {formatLookChoices(uiLooks.visible)}. Only you see this. Gameplay stays the
-                    same.
-                  </p>
-                </div>
-                {savingUiTheme ? (
-                  <p className="text-xs font-medium text-muted" role="status">
-                    Saving…
-                  </p>
-                ) : null}
-              </div>
+              <header>
+                <p className="font-kicker">Appearance</p>
+                <p className="mt-1.5 max-w-xl font-prose-muted">
+                  Tune colors, cards, and sound to your taste. Changes save as soon as you pick
+                  them.
+                </p>
+              </header>
 
+              {uiLooks.visible.length > 1 ? (
+              <SettingsSection
+                title="App look"
+                description="The color scheme for menus, panels, and buttons."
+                saving={savingUiTheme}
+              >
               <ThemeRadioGroup
                 label="App look"
                 className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3"
@@ -951,29 +989,17 @@ function ProfilePageInner() {
                 })
                 }
               </ThemeRadioGroup>
-              </>
+              </SettingsSection>
               ) : null}
 
-              <div
-                className={`${uiLooks.visible.length > 1 ? 'mt-8 ' : ''}flex flex-wrap items-end justify-between gap-x-4 gap-y-2`}
+              <SettingsSection
+                title="Table layout"
+                description="How seats and controls are arranged on portrait phones. Tablets and desktops always use the oval table."
+                saving={savingTableLayout}
               >
-                <div className="min-w-0">
-                  <h3 className="font-heading-section">Table layout</h3>
-                  <p className="mt-1.5 max-w-lg font-prose-muted">
-                    Classic oval or stacked HUD on portrait phones. Larger screens stay oval. Only
-                    you see this.
-                  </p>
-                </div>
-                {savingTableLayout ? (
-                  <p className="text-xs font-medium text-muted" role="status">
-                    Saving…
-                  </p>
-                ) : null}
-              </div>
-
               <ThemeRadioGroup
                 label="Table layout"
-                className="mt-5 grid grid-cols-2 gap-3"
+                className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3"
                 options={['v1', 'v2'] as const}
                 selected={draftTableLayout}
                 onSelect={(id) => void saveLayout(id)}
@@ -989,8 +1015,8 @@ function ProfilePageInner() {
                     },
                     {
                       id: 'v2' as const,
-                      label: 'Table v2',
-                      hint: 'Stacked HUD',
+                      label: 'Stacked',
+                      hint: 'Compact for phones',
                     },
                   ] as const
                 ).map((layout) => {
@@ -1012,22 +1038,21 @@ function ProfilePageInner() {
                       )}
                     >
                       <span
-                        className="table-theme relative block h-16 w-full"
+                        className="table-theme relative flex h-20 w-full items-center justify-center bg-page/60"
                         data-table-color={draftTableColorId}
                         aria-hidden
                       >
-                        <span className="felt-surface absolute inset-0" />
                         {layout.id === 'v1' ? (
-                          <span className="felt-surface table-rim absolute inset-x-6 inset-y-3 rounded-[42%] border-[5px]" />
+                          <span className="felt-surface table-rim block h-12 w-28 rounded-[42%] border-[5px] shadow-[0_2px_8px_rgb(29_4_50/0.18)]" />
                         ) : (
-                          <span className="absolute inset-x-3 inset-y-2 flex flex-col items-center justify-between py-1">
-                            <span className="flex w-full justify-center gap-1">
-                              <span className="h-3 w-3 rounded-full bg-white/80" />
-                              <span className="h-3 w-3 rounded-full bg-white/80" />
-                              <span className="h-3 w-3 rounded-full bg-white/80" />
+                          <span className="felt-surface flex h-16 w-12 flex-col items-center justify-between rounded-lg px-1 py-1.5 shadow-[0_2px_8px_rgb(29_4_50/0.18)]">
+                            <span className="flex gap-0.5">
+                              <span className="h-2 w-2 rounded-full bg-white/80" />
+                              <span className="h-2 w-2 rounded-full bg-white/80" />
+                              <span className="h-2 w-2 rounded-full bg-white/80" />
                             </span>
-                            <span className="h-2 w-16 rounded-sm bg-white/70" />
-                            <span className="h-3 w-10 rounded-sm bg-white/85" />
+                            <span className="h-1.5 w-8 rounded-sm bg-white/70" />
+                            <span className="h-2 w-6 rounded-sm bg-white/85" />
                           </span>
                         )}
                       </span>
@@ -1047,21 +1072,13 @@ function ProfilePageInner() {
                 })
                 }
               </ThemeRadioGroup>
+              </SettingsSection>
 
-              <div className="mt-8 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
-                <div className="min-w-0">
-                  <h3 className="font-heading-section">Card style</h3>
-                  <p className="mt-1.5 max-w-lg font-prose-muted">
-                    Face layout and suit colors from site themes. Only you see this on your cards.
-                  </p>
-                </div>
-                {savingCardTheme ? (
-                  <p className="text-xs font-medium text-muted" role="status">
-                    Saving…
-                  </p>
-                ) : null}
-              </div>
-
+              <SettingsSection
+                title="Card style"
+                description="Face design and suit colors for every card dealt to you."
+                saving={savingCardTheme}
+              >
               <ThemeRadioGroup
                 label="Card style"
                 className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3"
@@ -1089,13 +1106,23 @@ function ProfilePageInner() {
                           'flex flex-col overflow-hidden rounded-2xl border-2 text-left transition disabled:opacity-60',
                         )}
                       >
-                        <span className="flex items-center justify-center bg-page py-4">
-                          <PlayingCard
-                            code="Ah"
-                            size="sm"
-                            dealDelay={0}
-                            cardThemeOverride={theme}
-                          />
+                        <span className="flex items-center justify-center bg-page/60 py-4" aria-hidden>
+                          <span className="-rotate-6">
+                            <PlayingCard
+                              code="Ah"
+                              size="sm"
+                              dealDelay={0}
+                              cardThemeOverride={theme}
+                            />
+                          </span>
+                          <span className="-ml-3 rotate-6">
+                            <PlayingCard
+                              code="Ks"
+                              size="sm"
+                              dealDelay={0}
+                              cardThemeOverride={theme}
+                            />
+                          </span>
                         </span>
                         <span className="flex items-center justify-between gap-2 px-3 py-2.5">
                           <span className="text-sm font-semibold text-sidebar">{theme.name}</span>
@@ -1106,21 +1133,13 @@ function ProfilePageInner() {
                   })
                 }
               </ThemeRadioGroup>
+              </SettingsSection>
 
-              <div className="mt-8 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
-                <div className="min-w-0">
-                  <h3 className="font-heading-section">Felt color</h3>
-                  <p className="mt-1.5 max-w-lg font-prose-muted">
-                    Only you see this. Status colors stay the same.
-                  </p>
-                </div>
-                {savingTableColor ? (
-                  <p className="text-xs font-medium text-muted" role="status">
-                    Saving…
-                  </p>
-                ) : null}
-              </div>
-
+              <SettingsSection
+                title="Felt color"
+                description="The table surface behind the action. Stack and winner badges keep their colors on every felt."
+                saving={savingTableColor}
+              >
               <div
                 className="table-theme relative mt-5 overflow-hidden rounded-2xl border border-sidebar/10 bg-page/50 px-5 py-6 sm:px-8 sm:py-8"
                 data-table-color={draftTableColorId}
@@ -1197,7 +1216,7 @@ function ProfilePageInner() {
                   </div>
                   <p className="font-display text-sm font-bold tracking-tight text-sidebar">
                     {tableColorPreset(draftTableColorId).label}
-                    {draftTableLayout === 'v2' ? ' · Table v2' : ''}
+                    {draftTableLayout === 'v2' ? ' · Stacked' : ''}
                   </p>
                 </div>
               </div>
@@ -1241,11 +1260,7 @@ function ProfilePageInner() {
                           <SelectedCheck tone="inverse" className="absolute -right-1 -top-1" />
                         ) : null}
                       </span>
-                      <span
-                        className={`text-center text-xs font-semibold leading-tight ${
-                          selected ? 'text-sidebar' : 'text-sidebar'
-                        }`}
-                      >
+                      <span className="text-center text-xs font-semibold leading-tight text-sidebar">
                         {preset.label}
                       </span>
                     </button>
@@ -1253,24 +1268,16 @@ function ProfilePageInner() {
                 })
                 }
               </ThemeRadioGroup>
+              </SettingsSection>
 
-              <div className="mt-8 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
-                <div className="min-w-0">
-                  <h3 className="font-heading-section">Table sounds</h3>
-                  <p className="mt-1.5 max-w-lg font-prose-muted">
-                    Mute deal, action, and win audio. Only you hear this.
-                  </p>
-                </div>
-                {savingSfxMuted ? (
-                  <p className="text-xs font-medium text-muted" role="status">
-                    Saving…
-                  </p>
-                ) : null}
-              </div>
-
+              <SettingsSection
+                title="Table sounds"
+                description="Deal, action, and win effects while you play."
+                saving={savingSfxMuted}
+              >
               <ThemeRadioGroup
                 label="Table sounds"
-                className="mt-5 grid grid-cols-2 gap-3"
+                className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3"
                 options={[false, true]}
                 selected={draftSfxMuted}
                 onSelect={(muted) => void saveSounds(muted)}
@@ -1322,6 +1329,7 @@ function ProfilePageInner() {
                 })
                 }
               </ThemeRadioGroup>
+              </SettingsSection>
             </section>
           ) : tab === 'shortcuts' ? (
             <section
@@ -1334,7 +1342,7 @@ function ProfilePageInner() {
                 <div className="min-w-0">
                   <h3 className="font-heading-section">Keyboard shortcuts</h3>
                   <p className="mt-1.5 max-w-lg font-prose-muted">
-                    Remap table hotkeys for actions, voice, chat, and more. Only you use these.
+                    Remap table hotkeys for actions, voice, chat, and more.
                   </p>
                 </div>
                 {savingKeyboardShortcuts ? (

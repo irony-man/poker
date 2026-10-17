@@ -167,6 +167,21 @@ export class MailService {
     });
   }
 
+  async sendFriendInvite(to: string, inviterName: string, url: string): Promise<void> {
+    await this.send({
+      to,
+      subject: `${inviterName} invited you to Pokr`,
+      ...actionEmail({
+        ...this.brand(),
+        greeting: 'Hi there,',
+        intro: `${inviterName} wants to play with you on Pokr. Open this link, create a free account and accept the invite to become friends, ready to share a table.`,
+        actionLabel: 'Accept invite',
+        url,
+        outro: "If you don't know who sent this, you can ignore this email.",
+      }),
+    });
+  }
+
   async sendPasswordReset(to: string, username: string, token: string): Promise<void> {
     const url = this.webLink(`/reset-password?token=${encodeURIComponent(token)}`);
     await this.send({

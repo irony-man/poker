@@ -73,15 +73,16 @@ class SessionPreferences @Inject constructor(
         }
     }
 
+    /** Stacked (`v2`) unless the user picked Classic (`v1`). */
     val tableLayoutFlow: Flow<String> = dataStore.data.map { prefs ->
-        if (prefs[KEY_TABLE_LAYOUT] == "v2") "v2" else "v1"
+        if (prefs[KEY_TABLE_LAYOUT] == "v1") "v1" else "v2"
     }
 
     suspend fun getTableLayout(): String = tableLayoutFlow.first()
 
     suspend fun saveTableLayout(layout: String) {
         dataStore.edit { prefs ->
-            prefs[KEY_TABLE_LAYOUT] = if (layout == "v2") "v2" else "v1"
+            prefs[KEY_TABLE_LAYOUT] = if (layout == "v1") "v1" else "v2"
         }
     }
 
@@ -119,7 +120,8 @@ class SessionPreferences @Inject constructor(
         private val KEY_AVATAR_ID = intPreferencesKey("avatar_id")
         private val KEY_TABLE_COLOR_ID = intPreferencesKey("table_color_id")
         private val KEY_UI_THEME = stringPreferencesKey("ui_theme")
-        private val KEY_TABLE_LAYOUT = stringPreferencesKey("table_layout")
+        /** Versioned: cached `v1` from before Stacked became the default is ignored. */
+        private val KEY_TABLE_LAYOUT = stringPreferencesKey("table_layout_v2")
         private val KEY_SFX_MUTED = booleanPreferencesKey("sfx_muted")
         private val KEY_OFFLINE_HANDS = stringPreferencesKey("offline_hand_queue")
     }

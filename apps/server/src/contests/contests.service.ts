@@ -90,6 +90,11 @@ export class ContestsService implements OnModuleInit, OnModuleDestroy {
     return this.tournaments.unregister(id, userId);
   }
 
+  /** Current wallet chips, for responses after a paid entry or refund. */
+  chipBalance(userId: string): number {
+    return this.wallet.getBalance(userId);
+  }
+
   start(id: string, userId: string) {
     return this.tournaments.start(id, userId);
   }

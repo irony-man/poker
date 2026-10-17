@@ -11,11 +11,12 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { CreateTableBodySchema, InviteFriendsBodySchema } from '@poker/protocol';
+import { CreateTableBodySchema, InviteFriendsBodySchema, validateStakes } from '@poker/protocol';
 import type { User } from '../auth/auth.types.js';
 import { CurrentUser, SessionAuthGuard } from '../common/session-auth.guard.js';
 import { FriendsService } from '../friends/friends.service.js';
 import { HistoryService, toPublicHandRows } from '../history/history.service.js';
+import { MAX_TABLE_SEATS } from '../rooms/room.js';
 import { RoomsService } from '../rooms/rooms.service.js';
 import { SiteConfigService } from '../site-config/site-config.service.js';
 import { publicErrorMessage } from '../common/public-error.js';
@@ -37,8 +38,9 @@ export class TablesController {
       throw new BadRequestException({ error: parsed.error.message });
     }
     const d = parsed.data;
-    if (d.bigBlind < d.smallBlind) {
-      throw new BadRequestException({ error: 'bigBlind must be >= smallBlind' });
+    const stakesError = validateStakes(d.smallBlind, d.bigBlind, d.buyIn);
+    if (stakesError) {
+      throw new BadRequestException({ error: stakesError });
     }
     const maxBots = Math.max(0, d.maxSeats - 1);
     const bots = Math.min(d.botCount, maxBots);
@@ -52,6 +54,7 @@ export class TablesController {
         isPrivate: d.isPrivate,
         inviteCode: d.inviteCode,
         playMoney,
+        lobby: d.lobby && d.isPrivate,
         config: {
           maxSeats: d.maxSeats,
           smallBlind: d.smallBlind,
@@ -148,17 +151,29 @@ export class TablesController {
     if (room.meta.hostUserId !== user.id) {
       throw new ForbiddenException({ error: 'Only the host can invite friends' });
     }
-    if (parsed.data.friendUserIds.length === 0) {
-      return { inviteCount: 0, challengeIds: [] as string[] };
+    if (!room.meta.isPrivate || room.isTournament()) {
+      throw new BadRequestException({ error: 'Invites are only for private tables' });
     }
-    const challenges = await this.friends.createFriendInvites(user.id, parsed.data.friendUserIds, {
+    const openSlots = MAX_TABLE_SEATS - room.seatedCount();
+    if (openSlots <= 0) {
+      throw new BadRequestException({ error: `Table is full (${MAX_TABLE_SEATS} players)` });
+    }
+    const friendUserIds = parsed.data.friendUserIds
+      .filter((id) => !room.isSeated(id))
+      .slice(0, openSlots);
+    if (friendUserIds.length === 0) {
+      return { inviteCount: 0, challengeIds: [] as string[], seatsAdded: 0 };
+    }
+    const challenges = await this.friends.createFriendInvites(user.id, friendUserIds, {
       kind: 'table',
       tableId: room.meta.id,
       inviteCode: room.meta.inviteCode,
     });
+    const growth = room.growSeatsForInvites(challenges.map((c) => c.challengedId));
     return {
       inviteCount: challenges.length,
       challengeIds: challenges.map((c) => c.id),
+      seatsAdded: growth.added,
     };
   }
 }

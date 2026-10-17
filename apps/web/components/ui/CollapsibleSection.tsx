@@ -3,17 +3,27 @@ import type { ReactNode } from 'react';
 export function CollapsibleSection({
   title,
   summary,
+  badge,
+  onOpenChange,
   children,
 }: {
   title: string;
   summary: string;
+  badge?: ReactNode;
+  onOpenChange?: (open: boolean) => void;
   children: ReactNode;
 }) {
   return (
-    <details className="surface-row group px-0 py-0">
+    <details
+      className="surface-row group px-0 py-0"
+      onToggle={onOpenChange ? (e) => onOpenChange(e.currentTarget.open) : undefined}
+    >
       <summary className="flex cursor-pointer list-none items-center gap-2.5 px-3.5 py-3 text-sm outline-none marker:content-none [&::-webkit-details-marker]:hidden focus-visible:ring-2 focus-visible:ring-sidebar/30">
         <span className="min-w-0 flex-1">
-          <span className="hud-label block">{title}</span>
+          <span className="flex items-center gap-2">
+            <span className="hud-label block">{title}</span>
+            {badge}
+          </span>
           <span className="mt-1 block text-[0.8125rem] font-medium leading-snug text-muted">
             {summary}
           </span>

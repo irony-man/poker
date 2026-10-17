@@ -2,11 +2,12 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSelectedLayoutSegment } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
 import { imageAssetUrl } from '@/lib/assets';
 import { LobbySidebar } from '@/components/LobbySidebar';
 import { LobbyBottomNav } from '@/components/LobbyBottomNav';
+import { NewBadge } from '@/components/NewBadge';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 import {
   OnlineFriendsProvider,
@@ -18,6 +19,7 @@ import {
   readStoredSession,
 } from '@/lib/session';
 import { useSession } from '@/lib/store';
+import { useNewFeature } from '@/lib/useNewFeature';
 import { fetchMe, fetchPublicSite, logout as apiLogout } from '@/lib/api';
 import { loadSavedAvatarId, saveAvatarId } from '@/lib/avatars';
 import { saveTableColorId } from '@/lib/tableColors';
@@ -60,6 +62,7 @@ function MobileProfileButton({ signedIn }: { signedIn: boolean }) {
   const userId = useSession((s) => s.userId);
   const [avatarId, setAvatarId] = useState(0);
   const profileActive = pathname === '/profile' || pathname.startsWith('/profile/');
+  const themeNew = useNewFeature('profile-theme');
 
   useEffect(() => {
     if (!signedIn) return;
@@ -88,6 +91,7 @@ function MobileProfileButton({ signedIn }: { signedIn: boolean }) {
       aria-current={profileActive ? 'page' : undefined}
     >
       <PlayerAvatar avatarId={avatarId} userId={userId} size={40} title="Profile" />
+      {themeNew ? <NewBadge variant="dot" className="absolute -right-0.5 -top-0.5" /> : null}
     </Link>
   );
 }
@@ -95,6 +99,7 @@ function MobileProfileButton({ signedIn }: { signedIn: boolean }) {
 /** App shell: lobby sidebar + main, or immersive play with no chrome. */
 export function AppChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const layoutSegment = useSelectedLayoutSegment();
   const router = useRouter();
   const tablePlay =
     pathname.startsWith('/table/') ||
@@ -105,8 +110,10 @@ export function AppChrome({ children }: { children: ReactNode }) {
     (pathname.startsWith('/courtpiece/') && pathname !== '/courtpiece');
   /** Full-bleed play only — contest lobby uses sidebar + scrollable main like other tools. */
   const immersive = tablePlay;
-  const isAdminRoute = pathname === '/admin' || pathname.startsWith('/admin/');
-  const isHome = pathname === '/';
+  // On the admin subdomain the URL is `/` (rewritten to /admin), so check the rendered segment too.
+  const isAdminRoute =
+    layoutSegment === 'admin' || pathname === '/admin' || pathname.startsWith('/admin/');
+  const isHome = pathname === '/' && !isAdminRoute;
   const isBotChat = pathname === '/chat';
 
   useEffect(() => {
@@ -278,7 +285,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
                     alt="POKR"
                     width={120}
                     height={36}
-                    className="h-8 w-auto object-contain mix-blend-screen"
+                    className="h-8 w-auto object-contain"
                     priority
                   />
                 </Link>

@@ -22,8 +22,11 @@ import { MemoryTableChipStore } from './table-chips/table-chips.store.js';
 import { TournamentManager } from './contests/tournament.js';
 import { AuthWalletStore } from './wallet/wallet.store.js';
 import {
+  MAX_TABLE_GAME_MIN_HANDS,
   STARTING_CHIP_GRANT,
   STARTING_WHUFFIE_GRANT,
+  TABLE_GAME_MIN_HANDS,
+  TABLE_GAME_WHUFFIES,
   WalletError,
 } from './wallet/wallet.constants.js';
 
@@ -99,6 +102,30 @@ describe('site config + runtime economy', () => {
     const eco = site.getEconomy();
     expect(eco.startingChipGrant).toBe(STARTING_CHIP_GRANT);
     expect(eco.startingWhuffieGrant).toBe(STARTING_WHUFFIE_GRANT);
+    expect(eco.tableGameWhuffies).toBe(TABLE_GAME_WHUFFIES);
+  });
+
+  it('persists Whuffies per completed table game, including 0', async () => {
+    expect((await site.setEconomy({ tableGameWhuffies: 3 })).tableGameWhuffies).toBe(3);
+    const reloaded = new SiteConfigStore(dir);
+    await reloaded.init();
+    expect(reloaded.getEconomy().tableGameWhuffies).toBe(3);
+
+    expect((await site.setEconomy({ tableGameWhuffies: 0 })).tableGameWhuffies).toBe(0);
+    expect(site.getEconomy().startingChipGrant).toBe(STARTING_CHIP_GRANT);
+  });
+
+  it('persists the minimum hands per table game, clamped to the max', async () => {
+    expect(site.getEconomy().tableGameMinHands).toBe(TABLE_GAME_MIN_HANDS);
+    expect((await site.setEconomy({ tableGameMinHands: 25 })).tableGameMinHands).toBe(25);
+    const reloaded = new SiteConfigStore(dir);
+    await reloaded.init();
+    expect(reloaded.getEconomy().tableGameMinHands).toBe(25);
+
+    expect((await site.setEconomy({ tableGameMinHands: 0 })).tableGameMinHands).toBe(0);
+    expect((await site.setEconomy({ tableGameMinHands: 99_999 })).tableGameMinHands).toBe(
+      MAX_TABLE_GAME_MIN_HANDS,
+    );
   });
 
   it('signup uses configured starting grants', async () => {
@@ -261,6 +288,25 @@ describe('site config + runtime economy', () => {
     expect(reloaded.getRoomSettings().inactivityMinutes).toBe(45);
   });
 
+  it('defaults, merges, clamps, and persists public table timings', async () => {
+    expect(site.getRoomSettings().publicTable).toEqual({
+      botFillSeconds: 15,
+      nextHandSeconds: 10,
+      turnSeconds: 20,
+      idleCloseSeconds: 60,
+    });
+    await site.setRoomSettings({ publicTable: { nextHandSeconds: 5 } });
+    await site.setRoomSettings({ publicTable: { botFillSeconds: 1, idleCloseSeconds: 99_999 } });
+    const reloaded = new SiteConfigStore(dir);
+    await reloaded.init();
+    expect(reloaded.getRoomSettings().publicTable).toEqual({
+      botFillSeconds: 3,
+      nextHandSeconds: 5,
+      turnSeconds: 20,
+      idleCloseSeconds: 3600,
+    });
+  });
+
   it('defaults and persists bot name groups', async () => {
     const groups = site.getBotGroups();
     expect(groups.length).toBeGreaterThanOrEqual(3);
@@ -396,11 +442,11 @@ describe('admin live games listing', () => {
         maxSeats: 6,
       },
     });
-    rooms.create({
-      name: 'Low stakes',
+    const publicMeta = rooms.create({
+      name: 'Public tables',
       hostUserId: 'house',
       isPrivate: false,
-      stakeId: 'low',
+      matchmade: true,
       config: {
         smallBlind: 5,
         bigBlind: 10,
@@ -411,7 +457,7 @@ describe('admin live games listing', () => {
     });
     const all = rooms.listAllAdmin();
     expect(all.some((t) => t.tableId === meta.id && t.isPrivate)).toBe(true);
-    expect(all.every((t) => t.isPrivate || !t.stakeId)).toBe(true);
+    expect(all.some((t) => t.tableId === publicMeta.id && t.matchmade && !t.isPrivate)).toBe(true);
 
     const tm = new TournamentManager(rooms);
     await tm.create({

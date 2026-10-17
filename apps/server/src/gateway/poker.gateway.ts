@@ -8,12 +8,15 @@ import {
 import { ClientMessageSchema, type ClientMessage } from '@poker/protocol';
 import type { RawData, WebSocket } from 'ws';
 import { AuthService } from '../auth/auth.service.js';
+import { errorText } from '../common/error-text.js';
+import { GENERIC_ERROR_MESSAGE } from '../common/public-error.js';
 import { ContestsService } from '../contests/contests.service.js';
 import { FriendsService } from '../friends/friends.service.js';
 import { LudoRoomsService } from '../ludo/ludo.service.js';
 import { MemoryRoomsService } from '../memory/memory.service.js';
 import { SnakesRoomsService } from '../snakes/snakes.service.js';
 import { CourtpieceRoomsService } from '../courtpiece/courtpiece.service.js';
+import { MatchmakingService } from '../matchmaking/matchmaking.service.js';
 import { PresenceService } from '../presence/presence.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 import { RoomsService } from '../rooms/rooms.service.js';
@@ -110,6 +113,7 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly presence: PresenceService,
     private readonly realtime: RealtimeService,
     private readonly site: SiteConfigService,
+    private readonly matchmaking: MatchmakingService,
   ) {}
 
   handleConnection(@ConnectedSocket() client: WebSocket): void {
@@ -136,7 +140,13 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.realtime.setPublicContests(this.contests.listPublic());
     this.realtime.sendPublicLobby(send);
     client.on('message', (raw: RawData) => {
-      void this.handleMessage(client, raw);
+      this.handleMessage(client, raw).catch((err: unknown) => {
+        const st = this.states.get(client);
+        this.logger.error(
+          `WS message failed (user ${st?.userId ?? 'anonymous'}): ${errorText(err)}`,
+        );
+        st?.send({ type: 'error', message: GENERIC_ERROR_MESSAGE, code: 'server' });
+      });
     });
   }
 
@@ -181,6 +191,7 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
     const lastSocket = this.realtime.unregisterSocket(send, userId);
     if (userId && lastSocket) {
+      this.matchmaking.cancel(userId);
       this.presence.clear(userId);
       void this.realtime.pushSocialToFriendsOf(userId);
     }
@@ -216,7 +227,10 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (msg.type === 'auth') {
       let wasOnline = false;
       const authDone = (async () => {
-        const found = await this.auth.consumeTicket(msg.ticket).catch(() => null);
+        const found = await this.auth.consumeTicket(msg.ticket).catch((err: unknown) => {
+          this.logger.error(`WS ticket check failed: ${errorText(err)}`);
+          return null;
+        });
         if (found) {
           wasOnline = this.presence.isOnline(found.id) || this.realtime.isUserConnected(found.id);
           st.userId = found.id;
@@ -231,8 +245,12 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
         send({ type: 'error', message: 'Invalid or expired ticket', code: 'bad_auth' });
         return;
       }
-      void this.wallet.ensureStartingBalance(user.id);
-      void this.wallet.ensureStartingWhuffies(user.id);
+      this.wallet.ensureStartingBalance(user.id).catch((err: unknown) => {
+        this.logger.error(`Starting chip balance failed for ${user.id}: ${errorText(err)}`);
+      });
+      this.wallet.ensureStartingWhuffies(user.id).catch((err: unknown) => {
+        this.logger.error(`Starting Whuffies failed for ${user.id}: ${errorText(err)}`);
+      });
       this.presence.touch(user.id);
       const firstSocket = this.realtime.registerUser(user.id, send);
       send({
@@ -260,6 +278,16 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const userId = st.userId;
     this.presence.touch(userId);
     const name = st.name;
+
+    if (msg.type === 'matchmaking_join') {
+      this.matchmaking.join(userId, name, msg.stakeId);
+      return;
+    }
+
+    if (msg.type === 'matchmaking_cancel') {
+      if (!this.matchmaking.cancel(userId)) send({ type: 'matchmaking_cancelled' });
+      return;
+    }
 
     if (msg.type === 'join_contest') {
       if (st.contestId && st.contestId !== msg.contestId) {
@@ -543,6 +571,7 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     if (msg.type === 'join_table') {
+      this.matchmaking.cancel(userId);
       if (st.ludoId) {
         this.ludo.get(st.ludoId)?.leave(userId);
         st.ludoId = null;
@@ -647,6 +676,16 @@ export class PokerGateway implements OnGatewayConnection, OnGatewayDisconnect {
       case 'kick_player': {
         const result = await r.kickPlayer(userId, msg.seat);
         if (!result.ok) send({ type: 'error', message: result.error ?? 'Kick failed' });
+        break;
+      }
+      case 'start_game': {
+        const result = r.startGame(userId);
+        if (!result.ok) send({ type: 'error', message: result.error ?? 'Start failed' });
+        break;
+      }
+      case 'set_table_seats': {
+        const result = r.resizeSeats(userId, msg.maxSeats);
+        if (!result.ok) send({ type: 'error', message: result.error ?? 'Seat change failed' });
         break;
       }
       case 'action': {

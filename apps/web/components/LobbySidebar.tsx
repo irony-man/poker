@@ -4,11 +4,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { adminHomeHref, taskTrackerHref } from '@/lib/adminHost';
 import { imageAssetUrl } from '@/lib/assets';
 import { authHref } from '@/lib/authRedirect';
 import { loadSavedAvatarId } from '@/lib/avatars';
 import { MoneyAmount } from '@/components/CurrencyIcon';
 import { LegalLinks } from '@/components/LegalLinks';
+import { NewBadge } from '@/components/NewBadge';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 import { PendingCountBadge, useOnlineFriends } from '@/components/OnlineFriends';
 import { fetchPublicBotGroups } from '@/lib/api';
@@ -19,6 +21,7 @@ import {
   orderedLobbyNav,
 } from '@/lib/lobbyNav';
 import { useLobbyNav } from '@/lib/useLobbyNav';
+import { useNewFeature } from '@/lib/useNewFeature';
 import { useSession } from '@/lib/store';
 import { cn } from '@/lib/cn';
 
@@ -86,6 +89,7 @@ export function LobbySidebar({
   isAdmin?: boolean;
 }) {
   const pathname = usePathname();
+  const trackerHref = taskTrackerHref();
   const searchParams = useSearchParams();
   const userId = useSession((s) => s.userId);
   const username = useSession((s) => s.username);
@@ -93,6 +97,10 @@ export function LobbySidebar({
   const whuffieBalance = useSession((s) => s.whuffieBalance);
   const { pendingCount, sentCount } = useOnlineFriends();
   const lobbyNav = useLobbyNav();
+  const hostBotGroupsNew = useNewFeature('host-bot-groups');
+  const soloBotGroupsNew = useNewFeature('solo-bot-groups');
+  const themeNew = useNewFeature('profile-theme');
+  const friendsLinkInviteNew = useNewFeature('friends-link-invite');
   const [avatarId, setAvatarId] = useState(0);
   const [copied, setCopied] = useState(false);
   const [hotOfflineGroups, setHotOfflineGroups] = useState<
@@ -159,6 +167,10 @@ export function LobbySidebar({
         {orderedLobbyNav(lobbyNav).map((t) => {
           const active = isLobbyNavActive(pathname, t.href, searchParams.toString());
           const isFriends = signedIn && t.href === '/friends';
+          const isNew =
+            (t.id === 'host' && hostBotGroupsNew) ||
+            (t.id === 'solo' && soloBotGroupsNew) ||
+            (isFriends && friendsLinkInviteNew);
           if (t.href === '/solo' && hotOfflineGroups.length > 0) {
             return (
               <div key={t.href}>
@@ -167,13 +179,14 @@ export function LobbySidebar({
                     href={t.href}
                     aria-current={active ? 'page' : undefined}
                     className={cn(
-                      'nav-sidebar-item flex-1',
+                      'nav-sidebar-item flex flex-1 items-center justify-between gap-2',
                       active
                         ? 'nav-sidebar-item-active bg-on-chrome/15 text-on-chrome'
                         : 'text-on-chrome/90 hover:bg-on-chrome/12 hover:text-on-chrome',
                     )}
                   >
-                    {t.label}
+                    <span>{t.label}</span>
+                    {isNew ? <NewBadge /> : null}
                   </Link>
                   <button
                     type="button"
@@ -238,28 +251,45 @@ export function LobbySidebar({
               <span>{t.label}</span>
               {isFriends && (pendingCount > 0 || sentCount > 0) ? (
                 <span className="flex items-center gap-1">
+                  {isNew ? <NewBadge /> : null}
                   <PendingCountBadge count={pendingCount} />
                   <PendingCountBadge count={sentCount} tone="sent" />
                 </span>
+              ) : isNew ? (
+                <NewBadge />
               ) : null}
             </Link>
           );
         })}
         {signedIn && isAdmin ? (
-          <Link
-            href="/admin"
-            aria-current={
-              pathname === '/admin' || pathname.startsWith('/admin/') ? 'page' : undefined
-            }
-            className={cn(
-              'nav-sidebar-item',
-              pathname === '/admin' || pathname.startsWith('/admin/')
-                ? 'bg-brass/15 text-brass'
-                : 'text-brass hover:bg-brass/10',
-            )}
-          >
-            Admin
-          </Link>
+          <>
+            <Link
+              href={adminHomeHref()}
+              aria-current={
+                pathname === '/admin' || pathname.startsWith('/admin/') ? 'page' : undefined
+              }
+              className={cn(
+                'nav-sidebar-item',
+                pathname === '/admin' || pathname.startsWith('/admin/')
+                  ? 'bg-brass/15 text-brass'
+                  : 'text-brass hover:bg-brass/10',
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Admin
+            </Link>
+            {trackerHref ? (
+              <Link
+                href={trackerHref}
+                className="nav-sidebar-item hover:bg-brass/10 text-brass"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                GETitDONE
+              </Link>
+            ) : null}
+          </>
         ) : null}
       </nav>
 
@@ -296,8 +326,11 @@ export function LobbySidebar({
                     />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-display text-sm font-semibold leading-tight text-on-chrome">
-                      {handle || 'Player'}
+                    <span className="flex items-center gap-1.5">
+                      <span className="min-w-0 truncate font-display text-sm font-semibold leading-tight text-on-chrome">
+                        {handle || 'Player'}
+                      </span>
+                      {themeNew ? <NewBadge /> : null}
                     </span>
                     {chipBalance != null ? (
                       <span className="mt-1 flex flex-col gap-0.5">

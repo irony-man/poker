@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { CONTEST_COMPLETION_WHUFFIES } from '@poker/protocol';
 import { MemoryKv } from './kv/kv.store.js';
 import { memoryHistoryStore, type HandHistoryStore } from './history/history.store.js';
@@ -6,10 +6,11 @@ import { RoomManager } from './rooms/room.js';
 import { TournamentManager } from './contests/tournament.js';
 import type { ContestPersistence, PersistedContest } from './contests/contest.store.js';
 import { UnlimitedWalletStore, type WalletStore } from './wallet/wallet.store.js';
-import type {
-  WalletMutationResult,
-  WalletReason,
-  WhuffieReason,
+import {
+  WalletError,
+  type WalletMutationResult,
+  type WalletReason,
+  type WhuffieReason,
 } from './wallet/wallet.constants.js';
 
 function memoryHistory(): HandHistoryStore {
@@ -20,12 +21,15 @@ class TrackingWallet extends UnlimitedWalletStore implements WalletStore {
   credits: { userId: string; amount: number; reason: WalletReason }[] = [];
   debits: { userId: string; amount: number; reason: WalletReason }[] = [];
   whuffieCredits: { userId: string; amount: number; reason: WhuffieReason }[] = [];
+  /** Users whose debits fail as if their balance were too low. */
+  broke = new Set<string>();
   async debit(
     userId: string,
     amount: number,
     reason: WalletReason,
     tableId?: string,
   ): Promise<WalletMutationResult> {
+    if (this.broke.has(userId)) throw new WalletError('insufficient', `Need ${amount} chips`);
     this.debits.push({ userId, amount, reason });
     return super.debit(userId, amount, reason, tableId);
   }
@@ -490,6 +494,121 @@ describe('TournamentManager', () => {
   });
 });
 
+describe('TournamentManager paid entries', () => {
+  let rooms: RoomManager;
+  let tournaments: TournamentManager;
+  let wallet: TrackingWallet;
+
+  const paidOpts = {
+    name: 'Paid',
+    hostUserId: 'host',
+    hostName: 'Host',
+    fieldSize: 4,
+    startingStack: 500,
+    smallBlind: 5,
+    bigBlind: 10,
+    turnTimeMs: 20_000,
+    entryFee: 500,
+    botCount: 0,
+    isPrivate: true,
+    autoStart: false,
+  };
+
+  beforeEach(() => {
+    rooms = new RoomManager(new MemoryKv(), memoryHistory());
+    wallet = new TrackingWallet();
+    tournaments = new TournamentManager(rooms, wallet);
+  });
+
+  it('debits the host and each entrant, and grows the pot', async () => {
+    const created = await tournaments.create({ ...paidOpts, mode: 'chips' });
+    expect(created.entryFee).toBe(500);
+    expect(created.prizePool).toBe(500);
+    const reg = await tournaments.register(created.id, 'p2', 'Bob');
+    expect(reg.ok).toBe(true);
+    expect(reg.contest?.prizePool).toBe(1000);
+    expect(wallet.debits).toEqual([
+      { userId: 'host', amount: 500, reason: 'contest_entry' },
+      { userId: 'p2', amount: 500, reason: 'contest_entry' },
+    ]);
+
+    // Registering twice must not charge again.
+    await tournaments.register(created.id, 'p2', 'Bob');
+    expect(wallet.debits).toHaveLength(2);
+  });
+
+  it('refunds an entrant who unregisters', async () => {
+    const created = await tournaments.create({ ...paidOpts, mode: 'chips' });
+    await tournaments.register(created.id, 'p2', 'Bob');
+    const left = await tournaments.unregister(created.id, 'p2');
+    expect(left.ok).toBe(true);
+    expect(left.contest?.prizePool).toBe(500);
+    expect(wallet.credits).toEqual([{ userId: 'p2', amount: 500, reason: 'cash_out' }]);
+  });
+
+  it('rejects entrants and hosts who cannot afford the entry fee', async () => {
+    wallet.broke.add('p2');
+    const created = await tournaments.create({ ...paidOpts, mode: 'chips' });
+    const reg = await tournaments.register(created.id, 'p2', 'Bob');
+    expect(reg.ok).toBe(false);
+    expect(reg.error).toBe('Not enough chips for this entry fee');
+    expect(tournaments.get(created.id)!.entrants.map((e) => e.userId)).toEqual(['host']);
+
+    wallet.broke.add('host2');
+    await expect(
+      tournaments.create({ ...paidOpts, mode: 'chips', hostUserId: 'host2' }),
+    ).rejects.toThrow('Not enough chips for this entry fee');
+  });
+
+  it('refunds every paid entry when a registering contest is cancelled', async () => {
+    const created = await tournaments.create({ ...paidOpts, mode: 'chips' });
+    await tournaments.register(created.id, 'p2', 'Bob');
+    await tournaments.removeUser('host');
+    expect(tournaments.get(created.id)!.status).toBe('cancelled');
+    expect(wallet.credits).toEqual(
+      expect.arrayContaining([
+        { userId: 'host', amount: 500, reason: 'cash_out' },
+        { userId: 'p2', amount: 500, reason: 'cash_out' },
+      ]),
+    );
+    expect(wallet.credits).toHaveLength(2);
+  });
+
+  it('pays the whole pot to the winner exactly once', async () => {
+    const created = await tournaments.create({ ...paidOpts, mode: 'chips' });
+    await fillHumans(tournaments, created.id, 2);
+    await tournaments.start(created.id, 'host');
+    tournaments.forceEliminate(created.id, 'p2');
+    tournaments.forceEliminate(created.id, 'p3');
+
+    await vi.waitFor(() => {
+      expect(wallet.credits.filter((c) => c.reason === 'contest_payout')).toEqual([
+        { userId: 'host', amount: 1500, reason: 'contest_payout' },
+      ]);
+    });
+    const view = tournaments.get(created.id)!;
+    expect(view.status).toBe('completed');
+    expect(view.placements.find((p) => p.place === 1)).toMatchObject({
+      userId: 'host',
+      prizeChips: 1500,
+    });
+    expect(view.placements.filter((p) => p.prizeChips)).toHaveLength(1);
+  });
+
+  it('disables top-ups in paid rounds contests', async () => {
+    const created = await tournaments.create({ ...paidOpts, mode: 'rounds', handLimit: 10 });
+    await tournaments.register(created.id, 'p2', 'Bob');
+    const started = await tournaments.start(created.id, 'host');
+    const room = rooms.get(started.contest!.tableId!)!;
+    expect(room.meta.tournament?.allowTopUp).toBe(false);
+
+    const hostSeat = room.seatedPlayersSnapshot().find((p) => p.userId === 'host')!.seat;
+    room.state.players[hostSeat]!.stack = 0;
+    const result = await room.doTopUp('host', hostSeat, 500);
+    expect(result.ok).toBe(false);
+  });
+});
+
 class MemoryContestStore implements ContestPersistence {
   rows = new Map<string, PersistedContest>();
   async loadAll(): Promise<PersistedContest[]> {
@@ -643,6 +762,69 @@ describe('TournamentManager persistence', () => {
         { userId: 'p2', amount: 350, reason: 'cash_out' },
       ]),
     );
+  });
+
+  it('keeps paid entries on a registering contest across a restart', async () => {
+    const created = await tournaments.create({ ...baseOpts, mode: 'chips', entryFee: 500 });
+    await tournaments.register(created.id, 'p2', 'Bob');
+
+    const after = await restart();
+    const view = after.get(created.id);
+    expect(view?.status).toBe('registering');
+    expect(view?.prizePool).toBe(1000);
+    expect(wallet.credits).toEqual([]);
+
+    const left = await after.unregister(created.id, 'p2');
+    expect(left.ok).toBe(true);
+    expect(wallet.credits).toEqual([{ userId: 'p2', amount: 500, reason: 'cash_out' }]);
+  });
+
+  it('refunds full paid entries once when a restart interrupts play', async () => {
+    const rooms = new RoomManager(new MemoryKv(), memoryHistory());
+    tournaments = new TournamentManager(rooms, wallet);
+    tournaments.setPersistence(store);
+    const created = await tournaments.create({
+      ...baseOpts,
+      mode: 'rounds',
+      handLimit: 10,
+      entryFee: 500,
+    });
+    await tournaments.register(created.id, 'p2', 'Bob');
+    const started = await tournaments.start(created.id, 'host');
+    const room = rooms.get(started.contest!.tableId!)!;
+    for (const p of room.state.players) {
+      if (p.userId === 'host') p.stack = 650;
+      if (p.userId === 'p2') p.stack = 350;
+    }
+    tournaments.forceHandEnded(created.id);
+
+    const after = await restart();
+    expect(after.get(created.id)?.status).toBe('cancelled');
+    expect(wallet.credits).toEqual(
+      expect.arrayContaining([
+        { userId: 'host', amount: 500, reason: 'cash_out' },
+        { userId: 'p2', amount: 500, reason: 'cash_out' },
+      ]),
+    );
+    expect(wallet.credits).toHaveLength(2);
+
+    tournaments = after;
+    await restart();
+    expect(wallet.credits).toHaveLength(0);
+  });
+
+  it('does not pay a paid contest winner again after a restart', async () => {
+    const created = await tournaments.create({ ...baseOpts, mode: 'chips', entryFee: 500 });
+    await tournaments.register(created.id, 'p2', 'Bob');
+    await tournaments.start(created.id, 'host');
+    tournaments.forceEliminate(created.id, 'p2');
+    await vi.waitFor(() => {
+      expect(wallet.credits).toEqual([{ userId: 'host', amount: 1000, reason: 'contest_payout' }]);
+    });
+
+    const after = await restart();
+    expect(after.get(created.id)?.placements[0]?.prizeChips).toBe(1000);
+    expect(wallet.credits).toHaveLength(0);
   });
 
   it('keeps completed contests with standings and does not pay again', async () => {

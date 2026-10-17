@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from 'next';
+import { GoogleAnalytics } from '@next/third-parties/google';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { AppChrome } from '@/components/AppChrome';
 import {
+  gaMeasurementId,
   SITE_DESCRIPTION,
   SITE_NAME,
   SITE_TITLE_DEFAULT,
@@ -87,6 +89,8 @@ export const viewport: Viewport = {
   ],
 };
 
+const gaId = gaMeasurementId();
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`h-full ${body.variable}`} suppressHydrationWarning>
@@ -99,6 +103,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="flex h-dvh flex-col overflow-hidden">
         <AppChrome>{children}</AppChrome>
+        {gaId ? <GoogleAnalytics gaId={gaId} /> : null}
       </body>
     </html>
   );

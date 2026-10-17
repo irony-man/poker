@@ -1,9 +1,12 @@
 import { z } from 'zod';
 
 /**
- * Contest play mode (table chips only — no wallet buy-in or payout):
- * - `rounds`: fixed hand count, equal start stacks, top-ups allowed; chip leader wins.
+ * Contest play mode:
+ * - `rounds`: fixed hand count, equal start stacks, no top-ups; chip leader wins.
  * - `chips`: knockout freezeout — equal start stacks, no top-ups; last player with chips wins.
+ *
+ * New contests are paid: `entryFee` is debited from each entrant's wallet on registration and
+ * the whole pot goes to first place. Contests saved before paid entries have `entryFee` 0.
  */
 export const ContestModeSchema = z.enum(['rounds', 'chips']);
 export type ContestMode = z.infer<typeof ContestModeSchema>;
@@ -53,12 +56,14 @@ export const ContestPlacementSchema = z.object({
   place: z.number().int().positive(),
   /** Whuffies (rating) awarded for finishing this contest (0 if none). */
   prizeWhuffies: z.number().int().nonnegative().optional(),
+  /** Wallet chips won from a paid contest's pot (first place only). */
+  prizeChips: z.number().int().nonnegative().optional(),
 });
 export type ContestPlacement = z.infer<typeof ContestPlacementSchema>;
 
 /**
  * Whuffies every player earns when a contest completes, regardless of place.
- * Contests never pay chips: stacks are table-only and cancelled contests award nothing.
+ * Cancelled contests award nothing (paid entries are refunded instead).
  */
 export const CONTEST_COMPLETION_WHUFFIES = 1;
 
@@ -104,6 +109,10 @@ export const ContestViewSchema = z.object({
   smallBlind: z.number().int().positive(),
   bigBlind: z.number().int().positive(),
   turnTimeMs: z.number().int().positive(),
+  /** Wallet chips each entrant pays to register; 0 only for contests created before paid entries. */
+  entryFee: z.number().int().nonnegative().default(0),
+  /** Wallet chips first place receives: entry fee times paid entrants. */
+  prizePool: z.number().int().nonnegative().default(0),
   isPrivate: z.boolean(),
   entrants: z.array(ContestEntrantSchema),
   /** Invited friends who have not registered yet (cleared when they join). */
@@ -132,6 +141,8 @@ export const CreateContestBodySchema = z.object({
   smallBlind: z.number().int().positive().default(5),
   bigBlind: z.number().int().positive().default(10),
   turnTimeMs: z.number().int().positive().default(20000),
+  /** Wallet entry fee; must equal `startingStack` (see `validateContestEntryFee`). */
+  entryFee: z.number().int().positive(),
   /**
    * Deprecated — contests are humans-only. Accepted for API compatibility; server ignores it.
    */
@@ -160,6 +171,12 @@ export function validateContestFieldSize(_mode: ContestMode, fieldSize: number):
     return 'Contest field size must be 2–9';
   }
   return null;
+}
+
+/** Paid entries buy exactly the starting stack, so the pot equals the chips in play. */
+export function validateContestEntryFee(entryFee: number, startingStack: number): string | null {
+  if (entryFee === startingStack) return null;
+  return 'Entry fee must equal the starting stack';
 }
 
 export function resolveHandLimit(mode: ContestMode, handLimit?: number): number | null {

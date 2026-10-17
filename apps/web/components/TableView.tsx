@@ -16,6 +16,8 @@ import { TableShell } from './TableShell';
 import { PlayTableLogo } from './PlayTableLogo';
 import { VoiceCallBar } from './VoiceCallBar';
 import { WinHandModal } from './WinHandModal';
+import { MAX_TABLE_SEATS, TableInviteSheet } from './TableInviteFriends';
+import { TableLobby } from './TableLobby';
 import { buildTableJoinShareText } from '@/lib/tableLink';
 import { coerceMoney, formatMoneyAmount } from '@/lib/currency';
 import { usePokerSocket } from '@/lib/ws';
@@ -38,7 +40,7 @@ import { rememberStayOnContest } from '@/lib/contestStay';
 
 export function TableView({
   tableId,
-  inviteCode,
+  inviteCode: inviteCodeProp,
   initialSpectate = false,
   contestId: contestIdProp = null,
 }: {
@@ -280,8 +282,26 @@ export function TableView({
   const emptySeats = table?.players.filter((p) => p.status === 'empty').length ?? 0;
   const botSeats = table?.players.filter((p) => p.userId?.startsWith('bot:')).length ?? 0;
   const isHost = !!userId && table?.hostUserId === userId;
-  /** Public stake tables are humans-only; bots are private host practice. */
+  /** Public tables get house bots from matchmaking; players add bots only on private tables. */
   const botsAllowed = table?.isPrivate === true && !isTournament;
+  /** Room codes are for private tables; public seats come from matchmaking. */
+  const inviteCode = table?.isPrivate === false ? null : inviteCodeProp;
+  /** Hosted pre-game lobby: no felt or action dock until the host starts. */
+  const inLobby = table?.lobby === true;
+  const seatedPlayers = table?.players.filter((p) => p.userId) ?? [];
+  const seatedHumanIds = seatedPlayers
+    .filter((p) => !p.userId!.startsWith('bot:'))
+    .map((p) => p.userId!);
+  const canInviteFriends =
+    isHost &&
+    !inLobby &&
+    table?.isPrivate === true &&
+    !isTournament &&
+    seatedPlayers.length < MAX_TABLE_SEATS;
+  const [inviteSheetOpen, setInviteSheetOpen] = useState(false);
+  /** Public matchmade tables deal on a timer — no Ready step. */
+  const autoDeal = table?.autoDeal === true;
+  const nextHandAt = autoDeal && betweenHands ? (table?.nextHandAt ?? null) : null;
   /** Humans + bots eligible for next cash hand. */
   const eligiblePlayers =
     table?.players.filter(
@@ -294,6 +314,7 @@ export function TableView({
    * Contests and cash both require Ready consensus (except frozen contests).
    */
   const canReady =
+    !autoDeal &&
     !contestOver &&
     betweenHands &&
     mySeat !== undefined &&
@@ -346,7 +367,8 @@ export function TableView({
       isSelf: p.userId === userId,
       sittingOut: p.status === 'sittingOut',
     }));
-  const showDockReadyRoster = !contestOver && betweenHands && readyRosterPlayers.length > 0;
+  const showDockReadyRoster =
+    !autoDeal && !contestOver && betweenHands && readyRosterPlayers.length > 0;
   const dockReadyHeading =
     table?.street === 'waiting' && readyCount === 0
       ? 'Players'
@@ -499,6 +521,14 @@ export function TableView({
         tone: 'accent',
       });
     }
+    if (canInviteFriends) {
+      mobileOverflowItems.push({
+        id: 'invite-friends',
+        label: 'Invite friends',
+        onClick: () => setInviteSheetOpen(true),
+        tone: 'accent',
+      });
+    }
     mobileOverflowItems.push({
       id: 'chat',
       label: 'Chat',
@@ -597,6 +627,7 @@ export function TableView({
             readyPlayers: showDockReadyRoster ? readyRosterPlayers : undefined,
             readyHeading: dockReadyHeading,
             onReady: () => send({ type: 'set_ready', tableId, ready: !myReady }),
+            nextHandAt,
             canSitOut,
             canCancelSitOut: canCancelSitOutNext,
             sitOutLabel,
@@ -656,9 +687,10 @@ export function TableView({
         canReady ||
         canSitIn ||
         isSpectating ||
-        showDockReadyRoster
+        showDockReadyRoster ||
+        nextHandAt != null
       }
-      actions={actionControls}
+      actions={inLobby ? undefined : actionControls}
       voice={
         <VoiceCallBar
           compact
@@ -698,6 +730,11 @@ export function TableView({
           ) : (
             <div className="play-chrome-rail">
               {inviteCode ? <CopyRoomLink tableId={tableId} inviteCode={inviteCode} /> : null}
+              {canInviteFriends ? (
+                <Button type="button" variant="chrome" onClick={() => setInviteSheetOpen(true)}>
+                  Invite friends
+                </Button>
+              ) : null}
               <span className="play-chrome-divider" aria-hidden />
               <VoiceCallBar
                 inVoice={voice.inVoice}
@@ -780,6 +817,22 @@ export function TableView({
           </div>
         ) : null}
 
+        {inLobby ? (
+          <TableLobby
+            table={table}
+            userId={userId}
+            inviteCode={inviteCode ?? null}
+            botGroups={botGroups}
+            botGroupId={botGroupId}
+            onBotGroupChange={setBotGroupId}
+            onAddBot={(seat) => sendAddBot({ seat })}
+            onFillBots={() => sendAddBot({ count: emptySeats })}
+            onRemoveBot={(seat) => send({ type: 'remove_bot', tableId, seat })}
+            onSetSeats={(maxSeats) => send({ type: 'set_table_seats', tableId, maxSeats })}
+            onStart={() => send({ type: 'start_game', tableId })}
+            onLeave={() => void leaveRoom()}
+          />
+        ) : (
         <div className="play-table-stage">
           {!narrow && (
             <StatusChip
@@ -905,12 +958,12 @@ export function TableView({
                 winningCards={highlightMode ? winningCards : null}
                 turnEndsAt={table.toAct === p.seat ? table.turnEndsAt : null}
                 turnTotalMs={table.config.turnTimeMs}
-                canManageBots={!isSpectating && !isTournament}
+                canManageBots={!isSpectating && botsAllowed}
                 spectating={isSpectating}
                 compact={narrow}
                 landscape={landscape}
                 isDealer={table.dealerButton === p.seat}
-                showReady={betweenHands && !contestOver && !!p.ready}
+                showReady={betweenHands && !autoDeal && !contestOver && !!p.ready}
                 canKick={
                   isHost &&
                   betweenHands &&
@@ -962,17 +1015,29 @@ export function TableView({
           </div>
 
         </div>
+        )}
 
       </div>
 
-          {showWinModal && table && (
+          {canInviteFriends ? (
+            <TableInviteSheet
+              open={inviteSheetOpen}
+              onClose={() => setInviteSheetOpen(false)}
+              tableId={tableId}
+              seatedUserIds={seatedHumanIds}
+              seatedCount={seatedPlayers.length}
+            />
+          ) : null}
+
+          {showWinModal && table && !inLobby && (
             <WinHandModal
               youWon={youWon}
               canStartNext={canReady}
               readyCount={readyCount}
               readyTotal={eligiblePlayers.length}
               isReady={myReady}
-              readyPlayers={readyRosterPlayers}
+              readyPlayers={autoDeal ? undefined : readyRosterPlayers}
+              nextHandAt={nextHandAt}
               canTopUp={canTopUp}
               canSitOut={canSitOut}
               canSitIn={canSitIn}

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
 import { SkipLink } from '@/components/SkipLink';
 import { StatusChip } from '@/components/ui/StatusChip';
+import { lobbyHomeHref } from '@/lib/adminHost';
 import { imageAssetUrl } from '@/lib/assets';
 import { formatMoneyLabel } from '@/lib/currency';
 import type { SiteEconomy } from '@/lib/api';
@@ -115,7 +116,7 @@ export function AdminShell({
       <AdminNav tab={tab} onSelect={onSelectTab} onClose={() => setMenuOpen(false)} />
       <div className="sidebar-footer">
         <Link
-          href="/"
+          href={lobbyHomeHref()}
           onClick={() => setMenuOpen(false)}
           className="sidebar-footer-link"
         >
@@ -162,7 +163,7 @@ export function AdminShell({
           <AdminNav tab={tab} onSelect={onSelectTab} onClose={() => setMenuOpen(false)} />
           <div className="sidebar-footer">
             <Link
-              href="/"
+              href={lobbyHomeHref()}
               onClick={() => setMenuOpen(false)}
               className="sidebar-footer-link"
             >

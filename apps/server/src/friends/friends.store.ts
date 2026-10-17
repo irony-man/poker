@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { nanoid } from 'nanoid';
+import { customAlphabet, nanoid } from 'nanoid';
 import type { AuthStore } from '../auth/auth.store.js';
 import type { User } from '../auth/auth.types.js';
 import type { Queryable } from '../database/queryable.js';
@@ -57,7 +57,31 @@ interface SocialSnapshot {
   friendships: [string, string][];
   challenges: Challenge[];
   groups?: FriendGroup[];
+  /** Per-user ids hidden from "People you may know". */
+  dismissedSuggestions?: Record<string, string[]>;
+  /** userId -> personal friend link code. */
+  friendLinks?: Record<string, string>;
+  /** Per-user email invites sent in the last 24 hours. */
+  emailInviteLog?: Record<string, EmailInviteLogEntry[]>;
 }
+
+interface EmailInviteLogEntry {
+  email: string;
+  at: number;
+}
+
+/** Oldest dismissals drop off past this many per user. */
+const MAX_DISMISSED_SUGGESTIONS = 500;
+
+export const EMAIL_INVITE_WINDOW_MS = 24 * 60 * 60 * 1000;
+export const EMAIL_INVITE_DAILY_CAP = 20;
+
+const newFriendLinkCode = customAlphabet(
+  'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789',
+  8,
+);
+
+export type FriendLinkRedeemResult = 'friends' | 'already_friends';
 
 export interface FriendProfile {
   userId: string;
@@ -136,6 +160,9 @@ export class FriendsStore {
   private friendships = new Set<string>();
   private challenges: Challenge[] = [];
   private groups: FriendGroup[] = [];
+  private dismissedSuggestions: Record<string, string[]> = {};
+  private friendLinks: Record<string, string> = {};
+  private emailInviteLog: Record<string, EmailInviteLogEntry[]> = {};
   private loaded = false;
   private readonly filePath: string;
   private pool: Queryable | null = null;
@@ -164,6 +191,9 @@ export class FriendsStore {
     this.friendships = new Set((snap.friendships ?? []).map(([a, b]) => `${a}:${b}`));
     this.challenges = snap.challenges ?? [];
     this.groups = snap.groups ?? [];
+    this.dismissedSuggestions = snap.dismissedSuggestions ?? {};
+    this.friendLinks = snap.friendLinks ?? {};
+    this.emailInviteLog = snap.emailInviteLog ?? {};
   }
 
   private snapshot(): SocialSnapshot {
@@ -175,6 +205,9 @@ export class FriendsStore {
       }),
       challenges: this.challenges,
       groups: this.groups,
+      dismissedSuggestions: this.dismissedSuggestions,
+      friendLinks: this.friendLinks,
+      emailInviteLog: this.emailInviteLog,
     };
   }
 
@@ -314,8 +347,179 @@ export class FriendsStore {
     for (const g of this.groups) {
       g.memberUserIds = g.memberUserIds.filter((id) => id !== userId);
     }
+    delete this.dismissedSuggestions[userId];
+    for (const [ownerId, ids] of Object.entries(this.dismissedSuggestions)) {
+      this.dismissedSuggestions[ownerId] = ids.filter((id) => id !== userId);
+    }
+    delete this.friendLinks[userId];
+    delete this.emailInviteLog[userId];
     await this.persist();
     return friendIds;
+  }
+
+  async getOrCreateFriendLink(userId: string): Promise<string> {
+    await this.ensureLoaded();
+    const existing = this.friendLinks[userId];
+    if (existing) return existing;
+    const taken = new Set(Object.values(this.friendLinks));
+    let code = newFriendLinkCode();
+    while (taken.has(code)) code = newFriendLinkCode();
+    this.friendLinks[userId] = code;
+    await this.persist();
+    return code;
+  }
+
+  async resolveFriendLink(code: string): Promise<string | null> {
+    await this.ensureLoaded();
+    if (!code) return null;
+    for (const [userId, c] of Object.entries(this.friendLinks)) {
+      if (c === code) return userId;
+    }
+    return null;
+  }
+
+  /**
+   * Visitor accepted the owner's friend link. Sharing the link is the owner's
+   * consent, so this makes them friends and closes any pending request between them.
+   */
+  async redeemFriendLink(
+    visitorId: string,
+    code: string,
+  ): Promise<
+    | { ok: true; ownerId: string; result: FriendLinkRedeemResult }
+    | { ok: false; error: string }
+  > {
+    const ownerId = await this.resolveFriendLink(code);
+    if (!ownerId) return { ok: false, error: 'Invite link not found' };
+    if (ownerId === visitorId) return { ok: false, error: 'This is your own link' };
+    if (this.areFriends(ownerId, visitorId)) {
+      return { ok: true, ownerId, result: 'already_friends' };
+    }
+    for (const req of [
+      this.findPendingRequest(ownerId, visitorId),
+      this.findPendingRequest(visitorId, ownerId),
+    ]) {
+      if (req) req.status = 'accepted';
+    }
+    this.addFriendship(ownerId, visitorId);
+    await this.persist();
+    return { ok: true, ownerId, result: 'friends' };
+  }
+
+  private findPendingRequest(fromUserId: string, toUserId: string): FriendRequest | undefined {
+    return this.requests.find(
+      (r) => r.status === 'pending' && r.fromUserId === fromUserId && r.toUserId === toUserId,
+    );
+  }
+
+  /**
+   * Ask `toId` to be friends. Accepts instead when `toId` already asked
+   * `fromId`. Never throws for an existing friendship or pending request.
+   */
+  async requestFriendship(
+    fromId: string,
+    toId: string,
+  ): Promise<'requested' | 'accepted' | 'pending' | 'already_friends'> {
+    await this.ensureLoaded();
+    if (fromId === toId) throw new Error('Cannot add yourself');
+    if (this.areFriends(fromId, toId)) return 'already_friends';
+    const theirs = this.findPendingRequest(toId, fromId);
+    if (theirs) {
+      theirs.status = 'accepted';
+      this.addFriendship(fromId, toId);
+      await this.persist();
+      return 'accepted';
+    }
+    if (this.findPendingRequest(fromId, toId)) return 'pending';
+    await this.sendRequest(fromId, toId);
+    return 'requested';
+  }
+
+  private addFriendship(a: string, b: string): void {
+    const [x, y] = pairKey(a, b);
+    this.friendships.add(`${x}:${y}`);
+  }
+
+  /**
+   * Log email invites and return the addresses allowed to send now. Skips
+   * repeats within 24 hours and stops at the daily cap.
+   */
+  async recordEmailInvites(
+    userId: string,
+    emails: string[],
+    now: number = Date.now(),
+  ): Promise<string[]> {
+    await this.ensureLoaded();
+    const cutoff = now - EMAIL_INVITE_WINDOW_MS;
+    const log = (this.emailInviteLog[userId] ?? []).filter((e) => e.at > cutoff);
+    const recent = new Set(log.map((e) => e.email));
+    const allowed: string[] = [];
+    for (const email of emails) {
+      if (log.length >= EMAIL_INVITE_DAILY_CAP) break;
+      if (recent.has(email)) continue;
+      recent.add(email);
+      log.push({ email, at: now });
+      allowed.push(email);
+    }
+    this.emailInviteLog[userId] = log;
+    await this.persist();
+    return allowed;
+  }
+
+  private friendIdsOf(userId: string): Set<string> {
+    const ids = new Set<string>();
+    for (const key of this.friendships) {
+      const [a, b] = key.split(':');
+      if (a === userId && b) ids.add(b);
+      else if (b === userId && a) ids.add(a);
+    }
+    return ids;
+  }
+
+  /** Friends of `userId`'s friends, mapped to the mutual friend ids they share. */
+  async mutualFriendCandidates(userId: string): Promise<Map<string, string[]>> {
+    await this.ensureLoaded();
+    const adjacency = new Map<string, string[]>();
+    for (const key of this.friendships) {
+      const [a, b] = key.split(':');
+      if (!a || !b) continue;
+      adjacency.set(a, [...(adjacency.get(a) ?? []), b]);
+      adjacency.set(b, [...(adjacency.get(b) ?? []), a]);
+    }
+    const mine = adjacency.get(userId) ?? [];
+    const out = new Map<string, string[]>();
+    for (const friendId of mine) {
+      for (const candidate of adjacency.get(friendId) ?? []) {
+        if (candidate === userId) continue;
+        out.set(candidate, [...(out.get(candidate) ?? []), friendId]);
+      }
+    }
+    return out;
+  }
+
+  /** Ids that must never be suggested to `userId`. */
+  async suggestionExclusions(userId: string): Promise<Set<string>> {
+    await this.ensureLoaded();
+    const out = this.friendIdsOf(userId);
+    out.add(userId);
+    for (const r of this.requests) {
+      if (r.status !== 'pending') continue;
+      if (r.fromUserId === userId) out.add(r.toUserId);
+      else if (r.toUserId === userId) out.add(r.fromUserId);
+    }
+    for (const id of this.dismissedSuggestions[userId] ?? []) out.add(id);
+    return out;
+  }
+
+  async dismissSuggestion(userId: string, targetUserId: string): Promise<void> {
+    await this.ensureLoaded();
+    if (!targetUserId || targetUserId === userId) return;
+    const current = (this.dismissedSuggestions[userId] ?? []).filter(
+      (id) => id !== targetUserId,
+    );
+    current.push(targetUserId);
+    this.dismissedSuggestions[userId] = current.slice(-MAX_DISMISSED_SUGGESTIONS);
+    await this.persist();
   }
 
   async removeFriend(

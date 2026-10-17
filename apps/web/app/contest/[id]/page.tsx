@@ -23,6 +23,7 @@ import { parsePlayedHand, type PlayedHandLevel } from '@/features/progress/playe
 import { SharedHandRow } from '@/features/progress/SharedHandRow';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { contestModeLabel } from '@/lib/contestLabels';
+import { formatMoneyLabel } from '@/lib/currency';
 import { clearStayOnContest, shouldStayOnContest } from '@/lib/contestStay';
 import { readStoredSession } from '@/lib/session';
 import { useSession } from '@/lib/store';
@@ -30,11 +31,16 @@ import { toast } from '@/lib/toast';
 import { useContestSocket } from '@/lib/ws';
 
 function modeDescription(contest: ContestView): string {
+  const paid = contest.entryFee > 0;
   if (contest.mode === 'rounds') {
     const limit = contest.handLimit ?? 20;
-    return `Play ${limit} hands with top-ups. Highest stack when the session ends wins.`;
+    return paid
+      ? `Play ${limit} hands, no top-ups. Highest stack when the session ends wins the pot.`
+      : `Play ${limit} hands with top-ups. Highest stack when the session ends wins.`;
   }
-  return 'Equal stacks, no top-ups. Last player standing wins.';
+  return paid
+    ? 'Equal stacks, no top-ups. Last player standing wins the pot.'
+    : 'Equal stacks, no top-ups. Last player standing wins.';
 }
 
 function statusLabel(status: ContestView['status']): string {
@@ -60,6 +66,7 @@ export default function ContestPage() {
   const ticket = useSession((s) => s.ticket);
   const sessionToken = useSession((s) => s.sessionToken);
   const setSession = useSession((s) => s.setSession);
+  const setChipBalance = useSession((s) => s.setChipBalance);
   const liveContest = useSession((s) => s.contestById[contestId] ?? null);
   const contestEvent = useSession((s) => s.contestEvent);
   const [contest, setContest] = useState<ContestView | null>(null);
@@ -171,8 +178,10 @@ export default function ContestPage() {
     }
     setBusy(true);
     try {
-      const { contest: c } = await registerContest(contestId, { sessionToken });
+      const { contest: c, chipBalance } = await registerContest(contestId, { sessionToken });
       setContest(c);
+      setError(null);
+      if (typeof chipBalance === 'number') setChipBalance(chipBalance);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
     } finally {
@@ -184,8 +193,10 @@ export default function ContestPage() {
     if (!sessionToken) return;
     setBusy(true);
     try {
-      const { contest: c } = await unregisterContest(contestId, { sessionToken });
+      const { contest: c, chipBalance } = await unregisterContest(contestId, { sessionToken });
       setContest(c);
+      setError(null);
+      if (typeof chipBalance === 'number') setChipBalance(chipBalance);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
     } finally {
@@ -247,6 +258,7 @@ export default function ContestPage() {
   const blinds = contest.blinds
     ? `${contest.blinds.smallBlind}/${contest.blinds.bigBlind}`
     : `${contest.smallBlind}/${contest.bigBlind}`;
+  const paid = contest.entryFee > 0;
   const handMeta =
     contest.mode === 'rounds' && contest.handLimit
       ? ` · hand ${Math.min(contest.handsPlayed, contest.handLimit)}/${contest.handLimit}`
@@ -285,6 +297,10 @@ export default function ContestPage() {
           {' · '}
           {seatsLabel} · stack {contest.startingStack} · blinds {blinds}
           {handMeta}
+          {' · '}
+          {paid
+            ? `entry ${formatMoneyLabel(contest.entryFee)} · pot ${formatMoneyLabel(contest.prizePool)}`
+            : 'free entry'}
         </p>
         <p className="font-prose-muted mt-2 max-w-2xl sm:text-base">
           {modeDescription(contest)}
@@ -307,7 +323,7 @@ export default function ContestPage() {
               className="min-h-11 px-6"
               onClick={onRegister}
             >
-              Register
+              {paid ? `Register · ${formatMoneyLabel(contest.entryFee)} chips` : 'Register'}
             </Button>
           )}
           {contest.status === 'registering' && isRegistered && !isHost && (
@@ -357,7 +373,8 @@ export default function ContestPage() {
         ) : (
           <ul className="mt-3 grid gap-2 sm:grid-cols-2">
             {contest.entrants.map((e) => {
-              const place = contest.placements.find((p) => p.userId === e.userId)?.place;
+              const placement = contest.placements.find((p) => p.userId === e.userId);
+              const place = placement?.place;
               return (
                 <li
                   key={e.userId}
@@ -377,8 +394,16 @@ export default function ContestPage() {
                     ) : null}
                   </span>
                   {place != null && (
-                    <span className="shrink-0 font-mono text-xs font-semibold text-sidebar">
-                      #{place}
+                    <span className="flex shrink-0 items-center gap-2">
+                      {placement?.prizeChips ? (
+                        <MoneyAmount
+                          amount={placement.prizeChips}
+                          prefix="+"
+                          showChips
+                          className="text-xs font-semibold text-sidebar"
+                        />
+                      ) : null}
+                      <span className="font-mono text-xs font-semibold text-sidebar">#{place}</span>
                     </span>
                   )}
                 </li>

@@ -21,6 +21,8 @@ export interface PersistedContest {
   smallBlind: number;
   bigBlind: number;
   turnTimeMs: number;
+  /** Missing on snapshots saved before paid entries; those contests are free. */
+  entryFee?: number;
   isPrivate: boolean;
   autoStart: boolean;
   handLimit: number | null;

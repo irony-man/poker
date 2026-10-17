@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions, TypeOrmOptionsFactory } from '@nestjs/typeorm';
 import { buildTypeOrmOptions } from '@poker/db';
+import { DbQueryLogSubscriber } from './db-query-logger.js';
 
 @Injectable()
 export class TypeOrmConfigService implements TypeOrmOptionsFactory {
@@ -14,11 +15,7 @@ export class TypeOrmConfigService implements TypeOrmOptionsFactory {
     }
     // Match prior DDL-on-boot: keep schema aligned with entities.
     const synchronize = this.config.get<string>('TYPEORM_SYNC') !== 'false';
-    const options = await buildTypeOrmOptions({
-      connectionString: url,
-      synchronize,
-      logging: this.config.get<string>('TYPEORM_LOGGING') === 'true',
-    });
-    return options;
+    const options = await buildTypeOrmOptions({ connectionString: url, synchronize });
+    return { ...options, subscribers: [DbQueryLogSubscriber] };
   }
 }

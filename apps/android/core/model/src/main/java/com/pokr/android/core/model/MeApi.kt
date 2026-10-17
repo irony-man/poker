@@ -13,7 +13,7 @@ data class MeProfile(
     val avatarUrl: String? = null,
     val tableColorId: Int = 0,
     val uiTheme: String = "v1",
-    val tableLayout: String = "v1",
+    val tableLayout: String = "v2",
     val sfxMuted: Boolean = false,
     /** Recovery email; only confirmed emails receive password reset links. */
     val email: String? = null,

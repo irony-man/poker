@@ -34,7 +34,7 @@ export async function inviteTableFriends(
     ...options,
     method: 'POST',
     body: { friendUserIds },
-  }) as Promise<{ inviteCount: number; challengeIds: string[] }>;
+  }) as Promise<{ inviteCount: number; challengeIds: string[]; seatsAdded?: number }>;
 }
 
 export interface PublicTableSummary {

@@ -15,7 +15,10 @@ import {
 import {
   CreateContestBodySchema,
   InviteFriendsBodySchema,
+  validateContestEntryFee,
+  validateStakes,
   type ContestHandSummary,
+  type ContestView,
 } from '@poker/protocol';
 import type { Request } from 'express';
 import { AuthService } from '../auth/auth.service.js';
@@ -51,8 +54,14 @@ export class ContestsController {
     if (!parsed.success) {
       throw new BadRequestException({ error: parsed.error.message });
     }
+    const d = parsed.data;
+    const stakesError =
+      validateStakes(d.smallBlind, d.bigBlind, d.startingStack) ??
+      validateContestEntryFee(d.entryFee, d.startingStack);
+    if (stakesError) {
+      throw new BadRequestException({ error: stakesError });
+    }
     try {
-      const d = parsed.data;
       let contest = await this.contests.create({
         name: d.name,
         mode: d.mode,
@@ -63,6 +72,7 @@ export class ContestsController {
         smallBlind: d.smallBlind,
         bigBlind: d.bigBlind,
         turnTimeMs: d.turnTimeMs,
+        entryFee: d.entryFee,
         botCount: d.botCount,
         isPrivate: d.isPrivate,
         inviteCode: d.inviteCode,
@@ -91,7 +101,7 @@ export class ContestsController {
         }
       }
 
-      return { contest, inviteCount };
+      return { contest, inviteCount, ...this.paidBalance(contest, user.id) };
     } catch (err) {
       const message = publicErrorMessage(err, 'Failed to create contest');
       if (message.includes('already in use')) {
@@ -233,7 +243,7 @@ export class ContestsController {
   async register(@CurrentUser() user: User, @Param('id') id: string) {
     const result = await this.contests.register(id, user.id, user.name);
     if (!result.ok) throw new BadRequestException({ error: result.error });
-    return { contest: result.contest };
+    return { contest: result.contest, ...this.paidBalance(result.contest, user.id) };
   }
 
   @Post(':id/unregister')
@@ -241,7 +251,13 @@ export class ContestsController {
   async unregister(@CurrentUser() user: User, @Param('id') id: string) {
     const result = await this.contests.unregister(id, user.id);
     if (!result.ok) throw new BadRequestException({ error: result.error });
-    return { contest: result.contest };
+    return { contest: result.contest, ...this.paidBalance(result.contest, user.id) };
+  }
+
+  /** Wallet chips after a paid entry or refund, so the client can update its balance. */
+  private paidBalance(contest: ContestView | undefined, userId: string): { chipBalance?: number } {
+    if (!contest || contest.entryFee <= 0) return {};
+    return { chipBalance: this.contests.chipBalance(userId) };
   }
 
   @Post(':id/start')

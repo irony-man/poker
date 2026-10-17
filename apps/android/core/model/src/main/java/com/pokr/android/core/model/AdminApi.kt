@@ -96,6 +96,8 @@ data class SiteEconomy(
     val refillThreshold: Int = 0,
     val refillGrant: Int = 0,
     val startingWhuffieGrant: Int = 0,
+    val tableGameWhuffies: Int = 1,
+    val tableGameMinHands: Int = 10,
 )
 
 @Serializable

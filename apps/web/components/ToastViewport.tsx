@@ -1,5 +1,6 @@
 'use client';
 
+import { createPortal } from 'react-dom';
 import { useToasts, type ToastItem, type ToastKind } from '@/lib/toast';
 
 const KIND_STYLES: Record<
@@ -76,13 +77,16 @@ export function ToastViewport() {
   const items = useToasts((s) => s.items);
   const dismiss = useToasts((s) => s.dismiss);
 
-  if (items.length === 0) return null;
+  if (items.length === 0 || typeof document === 'undefined') return null;
 
-  return (
+  // Portal to <body>: `body > *` gets z-index 1 in globals.css, which would
+  // otherwise keep toasts under body-level modals like the friend invite dialogs.
+  return createPortal(
     <div className="pointer-events-none fixed inset-x-0 top-0 z-[80] flex flex-col items-end gap-2 px-3 pt-[max(0.65rem,env(safe-area-inset-top))] sm:px-4 sm:pt-3">
       {items.map((item) => (
         <ToastCard key={item.id} item={item} onDismiss={() => dismiss(item.id)} />
       ))}
-    </div>
+    </div>,
+    document.body,
   );
 }

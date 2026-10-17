@@ -153,9 +153,9 @@ export function GoogleAuthPanel({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-center gap-3">
+      {/* Google's rendered button maxes out at 400px; keep Instagram the same width. */}
+      <div className="mx-auto flex w-full max-w-[400px] flex-col gap-2.5">
         <GoogleSignInButton
-          layout="icon"
           text={mode === 'sign-up' ? 'signup_with' : 'continue_with'}
           disabled={busy}
           onCredential={(token) => void onCredential(token)}
@@ -163,7 +163,6 @@ export function GoogleAuthPanel({
           onAvailable={setAvailable}
         />
         <InstagramSignInButton
-          layout="icon"
           next={returnTo}
           disabled={busy}
           onError={setError}

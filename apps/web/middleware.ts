@@ -6,6 +6,7 @@ import {
   normalizeLobbyNavConfig,
   type LobbyNavConfig,
 } from '@poker/protocol';
+import { adminHostRoute, requestHost } from '@/lib/adminHost';
 
 const NAV_CACHE_TTL_MS = 30_000;
 
@@ -44,8 +45,22 @@ async function loadLobbyNav(): Promise<LobbyNavConfig | null> {
   return navInflight;
 }
 
-/** Admin-hidden lobby sections (Admin → Sidebar) return 404. */
+/**
+ * Admin subdomain routing (see lib/adminHost), then admin-hidden lobby sections
+ * (Admin → Sidebar) return 404.
+ */
 export async function middleware(req: NextRequest) {
+  const host = requestHost(req.headers.get('x-forwarded-host'), req.headers.get('host'));
+  const route = adminHostRoute(host, req.nextUrl.pathname, req.nextUrl.search);
+  if (route.kind === 'redirect') {
+    return NextResponse.redirect(route.url, route.permanent ? 308 : 307);
+  }
+  if (route.kind === 'rewrite') {
+    const url = req.nextUrl.clone();
+    url.pathname = route.pathname;
+    return NextResponse.rewrite(url);
+  }
+
   const id = lobbyNavIdForPath(req.nextUrl.pathname, req.nextUrl.search);
   if (!id) return NextResponse.next();
   const config = await loadLobbyNav();
@@ -54,15 +69,6 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    '/play/:path*',
-    '/host/:path*',
-    '/join/:path*',
-    '/public/:path*',
-    '/contests/:path*',
-    '/friends/:path*',
-    '/chat/:path*',
-    '/solo/:path*',
-    '/offline/:path*',
-  ],
+  // Every page path: the admin host must see all of them. Skips Next internals, /api and static files.
+  matcher: ['/((?!_next/|api/|.*\\.[^/]+$).*)'],
 };

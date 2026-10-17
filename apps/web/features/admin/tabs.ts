@@ -1,3 +1,5 @@
+import { adminBasePath } from '@/lib/adminHost';
+
 export type AdminTab =
   | 'users'
   | 'content'
@@ -86,7 +88,8 @@ export function parseAdminTab(raw: string | null): AdminTab {
 }
 
 export function adminTabHref(tab: AdminTab): string {
-  return tab === 'users' ? '/admin' : `/admin?tab=${tab}`;
+  const base = adminBasePath();
+  return tab === 'users' ? base : `${base}?tab=${tab}`;
 }
 
 export const MAX_HOME_BLOCKS = 12;

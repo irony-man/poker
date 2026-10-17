@@ -2,7 +2,12 @@ import { mkdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthStore } from './auth/auth.store.js';
-import { CHALLENGE_TTL_MS, FriendsStore } from './friends/friends.store.js';
+import {
+  CHALLENGE_TTL_MS,
+  EMAIL_INVITE_DAILY_CAP,
+  EMAIL_INVITE_WINDOW_MS,
+  FriendsStore,
+} from './friends/friends.store.js';
 
 describe('FriendsStore', () => {
   const dir = path.join(process.cwd(), '.test-social');
@@ -115,6 +120,144 @@ describe('FriendsStore', () => {
     expect(await friends.listIncomingRequests(auth, 'user-carol')).toHaveLength(1);
     expect(await friends.listGroups(auth, 'user-bob')).toEqual([]);
     expect(await friends.listPendingChallenges(auth, 'user-bob')).toHaveLength(0);
+  });
+
+  async function befriend(a: string, b: string) {
+    const req = await friends.sendRequest(a, b);
+    await friends.respondRequest(b, req.id, true);
+  }
+
+  it('suggests friends of friends with the mutual friends they share', async () => {
+    await auth.seedUser('user-dave', 'Dave', 'password1', 3);
+    await befriend('user-alice', 'user-bob');
+    await befriend('user-bob', 'user-carol');
+    await befriend('user-alice', 'user-dave');
+    await befriend('user-dave', 'user-carol');
+
+    const mutual = await friends.mutualFriendCandidates('user-alice');
+    expect(mutual.get('user-carol')?.sort()).toEqual(['user-bob', 'user-dave']);
+    expect(mutual.has('user-alice')).toBe(false);
+  });
+
+  it('excludes self, friends, pending requests, and dismissed users from suggestions', async () => {
+    await auth.seedUser('user-dave', 'Dave', 'password1', 3);
+    await auth.seedUser('user-erin', 'Erin', 'password1', 4);
+    await befriend('user-alice', 'user-bob');
+    await friends.sendRequest('user-alice', 'user-carol');
+    await friends.sendRequest('user-dave', 'user-alice');
+    await friends.dismissSuggestion('user-alice', 'user-erin');
+
+    const exclude = await friends.suggestionExclusions('user-alice');
+    expect([...exclude].sort()).toEqual([
+      'user-alice',
+      'user-bob',
+      'user-carol',
+      'user-dave',
+      'user-erin',
+    ]);
+    expect((await friends.suggestionExclusions('user-bob')).has('user-erin')).toBe(false);
+  });
+
+  it('keeps dismissed suggestions across a reload', async () => {
+    await friends.dismissSuggestion('user-alice', 'user-carol');
+    await friends.dismissSuggestion('user-alice', 'user-carol');
+    const reloaded = new FriendsStore(dir);
+    const exclude = await reloaded.suggestionExclusions('user-alice');
+    expect(exclude.has('user-carol')).toBe(true);
+  });
+
+  it('drops a purged user from dismissed suggestion lists', async () => {
+    await friends.dismissSuggestion('user-alice', 'user-carol');
+    await friends.dismissSuggestion('user-carol', 'user-bob');
+    await friends.purgeUser('user-carol');
+    expect((await friends.suggestionExclusions('user-alice')).has('user-carol')).toBe(false);
+    const reloaded = new FriendsStore(dir);
+    expect((await reloaded.suggestionExclusions('user-carol')).has('user-bob')).toBe(false);
+  });
+
+  it('keeps one stable friend link code per user', async () => {
+    const code = await friends.getOrCreateFriendLink('user-alice');
+    expect(code).toMatch(/^[A-Za-z0-9]{8}$/);
+    expect(await friends.getOrCreateFriendLink('user-alice')).toBe(code);
+    expect(await new FriendsStore(dir).getOrCreateFriendLink('user-alice')).toBe(code);
+    expect(await friends.getOrCreateFriendLink('user-bob')).not.toBe(code);
+    expect(await friends.resolveFriendLink(code)).toBe('user-alice');
+    expect(await friends.resolveFriendLink('nope')).toBeNull();
+  });
+
+  it('befriends anyone who accepts a friend link', async () => {
+    const code = await friends.getOrCreateFriendLink('user-alice');
+    const res = await friends.redeemFriendLink('user-bob', code);
+    expect(res).toEqual({ ok: true, ownerId: 'user-alice', result: 'friends' });
+    expect((await friends.listFriends(auth, 'user-alice')).map((f) => f.userId)).toEqual([
+      'user-bob',
+    ]);
+    const again = await friends.redeemFriendLink('user-bob', code);
+    expect(again).toEqual({ ok: true, ownerId: 'user-alice', result: 'already_friends' });
+  });
+
+  it('closes pending requests in either direction when a link is accepted', async () => {
+    await friends.sendRequest('user-alice', 'user-bob');
+    await friends.sendRequest('user-carol', 'user-alice');
+    const code = await friends.getOrCreateFriendLink('user-alice');
+
+    expect((await friends.redeemFriendLink('user-bob', code)).ok).toBe(true);
+    expect(await friends.listIncomingRequests(auth, 'user-bob')).toHaveLength(0);
+
+    expect((await friends.redeemFriendLink('user-carol', code)).ok).toBe(true);
+    expect(await friends.listIncomingRequests(auth, 'user-alice')).toHaveLength(0);
+    expect(await friends.countFriends('user-alice')).toBe(2);
+  });
+
+  it('rejects redeeming your own or an unknown link', async () => {
+    const code = await friends.getOrCreateFriendLink('user-alice');
+    expect(await friends.redeemFriendLink('user-alice', code)).toEqual({
+      ok: false,
+      error: 'This is your own link',
+    });
+    expect((await friends.redeemFriendLink('user-bob', 'missing1')).ok).toBe(false);
+  });
+
+  it('requestFriendship covers new, reciprocal, pending, friends, and self', async () => {
+    expect(await friends.requestFriendship('user-alice', 'user-bob')).toBe('requested');
+    expect(await friends.requestFriendship('user-alice', 'user-bob')).toBe('pending');
+    expect(await friends.countFriends('user-alice')).toBe(0);
+
+    expect(await friends.requestFriendship('user-bob', 'user-alice')).toBe('accepted');
+    expect(await friends.countFriends('user-alice')).toBe(1);
+    expect(await friends.listIncomingRequests(auth, 'user-bob')).toHaveLength(0);
+
+    expect(await friends.requestFriendship('user-alice', 'user-bob')).toBe('already_friends');
+    await expect(friends.requestFriendship('user-carol', 'user-carol')).rejects.toThrow(
+      'Cannot add yourself',
+    );
+  });
+
+  it('dedupes email invites for 24 hours and caps them per day', async () => {
+    const t0 = 1_000_000;
+    expect(await friends.recordEmailInvites('user-alice', ['a@x.com', 'b@x.com'], t0)).toEqual([
+      'a@x.com',
+      'b@x.com',
+    ]);
+    expect(await friends.recordEmailInvites('user-alice', ['a@x.com', 'c@x.com'], t0 + 1)).toEqual(
+      ['c@x.com'],
+    );
+    expect(
+      await friends.recordEmailInvites('user-alice', ['a@x.com'], t0 + EMAIL_INVITE_WINDOW_MS + 1),
+    ).toEqual(['a@x.com']);
+
+    const many = Array.from({ length: EMAIL_INVITE_DAILY_CAP + 5 }, (_, i) => `p${i}@x.com`);
+    const allowed = await friends.recordEmailInvites('user-bob', many, t0);
+    expect(allowed).toHaveLength(EMAIL_INVITE_DAILY_CAP);
+    expect(await friends.recordEmailInvites('user-bob', ['late@x.com'], t0 + 1)).toEqual([]);
+  });
+
+  it('drops friend link and email log for a purged user', async () => {
+    const code = await friends.getOrCreateFriendLink('user-alice');
+    await friends.recordEmailInvites('user-alice', ['a@x.com'], 1);
+    await friends.purgeUser('user-alice');
+    expect(await friends.resolveFriendLink(code)).toBeNull();
+    expect(await friends.recordEmailInvites('user-alice', ['a@x.com'], 2)).toEqual(['a@x.com']);
   });
 
   it('creates challenges only between friends', async () => {

@@ -73,7 +73,7 @@ data class OfflineUiState(
     val chatOpen: Boolean = false,
     val bootstrapped: Boolean = false,
     val tableColorId: Int = 0,
-    val tableLayout: String = "v1",
+    val tableLayout: String = "v2",
     val sfxMuted: Boolean = false,
     val seatActionSeat: Int? = null,
     val seatActionLabel: String? = null,

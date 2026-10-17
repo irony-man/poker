@@ -1,81 +1,36 @@
 'use client';
 
-import Image from 'next/image';
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { isHrefHiddenByLobbyNav } from '@poker/protocol';
+import { useEffect, useMemo, useState } from 'react';
+import type { HomeFeaturesByTheme, HomeLandingFeature } from '@/lib/api';
+import { fetchPublicSite } from '@/lib/api';
+import { HomeFeatureRows } from '@/components/HomeFeatureRows';
 import { HomeAuthFooter } from '@/components/HomeAuthFooter';
 import { LegalLinks } from '@/components/LegalLinks';
-import { imageAssetUrl, resolvePublicImage } from '@/lib/assets';
-import { fetchPublicSite, type HomeFeaturesByTheme, type HomeLandingFeature } from '@/lib/api';
+import { DEFAULT_HOME_FEATURES } from '@/lib/homeFeaturesDefaults';
+import { filterHomeFeaturesByLobbyNav } from '@/lib/homeFeatures';
 import { pickHomeFeaturesForTheme } from '@/lib/themeCopy';
 import { useLobbyNav } from '@/lib/useLobbyNav';
 import { useUiTheme } from '@/lib/useUiTheme';
-/** Defaults match original static HomeLanding blocks (used until /api/site loads). */
-export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
-  {
-    title: 'Play Contests',
-    body: "Knockout tables with no buy-in, where you play until your stack is gone, and fixed-hand games where you choose how many deals run before anyone looks at a card and buy in again whenever you need more chips.",
-    cta: 'Browse Contests',
-    href: '/contests',
-    image: imageAssetUrl('home-knockout.webp'),
-    imageAlt: 'Stylish player holding pocket cards at a green felt table',
-    imageFirst: true,
-  },
-  {
-    title: 'Open Tables',
-    body: "Hold'em that runs the way a home game does, no set number of hands and no cap on buy-ins, so you can add chips whenever your stack runs low and leave when the night feels done.",
-    cta: 'Join a Table',
-    href: '/play?mode=join',
-    image: imageAssetUrl('poker-chip-shuffle.svg'),
-    imageAlt: 'POKR chips stacking for a fixed-round session',
-    imageFirst: false,
-  },
-  {
-    title: 'Community and Social',
-    body: 'Add friends by username, gather them into groups for the different circles you play with, and pull a group straight to a table when it is time to deal.',
-    cta: 'Play with Friends',
-    href: '/friends',
-    image: imageAssetUrl('home-host.webp'),
-    imageAlt: 'Gloved hand holding a branded chip token',
-    imageFirst: true,
-  },
-  {
-    title: 'Challenge 1v1',
-    body: 'When you only want one opponent, open your friends list, choose the person, and send a challenge that leaves the table to the two of you and the board between you.',
-    cta: 'Challenge a Friend',
-    href: '/friends',
-    image: imageAssetUrl('home-challenge.webp'),
-    imageAlt: 'Two players in a heads-up challenge',
-    imageFirst: false,
-  },
-  {
-    title: 'Offline arena',
-    body: "Play Hold'em against bots with no connection. Practice lines and timing offline, then jump into live modes when you're ready.",
-    cta: 'Offline',
-    href: '/solo',
-    image: imageAssetUrl('home-offline.webp'),
-    imageAlt: 'Stack of red and white chips',
-    imageFirst: true,
-  },
-  {
-    title: 'Chat with Bots',
-    body: 'Talk to BanterBot for sharp roasts — no table required.',
-    cta: 'Open Chat',
-    href: '/chat',
-    image: imageAssetUrl('home-offline.webp'),
-    imageAlt: 'Chat with BanterBot',
-    imageFirst: false,
-  },
-];
 
-export function HomeLanding() {
+export { DEFAULT_HOME_FEATURES } from '@/lib/homeFeaturesDefaults';
+
+export function HomeLanding({
+  initialFeatures,
+  initialHomeFeatures,
+  initialHomeFeaturesByTheme,
+}: {
+  initialFeatures: HomeLandingFeature[];
+  initialHomeFeatures?: HomeLandingFeature[];
+  initialHomeFeaturesByTheme?: Partial<HomeFeaturesByTheme>;
+}) {
   const uiTheme = useUiTheme();
   const lobbyNav = useLobbyNav();
-  const [homeFeatures, setHomeFeatures] = useState<HomeLandingFeature[] | undefined>();
+  const [homeFeatures, setHomeFeatures] = useState<HomeLandingFeature[] | undefined>(
+    initialHomeFeatures,
+  );
   const [homeFeaturesByTheme, setHomeFeaturesByTheme] = useState<
     Partial<HomeFeaturesByTheme> | undefined
-  >();
+  >(initialHomeFeaturesByTheme);
 
   useEffect(() => {
     let cancelled = false;
@@ -86,79 +41,29 @@ export function HomeLanding() {
         setHomeFeaturesByTheme(data.homeFeaturesByTheme);
       })
       .catch(() => {
-        /* keep defaults */
+        /* keep server-provided or defaults */
       });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const features = (
-    pickHomeFeaturesForTheme(homeFeaturesByTheme, homeFeatures, uiTheme) ?? DEFAULT_HOME_FEATURES
-  ).filter((f) => !isHrefHiddenByLobbyNav(lobbyNav, f.href));
+  const features = useMemo(() => {
+    const picked =
+      pickHomeFeaturesForTheme(homeFeaturesByTheme, homeFeatures, uiTheme) ??
+      initialFeatures ??
+      DEFAULT_HOME_FEATURES;
+    return filterHomeFeaturesByLobbyNav(picked, lobbyNav);
+  }, [homeFeatures, homeFeaturesByTheme, uiTheme, lobbyNav, initialFeatures]);
 
   return (
-    <div className="mx-auto w-full mt-32 max-w-5xl pb-12 pt-2 sm:pb-20 sm:pt-4 lg:pt-6">
-      <div className="flex flex-col gap-16 sm:gap-20 lg:gap-28">
-        {features.map((feature, i) => (
-          <FeatureRow key={`${feature.title}-${i}`} feature={feature} index={i} />
-        ))}
-      </div>
-
+    <div className="mx-auto w-full max-w-5xl pb-12 pt-10 sm:pb-20 sm:pt-14 lg:pt-16">
+      <HomeFeatureRows features={features} />
       <HomeAuthFooter />
       <LegalLinks
         className="mt-10 text-xs text-muted"
         linkClassName="underline-offset-4 hover:text-primary hover:underline"
       />
     </div>
-  );
-}
-
-function FeatureRow({ feature, index }: { feature: HomeLandingFeature; index: number }) {
-  const delayClass =
-    index === 0
-      ? ''
-      : index === 1
-        ? 'lobby-fade-up-delay-1'
-        : index === 2
-          ? 'lobby-fade-up-delay-2'
-          : 'lobby-fade-up-delay-3';
-
-  const imageOrder = feature.imageFirst ? 'order-1' : 'order-1 lg:order-2';
-  const textOrder = feature.imageFirst ? 'order-2' : 'order-2 lg:order-1';
-
-  return (
-    <section
-      className={`lobby-fade-up ${delayClass} grid items-center gap-6 sm:gap-8 lg:grid-cols-2 lg:gap-12 xl:gap-16`}
-    >
-      <div className={`relative mx-auto w-full max-w-[20rem] sm:max-w-sm lg:max-w-none ${imageOrder}`}>
-        <div className="relative aspect-square w-full sm:aspect-[5/4]">
-          <Image
-            src={resolvePublicImage(feature.image)}
-            alt={feature.imageAlt}
-            fill
-            unoptimized={feature.image.endsWith('.svg')}
-            className="object-contain object-center drop-shadow-[0_12px_28px_rgb(29_4_50/0.12)]"
-            sizes="(max-width: 1024px) 80vw, 38vw"
-            priority={index === 0}
-          />
-        </div>
-      </div>
-
-      <div className={`min-w-0 text-center sm:text-left ${textOrder}`}>
-        <h2 className="font-display text-[clamp(1.85rem,3.8vw,2.85rem)] font-bold leading-[1.1] tracking-tight text-primary">
-          {feature.title}
-        </h2>
-        <p className="mx-auto mt-3 max-w-md text-[0.98rem] leading-relaxed text-muted sm:mx-0 sm:mt-4 sm:text-lg">
-          {feature.body}
-        </p>
-        <Link
-          href={feature.href}
-          className="mt-6 inline-flex min-h-10 items-center justify-center rounded-full bg-sidebar px-8 py-2.5 text-xs font-display font-bold uppercase tracking-[0.16em] text-on-chrome shadow-[0_8px_22px_rgb(29_4_50/0.2)] transition duration-base ease-out hover:brightness-110 active:scale-[0.98] sm:mt-8"
-        >
-          {feature.cta}
-        </Link>
-      </div>
-    </section>
   );
 }

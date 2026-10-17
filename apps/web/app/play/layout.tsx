@@ -1,9 +1,12 @@
 import type { Metadata } from 'next';
+import { DEFAULT_PAGES_COPY } from '@/lib/pageCopy';
 import { pageJsonLd, publicPageMetadata } from '@/lib/site';
 
 const title = 'Host or join a table';
-const description =
-  "Host a private No-Limit Texas Hold'em table or join with an invite code. Play free on pokr.site.";
+const description = `${DEFAULT_PAGES_COPY.host.subtitle} ${DEFAULT_PAGES_COPY.join.subtitle}`.replace(
+  /\s+/g,
+  ' ',
+);
 const path = '/play';
 
 export const metadata: Metadata = publicPageMetadata({ title, description, path });

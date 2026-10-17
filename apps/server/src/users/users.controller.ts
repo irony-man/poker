@@ -37,6 +37,7 @@ import { StorageService } from '../storage/storage.service.js';
 import { WalletService } from '../wallet/wallet.service.js';
 import { listTrailFromQuery } from '../wallet/wallet-trail.query.js';
 import { SiteConfigService } from '../site-config/site-config.service.js';
+import { clampTableLayout } from '../table-layout.js';
 import {
   clampCardThemeId,
   resolveDefaultCardThemeId,
@@ -58,7 +59,7 @@ function toMeProfile(
     tableColorId: user.tableColorId,
     cardThemeId: user.cardThemeId,
     uiTheme: resolveUiLook(uiLooks, user.uiTheme),
-    tableLayout: user.tableLayout ?? 'v1',
+    tableLayout: clampTableLayout(user.tableLayout),
     sfxMuted: user.sfxMuted === true,
     keyboardShortcuts: clampKeyboardShortcuts(user.keyboardShortcuts ?? {}),
     email: user.email,

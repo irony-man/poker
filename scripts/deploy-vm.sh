@@ -35,12 +35,20 @@ for i in $(seq 1 30); do
 done
 
 echo "==> checking web"
-code="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/ || true)"
-echo "web HTTP $code"
-if [[ "$code" != "200" && "$code" != "304" ]]; then
-  docker compose logs --tail=80 web
-  exit 1
-fi
+for i in $(seq 1 30); do
+  code="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/ 2>/dev/null || true)"
+  if [[ "$code" == "200" || "$code" == "304" ]]; then
+    echo "web HTTP $code"
+    break
+  fi
+  if [[ "$i" -eq 30 ]]; then
+    echo "error: web check failed (last HTTP $code)" >&2
+    docker compose ps
+    docker compose logs --tail=80 web
+    exit 1
+  fi
+  sleep 2
+done
 
 docker compose ps
 echo "==> deploy ok"

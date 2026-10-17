@@ -86,6 +86,7 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
   const abortRef = useRef<AbortController | null>(null);
   const userId = useSession((s) => s.userId);
   const displayName = useSession((s) => s.name);
+  const avatarUrl = useSession((s) => s.avatarUrl);
   const [avatarId, setAvatarId] = useState(0);
 
   useEffect(() => {
@@ -345,6 +346,7 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
                 {isUser ? (
                   <PlayerAvatar
                     avatarId={avatarId}
+                    avatarUrl={avatarUrl}
                     userId={userId}
                     size={MESSAGE_AVATAR_SIZE}
                     className="bot-chat-user-avatar ring-2 ring-sidebar/20"

@@ -191,6 +191,7 @@ function ProfilePageInner() {
   const setChipBalance = useSession((s) => s.setChipBalance);
   const setWhuffieBalance = useSession((s) => s.setWhuffieBalance);
   const setCardThemeId = useSession((s) => s.setCardThemeId);
+  const setAvatarUrl = useSession((s) => s.setAvatarUrl);
   const clearSession = useSession((s) => s.clearSession);
   const { pendingCount } = useOnlineFriends();
   const [profile, setProfile] = useState<MeProfile | null>(null);
@@ -357,6 +358,7 @@ function ProfilePageInner() {
       setWhuffieBalance(me.whuffieBalance);
       setFriendCount(me.friendCount ?? 0);
       saveAvatarId(me.avatarId);
+      setAvatarUrl(me.avatarUrl);
       saveTableColorId(me.tableColorId);
       saveUiTheme(me.uiTheme);
       saveTableLayout(me.tableLayout);
@@ -391,6 +393,7 @@ function ProfilePageInner() {
       if (!putRes.ok) throw new Error('Upload failed');
       const me = await updateMe(token, { avatarUrl: publicUrl });
       setProfile(me);
+      setAvatarUrl(me.avatarUrl);
       setChipBalance(me.chipBalance);
       setWhuffieBalance(me.whuffieBalance);
       setFriendCount(me.friendCount ?? 0);

@@ -95,6 +95,7 @@ export function LobbySidebar({
   const username = useSession((s) => s.username);
   const chipBalance = useSession((s) => s.chipBalance);
   const whuffieBalance = useSession((s) => s.whuffieBalance);
+  const avatarUrl = useSession((s) => s.avatarUrl);
   const { pendingCount, sentCount } = useOnlineFriends();
   const lobbyNav = useLobbyNav();
   const hostBotGroupsNew = useNewFeature('host-bot-groups');
@@ -314,6 +315,7 @@ export function LobbySidebar({
                   <span className="relative shrink-0">
                     <PlayerAvatar
                       avatarId={avatarId}
+                      avatarUrl={avatarUrl}
                       userId={userId}
                       size={40}
                       className="ring-1 ring-mushroom/25"

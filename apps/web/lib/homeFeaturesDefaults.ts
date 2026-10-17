@@ -5,7 +5,7 @@ import type { HomeLandingFeature } from '@/lib/api';
 export const DEFAULT_HOME_FEATURES: HomeLandingFeature[] = [
   {
     title: 'Play Contests',
-    body: "Knockout tables with no buy-in, where you play until your stack is gone, and fixed-hand games where you choose how many deals run before anyone looks at a card and buy in again whenever you need more chips.",
+    body: "Knockout tables where you play until your stack is gone, and fixed-hand games where you choose how many deals run before anyone looks at a card. Everyone buys in for the same stack and the winner takes the whole pot.",
     cta: 'Browse Contests',
     href: '/contests',
     image: imageAssetUrl('home-knockout.webp'),

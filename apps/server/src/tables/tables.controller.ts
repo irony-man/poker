@@ -11,7 +11,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { CreateTableBodySchema, InviteFriendsBodySchema } from '@poker/protocol';
+import { CreateTableBodySchema, InviteFriendsBodySchema, validateStakes } from '@poker/protocol';
 import type { User } from '../auth/auth.types.js';
 import { CurrentUser, SessionAuthGuard } from '../common/session-auth.guard.js';
 import { FriendsService } from '../friends/friends.service.js';
@@ -38,8 +38,9 @@ export class TablesController {
       throw new BadRequestException({ error: parsed.error.message });
     }
     const d = parsed.data;
-    if (d.bigBlind < d.smallBlind) {
-      throw new BadRequestException({ error: 'bigBlind must be >= smallBlind' });
+    const stakesError = validateStakes(d.smallBlind, d.bigBlind, d.buyIn);
+    if (stakesError) {
+      throw new BadRequestException({ error: stakesError });
     }
     const maxBots = Math.max(0, d.maxSeats - 1);
     const bots = Math.min(d.botCount, maxBots);

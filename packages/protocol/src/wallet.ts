@@ -14,6 +14,8 @@ export type WalletTrailReason =
   | 'hand_win'
   | 'hand_loss'
   | 'contest_prize'
+  | 'contest_entry'
+  | 'contest_payout'
   | 'offline_win'
   | 'table_game'
   | 'admin_credit'

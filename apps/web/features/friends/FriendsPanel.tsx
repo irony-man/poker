@@ -1,13 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { LobbySplitCard } from '@/components/LobbySplitCard';
+import { NewBadge } from '@/components/NewBadge';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 import { Button } from '@/components/ui/Button';
+import { IconButton } from '@/components/ui/IconButton';
 import { Tabs } from '@/components/ui/Tabs';
 import { TextField } from '@/components/ui/TextField';
 import { imageAssetUrl, resolvePublicImage } from '@/lib/assets';
+import { markFeatureSeen } from '@/lib/newFeatures';
+import { useNewFeature } from '@/lib/useNewFeature';
 import {
   cancelFriendChallenge,
   cancelFriendRequest,
@@ -15,6 +19,7 @@ import {
   createFriendGroup,
   declineFriendChallenge,
   deleteFriendGroup,
+  dismissFriendSuggestion,
   inviteFriendGroup,
   joinFriendChallenge,
   registerContest,
@@ -24,14 +29,20 @@ import {
   updateFriendGroup,
   type FriendGroup,
   type FriendProfile,
+  type FriendSuggestion,
   type PendingChallenge,
 } from '@/lib/api';
+import { useFriendSuggestions } from '@/hooks/useFriendSuggestions';
 import { useFriendsSocial } from '@/hooks/useFriendsSocial';
 import { useConfirm } from '@/components/ConfirmPopover';
 import { publicProfileHref } from '@/lib/publicProfile';
 import { FriendGroups } from './FriendGroups';
 import { FriendInvites } from './FriendInvites';
+import { EmailInviteDialog } from './EmailInviteDialog';
+import { FriendLinkDialog } from './FriendLinkDialog';
 import { FriendList } from './FriendList';
+import { FriendSuggestions } from './FriendSuggestions';
+import { LinkIcon, MailIcon } from './icons';
 
 type SocialTab = 'pending' | 'friends' | 'groups';
 
@@ -100,6 +111,10 @@ export function FriendsPanel({
     flash,
     refresh,
   } = useFriendsSocial({ disabled, onFriendCountChange });
+  const { suggestions, removeSuggestion } = useFriendSuggestions({ disabled });
+  const [inviteDialog, setInviteDialog] = useState<'link' | 'email' | null>(null);
+  const linkInviteNew = useNewFeature('friends-link-invite');
+  const closeInviteDialog = useCallback(() => setInviteDialog(null), []);
 
   const incomingPendingCount = incoming.length + challenges.length;
   const sentPendingCount = outgoing.length + outgoingChallenges.length;
@@ -201,10 +216,25 @@ export function FriendsPanel({
       await sendFriendRequest(targetUserId, auth());
       setSearchQuery('');
       setSearchResults([]);
+      removeSuggestion(targetUserId);
       flash('Friend request sent');
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add friend');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function onDismissSuggestion(suggestion: FriendSuggestion) {
+    setBusy(`dismiss-${suggestion.userId}`);
+    setError(null);
+    try {
+      await dismissFriendSuggestion(suggestion.userId, auth());
+      removeSuggestion(suggestion.userId);
+      flash('Suggestion hidden');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not hide suggestion');
     } finally {
       setBusy(null);
     }
@@ -470,6 +500,45 @@ export function FriendsPanel({
     </div>
   );
 
+  const inviteButtons = (
+    <>
+      {userId && (
+        <div className="grid grid-cols-2 gap-2">
+          <div className="relative min-w-0">
+            <IconButton
+              className="w-full px-3"
+              variant='chrome'
+              icon={<LinkIcon />}
+              label="Friend Link"
+              disabled={disabled}
+              onClick={() => {
+                markFeatureSeen('friends-link-invite');
+                setInviteDialog('link');
+              }}
+            >
+              Friend Link
+            </IconButton>
+            {linkInviteNew ? (
+              <NewBadge tone="light" className="pointer-events-none absolute -right-1.5 -top-2" />
+            ) : null}
+          </div>
+          <IconButton
+            className="w-full px-3"
+            variant='chrome'
+            icon={<MailIcon />}
+            label="Email Invite"
+            disabled={disabled}
+            onClick={() => setInviteDialog('email')}
+          >
+            Email Invite
+          </IconButton>
+        </div>
+      )}
+      <FriendLinkDialog open={inviteDialog === 'link'} onClose={closeInviteDialog} />
+      <EmailInviteDialog open={inviteDialog === 'email'} onClose={closeInviteDialog} />
+    </>
+  );
+
   const socialBody = (
     <>
       {(error || loadError) && (
@@ -492,42 +561,23 @@ export function FriendsPanel({
       )}
 
       <div className="min-w-0">
-        {variant !== 'embedded' ? (
-          <Tabs
-            label="Friends, pending, and groups"
-            variant="segmented"
-            idPrefix="social-tab"
-            selected={socialTab}
-            onSelect={setSocialTab}
-            disabled={disabled}
-            options={[
-              {
-                id: 'pending',
-                label: pendingTabLabel,
-                panelId: 'social-panel-pending',
-              },
-              { id: 'friends', label: 'Friends', panelId: 'social-panel-friends' },
-              { id: 'groups', label: 'Groups', panelId: 'social-panel-groups' },
-            ]}
-          />
-        ) : (
-          <Tabs
-            label="Friends and pending"
-            variant="segmented"
-            idPrefix="social-embed-tab"
-            selected={socialTab === 'groups' ? 'friends' : socialTab}
-            onSelect={(id) => setSocialTab(id)}
-            disabled={disabled}
-            options={[
-              {
-                id: 'pending',
-                label: pendingTabLabel,
-                panelId: 'social-panel-pending',
-              },
-              { id: 'friends', label: 'Friends', panelId: 'social-panel-friends' },
-            ]}
-          />
-        )}
+        <Tabs
+          label="Friends, pending, and groups"
+          variant="segmented"
+          idPrefix="social-tab"
+          selected={socialTab}
+          onSelect={setSocialTab}
+          disabled={disabled}
+          options={[
+            {
+              id: 'pending',
+              label: pendingTabLabel,
+              panelId: 'social-panel-pending',
+            },
+            { id: 'friends', label: 'Friends', panelId: 'social-panel-friends' },
+            { id: 'groups', label: 'Groups', panelId: 'social-panel-groups' },
+          ]}
+        />
 
         {socialTab === 'pending' ? (
           <section
@@ -552,7 +602,7 @@ export function FriendsPanel({
           </section>
         ) : null}
 
-        {variant !== 'embedded' && socialTab === 'groups' && (
+        {socialTab === 'groups' && (
           <FriendGroups
             groups={groups}
             friends={friends}
@@ -609,11 +659,27 @@ export function FriendsPanel({
     </>
   );
 
+  const friendsPages = (
+    <>
+      {inviteButtons}
+      {playerSearch}
+      {userId && !searchQuery.trim() && (
+        <FriendSuggestions
+          suggestions={suggestions}
+          busy={busy}
+          disabled={disabled}
+          onAdd={(id) => void onAddFriend(id)}
+          onDismiss={(s) => void onDismissSuggestion(s)}
+        />
+      )}
+      {socialBody}
+    </>
+  );
+
   if (variant === 'embedded') {
     return (
-      <div className="flex min-w-0 flex-col gap-4 sm:gap-5">
-        {playerSearch}
-        {socialBody}
+      <div className="flex min-w-0 flex-col gap-4 sm:gap-5">   
+        {friendsPages}
       </div>
     );
   }
@@ -622,9 +688,11 @@ export function FriendsPanel({
     <LobbySplitCard
       imageSrc={resolvePublicImage(imageSrc || imageAssetUrl('home-host.webp'))}
       imageAlt={imageAlt || 'Invite friends to your table'}
-      mediaHeader={playerSearch}
+      // mediaHeader={playerSearch}
+      imageRight
+      alignTop
     >
-      {socialBody}
+      {friendsPages}
     </LobbySplitCard>
   );
 }

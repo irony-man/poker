@@ -56,6 +56,17 @@ const apiRewriteTarget = (
 
 const isDev = process.env.NODE_ENV === 'development';
 
+/** Admin subdomain hostname (e.g. admin.pokr.site), or '' when admin lives at /admin. Next `has: host` ignores the port. */
+const adminHost = (() => {
+  const raw = process.env.NEXT_PUBLIC_ADMIN_URL?.trim();
+  if (!raw) return '';
+  try {
+    return new URL(raw).hostname;
+  } catch {
+    return '';
+  }
+})();
+
 const nextConfig: NextConfig = {
   transpilePackages: ['@poker/protocol', '@poker/engine', '@letele/playing-cards'],
   poweredByHeader: false,
@@ -76,6 +87,15 @@ const nextConfig: NextConfig = {
         source: '/:path*',
         headers: securityHeaders,
       },
+      ...(adminHost
+        ? [
+            {
+              source: '/:path*',
+              has: [{ type: 'host' as const, value: adminHost }],
+              headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
+            },
+          ]
+        : []),
     ];
   },
   async redirects() {

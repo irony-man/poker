@@ -16,7 +16,7 @@ import {
 } from '@poker/protocol';
 import { isBotUserId } from '../bot.js';
 import { Room, RoomManager } from '../rooms/room.js';
-import type { WalletStore } from '../wallet/wallet.constants.js';
+import { WalletError, type WalletStore } from '../wallet/wallet.constants.js';
 import type { ContestPersistence, PersistedContest } from './contest.store.js';
 import { UnlimitedWalletStore } from '../wallet/wallet.store.js';
 
@@ -30,6 +30,8 @@ export interface CreateContestOpts {
   smallBlind: number;
   bigBlind: number;
   turnTimeMs: number;
+  /** Wallet chips each entrant pays (0 = free). */
+  entryFee?: number;
   /** Deprecated; ignored — contests are humans-only. */
   botCount: number;
   isPrivate: boolean;
@@ -56,6 +58,8 @@ export interface ContestState {
   smallBlind: number;
   bigBlind: number;
   turnTimeMs: number;
+  /** Wallet chips each entrant pays (0 = free). */
+  entryFee: number;
   isPrivate: boolean;
   autoStart: boolean;
   /** Fixed hands for rounds mode; null for chips. */
@@ -77,8 +81,8 @@ export interface ContestState {
   /** Tables owned by this contest. */
   tableIds: Set<string>;
   /**
-   * Humans charged a `startingStack` chip buy-in before contests stopped using the wallet.
-   * Only legacy persisted contests have entries; they are refunded on restore.
+   * Humans whose wallet entry is held by this contest: `entryFee` for paid contests, or
+   * `startingStack` for legacy snapshots saved before contests went free (refunded on restore).
    */
   entryPaid: Set<string>;
   /** userId → stack after the last finished hand / top-up; used to refund if a restart interrupts play. */
@@ -157,13 +161,19 @@ export class TournamentManager {
         await this.refundLegacyEntries(c);
       } else if (c.status === 'running') {
         await this.cancelInterrupted(c);
+      } else if (c.status === 'completed' && c.entryFee > 0) {
+        this.payWinner(c, null);
+        this.persist(c);
       }
     }
   }
 
-  /** Return chip buy-ins collected before contests stopped using the wallet. */
+  /**
+   * Return chip buy-ins collected before contests stopped using the wallet.
+   * Paid contests (`entryFee > 0`) keep their entries while registering.
+   */
   private async refundLegacyEntries(c: ContestState): Promise<void> {
-    if (c.entryPaid.size === 0) return;
+    if (c.entryFee > 0 || c.entryPaid.size === 0) return;
     for (const userId of [...c.entryPaid]) {
       if (isBotUserId(userId)) {
         c.entryPaid.delete(userId);
@@ -185,7 +195,11 @@ export class TournamentManager {
     for (const e of c.entrants) {
       if (e.isBot || isBotUserId(e.userId)) continue;
       if (!c.entryPaid.has(e.userId) || settled.has(e.userId)) continue;
-      const amount = Math.max(0, Math.floor(c.lastStacks.get(e.userId) ?? c.startingStack));
+      // Paid contests refund the entry; legacy contests refund the last known stack.
+      const amount =
+        c.entryFee > 0
+          ? c.entryFee
+          : Math.max(0, Math.floor(c.lastStacks.get(e.userId) ?? c.startingStack));
       try {
         if (amount > 0) await this.wallet.credit(e.userId, amount, 'cash_out', c.id);
         settled.add(e.userId);
@@ -230,6 +244,7 @@ export class TournamentManager {
       smallBlind: c.smallBlind,
       bigBlind: c.bigBlind,
       turnTimeMs: c.turnTimeMs,
+      entryFee: c.entryFee,
       isPrivate: c.isPrivate,
       autoStart: c.autoStart,
       handLimit: c.handLimit,
@@ -268,6 +283,7 @@ export class TournamentManager {
       smallBlind: p.smallBlind,
       bigBlind: p.bigBlind,
       turnTimeMs: p.turnTimeMs,
+      entryFee: p.entryFee ?? 0,
       isPrivate: p.isPrivate,
       autoStart: p.autoStart,
       handLimit: p.handLimit,
@@ -300,6 +316,13 @@ export class TournamentManager {
 
     const handLimit = resolveHandLimit(opts.mode, opts.handLimit);
     const id = nanoid(10);
+    const entryFee = Math.max(0, Math.floor(opts.entryFee ?? 0));
+    const hostCharge = await this.debitEntry(id, entryFee, opts.hostUserId);
+    if (!hostCharge.ok) throw new Error(hostCharge.error);
+    if (this.byInvite.has(inviteCode)) {
+      if (hostCharge.paid) await this.creditEntry(id, entryFee, opts.hostUserId);
+      throw new Error('Room code already in use');
+    }
     // Contests are humans-only; ignore legacy botCount from older clients.
     const botFillMax = 0;
     const contest: ContestState = {
@@ -315,6 +338,7 @@ export class TournamentManager {
       smallBlind: opts.smallBlind,
       bigBlind: opts.bigBlind,
       turnTimeMs: opts.turnTimeMs,
+      entryFee,
       isPrivate: opts.isPrivate,
       autoStart: opts.autoStart,
       handLimit,
@@ -341,6 +365,7 @@ export class TournamentManager {
       isBot: false,
       registeredAt: Date.now(),
     });
+    if (hostCharge.paid) contest.entryPaid.add(opts.hostUserId);
 
     this.contests.set(id, contest);
     this.byInvite.set(inviteCode, id);
@@ -364,6 +389,22 @@ export class TournamentManager {
       return { ok: true, contest: this.toView(c) };
     }
     if (c.entrants.length >= c.fieldSize) return { ok: false, error: 'Contest full' };
+
+    const charge = await this.debitEntry(c.id, c.entryFee, userId);
+    if (!charge.ok) return { ok: false, error: charge.error };
+    // State may have changed while the debit was in flight.
+    const alreadyIn = c.entrants.some((e) => e.userId === userId);
+    const lateError =
+      c.status !== 'registering'
+        ? 'Registration closed'
+        : !alreadyIn && c.entrants.length >= c.fieldSize
+          ? 'Contest full'
+          : null;
+    if (alreadyIn || lateError) {
+      if (charge.paid) await this.creditEntry(c.id, c.entryFee, userId);
+      return lateError ? { ok: false, error: lateError } : { ok: true, contest: this.toView(c) };
+    }
+    if (charge.paid) c.entryPaid.add(userId);
 
     c.entrants.push({
       userId,
@@ -397,10 +438,51 @@ export class TournamentManager {
       return { ok: true, contest: this.toView(c) };
     }
 
+    const entrant = c.entrants.find((e) => e.userId === userId)!;
     c.entrants = c.entrants.filter((e) => e.userId !== userId);
+    if (c.entryPaid.delete(userId)) {
+      const refunded = await this.creditEntry(c.id, c.entryFee, userId);
+      if (!refunded) {
+        c.entryPaid.add(userId);
+        if (c.status === 'registering' && !c.entrants.some((e) => e.userId === userId)) {
+          c.entrants.push(entrant);
+        }
+        return { ok: false, error: 'Could not refund the entry fee. Please try again.' };
+      }
+    }
     this.broadcast(c.id);
     this.notifyListChange(c);
     return { ok: true, contest: this.toView(c) };
+  }
+
+  /** Debit a paid entry; `paid` is false for free contests and bots. */
+  private async debitEntry(
+    contestId: string,
+    entryFee: number,
+    userId: string,
+  ): Promise<{ ok: true; paid: boolean } | { ok: false; error: string }> {
+    if (entryFee <= 0 || isBotUserId(userId)) return { ok: true, paid: false };
+    try {
+      await this.wallet.debit(userId, entryFee, 'contest_entry', contestId);
+      return { ok: true, paid: true };
+    } catch (err) {
+      if (err instanceof WalletError && err.code === 'insufficient') {
+        return { ok: false, error: 'Not enough chips for this entry fee' };
+      }
+      console.error('[wallet] contest entry debit failed', contestId, userId, err);
+      return { ok: false, error: 'Could not take the entry fee' };
+    }
+  }
+
+  /** Refund one paid entry; returns false (and logs) when the wallet credit fails. */
+  private async creditEntry(contestId: string, entryFee: number, userId: string): Promise<boolean> {
+    try {
+      await this.wallet.credit(userId, entryFee, 'cash_out', contestId);
+      return true;
+    } catch (err) {
+      console.error('[wallet] contest entry refund failed', contestId, userId, err);
+      return false;
+    }
   }
 
   /**
@@ -426,6 +508,7 @@ export class TournamentManager {
     if (c.status !== 'registering') return;
     c.status = 'cancelled';
     c.completedAt = Date.now();
+    await this.refundPaidEntries(c);
     this.broadcastEvent(c.id, {
       type: 'contest_event',
       contestId: c.id,
@@ -434,6 +517,18 @@ export class TournamentManager {
     });
     this.broadcast(c.id);
     this.notifyListChange(c);
+  }
+
+  /** Refund every paid entry once (tracked in `walletSettled`). */
+  private async refundPaidEntries(c: ContestState): Promise<void> {
+    if (c.entryFee <= 0) return;
+    const settled = this.walletSettled.get(c.id) ?? new Set<string>();
+    this.walletSettled.set(c.id, settled);
+    for (const userId of [...c.entryPaid]) {
+      if (settled.has(userId)) continue;
+      settled.add(userId);
+      if (!(await this.creditEntry(c.id, c.entryFee, userId))) settled.delete(userId);
+    }
   }
 
   async start(
@@ -599,7 +694,8 @@ export class TournamentManager {
   private openTable(c: ContestState): void {
     const n = c.entrants.length;
     const level = c.schedule[0]!;
-    const allowTopUp = c.mode === 'rounds';
+    // Paid contests play the stake everyone bought; top-ups would bypass the entry fee.
+    const allowTopUp = c.mode === 'rounds' && c.entryFee === 0;
     const meta = this.rooms.create({
       name: `${c.name} — Table`,
       hostUserId: c.hostUserId,
@@ -796,6 +892,37 @@ export class TournamentManager {
     );
   }
 
+  /**
+   * Paid contests: the whole pot goes to first place, once (tracked in `walletSettled`).
+   * With no first place the entries are refunded instead.
+   */
+  private payWinner(c: ContestState, room: Room | null): void {
+    const pot = this.prizePool(c);
+    if (pot <= 0) return;
+    const winner = c.placements.find((p) => p.place === 1);
+    if (!winner) {
+      void this.refundPaidEntries(c).then(() => this.persist(c));
+      return;
+    }
+    winner.prizeChips = pot;
+    const settled = this.walletSettled.get(c.id) ?? new Set<string>();
+    this.walletSettled.set(c.id, settled);
+    if (settled.has(winner.userId)) return;
+    settled.add(winner.userId);
+    room?.systemChatPublic(
+      'Dealer',
+      `${winner.name} wins the ${pot.toLocaleString('en-US')} chip pot!`,
+    );
+    void this.wallet
+      .credit(winner.userId, pot, 'contest_payout', c.id)
+      .then((result) => room?.notifyWallet(winner.userId, result.balance))
+      .catch((err) => {
+        console.error('[wallet] contest payout failed', c.id, winner.userId, err);
+        settled.delete(winner.userId);
+        this.persist(c);
+      });
+  }
+
   private finishContest(c: ContestState, room: Room | null = null): void {
     if (c.status === 'completed') return;
     c.status = 'completed';
@@ -810,6 +937,7 @@ export class TournamentManager {
     const tableRoom =
       room ?? (c.tableId ? this.rooms.get(c.tableId) ?? null : null);
     this.payCompletionWhuffies(c, tableRoom);
+    this.payWinner(c, tableRoom);
     // Drop table assignments so clients stop routing back into the finished table.
     c.activeTableByUser.clear();
     if (tableRoom && !tableRoom.meta.tournament?.frozen) {
@@ -897,6 +1025,8 @@ export class TournamentManager {
       smallBlind: c.smallBlind,
       bigBlind: c.bigBlind,
       turnTimeMs: c.turnTimeMs,
+      entryFee: c.entryFee,
+      prizePool: this.prizePool(c),
       isPrivate: c.isPrivate,
       entrants: c.entrants.map((e) => ({
         userId: e.userId,
@@ -919,6 +1049,10 @@ export class TournamentManager {
       startedAt: c.startedAt,
       completedAt: c.completedAt,
     };
+  }
+
+  private prizePool(c: ContestState): number {
+    return c.entryFee > 0 ? c.entryFee * c.entryPaid.size : 0;
   }
 
   private allocateInviteCode(): string {

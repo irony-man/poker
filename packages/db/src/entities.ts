@@ -303,6 +303,8 @@ export type ChipLedgerReason =
   | 'top_up'
   | 'hand_win'
   | 'hand_loss'
+  | 'contest_entry'
+  | 'contest_payout'
   | 'admin_credit'
   | 'admin_reset'
   | 'opening_balance';

@@ -77,7 +77,7 @@ export function FriendList({
                 disabled={
                   disabled || busy === `remove-${f.userId}` || busy === `challenge-${f.userId}`
                 }
-                tone="ghost"
+                tone="danger"
                 onClick={() => onRemoveFriend(f)}
               >
                 {busy === `remove-${f.userId}` ? (

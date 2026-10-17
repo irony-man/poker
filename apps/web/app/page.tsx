@@ -37,7 +37,7 @@ export default async function HomePage() {
         initialHomeFeatures={site.homeFeatures}
         initialHomeFeaturesByTheme={site.homeFeaturesByTheme}
       />
-      <HomeFaq />
+      {/* <HomeFaq /> */}
     </>
   );
 }

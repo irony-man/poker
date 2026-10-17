@@ -521,13 +521,15 @@ body > * {
     @apply inline-flex items-center justify-center rounded-full border border-sidebar/30 bg-transparent px-4 py-2 text-xs font-display font-bold uppercase tracking-wider text-sidebar transition hover:border-sidebar hover:bg-sidebar/5 disabled:opacity-50;
   }
 
+  /* Darkened from --positive so white text stays readable (about 4.6:1). */
   .btn-positive {
-    @apply rounded-lg border bg-positive/10 px-3 py-2 text-sm font-medium text-positive transition disabled:opacity-50;
-    border-color: rgb(var(--positive) / 0.35);
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50;
+    background-color: color-mix(in srgb, rgb(var(--positive)) 80%, black);
+    border-color: color-mix(in srgb, rgb(var(--positive)) 65%, black);
   }
 
-  .btn-positive:hover {
-    background-color: rgb(var(--positive) / 0.15);
+  .btn-positive:hover:not(:disabled) {
+    background-color: color-mix(in srgb, rgb(var(--positive)) 68%, black);
   }
 
   .btn-danger-quiet {
@@ -1648,6 +1650,12 @@ html[data-ui-theme='v2'] .btn-secondary,
 html[data-ui-theme='v2'] .btn-pill {
   border: 3px solid #000;
   box-shadow: 3px 3px 0 0 #000;
+}
+
+html[data-ui-theme='v2'] .btn-positive {
+  border: 3px solid #000;
+  box-shadow: 3px 3px 0 0 #000;
+  border-radius: var(--radius-md);
 }
 
 html[data-ui-theme='v2'] .hud-input,

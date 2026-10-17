@@ -6,7 +6,11 @@ import { ChoiceRow } from '@/components/ChoiceRow';
 import { BotGroupPicker } from '@/components/BotGroupPicker';
 import { FriendInvitePicker } from '@/components/FriendInvitePicker';
 import { NewBadge } from '@/components/NewBadge';
-import { StakeChoiceRow } from '@/components/StakeChoiceRow';
+import {
+  presetStakeSelection,
+  StakeChoiceRow,
+  type StakeSelection,
+} from '@/components/StakeChoiceRow';
 import { Button } from '@/components/ui/Button';
 import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
 import { TextField } from '@/components/ui/TextField';
@@ -15,7 +19,7 @@ import { DEFAULT_BOT_GROUP_LABELS } from '@/lib/api';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
 import { markFeatureSeen } from '@/lib/newFeatures';
 import { useNewFeature } from '@/lib/useNewFeature';
-import { DEFAULT_STAKE_ID, STAKE_PRESETS, stakeById } from '@poker/protocol';
+import { DEFAULT_STAKE_ID } from '@poker/protocol';
 
 const SEAT_OPTIONS = [2, 3, 4, 5, 6, 7, 8, 9] as const;
 
@@ -39,6 +43,9 @@ export function HostTableForm({
   ]);
   const [botGroupId, setBotGroupId] = useState<string | null>(null);
   const [hostStakeId, setHostStakeId] = useState(DEFAULT_STAKE_ID);
+  const [stakes, setStakes] = useState<StakeSelection>(() =>
+    presetStakeSelection(DEFAULT_STAKE_ID),
+  );
   const [customRoomCode, setCustomRoomCode] = useState('');
   const [inviteFriendIds, setInviteFriendIds] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -79,12 +86,15 @@ export function HostTableForm({
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
+    if (stakes.error) {
+      onError(stakes.error);
+      return;
+    }
     enterMobileFullscreen();
     setBusy(true);
     onError(null);
     try {
       const session = await ensureSession();
-      const stake = stakeById(hostStakeId) ?? STAKE_PRESETS[1]!;
       const code = customRoomCode.trim();
       if (code && !/^\d{4,8}$/.test(code)) {
         onError('Room code must be 4–8 digits');
@@ -94,9 +104,9 @@ export function HostTableForm({
       const table = await createTable(
         {
           name: `${session.name}'s Table`,
-          smallBlind: stake.smallBlind,
-          bigBlind: stake.bigBlind,
-          buyIn: stake.buyIn,
+          smallBlind: stakes.smallBlind,
+          bigBlind: stakes.bigBlind,
+          buyIn: stakes.stack,
           turnTimeMs: 20000,
           maxSeats,
           botCount,
@@ -122,7 +132,9 @@ export function HostTableForm({
         name="host-stakes"
         selected={hostStakeId}
         onSelect={setHostStakeId}
+        onStakesChange={setStakes}
         disabled={disabled || busy}
+        allowCustom
       />
       <ChoiceRow
         label="Seats"

@@ -45,7 +45,7 @@ services:
       DATA_DIR: /app/data
       DATABASE_URL: postgres://poker:poker@postgres:5432/poker
       REDIS_URL: redis://redis:6379
-      WEB_ORIGIN: https://dev.pokr.site
+      WEB_ORIGIN: https://dev.pokr.site,https://admin.dev.pokr.site
       PUBLIC_WEB_URL: https://dev.pokr.site
       INSTAGRAM_REDIRECT_URI: https://dev.pokr.site/auth/instagram/callback
     ports:
@@ -77,6 +77,8 @@ services:
       dockerfile: apps/web/Dockerfile
       args:
         NEXT_PUBLIC_SITE_URL: https://dev.pokr.site
+        NEXT_PUBLIC_ADMIN_URL: https://admin.dev.pokr.site
+        NEXT_PUBLIC_TASK_TRACKER_URL: ${NEXT_PUBLIC_TASK_TRACKER_URL:-}
         NEXT_PUBLIC_API_URL: https://dev.pokr.site
         NEXT_PUBLIC_WS_URL: wss://dev.pokr.site/ws
         API_REWRITE_TARGET: http://server:4000

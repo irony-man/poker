@@ -4,10 +4,39 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { AuthService } from '../auth/auth.service.js';
 import type { AuthStore } from '../auth/auth.store.js';
+import type { User } from '../auth/auth.types.js';
 import { dataSourceAsQueryable } from '../database/queryable.js';
+import { MailService } from '../mail/mail.service.js';
+import { playerUserIdsFromResultJson } from '../history/history.store.js';
+import { HistoryService } from '../history/history.service.js';
 import { PresenceService } from '../presence/presence.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
-import { FriendsStore } from './friends.store.js';
+import { normalizeInviteEmails, splitInviteTargets } from './email-invites.js';
+import { FriendsStore, type FriendProfile } from './friends.store.js';
+import { rankSuggestions, type SuggestionReason } from './suggestions.js';
+
+/** Recent hands scanned for "played together" suggestions. */
+const SUGGESTION_HAND_SCAN = 200;
+export interface EmailInviteOutcome {
+  /** New friend requests sent to existing players. */
+  requested: number;
+  /** They had already asked you, so you are now friends. */
+  accepted: number;
+  /** Already friends, or your request was already pending. */
+  alreadyConnected: number;
+  /** Invite emails sent to addresses with no account. */
+  emailed: number;
+  /** Blocked by the 24h dedupe or daily cap, or failed to send. */
+  skipped: number;
+}
+
+export interface FriendSuggestionView extends FriendProfile {
+  online: boolean;
+  mutualCount: number;
+  mutualNames: string[];
+  handsTogether: number;
+  reason: SuggestionReason;
+}
 
 @Injectable()
 export class FriendsService implements OnModuleInit {
@@ -18,6 +47,8 @@ export class FriendsService implements OnModuleInit {
     private readonly auth: AuthService,
     private readonly presence: PresenceService,
     private readonly realtime: RealtimeService,
+    private readonly history: HistoryService,
+    private readonly mail: MailService,
     @InjectDataSource() private readonly dataSource: DataSource,
   ) {
     const dataDir = this.config.get<string>('DATA_DIR') ?? `${process.cwd()}/data`;
@@ -104,6 +135,146 @@ export class FriendsService implements OnModuleInit {
 
   searchUsers(query: string, excludeUserId: string) {
     return this.store.searchUsers(this.authStore(), query, excludeUserId);
+  }
+
+  private async handsTogetherCounts(userId: string): Promise<Map<string, number>> {
+    const counts = new Map<string, number>();
+    const hands = await this.history.listHandsForUser(userId, SUGGESTION_HAND_SCAN);
+    for (const hand of hands) {
+      for (const id of playerUserIdsFromResultJson(hand.resultJson)) {
+        if (id === userId) continue;
+        counts.set(id, (counts.get(id) ?? 0) + 1);
+      }
+    }
+    return counts;
+  }
+
+  async listSuggestions(userId: string): Promise<FriendSuggestionView[]> {
+    const [mutual, exclude, handsTogether] = await Promise.all([
+      this.store.mutualFriendCandidates(userId),
+      this.store.suggestionExclusions(userId),
+      this.handsTogetherCounts(userId).catch(() => new Map<string, number>()),
+    ]);
+    const auth = this.authStore();
+    for (const id of new Set([...mutual.keys(), ...handsTogether.keys()])) {
+      if (!auth.getUser(id)) exclude.add(id);
+    }
+    const ranked = rankSuggestions({
+      mutual,
+      handsTogether,
+      exclude,
+      nameOf: (id) => auth.getUser(id)?.name ?? id,
+    });
+    const out: FriendSuggestionView[] = [];
+    for (const s of ranked) {
+      const user = auth.getUser(s.userId);
+      if (!user) continue;
+      const mutualNames = s.mutualFriendIds
+        .map((id) => auth.getUser(id)?.name)
+        .filter((n): n is string => Boolean(n))
+        .sort((a, b) => a.localeCompare(b))
+        .slice(0, 2);
+      out.push({
+        userId: user.id,
+        name: user.name,
+        username: user.username,
+        avatarId: user.avatarId,
+        avatarUrl: user.avatarUrl,
+        online: this.presence.isOnline(user.id),
+        mutualCount: s.mutualFriendIds.length,
+        mutualNames,
+        handsTogether: s.handsTogether,
+        reason: s.reason,
+      });
+    }
+    return out;
+  }
+
+  dismissSuggestion(userId: string, targetUserId: string) {
+    return this.store.dismissSuggestion(userId, targetUserId);
+  }
+
+  async friendLink(userId: string): Promise<{ code: string; url: string }> {
+    const code = await this.store.getOrCreateFriendLink(userId);
+    return { code, url: this.mail.webLink(`/f/${code}`) };
+  }
+
+  /** Public owner card for the `/f/:code` landing page. */
+  async friendLinkOwner(code: string) {
+    const ownerId = await this.store.resolveFriendLink(code);
+    const owner = ownerId ? this.auth.getUser(ownerId) : null;
+    if (!owner) return null;
+    return {
+      userId: owner.id,
+      username: owner.username,
+      name: owner.name,
+      avatarId: owner.avatarId,
+      avatarUrl: owner.avatarUrl,
+    };
+  }
+
+  async redeemFriendLink(visitor: User, code: string) {
+    const result = await this.store.redeemFriendLink(visitor.id, code);
+    if (result.ok && result.result === 'friends') {
+      await this.notifyUsers(result.ownerId, visitor.id);
+    }
+    return result;
+  }
+
+  /**
+   * Verified emails of existing players get an in-app friend request. Every
+   * other address gets the invite email. All addresses count toward the daily cap.
+   */
+  async sendEmailInvites(user: User, emails: string[]): Promise<EmailInviteOutcome> {
+    const normalized = normalizeInviteEmails(emails, user.email);
+    const allowed = await this.store.recordEmailInvites(user.id, normalized);
+    const auth = this.authStore();
+    const { users, unknown } = splitInviteTargets(
+      allowed,
+      (email) => auth.getUserByVerifiedEmail(email)?.id,
+    );
+
+    const outcome: EmailInviteOutcome = {
+      requested: 0,
+      accepted: 0,
+      alreadyConnected: 0,
+      emailed: 0,
+      skipped: 0,
+    };
+    const notified: string[] = [];
+    for (const { userId } of users) {
+      if (userId === user.id) continue;
+      try {
+        const result = await this.store.requestFriendship(user.id, userId);
+        if (result === 'requested') outcome.requested += 1;
+        else if (result === 'accepted') outcome.accepted += 1;
+        else outcome.alreadyConnected += 1;
+        if (result === 'requested' || result === 'accepted') notified.push(userId);
+      } catch (err) {
+        console.error('[friends] invite friend request failed', err);
+      }
+    }
+    if (notified.length > 0) await this.notifyUsers(user.id, ...notified);
+
+    if (unknown.length > 0) {
+      const { url } = await this.friendLink(user.id);
+      for (const to of unknown) {
+        try {
+          await this.mail.sendFriendInvite(to, user.name, url);
+          outcome.emailed += 1;
+        } catch (err) {
+          console.error('[friends] invite email failed', err);
+        }
+      }
+    }
+
+    outcome.skipped =
+      normalized.length -
+      outcome.requested -
+      outcome.accepted -
+      outcome.alreadyConnected -
+      outcome.emailed;
+    return outcome;
   }
 
   async sendRequest(fromUserId: string, toUserId: string) {

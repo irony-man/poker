@@ -1,6 +1,10 @@
 /** "New" badges in the lobby; each clears once the player opens that feature. */
 
-export type NewFeatureId = 'profile-theme' | 'solo-bot-groups' | 'host-bot-groups';
+export type NewFeatureId =
+  | 'profile-theme'
+  | 'solo-bot-groups'
+  | 'host-bot-groups'
+  | 'friends-link-invite';
 
 /** Bump to badge every feature again for a new release. */
 const NEW_FEATURES_VERSION = 1;

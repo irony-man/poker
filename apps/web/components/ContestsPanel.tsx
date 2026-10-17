@@ -9,10 +9,13 @@ import {
   createContest,
 } from '@/lib/api';
 import { useSession } from '@/lib/store';
+import { formatMoneyLabel } from '@/lib/currency';
+import { DEFAULT_STAKE_ID } from '@poker/protocol';
 import { LobbySplitCard } from './LobbySplitCard';
 import { resolvePublicImage } from '@/lib/assets';
 import { ChoiceRow } from './ChoiceRow';
 import { FriendInvitePicker } from './FriendInvitePicker';
+import { presetStakeSelection, StakeChoiceRow, type StakeSelection } from './StakeChoiceRow';
 import { Button } from '@/components/ui/Button';
 import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
 import { StatusChip } from '@/components/ui/StatusChip';
@@ -36,21 +39,25 @@ const FORMAT_TABS: {
     points: [
       'Same stack for every seat at the start',
       "Bust out and you're eliminated",
-      'Last player standing wins — everyone earns 1 Whuffie when it finishes',
+      'Last player standing wins the pot — everyone earns 1 Whuffie when it finishes',
     ],
   },
   {
     id: 'rounds',
     label: 'Rounds',
     title: 'Fixed-hand session',
-    body: 'Play a set number of hands. Top-ups allowed if you go broke.',
+    body: 'Play a set number of hands. No top-ups once play begins.',
     points: [
-      'Top ups between hands when stack is zero',
+      'Same stack for every seat at the start',
       'Session ends after the hand limit',
-      'Stack rank decides place — everyone earns 1 Whuffie when it finishes',
+      'Highest stack wins the pot — everyone earns 1 Whuffie when it finishes',
     ],
   },
 ];
+
+function entryLabel(contest: Pick<ContestView, 'entryFee'>): string {
+  return contest.entryFee > 0 ? `${formatMoneyLabel(contest.entryFee)} chip entry` : 'Free';
+}
 
 function sizeBlurb(fieldSize: number): string {
   if (fieldSize === 2) return 'Max 2 seats — heads-up when the contest starts';
@@ -151,9 +158,14 @@ export function ContestsPanel({
   onJoinCode: (code: string) => Promise<void>;
 }) {
   const open = useSession((s) => s.publicContests);
+  const setChipBalance = useSession((s) => s.setChipBalance);
   const [mode, setMode] = useState<ContestMode>('chips');
   const [fieldSize, setFieldSize] = useState(6);
   const [handLimit, setHandLimit] = useState(20);
+  const [stakeId, setStakeId] = useState(DEFAULT_STAKE_ID);
+  const [stakes, setStakes] = useState<StakeSelection>(() =>
+    presetStakeSelection(DEFAULT_STAKE_ID),
+  );
   const [inviteFriendIds, setInviteFriendIds] = useState<string[]>([]);
   const [invite, setInvite] = useState('');
   const [busy, setBusy] = useState(false);
@@ -178,18 +190,23 @@ export function ContestsPanel({
       setError('Sign in to host a contest');
       return;
     }
+    if (stakes.error) {
+      setError(stakes.error);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
       const session = await onEnsureSession();
-      const { contest } = await createContest(
+      const { contest, chipBalance } = await createContest(
         {
           name: `${session.name}'s ${contestModeLabel(mode)} Contest`,
           mode,
           fieldSize,
-          startingStack: 1000,
-          smallBlind: 5,
-          bigBlind: 10,
+          startingStack: stakes.stack,
+          smallBlind: stakes.smallBlind,
+          bigBlind: stakes.bigBlind,
+          entryFee: stakes.stack,
           isPrivate: true,
           autoStart: false,
           handLimit: mode === 'rounds' ? handLimit : undefined,
@@ -197,6 +214,7 @@ export function ContestsPanel({
         },
         session.sessionToken,
       );
+      if (typeof chipBalance === 'number') setChipBalance(chipBalance);
       onOpenContest(contest.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
@@ -219,10 +237,11 @@ export function ContestsPanel({
     }
   }
 
+  const blindsLabel = stakes.error ? '' : ` · ${stakes.smallBlind}/${stakes.bigBlind}`;
   const ctaLabel =
-    mode === 'rounds'
+    (mode === 'rounds'
       ? `Create · max ${fieldSize} · ${handLimit} hands`
-      : `Create · max ${fieldSize} freezeout`;
+      : `Create · max ${fieldSize} freezeout`) + blindsLabel;
   const submitLabel =
     inviteFriendIds.length > 0
       ? `${ctaLabel} · invite ${inviteFriendIds.length}`
@@ -289,6 +308,23 @@ export function ContestsPanel({
           <p className="field-help mt-2.5">{sizeBlurb(fieldSize)}</p>
         </div>
 
+        <div className="min-w-0">
+          <StakeChoiceRow
+            name="contest-stakes"
+            selected={stakeId}
+            onSelect={setStakeId}
+            onStakesChange={setStakes}
+            disabled={disabled || busy}
+            allowCustom
+            stackLabel="Starting stack"
+          />
+          <p className="field-help mt-2.5">
+            {stakes.error
+              ? 'Each player pays the starting stack from their wallet. Winner takes the pot.'
+              : `Each player pays ${formatMoneyLabel(stakes.stack)} chips. Winner takes the pot.`}
+          </p>
+        </div>
+
         {mode === 'rounds' && (
           <div className="min-w-0">
             <ChoiceRow
@@ -341,6 +377,7 @@ export function ContestsPanel({
               <ContestListItem
                 key={c.id}
                 contest={c}
+                meta={entryLabel(c)}
                 disabled={disabled || busy}
                 onOpen={() => onOpenContest(c.id)}
               />

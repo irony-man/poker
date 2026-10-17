@@ -47,6 +47,8 @@ export type WalletReason =
   | 'cash_out'
   | 'table_cash_out'
   | 'top_up'
+  | 'contest_entry'
+  | 'contest_payout'
   | 'admin_credit'
   | 'admin_reset'
   | 'opening_balance';

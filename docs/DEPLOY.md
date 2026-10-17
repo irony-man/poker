@@ -79,6 +79,34 @@ git pull origin main
 - `NEXT_PUBLIC_*` are baked at **image build**; change them in VM `.env`, then redeploy with `--build`.
 - `API_REWRITE_TARGET=http://server:4000` must stay set so Next `/api` does not loop on `https://pokr.site`.
 
+## Admin subdomain
+
+The admin panel is served by the same web container at `https://admin.pokr.site` (dev: `https://admin.dev.pokr.site`, set in `docker-compose.dev.yml`). Next middleware rewrites the admin host's `/` to `/admin`, and `pokr.site/admin` redirects there. Leave `NEXT_PUBLIC_ADMIN_URL` blank to keep the panel at `/admin`.
+
+1. DNS: add A records for `admin` and `admin.dev` pointing to the VM IP.
+2. Caddy (`/etc/caddy/Caddyfile`), then `sudo systemctl reload caddy`:
+
+```
+admin.pokr.site {
+	encode gzip
+
+	@ws path /ws*
+	handle @ws {
+		reverse_proxy 127.0.0.1:4000
+	}
+
+	handle {
+		reverse_proxy 127.0.0.1:3000
+	}
+}
+```
+
+   The dev block is the same with `admin.dev.pokr.site`, `4001` and `3001`.
+3. Google OAuth client: add `https://admin.pokr.site` and `https://admin.dev.pokr.site` to Authorized JavaScript origins.
+4. In `~/poker/.env` set `NEXT_PUBLIC_ADMIN_URL=https://admin.pokr.site` and append `https://admin.pokr.site` to `WEB_ORIGIN`, then redeploy with `--build`.
+
+Sessions are stored per origin, so admins sign in once on the admin host (password or Google). Instagram sign-in is not available there because its redirect URI points at the main site.
+
 ## Bot chat / LLM on the VM
 
 LLM features are off by default. To enable lobby `/chat` and LLM table banter:
@@ -112,7 +140,7 @@ If the LLM is down, table bots fall back to templates; `/chat` returns 503.
 
 1. Google Cloud Console → **APIs & Services → OAuth consent screen**: configure the app (External, scopes `openid email profile`), then publish it.
 2. **Credentials → Create credentials → OAuth client ID → Web application**:
-   - Authorized JavaScript origins: `https://pokr.site`, `https://www.pokr.site`, `http://localhost:3000`
+   - Authorized JavaScript origins: `https://pokr.site`, `https://www.pokr.site`, `https://admin.pokr.site`, `https://admin.dev.pokr.site`, `http://localhost:3000`
    - No redirect URIs are needed (the web app uses the Google Identity Services popup).
 3. Set both `GOOGLE_CLIENT_ID=<web client id>.apps.googleusercontent.com` (the server verifies ID tokens against it) and `NEXT_PUBLIC_GOOGLE_CLIENT_ID=<same id>` (baked into the web build to show the button) in `~/poker/.env`, then redeploy with `--build`.
 4. **Android:** create a second OAuth client of type **Android** with package `com.pokr.android` and the SHA-1 of each signing key (`./gradlew signingReport` for debug; Play Console → App integrity for release). The app still asks for tokens with the *web* client id, set as `pokr.google.client.id` in `apps/android/local.properties`; without it the Google button is hidden.

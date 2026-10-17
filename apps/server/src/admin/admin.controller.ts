@@ -602,7 +602,7 @@ export class AdminController {
     }
     users = users
       .slice()
-      .sort((a, b) => a.username.localeCompare(b.username))
+      .sort((a, b) => b.createdAt - a.createdAt)
       .slice(0, 50);
     return {
       users: users.map((u) => ({

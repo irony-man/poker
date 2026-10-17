@@ -5,6 +5,7 @@ import {
   useState,
   type InputHTMLAttributes,
   type ReactNode,
+  type Ref,
   type TextareaHTMLAttributes,
 } from 'react';
 import { cn } from '@/lib/cn';
@@ -124,14 +125,16 @@ export function TextAreaField({
   help,
   className = '',
   id,
+  ref,
   ...props
 }: TextareaHTMLAttributes<HTMLTextAreaElement> & {
   label?: ReactNode;
   help?: ReactNode;
+  ref?: Ref<HTMLTextAreaElement>;
 }) {
   return (
     <FieldWrap id={id} label={label} help={help} variant="form">
-      <textarea id={id} className={fieldClass('form', className)} {...props} />
+      <textarea ref={ref} id={id} className={fieldClass('form', className)} {...props} />
     </FieldWrap>
   );
 }

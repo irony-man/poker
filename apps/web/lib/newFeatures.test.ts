@@ -22,6 +22,14 @@ describe('new feature badges', () => {
     expect(storage.data.get(newFeatureStorageKey('solo-bot-groups'))).toBe('1');
   });
 
+  it('tracks the friend link invite badge on its own', () => {
+    const storage = memoryStorage();
+    expect(isFeatureNew('friends-link-invite', storage)).toBe(true);
+    markFeatureSeen('friends-link-invite', storage);
+    expect(isFeatureNew('friends-link-invite', storage)).toBe(false);
+    expect(isFeatureNew('profile-theme', storage)).toBe(true);
+  });
+
   it('shows no badge when storage is unavailable', () => {
     expect(isFeatureNew('profile-theme', null)).toBe(false);
     expect(() => markFeatureSeen('profile-theme', null)).not.toThrow();

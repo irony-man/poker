@@ -115,6 +115,7 @@ export function LobbyBottomNav() {
   const lobbyNav = useLobbyNav();
   const hostBotGroupsNew = useNewFeature('host-bot-groups');
   const soloBotGroupsNew = useNewFeature('solo-bot-groups');
+  const friendsLinkInviteNew = useNewFeature('friends-link-invite');
 
   return (
     <nav
@@ -128,7 +129,8 @@ export function LobbyBottomNav() {
           const isFriends = signedIn && item.id === 'friends';
           const isNew =
             (item.href === '/play' && hostBotGroupsNew) ||
-            (item.id === 'offline' && soloBotGroupsNew);
+            (item.id === 'offline' && soloBotGroupsNew) ||
+            (isFriends && friendsLinkInviteNew);
           return (
             <Link
               key={item.id}

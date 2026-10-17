@@ -26,6 +26,10 @@ export function useModalFocus({
   onClose: () => void;
 }) {
   const previousFocus = useRef<HTMLElement | null>(null);
+  // Callers often pass an inline onClose; keep it out of the effect deps so
+  // re-renders (e.g. typing) don't re-run initial focus.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
@@ -38,7 +42,7 @@ export function useModalFocus({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== 'Tab' || !root) return;
@@ -64,5 +68,5 @@ export function useModalFocus({
       window.removeEventListener('keydown', onKey);
       previousFocus.current?.focus?.();
     };
-  }, [open, onClose, containerRef, initialFocusRef]);
+  }, [open, containerRef, initialFocusRef]);
 }

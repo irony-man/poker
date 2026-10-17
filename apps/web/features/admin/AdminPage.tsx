@@ -5,6 +5,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { useConfirm } from '@/components/ConfirmPopover';
 import Link from 'next/link';
+import { adminBasePath } from '@/lib/adminHost';
 import { authHref } from '@/lib/authRedirect';
 import { BOT_PERSONALITY_IDS, type BotPersonalityId } from '@poker/engine';
 import {
@@ -288,7 +289,8 @@ function AdminPageInner() {
       if (next === 'users') params.delete('tab');
       else params.set('tab', next);
       const q = params.toString();
-      router.replace(q ? `/admin?${q}` : '/admin', { scroll: false });
+      const base = adminBasePath();
+      router.replace(q ? `${base}?${q}` : base, { scroll: false });
     },
     [router, searchParams],
   );
@@ -1254,7 +1256,7 @@ function AdminPageInner() {
       <AdminShell tab={tab} onSelectTab={selectTab} stats={null} economy={null}>
         <Section title="Sign in required" description="Admin is limited to operators.">
           <p className="text-sm text-muted">
-            <Link href={authHref('sign-in', '/admin')} className="font-semibold text-sidebar underline-offset-2 hover:underline">
+            <Link href={authHref('sign-in', adminBasePath())} className="font-semibold text-sidebar underline-offset-2 hover:underline">
               Sign in
             </Link>{' '}
             with an admin account.

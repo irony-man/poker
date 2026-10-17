@@ -13,8 +13,12 @@ const REASON_LABELS: Record<string, string> = {
   admin_credit: 'Bonus from staff',
   admin_reset: 'Balance reset',
   contest_prize: 'Contest prize',
+  contest_entry: 'Contest entry',
+  contest_payout: 'Contest winnings',
   offline_win: 'Beat the bots',
 };
+
+const CONTEST_REASONS = new Set(['contest_prize', 'cash_out', 'contest_entry', 'contest_payout']);
 
 function titleCase(reason: string): string {
   return reason
@@ -34,7 +38,7 @@ export function walletReasonLabel(reason: string, currency: WalletCurrency): str
 /** Contest page for entries tied to a contest, else null. */
 export function walletEntryHref(entry: Pick<WalletTrailEntry, 'reason' | 'refId'>): string | null {
   if (!entry.refId) return null;
-  if (entry.reason === 'contest_prize' || entry.reason === 'cash_out') {
+  if (CONTEST_REASONS.has(entry.reason)) {
     return `/contest/${encodeURIComponent(entry.refId)}`;
   }
   return null;
@@ -126,6 +130,8 @@ const GAME_REASONS = new Set([
   'hand_win',
   'hand_loss',
   'contest_prize',
+  'contest_entry',
+  'contest_payout',
   'offline_win',
 ]);
 

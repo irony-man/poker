@@ -7,10 +7,12 @@ export async function createContest(
     name?: string;
     mode: ContestMode;
     fieldSize: number;
-    startingStack?: number;
+    startingStack: number;
     smallBlind?: number;
     bigBlind?: number;
     turnTimeMs?: number;
+    /** Wallet entry fee; must equal `startingStack`. */
+    entryFee: number;
     botCount?: number;
     isPrivate?: boolean;
     inviteCode?: string;
@@ -28,7 +30,7 @@ export async function createContest(
   if (!res.ok) {
     throw new Error(await parseError(res, 'Failed to create contest'));
   }
-  return res.json() as Promise<{ contest: ContestView; inviteCount?: number }>;
+  return res.json() as Promise<{ contest: ContestView; inviteCount?: number; chipBalance?: number }>;
 }
 
 export async function inviteContestFriends(
@@ -87,7 +89,7 @@ export async function registerContest(contestId: string, options: AuthOptions) {
     ...options,
     method: 'POST',
     body: {},
-  }) as Promise<{ contest: ContestView }>;
+  }) as Promise<{ contest: ContestView; chipBalance?: number }>;
 }
 
 export async function unregisterContest(contestId: string, options: AuthOptions) {
@@ -95,7 +97,7 @@ export async function unregisterContest(contestId: string, options: AuthOptions)
     ...options,
     method: 'POST',
     body: {},
-  }) as Promise<{ contest: ContestView }>;
+  }) as Promise<{ contest: ContestView; chipBalance?: number }>;
 }
 
 export async function startContest(contestId: string, options: AuthOptions) {

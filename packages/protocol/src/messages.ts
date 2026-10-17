@@ -575,6 +575,10 @@ export const FriendRespondBodySchema = z.object({
   accept: z.boolean(),
 });
 
+export const FriendEmailInviteBodySchema = z.object({
+  emails: z.array(z.string().trim().email().max(254)).min(1).max(10),
+});
+
 export const ChallengeFriendBodySchema = z.object({
   friendUserId: z.string().min(1).max(128),
   /** Open in a pre-game lobby; the host starts the first hand. */

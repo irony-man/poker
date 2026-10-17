@@ -15,6 +15,7 @@ import {
 import {
   ChallengeFriendBodySchema,
   CreateFriendGroupBodySchema,
+  FriendEmailInviteBodySchema,
   FriendRequestBodySchema,
   FriendRespondBodySchema,
   DEFAULT_STAKE_ID,
@@ -22,6 +23,7 @@ import {
   stakeById,
   UpdateFriendGroupBodySchema,
 } from '@poker/protocol';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from '../auth/auth.service.js';
 import type { User } from '../auth/auth.types.js';
 import { CurrentUser, SessionAuthGuard } from '../common/session-auth.guard.js';
@@ -77,6 +79,42 @@ export class FriendsController {
       avatarUrl: u.avatarUrl,
     }));
     return { users };
+  }
+
+  @Get('suggestions')
+  async suggestions(@CurrentUser() user: User) {
+    try {
+      const suggestions = await this.friends.listSuggestions(user.id);
+      return { suggestions };
+    } catch (err) {
+      throw new BadRequestException({
+        error: publicErrorMessage(err, 'Failed'),
+      });
+    }
+  }
+
+  @Post('suggestions/:userId/dismiss')
+  async dismissSuggestion(@CurrentUser() user: User, @Param('userId') userId: string) {
+    if (!this.auth.getUser(userId)) {
+      throw new NotFoundException({ error: 'Player not found' });
+    }
+    await this.friends.dismissSuggestion(user.id, userId);
+    return { ok: true };
+  }
+
+  @Get('link')
+  friendLink(@CurrentUser() user: User) {
+    return this.friends.friendLink(user.id);
+  }
+
+  @Post('invite-email')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  async inviteEmail(@CurrentUser() user: User, @Body() body: unknown) {
+    const parsed = FriendEmailInviteBodySchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({ error: 'Enter valid email addresses (up to 10)' });
+    }
+    return this.friends.sendEmailInvites(user, parsed.data.emails);
   }
 
   @Post('requests')

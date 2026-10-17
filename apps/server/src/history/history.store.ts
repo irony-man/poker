@@ -87,7 +87,7 @@ export function playerUserIdsFromResult(result: unknown): string[] {
   return [...seen];
 }
 
-function playerUserIdsFromResultJson(resultJson: string): string[] {
+export function playerUserIdsFromResultJson(resultJson: string): string[] {
   try {
     return playerUserIdsFromResult(JSON.parse(resultJson) as unknown);
   } catch {

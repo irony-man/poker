@@ -60,6 +60,7 @@ function PersonIcon() {
 function MobileProfileButton({ signedIn }: { signedIn: boolean }) {
   const pathname = usePathname();
   const userId = useSession((s) => s.userId);
+  const avatarUrl = useSession((s) => s.avatarUrl);
   const [avatarId, setAvatarId] = useState(0);
   const profileActive = pathname === '/profile' || pathname.startsWith('/profile/');
   const themeNew = useNewFeature('profile-theme');
@@ -90,7 +91,13 @@ function MobileProfileButton({ signedIn }: { signedIn: boolean }) {
       aria-label="Profile"
       aria-current={profileActive ? 'page' : undefined}
     >
-      <PlayerAvatar avatarId={avatarId} userId={userId} size={40} title="Profile" />
+      <PlayerAvatar
+        avatarId={avatarId}
+        avatarUrl={avatarUrl}
+        userId={userId}
+        size={40}
+        title="Profile"
+      />
       {themeNew ? <NewBadge variant="dot" className="absolute -right-0.5 -top-0.5" /> : null}
     </Link>
   );
@@ -126,6 +133,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const setChipBalance = useSession((s) => s.setChipBalance);
   const setWhuffieBalance = useSession((s) => s.setWhuffieBalance);
   const setCardThemeId = useSession((s) => s.setCardThemeId);
+  const setAvatarUrl = useSession((s) => s.setAvatarUrl);
   const sessionName = useSession((s) => s.name);
   const sessionToken = useSession((s) => s.sessionToken);
   const [signedIn, setSignedIn] = useState(() => {
@@ -183,6 +191,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
       setChipBalance(null);
       setWhuffieBalance(null);
       setCardThemeId(null);
+      setAvatarUrl(null);
       setIsAdmin(false);
       return;
     }
@@ -194,6 +203,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
         setWhuffieBalance(me.whuffieBalance);
         setIsAdmin(Boolean(me.isAdmin));
         saveAvatarId(me.avatarId);
+        setAvatarUrl(me.avatarUrl);
         saveTableColorId(me.tableColorId);
         setCardThemeId(me.cardThemeId);
         saveCardThemeId(me.cardThemeId);
@@ -208,7 +218,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [sessionToken, setCardThemeId, setChipBalance, setWhuffieBalance]);
+  }, [sessionToken, setAvatarUrl, setCardThemeId, setChipBalance, setWhuffieBalance]);
 
   const onLogout = useCallback(async () => {
     const token = sessionToken ?? readStoredSession()?.sessionToken;

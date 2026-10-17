@@ -14,6 +14,7 @@ export function LobbySplitCard({
   imageRight = false,
   mediaHeader,
   alignTop = false,
+  stickyMedia = false,
 }: {
   imageSrc: string;
   imageAlt: string;
@@ -24,6 +25,8 @@ export function LobbySplitCard({
   mediaHeader?: ReactNode;
   /** Align the content to the top of the page (e.g. for contests). */
   alignTop?: boolean;
+  /** Keep the illustration in view while long content scrolls (desktop). */
+  stickyMedia?: boolean;
 }) {
   return (
     <div
@@ -34,7 +37,7 @@ export function LobbySplitCard({
       <div
         className={`relative mx-auto flex w-full max-w-md flex-col gap-4 lg:max-w-none ${
           imageRight ? 'order-first lg:order-last' : ''
-        }`}
+        } ${stickyMedia ? 'lg:sticky lg:top-6' : ''}`}
       >
         {mediaHeader}
         <div className="relative aspect-[4/3] w-full sm:aspect-[5/4]">

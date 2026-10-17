@@ -164,7 +164,7 @@ export function HostTableForm({
           format={(n) => (n === 0 ? 'None' : String(n))}
           disabled={disabled || busy}
           trackClassName="gap-2.5"
-          optionClassName="min-h-11 min-w-11 px-3"
+          optionClassName="inline-flex min-h-11 min-w-11 items-center justify-center px-3 py-0 text-base font-bold tabular-nums"
         />
         {botCount > 0 && botGroups.length > 0 ? (
           <BotGroupPicker

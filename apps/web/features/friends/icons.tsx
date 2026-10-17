@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { Button } from '@/components/ui/Button';
+import type { ReactNode } from "react";
+import { Button } from "@/components/ui/Button";
 
 export function IconAction({
   label,
@@ -7,11 +7,11 @@ export function IconAction({
   tone,
   onClick,
   children,
-  className = '',
+  className = "",
 }: {
   label: string;
   disabled?: boolean;
-  tone: 'primary' | 'ghost' | 'danger';
+  tone: "primary" | "ghost" | "danger";
   onClick: () => void;
   children: ReactNode;
   className?: string;
@@ -33,16 +33,16 @@ export function IconAction({
 
 function iconProps(className?: string) {
   return {
-    viewBox: '0 0 24 24',
+    viewBox: "0 0 24 24",
     width: 16,
     height: 16,
-    fill: 'none' as const,
-    stroke: 'currentColor',
+    fill: "none" as const,
+    stroke: "currentColor",
     strokeWidth: 2,
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
-    className: ['h-4 w-4 shrink-0', className].filter(Boolean).join(' '),
-    'aria-hidden': true as const,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    className: ["h-4 w-4 shrink-0", className].filter(Boolean).join(" "),
+    "aria-hidden": true as const,
   };
 }
 
@@ -54,10 +54,27 @@ export function CheckIcon({ className }: { className?: string }) {
   );
 }
 
+export function PlusIcon({ className }: { className?: string }) {
+  return (
+    <svg {...iconProps(className)}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
 export function XIcon({ className }: { className?: string }) {
   return (
     <svg {...iconProps(className)}>
       <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  );
+}
+
+export function SearchIcon({ className }: { className?: string }) {
+  return (
+    <svg {...iconProps(className)}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
     </svg>
   );
 }
@@ -96,6 +113,16 @@ export function RemoveFriendIcon({ className }: { className?: string }) {
       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
       <circle cx="9" cy="7" r="4" />
       <line x1="22" x2="16" y1="11" y2="11" />
+    </svg>
+  );
+}
+
+export function AddFriendIcon({ className }: { className?: string }) {
+  return (
+    <svg {...iconProps(className)}>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M19 8v6M22 11h-6" />
     </svg>
   );
 }
@@ -140,12 +167,12 @@ export function ShareIcon({ className }: { className?: string }) {
 
 function brandProps(className?: string) {
   return {
-    viewBox: '0 0 24 24',
+    viewBox: "0 0 24 24",
     width: 20,
     height: 20,
-    fill: 'currentColor',
-    className: ['h-5 w-5 shrink-0', className].filter(Boolean).join(' '),
-    'aria-hidden': true as const,
+    fill: "currentColor",
+    className: ["h-5 w-5 shrink-0", className].filter(Boolean).join(" "),
+    "aria-hidden": true as const,
   };
 }
 

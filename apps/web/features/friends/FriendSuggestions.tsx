@@ -4,9 +4,9 @@ import { PlayerAvatar } from '@/components/PlayerAvatar';
 import { Button } from '@/components/ui/Button';
 import type { FriendSuggestion } from '@/lib/api';
 import { publicProfileHref } from '@/lib/publicProfile';
-import { IconAction, XIcon } from './icons';
+import { AddFriendIcon, XIcon } from './icons';
 
-const COLLAPSED_COUNT = 5;
+const COLLAPSED_COUNT = 3;
 
 export function suggestionReasonLabel(s: FriendSuggestion): string {
   let mutual = '';
@@ -41,10 +41,7 @@ export function FriendSuggestions({
 
   return (
     <section aria-labelledby="friend-suggestions-heading" className="flex flex-col gap-2">
-      <h2
-        id="friend-suggestions-heading"
-        className="text-[11px] font-bold uppercase tracking-wider text-muted"
-      >
+      <h2 id="friend-suggestions-heading" className="hud-label">
         People you may know
       </h2>
       <ul className="surface-list bg-white/80">
@@ -52,7 +49,10 @@ export function FriendSuggestions({
           const handle = s.username ?? s.name;
           const rowBusy = busy === s.userId || busy === `dismiss-${s.userId}`;
           return (
-            <li key={s.userId} className="flex items-center gap-3 bg-raised/60 px-3 py-2.5">
+            <li
+              key={s.userId}
+              className="flex items-center gap-3 bg-raised/60 px-3 py-2.5 transition-colors hover:bg-raised"
+            >
               <Link
                 href={publicProfileHref(handle)}
                 className="relative shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-sidebar/40"
@@ -62,11 +62,11 @@ export function FriendSuggestions({
                   userId={s.userId}
                   avatarId={s.avatarId}
                   avatarUrl={s.avatarUrl}
-                  size={32}
+                  size={36}
                   title={handle}
                 />
                 <span
-                  className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white ${
+                  className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white ${
                     s.online ? 'bg-positive' : 'bg-sidebar/25'
                   }`}
                   title={s.online ? 'Online' : 'Offline'}
@@ -77,28 +77,35 @@ export function FriendSuggestions({
                 href={publicProfileHref(handle)}
                 className="min-w-0 flex-1 outline-none focus-visible:underline"
               >
-                <span className="font-row-label block truncate hover:underline">{handle}</span>
-                <span className="mt-0.5 block truncate text-[11px] text-muted">
+                <span className="block truncate text-sm font-medium leading-5 text-primary hover:underline">
+                  {handle}
+                </span>
+                <span className="block truncate text-[11px] leading-4 text-muted">
                   {suggestionReasonLabel(s)}
                 </span>
               </Link>
-              <div className="flex shrink-0 items-center gap-1.5">
+              <div className="flex shrink-0 items-center gap-1">
                 <Button
                   variant="ghost"
+                  size="sm"
                   disabled={disabled || rowBusy}
                   onClick={() => onAdd(s.userId)}
-                  className="py-1.5 px-3 text-xs"
+                  aria-label={`Add ${handle} as a friend`}
+                  className="inline-flex items-center gap-1.5"
                 >
-                  Add friend
+                  <AddFriendIcon className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Add friend</span>
                 </Button>
-                <IconAction
-                  label={`Hide ${handle}`}
-                  tone="ghost"
+                <button
+                  type="button"
                   disabled={disabled || rowBusy}
                   onClick={() => onDismiss(s)}
+                  aria-label={`Hide ${handle}`}
+                  title={`Hide ${handle}`}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted transition hover:bg-sidebar/[0.06] hover:text-primary focus-visible:bg-sidebar/[0.06] focus-visible:outline-none disabled:opacity-40"
                 >
                   <XIcon className="h-4 w-4" />
-                </IconAction>
+                </button>
               </div>
             </li>
           );
@@ -107,7 +114,7 @@ export function FriendSuggestions({
       {suggestions.length > COLLAPSED_COUNT ? (
         <button
           type="button"
-          className="self-start text-xs font-semibold text-muted hover:text-primary"
+          className="self-start text-xs font-semibold text-sidebar underline-offset-2 hover:underline"
           onClick={() => setExpanded((v) => !v)}
         >
           {expanded ? 'Show less' : `Show more (${hiddenCount})`}

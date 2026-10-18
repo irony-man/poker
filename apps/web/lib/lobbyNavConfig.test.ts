@@ -30,6 +30,7 @@ describe('normalizeLobbyNavConfig', () => {
       'public',
       'contests',
       'friends',
+      'analysis',
     ]);
     expect(out[0]).toEqual({ id: 'solo', visible: false });
     expect(out[1]).toEqual({ id: 'chat', visible: true });
@@ -58,6 +59,8 @@ describe('lobbyNavIdForPath', () => {
     expect(lobbyNavIdForPath('/chat')).toBe('chat');
     expect(lobbyNavIdForPath('/solo')).toBe('solo');
     expect(lobbyNavIdForPath('/offline')).toBe('solo');
+    expect(lobbyNavIdForPath('/analysis')).toBe('analysis');
+    expect(lobbyNavIdForPath('/analysis/table-1')).toBe('analysis');
   });
 
   it('ignores unrelated routes', () => {

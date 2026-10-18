@@ -103,6 +103,7 @@ const EconomyBody = z.object({
 /** Out-of-range public table timings are clamped by `normalizePublicTableTimings`. */
 const RoomSettingsBody = z.object({
   inactivityMinutes: z.number().int().min(1).max(24 * 60).optional(),
+  analysisDailyLimit: z.number().int().min(0).max(200).optional(),
   publicTable: z
     .object({
       botFillSeconds: z.number().int().positive().optional(),

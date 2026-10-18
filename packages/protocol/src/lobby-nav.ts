@@ -1,5 +1,13 @@
 /** Admin-controlled lobby sidebar: item order and visibility. Hidden items' pages return 404. */
-export type LobbyNavId = 'host' | 'join' | 'public' | 'contests' | 'friends' | 'chat' | 'solo';
+export type LobbyNavId =
+  | 'host'
+  | 'join'
+  | 'public'
+  | 'contests'
+  | 'friends'
+  | 'chat'
+  | 'solo'
+  | 'analysis';
 
 export interface LobbyNavItemConfig {
   id: LobbyNavId;
@@ -16,6 +24,7 @@ export const LOBBY_NAV_IDS: readonly LobbyNavId[] = [
   'friends',
   'chat',
   'solo',
+  'analysis',
 ] as const;
 
 export const DEFAULT_LOBBY_NAV: LobbyNavConfig = [
@@ -26,6 +35,7 @@ export const DEFAULT_LOBBY_NAV: LobbyNavConfig = [
   { id: 'friends', visible: true },
   { id: 'chat', visible: false },
   { id: 'solo', visible: true },
+  { id: 'analysis', visible: true },
 ];
 
 export function isLobbyNavId(value: unknown): value is LobbyNavId {
@@ -81,6 +91,7 @@ export function lobbyNavIdForPath(pathname: string, search = ''): LobbyNavId | n
   if (underPath(path, '/friends')) return 'friends';
   if (underPath(path, '/chat')) return 'chat';
   if (underPath(path, '/solo') || underPath(path, '/offline')) return 'solo';
+  if (underPath(path, '/analysis')) return 'analysis';
   return null;
 }
 

@@ -9,6 +9,7 @@ const ROW_HINTS: Partial<Record<LobbyNavId, string>> = {
   join: '/play?mode=join',
   chat: '/chat — also the floating chat button and the bot chat API',
   solo: '/solo and /offline',
+  analysis: '/analysis — per-street win chances for finished hands',
 };
 
 export function SidebarSection({

@@ -14,9 +14,12 @@ export function LobbyPageShell({
   signedIn,
   error,
   fillHeight = false,
+  breadcrumb,
   children,
 }: {
   title?: string;
+  /** Trail shown above the H1 on nested pages. */
+  breadcrumb?: ReactNode;
   /** Optional supporting line under the H1 (full-width page header). */
   subtitle?: string;
   requireAuth?: boolean;
@@ -31,6 +34,7 @@ export function LobbyPageShell({
   return (
     <div className={cn('lobby-page-intro', fillHeight && 'lobby-page-fill h-full min-h-0')}>
       <header className={cn("w-full shrink-0", title && subtitle ? "mb-4 sm:mb-5" : "mb-0")}>
+        {breadcrumb}
         {title && (
           <h1 className="font-title-page">
             {title}

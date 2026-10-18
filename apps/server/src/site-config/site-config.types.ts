@@ -123,10 +123,24 @@ export interface PublicTableTimingsMs {
   idleCloseMs: number;
 }
 
+/** How many distinct tables one player may analyse per UTC day. */
+export const DEFAULT_ANALYSIS_DAILY_LIMIT = 30;
+export const MIN_ANALYSIS_DAILY_LIMIT = 0;
+export const MAX_ANALYSIS_DAILY_LIMIT = 200;
+
+export function clampAnalysisDailyLimit(value: unknown): number {
+  const n = typeof value === 'number' && Number.isFinite(value) ? Math.floor(value) : DEFAULT_ANALYSIS_DAILY_LIMIT;
+  if (n < MIN_ANALYSIS_DAILY_LIMIT) return MIN_ANALYSIS_DAILY_LIMIT;
+  if (n > MAX_ANALYSIS_DAILY_LIMIT) return MAX_ANALYSIS_DAILY_LIMIT;
+  return n;
+}
+
 /** Cash/public room idle timeout (admin-configurable). */
 export interface RoomSettings {
   /** Minutes without human presence before the room is closed. Default 15. */
   inactivityMinutes: number;
+  /** Tables a player may analyse per UTC day. Enforced on the server. */
+  analysisDailyLimit: number;
   publicTable: PublicTableTimings;
 }
 
@@ -741,6 +755,7 @@ export function defaultSiteConfig(): SiteConfigPayload {
     },
     rooms: {
       inactivityMinutes: DEFAULT_ROOM_INACTIVITY_MINUTES,
+      analysisDailyLimit: DEFAULT_ANALYSIS_DAILY_LIMIT,
       publicTable: { ...DEFAULT_PUBLIC_TABLE_TIMINGS },
     },
     botGroups: DEFAULT_BOT_GROUPS.map((g) => cloneBotGroup(g)),
@@ -1093,6 +1108,7 @@ export function normalizePagesByTheme(raw: unknown, v1Fallback: PagesCopy): Page
 export function normalizeRoomSettings(raw: unknown): RoomSettings {
   const defaults: RoomSettings = {
     inactivityMinutes: DEFAULT_ROOM_INACTIVITY_MINUTES,
+    analysisDailyLimit: DEFAULT_ANALYSIS_DAILY_LIMIT,
     publicTable: { ...DEFAULT_PUBLIC_TABLE_TIMINGS },
   };
   if (!raw || typeof raw !== 'object') return defaults;
@@ -1103,7 +1119,11 @@ export function normalizeRoomSettings(raw: unknown): RoomSettings {
   }
   if (minutes < MIN_ROOM_INACTIVITY_MINUTES) minutes = MIN_ROOM_INACTIVITY_MINUTES;
   if (minutes > MAX_ROOM_INACTIVITY_MINUTES) minutes = MAX_ROOM_INACTIVITY_MINUTES;
-  return { inactivityMinutes: minutes, publicTable: normalizePublicTableTimings(o.publicTable) };
+  return {
+    inactivityMinutes: minutes,
+    analysisDailyLimit: clampAnalysisDailyLimit(o.analysisDailyLimit),
+    publicTable: normalizePublicTableTimings(o.publicTable),
+  };
 }
 
 function isAllowedSoundUrl(value: string): boolean {

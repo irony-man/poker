@@ -121,7 +121,19 @@ export {
   type CourtpieceInviteResult,
   type CourtpieceChatLine,
 } from './courtpiece';
-export { uploadOfflineHand, fetchMyHands, type UploadHandPayload, type MyHandRow } from './history';
+export {
+  uploadOfflineHand,
+  fetchMyHands,
+  fetchAnalysisHands,
+  fetchAnalysisTables,
+  fetchCoachQuota,
+  requestTableCoach,
+  type AnalysisHandsQuery,
+  type CoachQuota,
+  type AnalysisTableRow,
+  type UploadHandPayload,
+  type MyHandRow,
+} from './history';
 export { fetchWalletTrail, type WalletTrailQuery } from './wallet';
 export { fetchBotBanterLine } from './botBanter';
 export {

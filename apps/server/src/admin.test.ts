@@ -288,6 +288,13 @@ describe('site config + runtime economy', () => {
     expect(reloaded.getRoomSettings().inactivityMinutes).toBe(45);
   });
 
+  it('clamps the daily analysis allowance', async () => {
+    expect(site.getRoomSettings().analysisDailyLimit).toBe(30);
+    expect((await site.setRoomSettings({ analysisDailyLimit: 7 })).analysisDailyLimit).toBe(7);
+    expect((await site.setRoomSettings({ analysisDailyLimit: 9_999 })).analysisDailyLimit).toBe(200);
+    expect((await site.setRoomSettings({ analysisDailyLimit: -3 })).analysisDailyLimit).toBe(0);
+  });
+
   it('defaults, merges, clamps, and persists public table timings', async () => {
     expect(site.getRoomSettings().publicTable).toEqual({
       botFillSeconds: 15,

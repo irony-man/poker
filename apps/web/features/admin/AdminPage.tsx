@@ -218,6 +218,7 @@ function AdminPageInner() {
   });
   const [roomSettings, setRoomSettings] = useState<AdminRoomSettings>({
     inactivityMinutes: 15,
+    analysisDailyLimit: 30,
     publicTable: {
       botFillSeconds: 15,
       nextHandSeconds: 10,
@@ -513,6 +514,7 @@ function AdminPageInner() {
         }),
         patchAdminRoomSettings(token, {
           inactivityMinutes: Math.floor(Number(roomSettings.inactivityMinutes)),
+          analysisDailyLimit: Math.floor(Number(roomSettings.analysisDailyLimit)),
           publicTable: {
             botFillSeconds: Math.floor(Number(roomSettings.publicTable.botFillSeconds)),
             nextHandSeconds: Math.floor(Number(roomSettings.publicTable.nextHandSeconds)),

@@ -50,6 +50,15 @@ export interface ListHandsPageQuery {
   q?: string;
 }
 
+/** Newest first. `since` / `before` are epoch ms bounds on started_at. */
+export interface ListUserHandsQuery {
+  userId: string;
+  tableId?: string;
+  since?: number;
+  before?: number;
+  limit?: number;
+}
+
 export interface HandHistoryPage {
   items: HandHistoryRow[];
   total: number;
@@ -65,6 +74,7 @@ export interface HandHistoryStore {
   listHands(tableId: string, limit?: number): Promise<HandHistoryRow[]>;
   listHandsForContest(contestId: string, limit?: number): Promise<HandHistoryRow[]>;
   listHandsForUser(userId: string, limit?: number): Promise<HandHistoryRow[]>;
+  listHandsForUserPage(query: ListUserHandsQuery): Promise<HandHistoryRow[]>;
   /** Hands where both users appear in result_json.players. */
   listHandsForUsers(userIdA: string, userIdB: string, limit?: number): Promise<HandHistoryRow[]>;
   listHandsPage(query: ListHandsPageQuery): Promise<HandHistoryPage>;
@@ -149,6 +159,12 @@ export function clampPageSize(raw?: number, fallback = 25): number {
   return Math.min(100, Math.max(1, Math.floor(n)));
 }
 
+export function clampUserHandsLimit(raw?: number, fallback = 50): number {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(200, Math.max(1, Math.floor(n)));
+}
+
 export function clampPage(raw?: number): number {
   const n = Number(raw);
   if (!Number.isFinite(n)) return 1;
@@ -170,6 +186,9 @@ export function memoryHistoryStore(): HandHistoryStore {
       return [];
     },
     async listHandsForUser() {
+      return [];
+    },
+    async listHandsForUserPage() {
       return [];
     },
     async listHandsForUsers() {
@@ -289,6 +308,21 @@ export class FileHistoryStore implements HandHistoryStore {
     await this.ensure();
     const matched = this.hands.filter((h) => playerUserIdsFromResultJson(h.resultJson).includes(userId));
     return matched.slice(-limit).reverse();
+  }
+
+  async listHandsForUserPage(query: ListUserHandsQuery): Promise<HandHistoryRow[]> {
+    await this.ensure();
+    const limit = clampUserHandsLimit(query.limit);
+    return this.hands
+      .filter((h) => {
+        const at = h.startedAt.getTime();
+        if (query.tableId && h.tableId !== query.tableId) return false;
+        if (query.since !== undefined && at < query.since) return false;
+        if (query.before !== undefined && at >= query.before) return false;
+        return playerUserIdsFromResultJson(h.resultJson).includes(query.userId);
+      })
+      .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime())
+      .slice(0, limit);
   }
 
   async listHandsForUsers(userIdA: string, userIdB: string, limit = 50): Promise<HandHistoryRow[]> {
@@ -495,6 +529,43 @@ export class PostgresHistoryStore implements HandHistoryStore {
        )
        ORDER BY started_at DESC LIMIT $2`,
       [userId, limit],
+    );
+    return res.rows;
+  }
+
+  async listHandsForUserPage(query: ListUserHandsQuery): Promise<HandHistoryRow[]> {
+    const params: unknown[] = [query.userId];
+    const where: string[] = [];
+    if (query.tableId) {
+      params.push(query.tableId);
+      where.push(`h.table_id = $${params.length}`);
+    }
+    if (query.since !== undefined) {
+      params.push(new Date(query.since));
+      where.push(`h.started_at >= $${params.length}`);
+    }
+    if (query.before !== undefined) {
+      params.push(new Date(query.before));
+      where.push(`h.started_at < $${params.length}`);
+    }
+    params.push(clampUserHandsLimit(query.limit));
+    const res = await this.pool.query(
+      `SELECT ${pgHandSelect()}
+       FROM hand_history h
+       WHERE EXISTS (
+         SELECT 1 FROM jsonb_array_elements(
+           CASE
+             WHEN h.result_json IS NULL THEN '[]'::jsonb
+             WHEN jsonb_typeof(h.result_json::jsonb -> 'players') = 'array'
+               THEN h.result_json::jsonb -> 'players'
+             ELSE '[]'::jsonb
+           END
+         ) p
+         WHERE p->>'userId' = $1
+       )
+       ${where.map((w) => `AND ${w}`).join('\n       ')}
+       ORDER BY started_at DESC LIMIT $${params.length}`,
+      params,
     );
     return res.rows;
   }

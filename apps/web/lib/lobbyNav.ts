@@ -10,7 +10,8 @@ export type LobbyHref =
   | '/contests'
   | '/solo'
   | '/friends'
-  | '/chat';
+  | '/chat'
+  | '/analysis';
 
 export type LobbyNavEntry = { id: LobbyNavId; href: LobbyHref; label: string };
 
@@ -22,6 +23,7 @@ export const LOBBY_NAV_ITEMS: Record<LobbyNavId, LobbyNavEntry> = {
   friends: { id: 'friends', href: '/friends', label: 'Friends' },
   chat: { id: 'chat', href: '/chat', label: 'Chat' },
   solo: { id: 'solo', href: '/solo', label: 'Offline' },
+  analysis: { id: 'analysis', href: '/analysis', label: 'Analysis' },
 };
 
 /** Visible sidebar items in admin order (Admin → Sidebar). */
@@ -36,7 +38,8 @@ export type MobileBottomIcon =
   | 'contests'
   | 'friends'
   | 'chat'
-  | 'offline';
+  | 'offline'
+  | 'analysis';
 
 export type MobileBottomNavItem = {
   id: MobileBottomIcon;
@@ -52,6 +55,13 @@ const MOBILE_SLOTS: Record<Exclude<LobbyNavId, 'host' | 'join'>, MobileBottomNav
   friends: { id: 'friends', href: '/friends', label: 'Friends', shortLabel: 'Friends', icon: 'friends' },
   chat: { id: 'chat', href: '/chat', label: 'Chat', shortLabel: 'Chat', icon: 'chat' },
   solo: { id: 'offline', href: '/solo', label: 'Offline', shortLabel: 'Offline', icon: 'offline' },
+  analysis: {
+    id: 'analysis',
+    href: '/analysis',
+    label: 'Hand analysis',
+    shortLabel: 'Analysis',
+    icon: 'analysis',
+  },
 };
 
 /** Home, then visible items in admin order; Host and Join share one Play slot. */

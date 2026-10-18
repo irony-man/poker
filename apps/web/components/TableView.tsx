@@ -149,6 +149,36 @@ export function TableView({
 
   const mySeat = table?.players.find((p) => p.userId === userId)?.seat;
   const myPlayer = mySeat !== undefined ? table?.players[mySeat] : undefined;
+  const sessionHandIdsRef = useRef<Set<string>>(new Set());
+  const myStatus = myPlayer?.status;
+  const currentHandId = table?.handId ?? null;
+
+  useEffect(() => {
+    if (!currentHandId) return;
+    if (myStatus === 'active' || myStatus === 'allin' || myStatus === 'folded') {
+      sessionHandIdsRef.current.add(currentHandId);
+    }
+  }, [currentHandId, myStatus]);
+
+  /** Analysis of every hand at this table, or null when no hand was dealt to us. */
+  const sessionAnalysisHref = (): string | null => {
+    if (sessionHandIdsRef.current.size === 0) return null;
+    return `/analysis/${encodeURIComponent(tableId)}`;
+  };
+
+  useEffect(() => {
+    if (lastErrorCode !== 'room_closed') return;
+    if (boundTableId && boundTableId !== tableId) return;
+    if (contestIdProp || table?.tournament) return;
+    const href = sessionAnalysisHref();
+    if (!href) return;
+    voice.leaveVoice();
+    leaveTable();
+    clearTable();
+    setError(null);
+    router.replace(href);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sessionAnalysisHref reads refs only
+  }, [lastErrorCode, boundTableId, tableId, contestIdProp]);
   const isSpectating = spectating && mySeat === undefined;
   const chipBalance = useSession((s) => s.chipBalance);
   const walletChips = coerceMoney(chipBalance);
@@ -408,11 +438,12 @@ export function TableView({
       });
       if (!ok) return false;
     }
+    const dest = to === '/' ? (sessionAnalysisHref() ?? to) : to;
     voice.leaveVoice();
     leaveTable();
     clearTable();
-    if (softLeave) router.replace(to);
-    else router.push(to);
+    if (softLeave) router.replace(dest);
+    else router.push(dest);
     return true;
   };
 

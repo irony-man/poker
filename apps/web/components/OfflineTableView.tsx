@@ -272,6 +272,7 @@ export function OfflineTableView({
   const handActionsRef = useRef<Array<EngineEvent & { at: number }>>([]);
   const handChatRef = useRef<ChatMessage[]>([]);
   const recordedHandsRef = useRef(new Set<string>());
+  const pendingUploadsRef = useRef(new Set<Promise<void>>());
   const wasGameCompleteOnLoadRef = useRef(false);
   const capturedInitialGameCompleteRef = useRef(false);
   const pendingAnnounceRef = useRef<{
@@ -395,11 +396,13 @@ export function OfflineTableView({
         chat: handChatRef.current,
       };
       appendOfflineExploitHand(exploitHumanUserId, payload.result);
-      void submitOfflineHand(payload).then((res) => {
+      const upload = submitOfflineHand(payload).then((res) => {
         if (gameComplete && res?.whuffiesAwarded != null && res.whuffiesAwarded > 0) {
           setWhuffiesAwardedForGame(res.whuffiesAwarded);
         }
       });
+      pendingUploadsRef.current.add(upload);
+      void upload.finally(() => pendingUploadsRef.current.delete(upload));
     },
     [botGroupId, exploitHumanUserId],
   );
@@ -949,6 +952,25 @@ export function OfflineTableView({
     router.push('/solo');
   };
 
+  /** Uploads finish (or time out) first so the analysis page sees the last hands. */
+  const openHandAnalysis = async () => {
+    const tableId = tableIdRef.current;
+    const uploads = Promise.allSettled([
+      ...pendingUploadsRef.current,
+      flushOfflineHandQueue(),
+    ]);
+    await Promise.race([uploads, new Promise((resolve) => window.setTimeout(resolve, 3000))]);
+    router.push(`/analysis/${encodeURIComponent(tableId)}`);
+  };
+
+  const leaveOfflineTable = () => {
+    if (signedIn && recordedHandsRef.current.size > 0) {
+      void openHandAnalysis();
+      return;
+    }
+    router.push('/');
+  };
+
   const showDockReadyRoster =
     betweenHands && readyRosterPlayers.length > 0 && !offlineGameComplete;
   const dockReadyHeading =
@@ -998,6 +1020,10 @@ export function OfflineTableView({
       id: 'lobby',
       label: 'Back to lobby',
       onClick: () => {
+        if (signedIn && recordedHandsRef.current.size > 0) {
+          void openHandAnalysis();
+          return;
+        }
         window.location.href = '/';
       },
       tone: 'danger',
@@ -1089,7 +1115,7 @@ export function OfflineTableView({
               <Button type="button" variant="chrome" onClick={startNewGame}>
                 New game
               </Button>
-              <Button href="/" variant="chromeLeave" className="no-underline">
+              <Button type="button" variant="chromeLeave" onClick={leaveOfflineTable}>
                 Leave
               </Button>
             </div>
@@ -1237,6 +1263,7 @@ export function OfflineTableView({
           onTopUp={doTopUp}
           onSitOut={doSitOut}
           onSitIn={doSitIn}
+          onViewAnalysis={signedIn ? () => void openHandAnalysis() : undefined}
           onDismiss={() => {
             setDismissedWinHandId(publicTable.handId);
             if (offlineGameComplete) setDismissedGameWonModal(true);

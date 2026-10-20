@@ -10,6 +10,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'Pokr',
   slug: 'pokr',
+  owner: 'pokr',
   scheme: 'pokr',
   version: '0.1.0',
   orientation: 'portrait',
@@ -24,5 +25,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: ['expo-router', 'expo-dev-client'],
   experiments: {
     typedRoutes: true,
+  },
+  extra: {
+    eas: {
+      projectId: '70970288-a4aa-4e78-8e7d-5a719f9b5796',
+    },
   },
 });

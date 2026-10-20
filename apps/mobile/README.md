@@ -40,7 +40,7 @@ npx eas-cli@latest init
 npx eas-cli@latest build -p android --profile preview
 ```
 
-`preview` produces an installable APK pointed at pokr.site. `eas-build-post-install` compiles `@poker/protocol` and `@poker/engine` on the builder before Metro runs, because those `dist/` folders are not committed. `development` is the same APK plus the dev client, for `npm run dev:mobile`. `production` is an Android App Bundle. An iOS build is `npx eas-cli@latest build -p ios --profile preview` and needs an Apple team. The first `eas init` writes an EAS project id into `app.config.ts`; commit that id, not any signing keys.
+`preview` produces an installable APK pointed at pokr.site. `eas-build-post-install` compiles `@poker/protocol` and `@poker/engine` on the builder before Metro runs, because those `dist/` folders are not committed. `development` is the same APK plus the dev client, for `npm run dev:mobile`. `production` is an Android App Bundle. An iOS build is `npx eas-cli@latest build -p ios --profile preview` and needs an Apple team. The EAS project id for the `pokr` account lives in `app.config.ts`. Do not commit signing keys.
 
 ## Not in this package yet
 

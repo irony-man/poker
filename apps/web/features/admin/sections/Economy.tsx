@@ -125,6 +125,17 @@ export function EconomySection({
           className="tabular-nums"
           help="A game only earns Whuffies after the player was dealt this many hands since sitting down, topping up, or their last finished game. Stops bust-and-rebuy farming (default 10, 0 = no minimum)."
         />
+        <TextField
+          label="Tables analysed per day"
+          type="number"
+          min={0}
+          max={200}
+          step={1}
+          value={roomSettings.analysisDailyLimit}
+          onChange={(e) => onRoomSettings({ analysisDailyLimit: Number(e.target.value) })}
+          className="tabular-nums"
+          help="How many tables each player can analyse per UTC day. The server enforces this; a client cannot raise it. Opening a table already analysed that day does not use another slot. 0 turns new analyses off."
+        />
         <div className="sm:col-span-3">
           <TextField
             label="Room inactivity (minutes)"

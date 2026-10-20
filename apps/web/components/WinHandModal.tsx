@@ -321,6 +321,7 @@ export function WinHandModal({
   onSitIn,
   onDismiss,
   onNeedChips,
+  onViewAnalysis,
   whuffiesEarned = null,
   whuffiesTeaser,
   whuffieSignInHint = false,
@@ -360,6 +361,8 @@ export function WinHandModal({
   onSitIn?: () => void;
   onDismiss: () => void;
   onNeedChips?: () => void;
+  /** Offline game over: open the per-street analysis of this game's hands. */
+  onViewAnalysis?: () => void;
 }) {
   const roster = readyPlayers ?? [];
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -501,6 +504,15 @@ export function WinHandModal({
                   Sit out
                 </button>
               )}
+              {offlineGameComplete && onViewAnalysis ? (
+                <button
+                  type="button"
+                  onClick={onViewAnalysis}
+                  className="rounded-md border border-sidebar/20 bg-white px-2.5 py-1.5 text-[11px] font-display font-semibold text-sidebar hover:bg-page/60"
+                >
+                  View hand analysis
+                </button>
+              ) : null}
               {primary}
               <button
                 ref={closeRef}

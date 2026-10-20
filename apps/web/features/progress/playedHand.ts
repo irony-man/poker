@@ -1,3 +1,4 @@
+import { handPayouts, type HandResultPayload } from '@poker/engine';
 import type { MyHandRow } from '@/lib/api';
 
 const RANK_CHAR: Record<number, string> = {
@@ -52,8 +53,12 @@ export type PlayedHandLevel = {
   won: boolean;
   winnerName: string | null;
   handName: string | null;
-  /** Combined pot share awarded to winners (table chips). */
+  /** Chips won by the hand's winners, excluding uncalled bets handed back. */
   winAmount: number | null;
+  /** The viewer's own winnings (their share of a split pot). */
+  viewerWinAmount: number | null;
+  /** The viewer's uncalled chips returned at the end of the hand. */
+  returnedToViewer: number;
   /** Viewer + anyone whose hole cards were revealed at showdown. */
   shownPlayers: ShownPlayerHand[];
 };
@@ -128,27 +133,37 @@ export function parsePlayedHand(row: MyHandRow, userId: string): PlayedHandLevel
   }
 
   const winnersRaw = Array.isArray(result?.winners) ? result.winners : [];
+  // Uncalled chips handed back to the biggest bettor are not winnings.
+  const payouts = handPayouts((result ?? {}) as HandResultPayload);
+  const wonBySeat = new Map(payouts.map((p) => [p.seat, p.won]));
+  const returnedToViewer = payouts.find((p) => p.seat === seat)?.returned ?? 0;
   let won = false;
   let handName: string | null = null;
+  let viewerHandName: string | null = null;
   let winAmount = 0;
+  let viewerWinAmount = 0;
   const winnerNames: string[] = [];
   const winnerSeats = new Set<number>();
   for (const w of winnersRaw) {
     if (!w || typeof w !== 'object') continue;
     const rec = w as { seat?: unknown; name?: unknown; handName?: unknown; amount?: unknown };
     if (typeof rec.seat !== 'number') continue;
+    const amount = wonBySeat.get(rec.seat) ?? (typeof rec.amount === 'number' ? rec.amount : 0);
+    if (!(amount > 0)) continue;
     winnerSeats.add(rec.seat);
-    if (typeof rec.amount === 'number' && Number.isFinite(rec.amount)) {
-      winAmount += rec.amount;
-    }
+    winAmount += amount;
     const resolved =
       (typeof rec.name === 'string' && rec.name) || nameBySeat.get(rec.seat) || null;
     if (resolved && !winnerNames.includes(resolved)) winnerNames.push(resolved);
-    if (!handName && typeof rec.handName === 'string' && rec.handName) {
-      handName = rec.handName;
+    const name = typeof rec.handName === 'string' && rec.handName ? rec.handName : null;
+    if (!handName && name) handName = name;
+    if (rec.seat === seat) {
+      won = true;
+      viewerWinAmount += amount;
+      if (name) viewerHandName = name;
     }
-    if (rec.seat === seat) won = true;
   }
+  if (viewerHandName) handName = viewerHandName;
   const winnerName = winnerNames.length > 0 ? winnerNames.join(' & ') : null;
   const pair: [string, string] | null = hole.length >= 2 ? [hole[0]!, hole[1]!] : null;
 
@@ -188,6 +203,8 @@ export function parsePlayedHand(row: MyHandRow, userId: string): PlayedHandLevel
     winnerName,
     handName,
     winAmount: winAmount > 0 ? winAmount : null,
+    viewerWinAmount: viewerWinAmount > 0 ? viewerWinAmount : null,
+    returnedToViewer,
     shownPlayers,
   };
 }

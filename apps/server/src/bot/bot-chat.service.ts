@@ -207,6 +207,58 @@ export class BotChatService {
     return headers;
   }
 
+  /**
+   * One-shot completion without the banter persona or the short reply clip.
+   * Used for the table coach, which needs a full write-up.
+   */
+  async completeCustom(input: {
+    system: string;
+    user: string;
+    provider?: BotChatLlmProvider;
+    maxTokens?: number;
+    temperature?: number;
+  }): Promise<BotChatCompletionResult> {
+    const provider = input.provider ?? 'cohere';
+    const configErr = this.configurationError(provider);
+    if (configErr) return { text: null, error: configErr };
+    const cfg = this.runtime(provider);
+    if (!cfg) return { text: null, error: 'Bot chat is not configured' };
+    const url = llmUrl(cfg.baseUrl, cfg.path);
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), this.timeoutMs);
+    try {
+      const res = await this.fetchFn(url, {
+        method: 'POST',
+        headers: this.headers(cfg),
+        body: JSON.stringify({
+          model: cfg.model,
+          temperature: input.temperature ?? 0.4,
+          max_tokens: input.maxTokens ?? 1600,
+          messages: [
+            { role: 'system', content: input.system },
+            { role: 'user', content: input.user },
+          ],
+        }),
+        signal: ac.signal,
+      });
+      if (!res.ok) {
+        const error = await readUpstreamError(res);
+        console.warn('[bot-chat] LLM error:', error);
+        return { text: null, error };
+      }
+      const data: unknown = await res.json();
+      const text = extractCompletionText(data)?.trim() || null;
+      if (!text) return { text: null, error: 'LLM returned empty content' };
+      return { text, error: null };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Bot chat timed out';
+      console.warn('[bot-chat] LLM request failed:', err);
+      return { text: null, error: message };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   async complete(
     persona: BotChatPersona,
     messages: BotChatMessage[],

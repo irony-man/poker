@@ -87,6 +87,14 @@ function NavIcon({ name, active }: { name: MobileBottomIcon; active: boolean }) 
           <path d="M9.8 16.6h4.4" fill="none" stroke={active ? 'rgb(var(--sidebar))' : 'currentColor'} />
         </svg>
       );
+    case 'analysis':
+      return (
+        <svg {...props} fill="none">
+          <path d="M4 19.6h16" />
+          <path d="M5.4 15.4 9.6 10.6l3.6 2.8 5.4-6.6" />
+          <circle cx="18.6" cy="6.8" r="1.4" fill={active ? 'currentColor' : 'none'} />
+        </svg>
+      );
   }
 }
 

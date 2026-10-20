@@ -5,6 +5,7 @@ import {
   Delete,
   Get,
   HttpCode,
+  HttpException,
   Patch,
   Post,
   Put,
@@ -31,7 +32,11 @@ import { SessionAuthGuard } from '../common/session-auth.guard.js';
 import type { User } from '../auth/auth.types.js';
 import { AuthService } from '../auth/auth.service.js';
 import { FriendsService } from '../friends/friends.service.js';
-import { HistoryService, toOwnerHandRows } from '../history/history.service.js';
+import {
+  HistoryService,
+  toOwnerHandRows,
+  type AnalysisQuery,
+} from '../history/history.service.js';
 import { ALLOWED_AVATAR_CONTENT_TYPES } from '../storage/storage.constants.js';
 import { StorageService } from '../storage/storage.service.js';
 import { WalletService } from '../wallet/wallet.service.js';
@@ -42,6 +47,22 @@ import {
   clampCardThemeId,
   resolveDefaultCardThemeId,
 } from '../card-face-theme.js';
+
+function analysisQueryFrom(query: Record<string, unknown>): AnalysisQuery {
+  const num = (raw: unknown): number | undefined => {
+    if (typeof raw !== 'string' || raw === '') return undefined;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : undefined;
+  };
+  return {
+    tableId: typeof query.tableId === 'string' && query.tableId ? query.tableId : undefined,
+    opponents:
+      query.opponents === 'bots' || query.opponents === 'players' ? query.opponents : undefined,
+    since: num(query.since),
+    before: num(query.before),
+    limit: num(query.limit),
+  };
+}
 
 function toMeProfile(
   user: User,
@@ -220,6 +241,48 @@ export class UsersController {
       user.id,
     );
     return { hands };
+  }
+
+  @Get('me/analysis/hands')
+  async myAnalysisHands(@CurrentUser() user: User, @Query() query: Record<string, unknown>) {
+    return this.history.listAnalysisHands(user.id, analysisQueryFrom(query));
+  }
+
+  @Get('me/analysis/tables')
+  async myAnalysisTables(@CurrentUser() user: User, @Query() query: Record<string, unknown>) {
+    return this.history.listAnalysisTables(user.id, analysisQueryFrom(query));
+  }
+
+  @Get('me/analysis/coach/quota')
+  myCoachQuota(@CurrentUser() user: User, @Query('tableId') tableId?: string) {
+    const id = typeof tableId === 'string' && tableId ? tableId : undefined;
+    return this.history.coachQuotaFor(user.id, id);
+  }
+
+  @Post('me/analysis/coach')
+  async coachTable(@CurrentUser() user: User, @Body() body: unknown) {
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      throw new BadRequestException({ error: 'tableId is required' });
+    }
+    const record = body as Record<string, unknown>;
+    if (Object.keys(record).some((key) => key !== 'tableId')) {
+      throw new BadRequestException({ error: 'Only tableId is accepted' });
+    }
+    const tableId = typeof record.tableId === 'string' ? record.tableId.trim() : '';
+    if (!tableId || tableId.length > 200) throw new BadRequestException({ error: 'tableId is required' });
+    const outcome = await this.history.coachTable(user.id, tableId);
+    if (outcome.ok) return outcome;
+    const payload = {
+      error: outcome.message,
+      limit: outcome.limit,
+      used: outcome.used,
+      remaining: outcome.remaining,
+    };
+    if (outcome.code === 'limit') throw new HttpException(payload, 429);
+    if (outcome.code === 'unconfigured' || outcome.code === 'llm') {
+      throw new ServiceUnavailableException(payload);
+    }
+    throw new BadRequestException(payload);
   }
 
   @Get('me/wallet/trail')

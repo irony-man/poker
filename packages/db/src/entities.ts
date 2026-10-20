@@ -427,6 +427,28 @@ export class SiteConfigEntity {
   updatedAt!: Date;
 }
 
+/** One Cohere coaching write-up per user, table and UTC day. */
+@Entity({ name: 'hand_coach_reviews' })
+export class HandCoachReviewEntity {
+  @PrimaryColumn({ name: 'user_id', type: 'text' })
+  userId!: string;
+
+  @PrimaryColumn({ name: 'table_id', type: 'text' })
+  tableId!: string;
+
+  @PrimaryColumn({ type: 'text' })
+  day!: string;
+
+  @Column({ name: 'hands_key', type: 'text' })
+  handsKey!: string;
+
+  @Column({ type: 'text' })
+  review!: string;
+
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  createdAt!: Date;
+}
+
 /** Contest state snapshot (one JSON payload per contest) so contests survive restarts. */
 @Entity({ name: 'contests' })
 @Index('contests_status_idx', ['status'])
@@ -463,4 +485,5 @@ export const ALL_ENTITIES = [
   SocialStoreEntity,
   SiteConfigEntity,
   ContestEntity,
+  HandCoachReviewEntity,
 ] as const;

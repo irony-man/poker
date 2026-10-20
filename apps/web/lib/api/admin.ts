@@ -63,6 +63,8 @@ export interface AdminPublicTableTimings {
 
 export interface AdminRoomSettings {
   inactivityMinutes: number;
+  /** Tables one player may analyse per day. */
+  analysisDailyLimit: number;
   publicTable: AdminPublicTableTimings;
 }
 

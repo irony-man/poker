@@ -17,6 +17,7 @@ describe('orderedLobbyNav', () => {
       'Contests',
       'Friends',
       'Offline',
+      'Analysis',
     ]);
   });
 
@@ -33,6 +34,7 @@ describe('orderedLobbyNav', () => {
       '/play?mode=join',
       '/public',
       '/friends',
+      '/analysis',
     ]);
   });
 });
@@ -46,6 +48,7 @@ describe('mobileBottomNav', () => {
       'contests',
       'friends',
       'offline',
+      'analysis',
     ]);
   });
 
@@ -64,6 +67,7 @@ describe('mobileBottomNav', () => {
       'public',
       'contests',
       'offline',
+      'analysis',
     ]);
   });
 

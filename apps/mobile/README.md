@@ -27,7 +27,20 @@ npm run bundle:smoke -w @poker/mobile
 
 `dev:mobile` starts the Expo dev server. A development build (`expo-dev-client`) is required on device because later voice work uses native WebRTC. `bundle:smoke` exports an iOS JavaScript bundle and an Android JavaScript bundle with `--no-bytecode`. The Hermes compiler shipped with the SDK is an x64 Linux binary, so bytecode compilation belongs on the EAS builders, not in this check.
 
-Copy `.env.example` to `.env` for a local server. Unset values use `https://felt-server-hgi4.onrender.com` and `wss://felt-server-hgi4.onrender.com/ws`.
+Unset `EXPO_PUBLIC_API_URL` and `EXPO_PUBLIC_WS_URL` resolve to `https://pokr.site` and `wss://pokr.site/ws`. Copy `.env.example` to `.env` only when you want a local server instead.
+
+## Getting a build
+
+This machine has no Android SDK, and iOS binaries need a Mac. Expo Go cannot load this app because it depends on `expo-dev-client`. Use EAS Build from a checkout of `mobile/scaffold`:
+
+```bash
+cd apps/mobile
+npx eas-cli@latest login
+npx eas-cli@latest init
+npx eas-cli@latest build -p android --profile preview
+```
+
+`preview` produces an installable APK pointed at pokr.site. `eas-build-post-install` compiles `@poker/protocol` and `@poker/engine` on the builder before Metro runs, because those `dist/` folders are not committed. `development` is the same APK plus the dev client, for `npm run dev:mobile`. `production` is an Android App Bundle. An iOS build is `npx eas-cli@latest build -p ios --profile preview` and needs an Apple team. The first `eas init` writes an EAS project id into `app.config.ts`; commit that id, not any signing keys.
 
 ## Not in this package yet
 

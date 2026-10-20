@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "typecheck": "npm run build -w @poker/engine -w @poker/protocol && tsc -p tsconfig.json --noEmit",
     "test": "npm run build -w @poker/engine -w @poker/protocol && node scripts/check-metro.mjs && node scripts/jest.mjs",
-    "bundle:smoke": "node scripts/bundle-smoke.mjs"
+    "bundle:smoke": "node scripts/bundle-smoke.mjs",
+    "eas-build-post-install": "npm run build -w @poker/engine -w @poker/protocol"
   },
   "dependencies": {
     "@expo/metro-runtime": "~58.0.14",

@@ -1,0 +1,38 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://pokr.site",
+        "EXPO_PUBLIC_WS_URL": "wss://pokr.site/ws"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://pokr.site",
+        "EXPO_PUBLIC_WS_URL": "wss://pokr.site/ws"
+      }
+    },
+    "production": {
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://pokr.site",
+        "EXPO_PUBLIC_WS_URL": "wss://pokr.site/ws"
+      }
+    }
+  }
+}

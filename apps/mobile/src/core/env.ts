@@ -1,6 +1,6 @@
-/** Production host the Android app already uses. */
-export const PRODUCTION_API_URL = 'https://felt-server-hgi4.onrender.com';
-export const PRODUCTION_WS_URL = 'wss://felt-server-hgi4.onrender.com/ws';
+/** Same origin the web app uses. REST is /api on this host; the socket is /ws. */
+export const PRODUCTION_API_URL = 'https://pokr.site';
+export const PRODUCTION_WS_URL = 'wss://pokr.site/ws';
 
 export function stripTrailingSlash(url: string): string {
   return url.replace(/\/$/, '');

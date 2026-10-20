@@ -1,7 +1,7 @@
 import { PRODUCTION_API_URL, PRODUCTION_WS_URL, resolveEndpoints } from './env';
 
 describe('resolveEndpoints', () => {
-  it('falls back to the Android production host', () => {
+  it('falls back to pokr.site', () => {
     expect(resolveEndpoints({})).toEqual({
       apiUrl: PRODUCTION_API_URL,
       wsUrl: PRODUCTION_WS_URL,

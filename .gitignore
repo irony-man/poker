@@ -1,5 +1,9 @@
 node_modules/
 dist/
+**/.expo/
+apps/mobile/ios/
+apps/mobile/android/
+apps/mobile/design-ref/
 .next/
 certificates/
 *.tsbuildinfo

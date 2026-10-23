@@ -26,6 +26,7 @@ import { saveTableColorId } from '@/lib/tableColors';
 import { setSfxMuted } from '@/lib/audio';
 import { saveKeyboardShortcuts } from '@/lib/keyboardShortcuts';
 import { loadSavedTableLayout, saveTableLayout } from '@/lib/tableLayoutPref';
+import { applyPaletteOverride } from '@/lib/palette';
 import { applyUiTheme, configureUiLooks, loadSavedUiTheme, saveUiTheme } from '@/lib/uiTheme';
 import { attachPlayFullscreen } from '@/lib/mobileFullscreen';
 import { ConfirmProvider } from '@/components/ConfirmPopover';
@@ -177,6 +178,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   }, [sessionName, sessionToken]);
 
   useEffect(() => {
+    applyPaletteOverride();
     applyUiTheme(loadSavedUiTheme());
     saveTableLayout(loadSavedTableLayout());
     void fetchPublicSite()

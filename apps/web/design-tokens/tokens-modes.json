@@ -1,0 +1,1115 @@
+{
+ "note": "Three theme modes; same role keys in each so modes swap like-for-like. contrast_hex = flattened colour over #2b0b4a for translucent Glass values.",
+ "modes": {
+  "Classic": {
+   "brand": {
+    "value": "#1e0536",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "--aubergine-900"
+   },
+   "bg_page": {
+    "value": "#e8dad8",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "--rose-200"
+   },
+   "bg_subtle": {
+    "value": "#f2e9e7",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "--rose-100"
+   },
+   "card": {
+    "value": "#fbf7f4",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "--cream-50"
+   },
+   "raised": {
+    "value": "#ffffff",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "--white"
+   },
+   "text_primary": {
+    "value": "#1e0536",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "--ink-900"
+   },
+   "text_secondary": {
+    "value": "#4e3d5a",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "--ink-700"
+   },
+   "text_muted": {
+    "value": "#6a5873",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "--ink-600"
+   },
+   "text_placeholder": {
+    "value": "#7a6875",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": "source #9c8a96 = 3.04:1, darkened to pass AA"
+   },
+   "border": {
+    "value": "#e2d3d0",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "--color-border"
+   },
+   "border_strong": {
+    "value": "#8f7d8a",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": ""
+   },
+   "focus": {
+    "value": "#7b4fd6",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "--color-focus"
+   },
+   "accent": {
+    "value": "#e8c15a",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "--gold-500"
+   },
+   "accent_text": {
+    "value": "#8a6510",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "--gold-700 (gold text on light)"
+   },
+   "on_accent": {
+    "value": "#1e0536",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": ""
+   },
+   "danger": {
+    "value": "#b8262b",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "--red-600"
+   },
+   "success": {
+    "value": "#2fa36b",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "--green-500 (fill/icon only)"
+   },
+   "success_text": {
+    "value": "#1d7a4d",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "--green-700; white-on-#2fa36b fails, use this for text/filled buttons"
+   },
+   "new_badge": {
+    "value": "#d93a3a",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "--red-500"
+   },
+   "felt_center": {
+    "value": "#2f4594",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "--felt-500"
+   },
+   "felt_mid": {
+    "value": "#26387a",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "--felt-600"
+   },
+   "felt_edge": {
+    "value": "#1d2a5c",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "--felt-700"
+   },
+   "rim": {
+    "value": "#0f1736",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "--felt-900"
+   },
+   "cp_team_a": {
+    "value": "#6b4e08",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": ".cp-gold text"
+   },
+   "cp_team_a_bg": {
+    "value": "#fdf4d9",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": ".cp-gold bg"
+   },
+   "cp_team_b": {
+    "value": "#136b63",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "--teal-700"
+   },
+   "cp_team_b_bg": {
+    "value": "#e3f5f2",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "--teal-50"
+   },
+   "tp_hero": {
+    "value": "#4a1d7a",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "tp.py quick-play"
+   },
+   "tp_win": {
+    "value": "#c99a2e",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "tp.py win gradient end"
+   },
+   "tp_pack": {
+    "value": "#ffb3b5",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "tp.py Pack text (on dark)"
+   },
+   "chip": {
+    "value": "#a90e12",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "sampled from chip.png"
+   },
+   "whuffie": {
+    "value": "#1d0432",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "whuffie-dark.svg"
+   },
+   "g_sidebar": {
+    "value": "linear-gradient(180deg,#22063d,#1e0536 40%,#170329)",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": ""
+   },
+   "g_hero": {
+    "value": "radial-gradient(circle at 30% 20%,#3d1766,#1e0536 55%,#13021f)",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "auth panel"
+   },
+   "g_felt": {
+    "value": "radial-gradient(ellipse at 50% 40%,#2f4594,#26387a 45%,#1d2a5c)",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": ""
+   },
+   "g_win": {
+    "value": "linear-gradient(180deg,#f3d98f,#c99a2e)",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "TP win text"
+   }
+  },
+  "Glass": {
+   "brand": {
+    "value": "#e8c15a",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": "brand action = gold on dark (ds.py button)"
+   },
+   "bg_page": {
+    "value": "linear-gradient(135deg,#2b0b4a,#0c0518)",
+    "contrast_hex": "#2b0b4a",
+    "status": "from source",
+    "note": "ds.py Glass bg"
+   },
+   "bg_subtle": {
+    "value": "rgba(255,255,255,.05)",
+    "contrast_hex": "#361753",
+    "status": "new proposal",
+    "note": ""
+   },
+   "card": {
+    "value": "rgba(255,255,255,.10)",
+    "contrast_hex": "#40235c",
+    "status": "from source",
+    "note": "ds.py card"
+   },
+   "raised": {
+    "value": "rgba(255,255,255,.16)",
+    "contrast_hex": "#4d3267",
+    "status": "new proposal",
+    "note": "+ backdrop-blur 20px"
+   },
+   "text_primary": {
+    "value": "#ffffff",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": ""
+   },
+   "text_secondary": {
+    "value": "#e3d6ef",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": ""
+   },
+   "text_muted": {
+    "value": "#c4b2d6",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": ""
+   },
+   "text_placeholder": {
+    "value": "#c0afd2",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": ""
+   },
+   "border": {
+    "value": "rgba(255,255,255,.14)",
+    "contrast_hex": "#492d63",
+    "status": "new proposal",
+    "note": ""
+   },
+   "border_strong": {
+    "value": "rgba(255,255,255,.32)",
+    "contrast_hex": "#6f5984",
+    "status": "new proposal",
+    "note": ""
+   },
+   "focus": {
+    "value": "#b79cff",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": ""
+   },
+   "accent": {
+    "value": "#e8c15a",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "ds.py button"
+   },
+   "accent_text": {
+    "value": "#f3d98f",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "--gold-300"
+   },
+   "on_accent": {
+    "value": "#1e0536",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": ""
+   },
+   "danger": {
+    "value": "#ff8a8d",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": "text/outline; fill uses #b8262b"
+   },
+   "success": {
+    "value": "#5fd39a",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": ""
+   },
+   "success_text": {
+    "value": "#5fd39a",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": ""
+   },
+   "new_badge": {
+    "value": "#d93a3a",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "--red-500 w/ white text"
+   },
+   "felt_center": {
+    "value": "#2f4594",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "shared felt"
+   },
+   "felt_mid": {
+    "value": "#26387a",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": ""
+   },
+   "felt_edge": {
+    "value": "#1d2a5c",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": ""
+   },
+   "rim": {
+    "value": "#0c0518",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "ds.py bg dark end"
+   },
+   "cp_team_a": {
+    "value": "#f3d98f",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": ".cp-gold-d"
+   },
+   "cp_team_a_bg": {
+    "value": "rgba(232,193,90,.18)",
+    "contrast_hex": "#4d2c4d",
+    "status": "from source",
+    "note": ".cp-gold-d"
+   },
+   "cp_team_b": {
+    "value": "#8fd9cf",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": ".cp-teal-d"
+   },
+   "cp_team_b_bg": {
+    "value": "rgba(43,179,163,.18)",
+    "contrast_hex": "#2b295a",
+    "status": "from source",
+    "note": ".cp-teal-d"
+   },
+   "tp_hero": {
+    "value": "#4a1d7a",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": ""
+   },
+   "tp_win": {
+    "value": "#f3d98f",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": ""
+   },
+   "tp_pack": {
+    "value": "#ffb3b5",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": ""
+   },
+   "chip": {
+    "value": "#a90e12",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "chip.png (unchanged)"
+   },
+   "whuffie": {
+    "value": "#fbeee8",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "whuffie-light.svg"
+   },
+   "g_sidebar": {
+    "value": "linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.04))",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": "glass panel"
+   },
+   "g_hero": {
+    "value": "radial-gradient(circle at 30% 20%,#5a2a8a,#2b0b4a 50%,#0c0518)",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": "aurora"
+   },
+   "g_felt": {
+    "value": "radial-gradient(ellipse at 50% 40%,#2f4594,#26387a 45%,#1d2a5c)",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": ""
+   },
+   "g_win": {
+    "value": "linear-gradient(180deg,#f3d98f,#c99a2e)",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": ""
+   }
+  },
+  "Arcade": {
+   "brand": {
+    "value": "#1e0536",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "ds.py sidebar"
+   },
+   "bg_page": {
+    "value": "#ffd93b",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "ds.py bg"
+   },
+   "bg_subtle": {
+    "value": "#ffe774",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": ""
+   },
+   "card": {
+    "value": "#fff8d6",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "ds.py card"
+   },
+   "raised": {
+    "value": "#ffffff",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": "+ 3px #1e0536 border, hard shadow 4px 4px 0"
+   },
+   "text_primary": {
+    "value": "#1e0536",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": ""
+   },
+   "text_secondary": {
+    "value": "#3d1766",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": ""
+   },
+   "text_muted": {
+    "value": "#5a2a8a",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": ""
+   },
+   "text_placeholder": {
+    "value": "#6e4b8c",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": ""
+   },
+   "border": {
+    "value": "#1e0536",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": "chunky 2\u20133px"
+   },
+   "border_strong": {
+    "value": "#1e0536",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": ""
+   },
+   "focus": {
+    "value": "#ff2e9a",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": "neon pink"
+   },
+   "accent": {
+    "value": "#d93a3a",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "ds.py button"
+   },
+   "accent_text": {
+    "value": "#b8262b",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": ""
+   },
+   "on_accent": {
+    "value": "#ffffff",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": ""
+   },
+   "danger": {
+    "value": "#b8262b",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": ""
+   },
+   "success": {
+    "value": "#0f8a52",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": ""
+   },
+   "success_text": {
+    "value": "#0b6b40",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": ""
+   },
+   "new_badge": {
+    "value": "#ff2e9a",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": "neon pink, #1e0536 text"
+   },
+   "felt_center": {
+    "value": "#7b2ff7",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": "neon violet felt"
+   },
+   "felt_mid": {
+    "value": "#5a1fd1",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": ""
+   },
+   "felt_edge": {
+    "value": "#3a128f",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": ""
+   },
+   "rim": {
+    "value": "#1e0536",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": ""
+   },
+   "cp_team_a": {
+    "value": "#1e0536",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": "on bg below"
+   },
+   "cp_team_a_bg": {
+    "value": "#ffb800",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": "hot gold"
+   },
+   "cp_team_b": {
+    "value": "#1e0536",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": "on bg below"
+   },
+   "cp_team_b_bg": {
+    "value": "#29e6c9",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": "neon teal"
+   },
+   "tp_hero": {
+    "value": "#7b2ff7",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": ""
+   },
+   "tp_win": {
+    "value": "#ff2e9a",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": ""
+   },
+   "tp_pack": {
+    "value": "#b8262b",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": ""
+   },
+   "chip": {
+    "value": "#a90e12",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "chip.png (unchanged)"
+   },
+   "whuffie": {
+    "value": "#1d0432",
+    "contrast_hex": null,
+    "status": "from source",
+    "note": "whuffie-dark.svg"
+   },
+   "g_sidebar": {
+    "value": "linear-gradient(180deg,#2b0b4a,#1e0536)",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": ""
+   },
+   "g_hero": {
+    "value": "linear-gradient(135deg,#ff2e9a,#7b2ff7 55%,#1e0536)",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": "neon"
+   },
+   "g_felt": {
+    "value": "radial-gradient(ellipse at 50% 40%,#7b2ff7,#5a1fd1 45%,#3a128f)",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": ""
+   },
+   "g_win": {
+    "value": "linear-gradient(180deg,#ffe774,#ff2e9a)",
+    "contrast_hex": null,
+    "status": "new proposal",
+    "note": ""
+   }
+  }
+ },
+ "contrast": {
+  "Classic": [
+   {
+    "fg": "text_primary",
+    "bg": "bg_page",
+    "fg_hex": "#1e0536",
+    "bg_hex": "#e8dad8",
+    "ratio": 13.67,
+    "pass": "AA"
+   },
+   {
+    "fg": "text_primary",
+    "bg": "card",
+    "fg_hex": "#1e0536",
+    "bg_hex": "#fbf7f4",
+    "ratio": 17.44,
+    "pass": "AA"
+   },
+   {
+    "fg": "text_secondary",
+    "bg": "card",
+    "fg_hex": "#4e3d5a",
+    "bg_hex": "#fbf7f4",
+    "ratio": 9.22,
+    "pass": "AA"
+   },
+   {
+    "fg": "text_muted",
+    "bg": "card",
+    "fg_hex": "#6a5873",
+    "bg_hex": "#fbf7f4",
+    "ratio": 6.05,
+    "pass": "AA"
+   },
+   {
+    "fg": "text_muted",
+    "bg": "bg_page",
+    "fg_hex": "#6a5873",
+    "bg_hex": "#e8dad8",
+    "ratio": 4.75,
+    "pass": "AA"
+   },
+   {
+    "fg": "text_placeholder",
+    "bg": "raised",
+    "fg_hex": "#7a6875",
+    "bg_hex": "#ffffff",
+    "ratio": 5.17,
+    "pass": "AA"
+   },
+   {
+    "fg": "text_placeholder",
+    "bg": "card",
+    "fg_hex": "#7a6875",
+    "bg_hex": "#fbf7f4",
+    "ratio": 4.85,
+    "pass": "AA"
+   },
+   {
+    "fg": "accent_text",
+    "bg": "card",
+    "fg_hex": "#8a6510",
+    "bg_hex": "#fbf7f4",
+    "ratio": 4.99,
+    "pass": "AA"
+   },
+   {
+    "fg": "on_accent",
+    "bg": "accent",
+    "fg_hex": "#1e0536",
+    "bg_hex": "#e8c15a",
+    "ratio": 10.8,
+    "pass": "AA"
+   },
+   {
+    "fg": "danger",
+    "bg": "card",
+    "fg_hex": "#b8262b",
+    "bg_hex": "#fbf7f4",
+    "ratio": 5.88,
+    "pass": "AA"
+   },
+   {
+    "fg": "success_text",
+    "bg": "card",
+    "fg_hex": "#1d7a4d",
+    "bg_hex": "#fbf7f4",
+    "ratio": 5.0,
+    "pass": "AA"
+   },
+   {
+    "fg": "cp_team_a",
+    "bg": "cp_team_a_bg",
+    "fg_hex": "#6b4e08",
+    "bg_hex": "#fdf4d9",
+    "ratio": 7.03,
+    "pass": "AA"
+   },
+   {
+    "fg": "cp_team_b",
+    "bg": "cp_team_b_bg",
+    "fg_hex": "#136b63",
+    "bg_hex": "#e3f5f2",
+    "ratio": 5.62,
+    "pass": "AA"
+   },
+   {
+    "fg": "focus",
+    "bg": "card",
+    "fg_hex": "#7b4fd6",
+    "bg_hex": "#fbf7f4",
+    "ratio": 5.01,
+    "pass": "AA"
+   },
+   {
+    "fg": "badge text",
+    "bg": "new_badge",
+    "fg_hex": "#ffffff",
+    "bg_hex": "#d93a3a",
+    "ratio": 4.55,
+    "pass": "AA"
+   },
+   {
+    "fg": "white",
+    "bg": "felt_mid",
+    "fg_hex": "#ffffff",
+    "bg_hex": "#26387a",
+    "ratio": 10.89,
+    "pass": "AA"
+   },
+   {
+    "fg": "white",
+    "bg": "brand(sidebar)",
+    "fg_hex": "#ffffff",
+    "bg_hex": "#1e0536",
+    "ratio": 18.58,
+    "pass": "AA"
+   },
+   {
+    "fg": "white",
+    "bg": "success_text (filled btn)",
+    "fg_hex": "#ffffff",
+    "bg_hex": "#1d7a4d",
+    "ratio": 5.33,
+    "pass": "AA"
+   }
+  ],
+  "Glass": [
+   {
+    "fg": "text_primary",
+    "bg": "bg_page",
+    "fg_hex": "#ffffff",
+    "bg_hex": "#2b0b4a",
+    "ratio": 16.81,
+    "pass": "AA"
+   },
+   {
+    "fg": "text_primary",
+    "bg": "card",
+    "fg_hex": "#ffffff",
+    "bg_hex": "#40235c",
+    "ratio": 13.02,
+    "pass": "AA"
+   },
+   {
+    "fg": "text_secondary",
+    "bg": "card",
+    "fg_hex": "#e3d6ef",
+    "bg_hex": "#40235c",
+    "ratio": 9.38,
+    "pass": "AA"
+   },
+   {
+    "fg": "text_muted",
+    "bg": "card",
+    "fg_hex": "#c4b2d6",
+    "bg_hex": "#40235c",
+    "ratio": 6.63,
+    "pass": "AA"
+   },
+   {
+    "fg": "text_muted",
+    "bg": "bg_page",
+    "fg_hex": "#c4b2d6",
+    "bg_hex": "#2b0b4a",
+    "ratio": 8.55,
+    "pass": "AA"
+   },
+   {
+    "fg": "text_placeholder",
+    "bg": "raised",
+    "fg_hex": "#c0afd2",
+    "bg_hex": "#4d3267",
+    "ratio": 5.24,
+    "pass": "AA"
+   },
+   {
+    "fg": "text_placeholder",
+    "bg": "card",
+    "fg_hex": "#c0afd2",
+    "bg_hex": "#40235c",
+    "ratio": 6.39,
+    "pass": "AA"
+   },
+   {
+    "fg": "accent_text",
+    "bg": "card",
+    "fg_hex": "#f3d98f",
+    "bg_hex": "#40235c",
+    "ratio": 9.38,
+    "pass": "AA"
+   },
+   {
+    "fg": "on_accent",
+    "bg": "accent",
+    "fg_hex": "#1e0536",
+    "bg_hex": "#e8c15a",
+    "ratio": 10.8,
+    "pass": "AA"
+   },
+   {
+    "fg": "danger",
+    "bg": "card",
+    "fg_hex": "#ff8a8d",
+    "bg_hex": "#40235c",
+    "ratio": 5.75,
+    "pass": "AA"
+   },
+   {
+    "fg": "success_text",
+    "bg": "card",
+    "fg_hex": "#5fd39a",
+    "bg_hex": "#40235c",
+    "ratio": 6.99,
+    "pass": "AA"
+   },
+   {
+    "fg": "cp_team_a",
+    "bg": "cp_team_a_bg",
+    "fg_hex": "#f3d98f",
+    "bg_hex": "#4d2c4d",
+    "ratio": 8.49,
+    "pass": "AA"
+   },
+   {
+    "fg": "cp_team_b",
+    "bg": "cp_team_b_bg",
+    "fg_hex": "#8fd9cf",
+    "bg_hex": "#2b295a",
+    "ratio": 8.29,
+    "pass": "AA"
+   },
+   {
+    "fg": "tp_pack",
+    "bg": "card",
+    "fg_hex": "#ffb3b5",
+    "bg_hex": "#40235c",
+    "ratio": 7.67,
+    "pass": "AA"
+   },
+   {
+    "fg": "focus",
+    "bg": "card",
+    "fg_hex": "#b79cff",
+    "bg_hex": "#40235c",
+    "ratio": 5.71,
+    "pass": "AA"
+   },
+   {
+    "fg": "badge text",
+    "bg": "new_badge",
+    "fg_hex": "#ffffff",
+    "bg_hex": "#d93a3a",
+    "ratio": 4.55,
+    "pass": "AA"
+   },
+   {
+    "fg": "white",
+    "bg": "felt_mid",
+    "fg_hex": "#ffffff",
+    "bg_hex": "#26387a",
+    "ratio": 10.89,
+    "pass": "AA"
+   },
+   {
+    "fg": "white",
+    "bg": "brand(sidebar)",
+    "fg_hex": "#ffffff",
+    "bg_hex": "#1e0536",
+    "ratio": 18.58,
+    "pass": "AA"
+   },
+   {
+    "fg": "text_muted",
+    "bg": "bg dark end",
+    "fg_hex": "#c4b2d6",
+    "bg_hex": "#0c0518",
+    "ratio": 10.17,
+    "pass": "AA"
+   }
+  ],
+  "Arcade": [
+   {
+    "fg": "text_primary",
+    "bg": "bg_page",
+    "fg_hex": "#1e0536",
+    "bg_hex": "#ffd93b",
+    "ratio": 13.48,
+    "pass": "AA"
+   },
+   {
+    "fg": "text_primary",
+    "bg": "card",
+    "fg_hex": "#1e0536",
+    "bg_hex": "#fff8d6",
+    "ratio": 17.39,
+    "pass": "AA"
+   },
+   {
+    "fg": "text_secondary",
+    "bg": "card",
+    "fg_hex": "#3d1766",
+    "bg_hex": "#fff8d6",
+    "ratio": 12.99,
+    "pass": "AA"
+   },
+   {
+    "fg": "text_muted",
+    "bg": "card",
+    "fg_hex": "#5a2a8a",
+    "bg_hex": "#fff8d6",
+    "ratio": 9.21,
+    "pass": "AA"
+   },
+   {
+    "fg": "text_muted",
+    "bg": "bg_page",
+    "fg_hex": "#5a2a8a",
+    "bg_hex": "#ffd93b",
+    "ratio": 7.15,
+    "pass": "AA"
+   },
+   {
+    "fg": "text_placeholder",
+    "bg": "raised",
+    "fg_hex": "#6e4b8c",
+    "bg_hex": "#ffffff",
+    "ratio": 6.89,
+    "pass": "AA"
+   },
+   {
+    "fg": "text_placeholder",
+    "bg": "card",
+    "fg_hex": "#6e4b8c",
+    "bg_hex": "#fff8d6",
+    "ratio": 6.45,
+    "pass": "AA"
+   },
+   {
+    "fg": "accent_text",
+    "bg": "card",
+    "fg_hex": "#b8262b",
+    "bg_hex": "#fff8d6",
+    "ratio": 5.87,
+    "pass": "AA"
+   },
+   {
+    "fg": "on_accent",
+    "bg": "accent",
+    "fg_hex": "#ffffff",
+    "bg_hex": "#d93a3a",
+    "ratio": 4.55,
+    "pass": "AA"
+   },
+   {
+    "fg": "danger",
+    "bg": "card",
+    "fg_hex": "#b8262b",
+    "bg_hex": "#fff8d6",
+    "ratio": 5.87,
+    "pass": "AA"
+   },
+   {
+    "fg": "success_text",
+    "bg": "card",
+    "fg_hex": "#0b6b40",
+    "bg_hex": "#fff8d6",
+    "ratio": 6.16,
+    "pass": "AA"
+   },
+   {
+    "fg": "cp_team_a",
+    "bg": "cp_team_a_bg",
+    "fg_hex": "#1e0536",
+    "bg_hex": "#ffb800",
+    "ratio": 10.71,
+    "pass": "AA"
+   },
+   {
+    "fg": "cp_team_b",
+    "bg": "cp_team_b_bg",
+    "fg_hex": "#1e0536",
+    "bg_hex": "#29e6c9",
+    "ratio": 11.73,
+    "pass": "AA"
+   },
+   {
+    "fg": "tp_pack",
+    "bg": "card",
+    "fg_hex": "#b8262b",
+    "bg_hex": "#fff8d6",
+    "ratio": 5.87,
+    "pass": "AA"
+   },
+   {
+    "fg": "focus",
+    "bg": "card",
+    "fg_hex": "#ff2e9a",
+    "bg_hex": "#fff8d6",
+    "ratio": 3.22,
+    "pass": "AA-large/UI"
+   },
+   {
+    "fg": "badge text",
+    "bg": "new_badge",
+    "fg_hex": "#1e0536",
+    "bg_hex": "#ff2e9a",
+    "ratio": 5.41,
+    "pass": "AA"
+   },
+   {
+    "fg": "white",
+    "bg": "felt_mid",
+    "fg_hex": "#ffffff",
+    "bg_hex": "#5a1fd1",
+    "ratio": 8.23,
+    "pass": "AA"
+   },
+   {
+    "fg": "white",
+    "bg": "brand(sidebar)",
+    "fg_hex": "#ffffff",
+    "bg_hex": "#1e0536",
+    "ratio": 18.58,
+    "pass": "AA"
+   },
+   {
+    "fg": "text_primary",
+    "bg": "bg_subtle",
+    "fg_hex": "#1e0536",
+    "bg_hex": "#ffe774",
+    "ratio": 14.98,
+    "pass": "AA"
+   }
+  ]
+ }
+}

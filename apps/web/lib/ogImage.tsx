@@ -14,8 +14,8 @@ export function ogImageResponse(title: string, subtitle: string) {
           flexDirection: 'column',
           justifyContent: 'space-between',
           padding: '72px 80px',
-          background: 'linear-gradient(145deg, #1d0432 0%, #3a0d5c 55%, #5c1a6e 100%)',
-          color: '#e6d9d7',
+          background: 'linear-gradient(145deg, #3d1766 0%, #1e0536 55%, #13021f 100%)',
+          color: '#e8dad8',
           fontFamily: 'system-ui, sans-serif',
         }}
       >

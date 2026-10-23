@@ -1,0 +1,77 @@
+/* Poker redesign tokens. Applied only under .pk-v2. Does not change theme.css. */
+
+.pk-v2 {
+  --pk-space-1: 4px;
+  --pk-space-2: 8px;
+  --pk-space-3: 12px;
+  --pk-space-4: 16px;
+  --pk-space-5: 20px;
+  --pk-space-6: 24px;
+  --pk-space-7: 32px;
+  --pk-space-8: 40px;
+  --pk-space-9: 48px;
+  --pk-space-10: 64px;
+  --pk-space-11: 64px;
+  --pk-space-12: 64px;
+  --pk-space-13: 64px;
+  --pk-space-14: 64px;
+  --pk-space-15: 64px;
+  --pk-space-16: 64px;
+
+  --pk-radius-sm: 8px;
+  --pk-radius-md: 12px;
+  --pk-radius-lg: 16px;
+  --pk-radius-xl: 20px;
+  --pk-radius-2xl: 28px;
+  --pk-radius-full: 999px;
+
+  --pk-shadow-sm: 0 1px 2px rgba(30, 5, 54, 0.06), 0 1px 3px rgba(30, 5, 54, 0.08);
+  --pk-shadow-md: 0 4px 12px rgba(30, 5, 54, 0.08), 0 2px 4px rgba(30, 5, 54, 0.06);
+  --pk-shadow-lg: 0 16px 40px rgba(30, 5, 54, 0.16), 0 4px 12px rgba(30, 5, 54, 0.08);
+
+  --pk-font-display: var(--font-pk-display), Outfit, sans-serif;
+  --pk-font-body: var(--font-pk-body), Inter, sans-serif;
+
+  /* Classic gradients from design-tokens/tokens-modes.json */
+  --pk-g-hero: radial-gradient(circle at 30% 20%, #3d1766, #1e0536 55%, #13021f);
+  --pk-g-felt: radial-gradient(ellipse at 50% 40%, #2f4594, #26387a 45%, #1d2a5c);
+  --pk-g-win: linear-gradient(180deg, #f3d98f, #c99a2e);
+
+  font-family: var(--pk-font-body);
+  color: rgb(var(--text-primary));
+  min-width: 0;
+}
+
+html[data-ui-theme='v3'] .pk-v2 {
+  --pk-g-hero: radial-gradient(circle at 30% 20%, #5a2a8a, #2b0b4a 50%, #0c0518);
+  --pk-g-felt: radial-gradient(ellipse at 50% 40%, #2f4594, #26387a 45%, #1d2a5c);
+  --pk-g-win: linear-gradient(180deg, #f3d98f, #c99a2e);
+}
+
+html[data-ui-theme='v2'] .pk-v2 {
+  --pk-g-hero: linear-gradient(135deg, #ff2e9a, #7b2ff7 55%, #1e0536);
+  --pk-g-felt: radial-gradient(ellipse at 50% 40%, #7b2ff7, #5a1fd1 45%, #3a128f);
+  --pk-g-win: linear-gradient(180deg, #ffe774, #ff2e9a);
+}
+
+.pk-v2 :focus-visible {
+  outline: 2px solid rgb(var(--focus-ring));
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pk-v2 *,
+  .pk-v2 *::before,
+  .pk-v2 *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Tablet: desktop composition, scaled to the content width. */
+@media (min-width: 768px) and (max-width: 1279px) {
+  .pk-v2 .pk-desktop-scale {
+    zoom: 0.86;
+  }
+}

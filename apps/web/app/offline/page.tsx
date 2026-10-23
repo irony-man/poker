@@ -3,11 +3,14 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { OfflineTableView } from '@/components/OfflineTableView';
+import { PkOfflineTable } from '@/components/pk/table/PkOfflineTable';
+import { usePokerV2 } from '@/lib/pokerV2';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { fetchPublicBotGroups } from '@/lib/api';
 import type { TableConfig } from '@poker/engine';
 
 function OfflineInner() {
+  const pokerV2 = usePokerV2('table');
   const search = useSearchParams();
   const name = (search.get('name') || 'Player').slice(0, 32);
   const seats = Math.min(9, Math.max(2, Number(search.get('seats')) || 6));
@@ -60,6 +63,17 @@ function OfflineInner() {
     }),
     [seats],
   );
+
+  if (pokerV2) {
+    return (
+      <PkOfflineTable
+        config={config}
+        playerName={name}
+        botNames={botNames}
+        resume={resume}
+      />
+    );
+  }
 
   if (!namesReady) {
     return <LoadingScreen compact label="Loading offline table…" />;

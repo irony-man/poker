@@ -2,7 +2,9 @@ import type { Metadata, Viewport } from 'next';
 import { GoogleAnalytics } from '@next/third-parties/google';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import './poker-v2.css';
 import { AppChrome } from '@/components/AppChrome';
+import { paletteV2Default } from '@/lib/palette';
 import {
   gaMeasurementId,
   SITE_DESCRIPTION,
@@ -84,12 +86,13 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#e6d9d7' },
-    { media: '(prefers-color-scheme: dark)', color: '#1d0432' },
+    { media: '(prefers-color-scheme: light)', color: '#e8dad8' },
+    { media: '(prefers-color-scheme: dark)', color: '#1e0536' },
   ],
 };
 
 const gaId = gaMeasurementId();
+const paletteDefault = paletteV2Default();
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -97,7 +100,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('pokr-ui-theme');var c=JSON.parse(localStorage.getItem('pokr-ui-looks')||'null');if(c&&Array.isArray(c.visible)&&c.visible.indexOf(t)<0)t=c.defaultLook;if(t==='v2'||t==='v3')document.documentElement.setAttribute('data-ui-theme',t);}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('pokr-ui-theme');var c=JSON.parse(localStorage.getItem('pokr-ui-looks')||'null');if(c&&Array.isArray(c.visible)&&c.visible.indexOf(t)<0)t=c.defaultLook;if(t==='v2'||t==='v3')document.documentElement.setAttribute('data-ui-theme',t);}catch(e){}try{var q=new URLSearchParams(location.search).get('palette');if(q==='v1'||q==='v2')localStorage.setItem('pokr-palette',q);var s=localStorage.getItem('pokr-palette');var m=q==='v1'||q==='v2'?q:(s==='v1'||s==='v2'?s:null);var on=m?m==='v2':${paletteDefault ? 'true' : 'false'};if(on)document.documentElement.setAttribute('data-palette','v2');}catch(e){}})();`,
           }}
         />
       </head>

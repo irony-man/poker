@@ -828,7 +828,7 @@ export function TableView({
 
         {contestOver ? (
           <div className="relative z-40 mx-auto mb-2 w-full max-w-md shrink-0 px-2">
-            <div className="flex flex-col items-center gap-2 rounded-2xl border border-sidebar/15 bg-white/95 px-4 py-3 text-center shadow-[0_12px_32px_rgb(29_4_50/0.12)] sm:flex-row sm:justify-between sm:text-left">
+            <div className="flex flex-col items-center gap-2 rounded-2xl border border-sidebar/15 bg-white/95 px-4 py-3 text-center shadow-[0_12px_32px_rgb(var(--ds-brand-ink)/0.12)] sm:flex-row sm:justify-between sm:text-left">
               <div className="min-w-0">
                 <p className="font-display text-sm font-bold uppercase tracking-wider text-sidebar">
                   Contest complete

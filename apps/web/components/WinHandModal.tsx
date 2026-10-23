@@ -77,7 +77,7 @@ export function ReadyPlayersRoster({
       className={
         compact
           ? `mx-auto w-full max-w-sm rounded-lg border border-sidebar/10 bg-page/40 px-2.5 py-2 ${className}`.trim()
-          : `rounded-2xl border border-sidebar/12 bg-white/95 px-3 py-3 shadow-[0_12px_32px_rgb(29_4_50_/_0.12)] sm:px-4 sm:py-3.5 ${className}`.trim()
+          : `rounded-2xl border border-sidebar/12 bg-white/95 px-3 py-3 shadow-[0_12px_32px_rgb(var(--ds-brand-ink)_/_0.12)] sm:px-4 sm:py-3.5 ${className}`.trim()
       }
     >
       <div
@@ -120,7 +120,7 @@ export function ReadyPlayersRoster({
               <div
                 className={`relative rounded-full p-[2px] transition ${
                   p.ready && !p.sittingOut
-                    ? 'bg-gradient-to-b from-sidebar to-sidebar/80 shadow-[0_0_0_2px_rgb(29_4_50_/_0.12),0_4px_12px_rgb(29_4_50_/_0.14)]'
+                    ? 'bg-gradient-to-b from-sidebar to-sidebar/80 shadow-[0_0_0_2px_rgb(var(--ds-brand-ink)_/_0.12),0_4px_12px_rgb(var(--ds-brand-ink)_/_0.14)]'
                     : 'bg-sidebar/10'
                 }`}
               >
@@ -226,7 +226,7 @@ function HandResultRow({ line }: { line: WinLine }) {
       className={cn(
         'rounded-xl border px-3 py-2.5 sm:px-4 sm:py-3',
         line.isWinner
-          ? 'border-brass-dim/40 bg-brass/10 shadow-[0_4px_16px_rgb(29_4_50_/_0.06)]'
+          ? 'border-brass-dim/40 bg-brass/10 shadow-[0_4px_16px_rgb(var(--ds-brand-ink)_/_0.06)]'
           : line.isSelf
             ? 'border-sidebar/25 bg-page/50'
             : 'border-sidebar/10 bg-page/30',

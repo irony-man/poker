@@ -1,6 +1,7 @@
 @import url('https://fonts.cdnfonts.com/css/rf-tone');
 @import url('https://api.fontshare.com/v2/css?f[]=clash-display@500,600,700&display=swap');
 @import './theme.css';
+@import './theme.colours.generated.css';
 
 @tailwind base;
 @tailwind components;
@@ -221,10 +222,10 @@ body > * {
  */
 .lobby-shell .hud-panel {
   border-color: rgb(var(--sidebar) / 0.12);
-  background-color: rgb(255 252 250 / 0.92);
+  background-color: rgb(var(--ds-paper) / 0.92);
   box-shadow:
     0 1px 0 0 rgb(255 255 255 / 0.65) inset,
-    0 14px 36px rgb(29 4 50 / 0.08);
+    0 14px 36px rgb(var(--ds-brand-ink) / 0.08);
   color: rgb(var(--text-primary));
   backdrop-filter: none;
 }
@@ -314,7 +315,7 @@ body > * {
   border-color: rgb(var(--sidebar) / 0.35);
   background-image: linear-gradient(
     to bottom,
-    rgb(52 18 82),
+    rgb(var(--ds-cta-top)),
     rgb(var(--sidebar))
   );
   color: rgb(var(--on-chrome));
@@ -355,7 +356,7 @@ body > * {
 
 .lobby-shell .field-select option,
 .lobby-paper .field-select option {
-  background-color: rgb(255 252 250);
+  background-color: rgb(var(--ds-paper));
   color: rgb(var(--text-primary));
 }
 
@@ -466,7 +467,7 @@ body > * {
   }
 
   .bet-slider::-webkit-slider-thumb {
-    @apply h-4 w-4 cursor-pointer appearance-none rounded-full border shadow-[0_1px_4px_rgb(29_4_50/0.25)];
+    @apply h-4 w-4 cursor-pointer appearance-none rounded-full border shadow-[0_1px_4px_rgb(var(--ds-brand-ink)/0.25)];
     background-color: rgb(var(--bg-page));
     border-color: rgb(var(--sidebar) / 0.4);
   }
@@ -483,7 +484,7 @@ body > * {
 
   /* Match lobby primary CTAs: purple fill, mushroom type. */
   .btn-primary {
-    @apply rounded-md border bg-gradient-to-b from-[#341252] to-sidebar px-4 py-2.5 font-display font-bold uppercase tracking-wider shadow-glow transition hover:brightness-110 disabled:opacity-50;
+    @apply rounded-md border bg-gradient-to-b from-[rgb(var(--ds-cta-top))] to-sidebar px-4 py-2.5 font-display font-bold uppercase tracking-wider shadow-glow transition hover:brightness-110 disabled:opacity-50;
     border-color: rgb(var(--border-subtle) / 0.2);
     color: rgb(var(--on-chrome));
   }
@@ -537,7 +538,7 @@ body > * {
   }
 
   .btn-soft {
-    @apply inline-flex items-center justify-center rounded border border-sidebar/20 bg-white px-2 font-display font-bold uppercase tracking-wide text-sidebar shadow-[0_2px_8px_rgb(29_4_50/0.06)] transition hover:bg-sidebar/5 disabled:opacity-50;
+    @apply inline-flex items-center justify-center rounded border border-sidebar/20 bg-white px-2 font-display font-bold uppercase tracking-wide text-sidebar shadow-[0_2px_8px_rgb(var(--ds-brand-ink)/0.06)] transition hover:bg-sidebar/5 disabled:opacity-50;
   }
 
   .btn-soft:hover {
@@ -583,7 +584,7 @@ body > * {
   /* Light page: ghost buttons match lobby. */
   .play-shell .btn-ghost {
     border-color: rgb(var(--sidebar) / 0.22);
-    background-color: rgb(255 252 250 / 0.85);
+    background-color: rgb(var(--ds-paper) / 0.85);
     color: rgb(var(--text-primary));
   }
 
@@ -634,7 +635,7 @@ body > * {
   }
 
   .play-chrome-leave {
-    @apply inline-flex h-9 shrink-0 items-center justify-center rounded-lg border border-danger/45 bg-gradient-to-b from-danger to-[#7c2119] px-3 text-xs font-display font-bold uppercase tracking-wider shadow-[0_2px_10px_rgb(192_57_43_/_0.28)] transition hover:brightness-110 active:scale-[0.98];
+    @apply inline-flex h-9 shrink-0 items-center justify-center rounded-lg border border-danger/45 bg-gradient-to-b from-danger to-[#7c2119] px-3 text-xs font-display font-bold uppercase tracking-wider shadow-[0_2px_10px_rgb(var(--danger)_/_0.28)] transition hover:brightness-110 active:scale-[0.98];
     color: rgb(var(--on-chrome));
   }
 
@@ -644,13 +645,13 @@ body > * {
   }
 
   .surface-card {
-    @apply rounded-2xl border border-sidebar/10 bg-white p-4 shadow-[0_8px_28px_rgb(29_4_50/0.06)] sm:p-6;
+    @apply rounded-2xl border border-sidebar/10 bg-white p-4 shadow-[0_8px_28px_rgb(var(--ds-brand-ink)/0.06)] sm:p-6;
   }
 
   .surface-card-lg {
     @apply rounded-2xl border bg-white p-5 sm:p-7;
     border-color: rgb(var(--sidebar) / 0.12);
-    box-shadow: 0 10px 28px rgb(29 4 50 / 0.06);
+    box-shadow: 0 10px 28px rgb(var(--ds-brand-ink) / 0.06);
   }
 
   .surface-row {
@@ -672,12 +673,12 @@ body > * {
   .surface-modal {
     @apply overflow-hidden rounded-2xl border bg-white;
     border-color: rgb(var(--sidebar) / 0.12);
-    box-shadow: 0 18px 48px rgb(29 4 50 / 0.18);
+    box-shadow: 0 18px 48px rgb(var(--ds-brand-ink) / 0.18);
   }
 
   /* Shared sheet for docks / popovers. Classic + Arcade stay solid white; Glass frosts it. */
   .glass-sheet {
-    background-color: #fff;
+    background-color: rgb(var(--ds-card));
   }
 
   .surface-list {
@@ -736,7 +737,7 @@ body > * {
     @apply flex items-end gap-2 rounded-2xl p-1.5 pl-3;
     background-color: rgb(var(--bg-panel));
     border: 2px solid rgb(var(--sidebar) / 0.42);
-    box-shadow: 0 1px 0 rgb(29 4 50 / 0.06);
+    box-shadow: 0 1px 0 rgb(var(--ds-brand-ink) / 0.06);
     transition:
       border-color 0.15s ease,
       box-shadow 0.15s ease;
@@ -744,11 +745,11 @@ body > * {
 
   .bot-chat-composer:focus-within {
     border-color: rgb(var(--sidebar) / 0.62);
-    box-shadow: 0 2px 8px rgb(29 4 50 / 0.08);
+    box-shadow: 0 2px 8px rgb(var(--ds-brand-ink) / 0.08);
   }
 
   html[data-ui-theme='v3'] .bot-chat-composer {
-    background-color: rgb(255 252 250);
+    background-color: rgb(var(--ds-paper));
     border-color: rgb(var(--sidebar) / 0.5);
   }
 
@@ -784,29 +785,29 @@ body > * {
   .bot-chat-message-bubble--user {
     background-color: rgb(var(--sidebar));
     color: rgb(var(--on-chrome));
-    box-shadow: 0 6px 16px rgb(29 4 50 / 0.18);
+    box-shadow: 0 6px 16px rgb(var(--ds-brand-ink) / 0.18);
   }
 
   .bot-chat-panel .bot-chat-bubble-assistant,
   .bot-chat-message-bubble--assistant.bot-chat-bubble-assistant {
     background-color: rgb(var(--bg-panel));
     border-color: rgb(var(--sidebar) / 0.22);
-    box-shadow: 0 2px 10px rgb(29 4 50 / 0.05);
+    box-shadow: 0 2px 10px rgb(var(--ds-brand-ink) / 0.05);
   }
 
   .bot-chat-assistant-avatar {
     background-color: rgb(var(--bg-panel));
     border: 2px solid rgb(var(--sidebar) / 0.35);
-    box-shadow: 0 2px 8px rgb(29 4 50 / 0.06);
+    box-shadow: 0 2px 8px rgb(var(--ds-brand-ink) / 0.06);
   }
 
   html[data-ui-theme='v3'] .bot-chat-assistant-avatar {
-    background-color: rgb(255 252 250);
+    background-color: rgb(var(--ds-paper));
     border-color: rgb(var(--sidebar) / 0.45);
   }
 
   .bot-chat-user-avatar {
-    box-shadow: 0 2px 8px rgb(29 4 50 / 0.12);
+    box-shadow: 0 2px 8px rgb(var(--ds-brand-ink) / 0.12);
   }
 
   .bot-chat-starter-pill .bot-chat-assistant-avatar {
@@ -835,7 +836,7 @@ body > * {
     border: 2px solid rgb(var(--sidebar) / 0.38);
     box-shadow:
       0 1px 0 rgb(255 252 250 / 0.65) inset,
-      0 6px 20px rgb(29 4 50 / 0.16);
+      0 6px 20px rgb(var(--ds-brand-ink) / 0.16);
     transition:
       border-color 0.15s ease,
       box-shadow 0.15s ease,
@@ -846,7 +847,7 @@ body > * {
     border-color: rgb(var(--sidebar) / 0.55);
     box-shadow:
       0 1px 0 rgb(255 252 250 / 0.75) inset,
-      0 10px 26px rgb(29 4 50 / 0.2);
+      0 10px 26px rgb(var(--ds-brand-ink) / 0.2);
     transform: translateY(-1px);
   }
 
@@ -882,11 +883,11 @@ body > * {
     height: 2.75rem;
     overflow: hidden;
     border-radius: 9999px;
-    box-shadow: 0 2px 8px rgb(29 4 50 / 0.12);
+    box-shadow: 0 2px 8px rgb(var(--ds-brand-ink) / 0.12);
   }
 
   html[data-ui-theme='v3'] .bot-chat-fab-shell {
-    background-color: rgb(255 252 250);
+    background-color: rgb(var(--ds-paper));
     border-color: rgb(var(--sidebar) / 0.45);
     box-shadow:
       0 1px 0 rgb(255 255 255 / 0.5) inset,
@@ -894,7 +895,7 @@ body > * {
   }
 
   html[data-ui-theme='v3'] .bot-chat-fab-label {
-    color: rgb(22 12 40);
+    color: rgb(var(--ds-frost-ink));
   }
 
   .bot-chat-starter-pill {
@@ -902,7 +903,7 @@ body > * {
     background-color: rgb(var(--bg-panel));
     border: 2px solid rgb(var(--sidebar) / 0.42);
     color: rgb(var(--text-primary));
-    box-shadow: 0 1px 0 rgb(29 4 50 / 0.06);
+    box-shadow: 0 1px 0 rgb(var(--ds-brand-ink) / 0.06);
     transition:
       border-color 0.15s ease,
       box-shadow 0.15s ease,
@@ -911,8 +912,8 @@ body > * {
 
   .bot-chat-starter-pill:hover:not(:disabled) {
     border-color: rgb(var(--sidebar) / 0.62);
-    background-color: rgb(255 252 250);
-    box-shadow: 0 2px 8px rgb(29 4 50 / 0.08);
+    background-color: rgb(var(--ds-paper));
+    box-shadow: 0 2px 8px rgb(var(--ds-brand-ink) / 0.08);
   }
 
   .bot-chat-starter-pill:active:not(:disabled) {
@@ -930,7 +931,7 @@ body > * {
   }
 
   html[data-ui-theme='v3'] .bot-chat-starter-pill {
-    background-color: rgb(255 252 250);
+    background-color: rgb(var(--ds-paper));
     border-color: rgb(var(--sidebar) / 0.5);
   }
 
@@ -1431,7 +1432,7 @@ body > * {
     box-shadow:
       inset 0 0 0 2px rgb(var(--felt-rim-edge) / 0.5),
       0 0 0 1px rgb(var(--sidebar) / 0.35),
-      0 16px 40px rgb(29 4 50 / 0.18);
+      0 16px 40px rgb(var(--ds-brand-ink) / 0.18);
   }
 
   /* Seat Call/Fold floating label over the player. */
@@ -1542,13 +1543,13 @@ html[data-ui-theme='v2'] .play-shell {
 }
 
 html[data-ui-theme='v2'] .lobby-sidebar {
-  color: #fff;
+  color: rgb(var(--on-chrome));
   border-right: 3px solid #000;
   box-shadow: 4px 0 0 0 #000;
 }
 
 html[data-ui-theme='v2'] .lobby-sidebar .sidebar-nav-kicker {
-  color: rgb(253 233 61);
+  color: rgb(var(--bg-page));
 }
 
 html[data-ui-theme='v2'] .lobby-sidebar .nav-sidebar-item {
@@ -1557,12 +1558,12 @@ html[data-ui-theme='v2'] .lobby-sidebar .nav-sidebar-item {
 
 html[data-ui-theme='v2'] .lobby-sidebar .nav-sidebar-item:hover {
   background-color: rgb(255 255 255 / 0.12);
-  color: #fff;
+  color: rgb(var(--on-chrome));
 }
 
 html[data-ui-theme='v2'] .lobby-sidebar .nav-sidebar-item-active {
-  background-color: rgb(253 233 61);
-  color: #1a1028;
+  background-color: rgb(var(--bg-page));
+  color: rgb(var(--text-primary));
   border: 2px solid #000;
   box-shadow: 3px 3px 0 0 #000;
 }
@@ -1581,7 +1582,7 @@ html[data-ui-theme='v2'] .hud-panel::before {
 }
 
 html[data-ui-theme='v2'] .lobby-shell .hud-panel {
-  background-color: #fff;
+  background-color: rgb(var(--ds-card));
   color: rgb(var(--text-primary));
   box-shadow: 4px 4px 0 0 #000;
 }
@@ -1596,7 +1597,7 @@ html[data-ui-theme='v2'] .lobby-shell .hud-panel .surface-card-lg {
 html[data-ui-theme='v2'] .surface-card,
 html[data-ui-theme='v2'] .surface-card-lg {
   border: 3px solid #000;
-  background-color: #fff;
+  background-color: rgb(var(--ds-card));
   box-shadow: 4px 4px 0 0 #000;
   border-radius: var(--radius-xl);
 }
@@ -1612,7 +1613,7 @@ html[data-ui-theme='v2'] .btn-primary,
 html[data-ui-theme='v2'] .lobby-shell .btn-primary {
   background-image: none;
   background-color: rgb(var(--sidebar));
-  color: #fff;
+  color: rgb(var(--on-chrome));
   border: 3px solid #000;
   box-shadow: 4px 4px 0 0 #000;
   border-radius: var(--radius-md);
@@ -1624,7 +1625,7 @@ html[data-ui-theme='v2'] .lobby-shell .btn-primary:hover {
   /* Lobby remaps --bg-raised to yellow; keep purple CTA + white label on hover. */
   filter: none;
   background-color: rgb(var(--ink-raised));
-  color: #fff;
+  color: rgb(var(--on-chrome));
 }
 
 html[data-ui-theme='v2'] .btn-primary:disabled,
@@ -1632,7 +1633,7 @@ html[data-ui-theme='v2'] .lobby-shell .btn-primary:disabled,
 html[data-ui-theme='v2'] .btn-primary:disabled:hover,
 html[data-ui-theme='v2'] .lobby-shell .btn-primary:disabled:hover {
   background-color: rgb(var(--sidebar));
-  color: #fff;
+  color: rgb(var(--on-chrome));
   opacity: 0.5;
 }
 
@@ -1641,7 +1642,7 @@ html[data-ui-theme='v2'] .lobby-shell .btn-ghost,
 html[data-ui-theme='v2'] .play-shell .btn-ghost {
   border: 3px solid #000;
   box-shadow: 3px 3px 0 0 #000;
-  background-color: #fff;
+  background-color: rgb(var(--ds-card));
   color: rgb(var(--text-primary));
 }
 
@@ -1676,7 +1677,7 @@ html[data-ui-theme='v2'] .lobby-shell .choice-chip {
 html[data-ui-theme='v2'] .choice-chip-selected,
 html[data-ui-theme='v2'] .lobby-shell .choice-chip-selected {
   background-color: rgb(var(--sidebar));
-  color: #fff;
+  color: rgb(var(--on-chrome));
   border-color: #000;
 }
 
@@ -1705,7 +1706,7 @@ html[data-ui-theme='v2'] .notice-danger {
 }
 
 html[data-ui-theme='v2'] .notice-info {
-  background-color: #fff;
+  background-color: rgb(var(--ds-card));
 }
 
 html[data-ui-theme='v2'] .play-chrome-control,
@@ -1716,7 +1717,7 @@ html[data-ui-theme='v2'] .play-chrome-control-icon {
 
 html[data-ui-theme='v2'] .play-chrome-control-active {
   background-color: rgb(var(--sidebar));
-  color: #fff;
+  color: rgb(var(--on-chrome));
   border-color: #000;
 }
 
@@ -1749,7 +1750,7 @@ html[data-ui-theme='v3'] .lobby-sidebar {
   -webkit-backdrop-filter: blur(28px) saturate(1.45);
   border-right: 1px solid rgb(80 200 220 / 0.22);
   box-shadow: 0 1px 0 0 rgb(var(--glass-highlight) / 0.28) inset;
-  color: #fff;
+  color: rgb(var(--on-chrome));
 }
 
 html[data-ui-theme='v3'] .lobby-sidebar .sidebar-nav-kicker {
@@ -1762,12 +1763,12 @@ html[data-ui-theme='v3'] .lobby-sidebar .nav-sidebar-item {
 
 html[data-ui-theme='v3'] .lobby-sidebar .nav-sidebar-item:hover {
   background-color: rgb(255 255 255 / 0.12);
-  color: #fff;
+  color: rgb(var(--on-chrome));
 }
 
 html[data-ui-theme='v3'] .lobby-sidebar .nav-sidebar-item-active {
   background-color: rgb(var(--glass-fill) / 0.18);
-  color: #fff;
+  color: rgb(var(--on-chrome));
   border: 1px solid rgb(var(--glass-highlight) / 0.4);
   box-shadow: 0 1px 0 0 rgb(var(--glass-highlight) / 0.45) inset;
 }
@@ -1912,14 +1913,14 @@ html[data-ui-theme='v3'] .play-action-dock select {
 .play-action-dock input[type='text'],
 .chat-panel-shell:not(.bot-chat-panel) input:not([type='range']):not([type='checkbox']):not([type='radio']),
 .chat-panel-shell:not(.bot-chat-panel) textarea {
-  color: rgb(29 4 50);
-  caret-color: rgb(29 4 50);
+  color: rgb(var(--ds-brand-ink));
+  caret-color: rgb(var(--ds-brand-ink));
   color-scheme: light;
 }
 
 .chat-panel-shell:not(.bot-chat-panel) input::placeholder,
 .chat-panel-shell:not(.bot-chat-panel) textarea::placeholder {
-  color: rgb(68 48 74 / 0.75);
+  color: rgb(var(--ds-text-placeholder) / 0.75);
 }
 
 html[data-ui-theme='v3'] .play-action-dock input[type='number'],
@@ -1975,11 +1976,11 @@ html[data-ui-theme='v3'] .btn-primary,
 html[data-ui-theme='v3'] .lobby-shell .btn-primary {
   background-image: none;
   background-color: rgb(var(--sidebar) / 0.7);
-  color: #fff;
+  color: rgb(var(--on-chrome));
   border: 1px solid rgb(var(--glass-highlight) / 0.4);
   box-shadow:
     0 1px 0 0 rgb(var(--glass-highlight) / 0.5) inset,
-    0 8px 22px rgb(96 64 168 / 0.32);
+    0 8px 22px rgb(var(--bg-chrome) / 0.32);
   backdrop-filter: blur(12px) saturate(1.3);
   -webkit-backdrop-filter: blur(12px) saturate(1.3);
   border-radius: var(--radius-md);
@@ -2011,7 +2012,7 @@ html[data-ui-theme='v3'] .play-shell .btn-ghost {
 html[data-ui-theme='v3'] .lobby-main > :not(.hud-panel) .btn-ghost,
 html[data-ui-theme='v3'] .lobby-page-intro .btn-ghost,
 html[data-ui-theme='v3'] .lobby-main .btn-ghost {
-  color: rgb(22 12 40);
+  color: rgb(var(--ds-frost-ink));
 }
 
 html[data-ui-theme='v3'] .lobby-shell .hud-panel .btn-ghost,
@@ -2044,17 +2045,17 @@ html[data-ui-theme='v3'] .lobby-shell .field-select {
   /* Frost fill is paper-light — force dark ink even on dusk page ground. */
   --text-primary: 22 12 40;
   --text-muted: 58 40 82;
-  color: rgb(22 12 40);
+  color: rgb(var(--ds-frost-ink));
 }
 
 html[data-ui-theme='v3'] .lobby-shell .hud-input::placeholder,
 html[data-ui-theme='v3'] .hud-input::placeholder {
-  color: rgb(58 40 82 / 0.72);
+  color: rgb(var(--ds-frost-muted) / 0.72);
 }
 
 html[data-ui-theme='v3'] .lobby-shell .field-select option {
-  background-color: rgb(255 252 250);
-  color: rgb(22 12 40);
+  background-color: rgb(var(--ds-paper));
+  color: rgb(var(--ds-frost-ink));
 }
 
 html[data-ui-theme='v3'] .choice-chip,
@@ -2065,13 +2066,13 @@ html[data-ui-theme='v3'] .lobby-shell .choice-chip {
   -webkit-backdrop-filter: blur(12px) saturate(1.2);
   --text-primary: 22 12 40;
   --text-muted: 58 40 82;
-  color: rgb(22 12 40);
+  color: rgb(var(--ds-frost-ink));
 }
 
 html[data-ui-theme='v3'] .choice-chip-selected,
 html[data-ui-theme='v3'] .lobby-shell .choice-chip-selected {
   background-color: rgb(var(--sidebar));
-  color: #fff;
+  color: rgb(var(--on-chrome));
   border-color: rgb(var(--glass-highlight) / 0.5);
 }
 
@@ -2111,7 +2112,7 @@ html[data-ui-theme='v3'] .play-chrome-control.text-danger {
 
 html[data-ui-theme='v3'] .play-chrome-control-active {
   background-color: rgb(var(--sidebar) / 0.55);
-  color: #fff;
+  color: rgb(var(--on-chrome));
   border-color: rgb(var(--glass-highlight) / 0.5);
 }
 
@@ -2130,4 +2131,63 @@ html[data-ui-theme='v3'] .table-felt {
 
 html[data-ui-theme='v3'] .table-felt::after {
   opacity: 0.35;
+}
+
+/*
+ * Palette v2 — colour only. Same alphas as the Glass frost rules above.
+ * Flag off keeps those rules. Flag on paints the designer dark Glass card (G3).
+ */
+html[data-palette='v2'][data-ui-theme='v3'] .lobby-shell .hud-panel,
+html[data-palette='v2'][data-ui-theme='v3'] .surface-card,
+html[data-palette='v2'][data-ui-theme='v3'] .surface-card-lg,
+html[data-palette='v2'][data-ui-theme='v3'] .surface-modal {
+  background-color: rgb(var(--ds-paper) / 0.72);
+}
+
+html[data-palette='v2'][data-ui-theme='v3'] .surface-row,
+html[data-palette='v2'][data-ui-theme='v3'] .surface-empty,
+html[data-palette='v2'][data-ui-theme='v3'] .surface-empty-lg,
+html[data-palette='v2'][data-ui-theme='v3'] .surface-list {
+  background-color: rgb(var(--ds-paper) / 0.62);
+}
+
+html[data-palette='v2'][data-ui-theme='v3'] .glass-sheet {
+  background-color: rgb(var(--ds-paper) / 0.66);
+}
+
+html[data-palette='v2'][data-ui-theme='v3'] .btn-ghost,
+html[data-palette='v2'][data-ui-theme='v3'] .lobby-shell .btn-ghost,
+html[data-palette='v2'][data-ui-theme='v3'] .play-shell .btn-ghost,
+html[data-palette='v2'][data-ui-theme='v3'] .btn-soft,
+html[data-palette='v2'][data-ui-theme='v3'] .btn-secondary,
+html[data-palette='v2'][data-ui-theme='v3'] .btn-pill,
+html[data-palette='v2'][data-ui-theme='v3'] .choice-chip,
+html[data-palette='v2'][data-ui-theme='v3'] .lobby-shell .choice-chip {
+  background-color: rgb(var(--ds-paper) / 0.55);
+  color: rgb(var(--ds-frost-ink));
+}
+
+html[data-palette='v2'][data-ui-theme='v3'] .hud-input,
+html[data-palette='v2'][data-ui-theme='v3'] .lobby-shell .hud-input,
+html[data-palette='v2'][data-ui-theme='v3'] .field-select,
+html[data-palette='v2'][data-ui-theme='v3'] .lobby-shell .field-select {
+  background-color: rgb(var(--ds-paper) / 0.62);
+  color: rgb(var(--ds-frost-ink));
+}
+
+html[data-palette='v2'][data-ui-theme='v3'] .status-chip,
+html[data-palette='v2'][data-ui-theme='v3'] .lobby-shell .status-chip {
+  background-color: rgb(var(--ds-paper) / 0.5);
+}
+
+html[data-palette='v2'][data-ui-theme='v3'] .lobby-main > :not(.hud-panel) .btn-ghost,
+html[data-palette='v2'][data-ui-theme='v3'] .lobby-page-intro .btn-ghost,
+html[data-palette='v2'][data-ui-theme='v3'] .lobby-main .btn-ghost,
+html[data-palette='v2'][data-ui-theme='v3'] .bot-chat-fab-label {
+  color: rgb(var(--ds-frost-ink));
+}
+
+html[data-palette='v2'][data-ui-theme='v3'] .lobby-shell .field-select option {
+  background-color: rgb(var(--ds-paper));
+  color: rgb(var(--ds-frost-ink));
 }

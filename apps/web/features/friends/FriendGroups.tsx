@@ -346,7 +346,7 @@ export function FriendGroups({
               return (
                 <li
                   key={g.id}
-                  className="flex flex-col gap-4 rounded-2xl border border-sidebar/30 bg-page/60 p-4 shadow-[0_8px_24px_rgb(29_4_50/0.06)] sm:p-5"
+                  className="flex flex-col gap-4 rounded-2xl border border-sidebar/30 bg-page/60 p-4 shadow-[0_8px_24px_rgb(var(--ds-brand-ink)/0.06)] sm:p-5"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">

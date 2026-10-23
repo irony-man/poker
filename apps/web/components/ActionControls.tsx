@@ -853,7 +853,7 @@ export function ActionControls({
                       submitBet(amount);
                     }
                   }}
-                  className="w-full rounded-md border border-sidebar/18 bg-white px-2 py-1.5 font-mono text-sm font-bold tabular-nums text-[rgb(29_4_50)] outline-none focus:border-sidebar/45 focus:shadow-[0_0_0_2px_rgb(29_4_50/0.08)] [color-scheme:light]"
+                  className="w-full rounded-md border border-sidebar/18 bg-white px-2 py-1.5 font-mono text-sm font-bold tabular-nums text-[rgb(var(--ds-brand-ink))] outline-none focus:border-sidebar/45 focus:shadow-[0_0_0_2px_rgb(var(--ds-brand-ink)/0.08)] [color-scheme:light]"
                 />
               </label>
               {(

@@ -11,8 +11,10 @@ import { LobbySplitCard } from '@/components/LobbySplitCard';
 import { Tabs } from '@/components/ui/Tabs';
 import { resolvePublicImage } from '@/lib/assets';
 import { useLobbyNav } from '@/lib/useLobbyNav';
+import { PkPlayScreen } from '@/components/pk/lobby/PlayScreens';
 import { useLobbySession } from '@/lib/useLobbySession';
 import { usePageCopy } from '@/lib/usePageCopy';
+import { usePokerV2 } from '@/lib/pokerV2';
 
 export type PlayMode = 'host' | 'join';
 
@@ -24,6 +26,7 @@ function PlayPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const mode = parsePlayMode(searchParams.get('mode'));
+  const pokerV2 = usePokerV2('lobby');
   const { authReady, signedIn, sessionToken, ensureSession } = useLobbySession();
   const pageCopy = usePageCopy(mode);
   const lobbyNav = useLobbyNav();
@@ -42,6 +45,8 @@ function PlayPageInner() {
     },
     [router, searchParams],
   );
+
+  if (pokerV2) return <PkPlayScreen mode={mode} />;
 
   if (!authReady) {
     return <LoadingScreen label="Loading…" />;

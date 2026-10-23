@@ -56,7 +56,7 @@ export function CourtpieceWinModal({
             <div
               className={`space-y-2 rounded-xl border px-3 py-3 sm:px-4 sm:py-4 ${
                 youWon
-                  ? 'border-sidebar/25 bg-white shadow-[0_4px_16px_rgb(29_4_50_/_0.05)]'
+                  ? 'border-sidebar/25 bg-white shadow-[0_4px_16px_rgb(var(--ds-brand-ink)_/_0.05)]'
                   : 'border-sidebar/10 bg-white'
               }`}
             >

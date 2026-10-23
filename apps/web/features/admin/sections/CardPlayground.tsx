@@ -371,7 +371,7 @@ export function CardPlaygroundSection({
                     aria-pressed={selectedLayerId === layer.id}
                     className={`min-w-0 flex-1 rounded-lg px-3 py-2 text-left text-sm transition ${
                       selectedLayerId === layer.id
-                        ? 'bg-sidebar font-semibold text-on-chrome shadow-[0_4px_12px_rgb(29_4_50/0.16)]'
+                        ? 'bg-sidebar font-semibold text-on-chrome shadow-[0_4px_12px_rgb(var(--ds-brand-ink)/0.16)]'
                         : 'hover:bg-sidebar/[0.06]'
                     }`}
                   >

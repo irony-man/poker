@@ -259,7 +259,7 @@ export function BotChatPanel({ disabled = false }: { disabled?: boolean }) {
                     className={cn(
                       'relative flex-1 rounded-lg px-2 py-2.5 text-xs font-display font-semibold uppercase tracking-[0.08em] transition sm:text-xs',
                       on
-                        ? 'bg-sidebar text-on-chrome shadow-[0_4px_12px_rgb(29_4_50/0.2)]'
+                        ? 'bg-sidebar text-on-chrome shadow-[0_4px_12px_rgb(var(--ds-brand-ink)/0.2)]'
                         : 'text-primary hover:bg-sidebar/[0.06]',
                       !available && 'cursor-not-allowed opacity-45',
                     )}

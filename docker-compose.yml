@@ -160,6 +160,7 @@ services:
         NEXT_PUBLIC_LEGAL_OPERATOR_NAME: ${NEXT_PUBLIC_LEGAL_OPERATOR_NAME:-}
         NEXT_PUBLIC_LEGAL_CONTACT_EMAIL: ${NEXT_PUBLIC_LEGAL_CONTACT_EMAIL:-}
         NEXT_PUBLIC_LEGAL_JURISDICTION: ${NEXT_PUBLIC_LEGAL_JURISDICTION:-}
+        NEXT_PUBLIC_PALETTE_V2: ${NEXT_PUBLIC_PALETTE_V2:-}
         # Must be Compose service URL at build time (not https://pokr.site) or /api rewrites loop.
         API_REWRITE_TARGET: ${API_REWRITE_TARGET:-http://server:4000}
     ports:

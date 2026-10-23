@@ -61,7 +61,7 @@ export function HandAnalysisCard({
     played.handName && played.handName !== 'Uncontested' ? played.handName : null;
 
   return (
-    <li className="overflow-hidden rounded-2xl border border-sidebar/12 bg-white shadow-[0_4px_16px_rgb(29_4_50_/_0.04)]">
+    <li className="overflow-hidden rounded-2xl border border-sidebar/12 bg-white shadow-[0_4px_16px_rgb(var(--ds-brand-ink)_/_0.04)]">
       <button
         type="button"
         className="flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-sidebar/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sidebar/30 sm:gap-4 sm:p-4"

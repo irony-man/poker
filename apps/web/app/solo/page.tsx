@@ -17,8 +17,10 @@ import { Button } from '@/components/ui/Button';
 import { fetchPublicBotGroupsWithLabels, type BotGroupLabels, type PublicBotGroup } from '@/lib/api';
 import { DEFAULT_BOT_GROUP_LABELS } from '@/lib/api';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
+import { PkSoloScreen } from '@/components/pk/lobby/SoloScreen';
 import { useLobbySession } from '@/lib/useLobbySession';
 import { usePageCopy } from '@/lib/usePageCopy';
+import { usePokerV2 } from '@/lib/pokerV2';
 import { markFeatureSeen } from '@/lib/newFeatures';
 
 /** Full local range supported by the offline table. */
@@ -27,6 +29,7 @@ const SEAT_OPTIONS = [2, 3, 4, 5, 6, 7, 8, 9] as const;
 function SoloPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pokerV2 = usePokerV2('offline');
   const { authReady, signedIn, name } = useLobbySession();
   const pageCopy = usePageCopy('solo');
   const [offlineSeats, setOfflineSeats] = useState(6);
@@ -72,6 +75,8 @@ function SoloPageInner() {
     params.set('botGroup', id);
     router.replace(`/solo?${params.toString()}`, { scroll: false });
   }
+
+  if (pokerV2) return <PkSoloScreen />;
 
   if (!authReady) {
     return <LoadingScreen label="Loading…" />;

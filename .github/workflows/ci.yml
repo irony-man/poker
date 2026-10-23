@@ -3,6 +3,15 @@ name: CI
 # Manual: Actions → CI → Run workflow
 on:
   workflow_dispatch:
+    inputs:
+      playwright:
+        description: Run the palette geometry Playwright job
+        type: boolean
+        default: false
+      poker_e2e:
+        description: Run the poker v2 Playwright job
+        type: boolean
+        default: false
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -47,3 +56,55 @@ jobs:
 
       - name: Test
         run: npm test
+
+  palette:
+    name: Palette geometry
+    if: inputs.playwright
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+
+      - name: Palette screenshots
+        run: npm run test:palette -w @poker/web
+        env:
+          NEXT_PUBLIC_PALETTE_V2: '0'
+
+  poker-e2e:
+    name: Poker v2 screens
+    if: inputs.poker_e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+
+      - name: Poker screens
+        run: npm run test:e2e -w @poker/web

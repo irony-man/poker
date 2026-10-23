@@ -110,7 +110,7 @@ export function SocialNotificationHost() {
         {extraCount > 0 ? (
           <Link
             href="/friends?tab=pending"
-            className="glass-sheet block shrink-0 rounded-xl border border-sidebar/15 px-3 py-2 text-center text-xs font-semibold text-sidebar shadow-[0_8px_24px_rgb(29_4_50/0.16)] backdrop-blur-xl hover:bg-white"
+            className="glass-sheet block shrink-0 rounded-xl border border-sidebar/15 px-3 py-2 text-center text-xs font-semibold text-sidebar shadow-[0_8px_24px_rgb(var(--ds-brand-ink)/0.16)] backdrop-blur-xl hover:bg-white"
           >
             +{extraCount} more on Friends
           </Link>
@@ -181,7 +181,7 @@ function InviteCard({
 }) {
   return (
     <div
-      className={`shrink-0 overflow-hidden rounded-xl border bg-[rgb(255_252_250_/0.97)] shadow-[0_10px_32px_rgb(29_4_50/0.24),0_1px_0_rgb(255_255_255/0.65)_inset] backdrop-blur-xl ${
+      className={`shrink-0 overflow-hidden rounded-xl border bg-[rgb(var(--ds-paper)_/0.97)] shadow-[0_10px_32px_rgb(var(--ds-brand-ink)/0.24),0_1px_0_rgb(255_255_255/0.65)_inset] backdrop-blur-xl ${
         isNew ? 'border-brass/55 ring-2 ring-brass/35' : 'border-sidebar/18'
       }`}
     >

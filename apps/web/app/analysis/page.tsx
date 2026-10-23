@@ -4,10 +4,13 @@ import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { AnalysisScreen } from '@/features/analysis/AnalysisScreen';
+import { PkAnalysis } from '@/components/pk/analysis/PkAnalysis';
+import { usePokerV2 } from '@/lib/pokerV2';
 
 function AnalysisHome() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const pokerV2 = usePokerV2('analysis');
   const tableId = searchParams.get('table');
 
   useEffect(() => {
@@ -19,6 +22,8 @@ function AnalysisHome() {
     const qs = params.toString();
     router.replace(`/analysis/${encodeURIComponent(tableId)}${qs ? `?${qs}` : ''}`);
   }, [router, searchParams, tableId]);
+
+  if (pokerV2) return <PkAnalysis />;
 
   if (tableId) return <LoadingScreen label="Loading…" />;
   return <AnalysisScreen />;

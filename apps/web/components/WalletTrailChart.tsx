@@ -635,13 +635,13 @@ export function WalletTrailChart({
 
         {activePoint && !dragging && !sel ? (
           <div
-            className="pointer-events-none absolute z-10 rounded-xl border border-sidebar/[0.12] bg-white px-3 py-2.5 text-xs text-[rgb(22_12_40)] shadow-[0_10px_30px_rgb(29_4_50/0.16)]"
+            className="pointer-events-none absolute z-10 rounded-xl border border-sidebar/[0.12] bg-white px-3 py-2.5 text-xs text-[rgb(var(--ds-field-ink))] shadow-[0_10px_30px_rgb(var(--ds-brand-ink)/0.16)]"
             style={{ left: tipLeft, top: tipTop, width: TIP_W }}
           >
             <p className="truncate font-semibold">
               {walletReasonLabel(activePoint.entry.reason, currency)}
             </p>
-            <p className="mt-0.5 text-[11px] text-[rgb(58_40_82)]/80">
+            <p className="mt-0.5 text-[11px] text-[rgb(var(--ds-field-muted))]/80">
               {formatWhen(activePoint.entry.createdAt)}
             </p>
             <div className="mt-1.5 flex items-center justify-between gap-2">
@@ -654,7 +654,7 @@ export function WalletTrailChart({
                   activePoint.entry.delta >= 0 ? 'text-positive' : 'text-danger',
                 )}
               />
-              <span className="tabular-nums text-[rgb(58_40_82)]/80">
+              <span className="tabular-nums text-[rgb(var(--ds-field-muted))]/80">
                 {activePoint.estimated ? '≈ ' : ''}
                 {activePoint.balance.toLocaleString()}
               </span>

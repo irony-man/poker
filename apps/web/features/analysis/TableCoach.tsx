@@ -100,7 +100,7 @@ export function TableCoach({
   if (!coaching && !summary && !error && !blocked) return null;
 
   return (
-    <section className="mb-5 rounded-2xl border border-sidebar/12 bg-white p-4 shadow-[0_4px_16px_rgb(29_4_50_/_0.04)] sm:p-5">
+    <section className="mb-5 rounded-2xl border border-sidebar/12 bg-white p-4 shadow-[0_4px_16px_rgb(var(--ds-brand-ink)_/_0.04)] sm:p-5">
       <h2 className="font-heading-section">Table coach</h2>
       {line ? <p className="mt-2 text-xs font-semibold text-sidebar">{line}</p> : null}
       {coaching ? <p className="mt-3 text-sm text-muted">Reviewing this table…</p> : null}

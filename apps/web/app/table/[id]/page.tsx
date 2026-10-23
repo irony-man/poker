@@ -3,6 +3,10 @@
 import { useParams, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { TableView } from '@/components/TableView';
+import { PkOnlineTable } from '@/components/pk/table/PkOnlineTable';
+import { PkGate } from '@/components/pk/Gate';
+import { PkScope } from '@/components/pk/PkScope';
+import { usePokerV2 } from '@/lib/pokerV2';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { Button } from '@/components/ui/Button';
 import { StatusChip } from '@/components/ui/StatusChip';
@@ -12,6 +16,7 @@ import { readStoredSession } from '@/lib/session';
 import { useSession } from '@/lib/store';
 
 function TablePageInner() {
+  const pokerV2 = usePokerV2('table');
   const params = useParams<{ id: string }>();
   const search = useSearchParams();
   const invite = search.get('invite');
@@ -77,6 +82,23 @@ function TablePageInner() {
     return <LoadingScreen label="Loading…" compact />;
   }
 
+  if (needsAuth && pokerV2) {
+    const returnTo = `/table/${tableId}${invite ? `?invite=${invite}` : ''}${
+      spectate ? `${invite ? '&' : '?'}mode=spectate` : ''
+    }`;
+    return (
+      <PkScope>
+        <PkGate
+          open
+          title="Sign in to continue"
+          body={error ?? 'You need an account to enter this table.'}
+          next={returnTo}
+          onClose={() => undefined}
+        />
+      </PkScope>
+    );
+  }
+
   if (needsAuth) {
     const returnTo = `/table/${tableId}${invite ? `?invite=${invite}` : ''}${
       spectate ? `${invite ? '&' : '?'}mode=spectate` : ''
@@ -109,6 +131,10 @@ function TablePageInner() {
         label={booting ? 'Connecting…' : 'Loading table…'}
       />
     );
+  }
+
+  if (pokerV2) {
+    return <PkOnlineTable tableId={tableId} inviteCode={invite} initialSpectate={spectate} />;
   }
 
   return <TableView tableId={tableId} inviteCode={invite} initialSpectate={spectate} contestId={contest} />;

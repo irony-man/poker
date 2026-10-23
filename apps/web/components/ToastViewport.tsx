@@ -37,7 +37,7 @@ function ToastCard({ item, onDismiss }: { item: ToastItem; onDismiss: () => void
       role={item.kind === 'error' ? 'alert' : 'status'}
       aria-live={item.kind === 'error' ? 'assertive' : 'polite'}
       aria-atomic="true"
-      className={`glass-sheet pointer-events-auto w-full max-w-[17.5rem] overflow-hidden rounded-xl border ${style.border} bg-[rgb(255_252_250_/0.97)] shadow-[0_10px_32px_rgb(29_4_50/0.24),0_1px_0_rgb(255_255_255/0.65)_inset] backdrop-blur-xl ${
+      className={`glass-sheet pointer-events-auto w-full max-w-[17.5rem] overflow-hidden rounded-xl border ${style.border} bg-[rgb(var(--ds-paper)_/0.97)] shadow-[0_10px_32px_rgb(var(--ds-brand-ink)/0.24),0_1px_0_rgb(255_255_255/0.65)_inset] backdrop-blur-xl ${
         item.leaving ? 'app-toast-out' : 'app-toast-in'
       }`}
     >

@@ -38,7 +38,7 @@ function SeatActionPopup({
           : undefined
       }
     >
-      <span className="seat-action-popup table-action-popup inline-block whitespace-nowrap rounded-lg border-2 px-2.5 py-1 text-xs font-extrabold uppercase tracking-wide shadow-[0_6px_18px_rgba(14,6,24,0.65)] sm:px-3.5 sm:py-1.5 sm:text-sm">
+      <span className="seat-action-popup table-action-popup inline-block whitespace-nowrap rounded-lg border-2 px-2.5 py-1 text-xs font-extrabold uppercase tracking-wide shadow-[0_6px_18px_rgb(var(--ds-literal-ink)_/_0.65)] sm:px-3.5 sm:py-1.5 sm:text-sm">
         {label}
       </span>
     </div>

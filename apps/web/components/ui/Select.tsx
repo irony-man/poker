@@ -27,7 +27,7 @@ export type SelectSize = 'xs' | 'sm' | 'md';
 
 /* Paper fill + fixed dark ink, matching FORM_FIELD_CLASS (Glass page ground is light-on-dusk). */
 const TRIGGER_BASE =
-  'group relative flex w-full cursor-pointer items-center gap-2 border border-sidebar/15 bg-white text-left text-[rgb(22_12_40)] shadow-sm outline-none transition hover:border-sidebar/35 focus-visible:border-sidebar/45 focus-visible:ring-2 focus-visible:ring-sidebar/15 disabled:cursor-not-allowed disabled:opacity-50 [color-scheme:light]';
+  'group relative flex w-full cursor-pointer items-center gap-2 border border-sidebar/15 bg-white text-left text-[rgb(var(--ds-field-ink))] shadow-sm outline-none transition hover:border-sidebar/35 focus-visible:border-sidebar/45 focus-visible:ring-2 focus-visible:ring-sidebar/15 disabled:cursor-not-allowed disabled:opacity-50 [color-scheme:light]';
 
 const TRIGGER_SIZE: Record<SelectSize, string> = {
   xs: 'min-h-7 rounded-md px-2 py-1 text-[11px] font-semibold',
@@ -358,7 +358,7 @@ export function Select<T extends string>({
             {icon}
           </span>
         ) : null}
-        <span className={cn('min-w-0 truncate', !selected && 'text-[rgb(58_40_82)]/75')}>
+        <span className={cn('min-w-0 truncate', !selected && 'text-[rgb(var(--ds-field-muted))]/75')}>
           {selected ? selected.label : placeholder}
         </span>
         <ChevronIcon open={open} />
@@ -376,7 +376,7 @@ export function Select<T extends string>({
               onMouseDown={(e) => e.preventDefault()}
               style={menuStyle ?? { position: 'fixed', visibility: 'hidden' }}
               className={cn(
-                'z-[95] overflow-y-auto overscroll-contain rounded-xl border border-sidebar/[0.12] bg-white p-1 text-[rgb(22_12_40)] shadow-[0_14px_40px_rgb(29_4_50/0.18)] [color-scheme:light]',
+                'z-[95] overflow-y-auto overscroll-contain rounded-xl border border-sidebar/[0.12] bg-white p-1 text-[rgb(var(--ds-field-ink))] shadow-[0_14px_40px_rgb(var(--ds-brand-ink)/0.18)] [color-scheme:light]',
                 'animate-select-menu-in motion-reduce:animate-none',
                 placement === 'up' ? 'origin-bottom' : 'origin-top',
                 menuClassName,

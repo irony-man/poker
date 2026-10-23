@@ -238,7 +238,7 @@ export function FloatingActionDock({
   if (narrow) {
     if (landscape) {
       return (
-        <div className="play-action-dock glass-sheet relative z-40 shrink-0 border-t border-sidebar/15 shadow-[0_-8px_24px_rgb(29_4_50/0.1)]">
+        <div className="play-action-dock glass-sheet relative z-40 shrink-0 border-t border-sidebar/15 shadow-[0_-8px_24px_rgb(var(--ds-brand-ink)/0.1)]">
           <div className="mx-auto w-full max-w-5xl">
             <ActionDockBody
               fillMinHeight={false}
@@ -256,7 +256,7 @@ export function FloatingActionDock({
       <div
         className={`play-action-dock glass-sheet relative z-40 shrink-0 border-t ${
           expanded
-            ? 'border-sidebar/20 shadow-[0_-6px_20px_rgb(29_4_50/0.1)]'
+            ? 'border-sidebar/20 shadow-[0_-6px_20px_rgb(var(--ds-brand-ink)/0.1)]'
             : 'border-sidebar/12'
         }`}
       >
@@ -298,7 +298,7 @@ export function FloatingActionDock({
           type="button"
           data-no-drag
           onClick={() => setOpen(true)}
-          className={`play-action-dock glass-sheet rounded-full border px-5 py-3 text-xs font-display font-bold uppercase tracking-[0.18em] shadow-[0_8px_24px_rgb(29_4_50/0.12)] ${
+          className={`play-action-dock glass-sheet rounded-full border px-5 py-3 text-xs font-display font-bold uppercase tracking-[0.18em] shadow-[0_8px_24px_rgb(var(--ds-brand-ink)/0.12)] ${
             expanded
               ? 'border-sidebar/40 text-primary animate-hud-pulse'
               : 'border-sidebar/20 text-muted'
@@ -308,7 +308,7 @@ export function FloatingActionDock({
         </button>
       ) : (
         <div
-          className={`play-action-dock glass-sheet flex w-[min(100vw-2rem,28rem)] flex-col overflow-hidden rounded-xl border shadow-[0_16px_48px_rgb(29_4_50/0.14)] ${
+          className={`play-action-dock glass-sheet flex w-[min(100vw-2rem,28rem)] flex-col overflow-hidden rounded-xl border shadow-[0_16px_48px_rgb(var(--ds-brand-ink)/0.14)] ${
             expanded ? 'border-sidebar/30 ring-1 ring-sidebar/10' : 'border-sidebar/18'
           }`}
         >

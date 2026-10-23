@@ -6,6 +6,9 @@ certificates/
 .env
 .env.local
 coverage/
+apps/web/e2e/palette-gallery/
+apps/web/test-results/
+apps/web/playwright-report/
 .DS_Store
 *.log
 .turbo/

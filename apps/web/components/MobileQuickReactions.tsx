@@ -97,7 +97,7 @@ export function MobileQuickReactions({ onEmoji }: { onEmoji: (emoji: string) => 
           aria-modal="true"
           aria-label="More reactions"
           tabIndex={-1}
-          className="glass-sheet absolute bottom-[calc(100%+0.35rem)] left-1.5 right-1.5 z-40 max-h-[min(40dvh,14rem)] overflow-hidden rounded-xl border border-sidebar/15 shadow-[0_12px_36px_rgb(29_4_50/0.18)]"
+          className="glass-sheet absolute bottom-[calc(100%+0.35rem)] left-1.5 right-1.5 z-40 max-h-[min(40dvh,14rem)] overflow-hidden rounded-xl border border-sidebar/15 shadow-[0_12px_36px_rgb(var(--ds-brand-ink)/0.18)]"
         >
           <div className="hud-popup-header">
             <span className="font-kicker-sidebar">
@@ -129,7 +129,7 @@ export function MobileQuickReactions({ onEmoji }: { onEmoji: (emoji: string) => 
       )}
 
       <div
-        className={`glass-sheet flex items-center gap-1 rounded-full border py-1 pl-1.5 pr-1 shadow-[0_6px_20px_rgb(29_4_50/0.1)] backdrop-blur-md ${
+        className={`glass-sheet flex items-center gap-1 rounded-full border py-1 pl-1.5 pr-1 shadow-[0_6px_20px_rgb(var(--ds-brand-ink)/0.1)] backdrop-blur-md ${
           moreOpen ? 'border-sidebar/30 ring-1 ring-sidebar/10' : 'border-sidebar/15'
         }`}
       >

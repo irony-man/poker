@@ -95,7 +95,7 @@ export function ConfirmPopover({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description ? descId : undefined}
-        className="surface-modal w-full max-w-sm shadow-[0_18px_48px_rgb(29_4_50_/_0.2)]"
+        className="surface-modal w-full max-w-sm shadow-[0_18px_48px_rgb(var(--ds-brand-ink)_/_0.2)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="border-b border-sidebar/10 bg-page/40 px-4 py-3.5 sm:px-5 sm:py-4">

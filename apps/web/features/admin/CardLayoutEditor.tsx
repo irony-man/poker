@@ -133,8 +133,8 @@ export function CardLayoutEditor({
           aria-hidden
           style={{
             backgroundImage: `
-              linear-gradient(to right, rgb(29 4 50 / 0.06) 1px, transparent 1px),
-              linear-gradient(to bottom, rgb(29 4 50 / 0.06) 1px, transparent 1px)
+              linear-gradient(to right, rgb(var(--ds-brand-ink) / 0.06) 1px, transparent 1px),
+              linear-gradient(to bottom, rgb(var(--ds-brand-ink) / 0.06) 1px, transparent 1px)
             `,
             backgroundSize: `${gridStepPct} ${gridStepPct}`,
           }}

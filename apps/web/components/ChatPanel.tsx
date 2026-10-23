@@ -67,7 +67,7 @@ export function ChatPanel({
           <button
             type="button"
             onClick={onClose}
-            className="glass-sheet shrink-0 rounded-full border border-sidebar/15 px-3 py-1.5 text-[10px] font-display font-semibold uppercase tracking-wider text-muted shadow-[0_2px_8px_rgb(29_4_50/0.06)] transition hover:border-sidebar/30 hover:text-sidebar"
+            className="glass-sheet shrink-0 rounded-full border border-sidebar/15 px-3 py-1.5 text-[10px] font-display font-semibold uppercase tracking-wider text-muted shadow-[0_2px_8px_rgb(var(--ds-brand-ink)/0.06)] transition hover:border-sidebar/30 hover:text-sidebar"
           >
             {closeLabel}
           </button>
@@ -82,7 +82,7 @@ export function ChatPanel({
       >
         {chat.length === 0 ? (
           <li className="flex h-full min-h-[10rem] flex-col items-center justify-center px-4 text-center">
-            <div className="glass-sheet mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-sidebar/10 shadow-[0_6px_18px_rgb(29_4_50/0.08)]">
+            <div className="glass-sheet mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-sidebar/10 shadow-[0_6px_18px_rgb(var(--ds-brand-ink)/0.08)]">
               <AppleEmoji emoji="💬" size={28} decorative />
             </div>
             <p className="font-heading-sub">
@@ -104,7 +104,7 @@ export function ChatPanel({
                 return (
                   <li
                     key={`${m.at}-${i}`}
-                    className="mx-auto my-2 w-full max-w-[95%] rounded-xl bg-sidebar px-3.5 py-2.5 text-center shadow-[0_6px_16px_rgb(29_4_50/0.18)]"
+                    className="mx-auto my-2 w-full max-w-[95%] rounded-xl bg-sidebar px-3.5 py-2.5 text-center shadow-[0_6px_16px_rgb(var(--ds-brand-ink)/0.18)]"
                   >
                     <p className="text-[11px] font-display font-bold uppercase tracking-[0.14em] text-on-chrome/80">
                       Hand complete
@@ -136,7 +136,7 @@ export function ChatPanel({
             return (
               <li
                 key={`${m.at}-${i}`}
-                className="glass-sheet list-none rounded-2xl border border-sidebar/8 px-3.5 py-2.5 shadow-[0_2px_10px_rgb(29_4_50/0.05)]"
+                className="glass-sheet list-none rounded-2xl border border-sidebar/8 px-3.5 py-2.5 shadow-[0_2px_10px_rgb(var(--ds-brand-ink)/0.05)]"
               >
                 <p className="font-display text-[11px] font-bold uppercase tracking-[0.12em] text-sidebar">
                   {m.name}
@@ -158,7 +158,7 @@ export function ChatPanel({
 
       {/* Emoji picker overlay */}
       {pickerOpen && (
-        <div className="surface-modal absolute inset-x-0 bottom-[8.75rem] z-20 mx-3 max-h-[50%] shadow-[0_18px_40px_rgb(29_4_50/0.14)]">
+        <div className="surface-modal absolute inset-x-0 bottom-[8.75rem] z-20 mx-3 max-h-[50%] shadow-[0_18px_40px_rgb(var(--ds-brand-ink)/0.14)]">
           <div className="hud-popup-header">
             <span className="font-kicker-sidebar">
               Reactions
@@ -226,7 +226,7 @@ export function ChatPanel({
         </div>
 
         <form
-          className="glass-sheet flex items-center gap-2 rounded-2xl border border-sidebar/12 p-1.5 pl-3 shadow-[0_4px_16px_rgb(29_4_50/0.06)]"
+          className="glass-sheet flex items-center gap-2 rounded-2xl border border-sidebar/12 p-1.5 pl-3 shadow-[0_4px_16px_rgb(var(--ds-brand-ink)/0.06)]"
           onSubmit={(e) => {
             e.preventDefault();
             submit();

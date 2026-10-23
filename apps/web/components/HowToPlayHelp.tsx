@@ -260,7 +260,7 @@ export function HowToPlayHelp({
             aria-label="How to play"
             tabIndex={-1}
             style={panelStyle}
-            className="glass-sheet flex flex-col overflow-hidden rounded-xl border border-sidebar/12 shadow-[0_12px_40px_rgba(29,4,50,0.18)]"
+            className="glass-sheet flex flex-col overflow-hidden rounded-xl border border-sidebar/12 shadow-[0_12px_40px_rgb(var(--ds-brand-ink)_/_0.18)]"
           >
           <div className="flex shrink-0 items-center justify-between gap-2 border-b border-sidebar/10 px-3 py-2.5 sm:px-4">
             <h3 className="font-display text-sm font-bold uppercase tracking-wider text-sidebar">

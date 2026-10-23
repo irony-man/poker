@@ -10,7 +10,7 @@ const option = {
   segmented: {
     idle: 'relative flex min-h-10 flex-1 cursor-pointer items-center justify-center rounded-lg px-3 py-2 text-center font-display text-xs font-bold uppercase tracking-[0.14em] transition text-primary hover:bg-sidebar/[0.06] hover:text-sidebar disabled:opacity-50',
     selected:
-      'relative flex min-h-10 flex-1 cursor-pointer items-center justify-center rounded-lg px-3 py-2 text-center font-display text-xs font-bold uppercase tracking-[0.14em] transition bg-sidebar text-on-chrome shadow-[0_4px_14px_rgb(29_4_50/0.18)] disabled:opacity-50',
+      'relative flex min-h-10 flex-1 cursor-pointer items-center justify-center rounded-lg px-3 py-2 text-center font-display text-xs font-bold uppercase tracking-[0.14em] transition bg-sidebar text-on-chrome shadow-[0_4px_14px_rgb(var(--ds-brand-ink)/0.18)] disabled:opacity-50',
   },
   pill: {
     idle: 'rounded-full border border-sidebar/20 bg-raised/80 px-2.5 py-1 text-[11px] font-semibold text-primary transition hover:border-sidebar/35 hover:bg-sidebar/8 disabled:opacity-50',
@@ -47,7 +47,7 @@ export function choiceOptionClass(
 const card = {
   idle: 'border-sidebar/10 bg-page/30 hover:border-sidebar/22 hover:bg-page/55',
   selected:
-    'border-sidebar bg-sidebar text-on-chrome shadow-[0_6px_18px_rgb(29_4_50/0.18)] [&_.text-primary]:text-on-chrome [&_.text-sidebar]:text-on-chrome [&_.text-muted]:text-on-chrome/80',
+    'border-sidebar bg-sidebar text-on-chrome shadow-[0_6px_18px_rgb(var(--ds-brand-ink)/0.18)] [&_.text-primary]:text-on-chrome [&_.text-sidebar]:text-on-chrome [&_.text-muted]:text-on-chrome/80',
 } as const;
 
 export function choiceCardClass(selected: boolean, className = ''): string {

@@ -1,15 +1,19 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { LobbyPageShell } from '@/components/LobbyPageShell';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { QuickMatchPanel } from '@/components/QuickMatchPanel';
 import { enterMobileFullscreen } from '@/lib/mobileFullscreen';
+import { PkPublicScreen } from '@/components/pk/lobby/PublicScreen';
 import { useLobbySession } from '@/lib/useLobbySession';
 import { usePageCopy } from '@/lib/usePageCopy';
+import { usePokerV2 } from '@/lib/pokerV2';
 
-export default function PublicTablesPage() {
+function PublicTablesPage() {
   const router = useRouter();
+  const pokerV2 = usePokerV2('public');
   const { authReady, signedIn, ensureSession } = useLobbySession();
   const pageCopy = usePageCopy('public');
 
@@ -21,6 +25,8 @@ export default function PublicTablesPage() {
   function joinMatchedTable(tableId: string) {
     router.push(`/table/${tableId}`);
   }
+
+  if (pokerV2) return <PkPublicScreen />;
 
   if (!authReady) {
     return <LoadingScreen label="Loading…" />;
@@ -36,5 +42,13 @@ export default function PublicTablesPage() {
         imageAlt={pageCopy.imageAlt}
       />
     </LobbyPageShell>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<LoadingScreen label="Loading…" />}>
+      <PublicTablesPage />
+    </Suspense>
   );
 }

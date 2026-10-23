@@ -39,7 +39,7 @@ function FeatureRow({ feature, index }: { feature: HomeLandingFeature; index: nu
             alt={feature.imageAlt}
             fill
             unoptimized={feature.image.endsWith('.svg')}
-            className="object-contain object-center drop-shadow-[0_12px_28px_rgb(29_4_50/0.12)]"
+            className="object-contain object-center drop-shadow-[0_12px_28px_rgb(var(--ds-brand-ink)/0.12)]"
             sizes="(max-width: 1024px) 80vw, 38vw"
             priority={index === 0}
           />
@@ -55,7 +55,7 @@ function FeatureRow({ feature, index }: { feature: HomeLandingFeature; index: nu
         </p>
         <Link
           href={feature.href}
-          className="mt-6 inline-flex min-h-10 items-center justify-center rounded-full bg-sidebar px-8 py-2.5 text-xs font-display font-bold uppercase tracking-[0.16em] text-on-chrome shadow-[0_8px_22px_rgb(29_4_50/0.2)] transition duration-base ease-out hover:brightness-110 active:scale-[0.98] sm:mt-8"
+          className="mt-6 inline-flex min-h-10 items-center justify-center rounded-full bg-sidebar px-8 py-2.5 text-xs font-display font-bold uppercase tracking-[0.16em] text-on-chrome shadow-[0_8px_22px_rgb(var(--ds-brand-ink)/0.2)] transition duration-base ease-out hover:brightness-110 active:scale-[0.98] sm:mt-8"
         >
           {feature.cta}
         </Link>

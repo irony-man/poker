@@ -185,12 +185,12 @@ function PublicProfilePageInner() {
         <div className="flex w-full flex-col gap-5 sm:gap-6">
           <section
             className={cn(
-              'surface-card overflow-hidden border-sidebar/12 p-0 shadow-[0_14px_36px_rgb(29_4_50_/_0.08)]',
+              'surface-card overflow-hidden border-sidebar/12 p-0 shadow-[0_14px_36px_rgb(var(--ds-brand-ink)_/_0.08)]',
             )}
           >
             <div className="flex flex-col gap-6 p-5 sm:p-7 md:flex-row md:items-start md:gap-8">
               <div className="flex shrink-0 flex-col items-center md:items-start">
-                <div className="rounded-full bg-white p-1 shadow-[0_0_0_1px_rgb(29_4_50_/_0.08)]">
+                <div className="rounded-full bg-white p-1 shadow-[0_0_0_1px_rgb(var(--ds-brand-ink)_/_0.08)]">
                   <PlayerAvatar
                     avatarId={profile.avatarId}
                     avatarUrl={profile.avatarUrl}

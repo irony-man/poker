@@ -38,7 +38,7 @@ export function LoadingScreen({
           height={size}
           unoptimized
           priority
-          className="h-full w-full object-contain drop-shadow-[0_8px_18px_rgb(29_4_50/0.14)]"
+          className="h-full w-full object-contain drop-shadow-[0_8px_18px_rgb(var(--ds-brand-ink)/0.14)]"
         />
       </span>
       {label ? (

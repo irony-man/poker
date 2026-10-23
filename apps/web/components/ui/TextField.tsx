@@ -13,7 +13,7 @@ import { Select, type SelectProps } from './Select';
 
 /* Paper fill + fixed dark ink — do not use text-primary (Glass page ground is light-on-dusk). */
 export const FORM_FIELD_CLASS =
-  'w-full rounded-lg border border-sidebar/15 bg-white px-3 py-2.5 text-sm text-[rgb(22_12_40)] shadow-sm outline-none transition placeholder:text-[rgb(58_40_82)]/75 focus:border-sidebar/40 focus:ring-2 focus:ring-sidebar/10 [color-scheme:light]';
+  'w-full rounded-lg border border-sidebar/15 bg-white px-3 py-2.5 text-sm text-[rgb(var(--ds-field-ink))] shadow-sm outline-none transition placeholder:text-[rgb(var(--ds-field-muted))]/75 focus:border-sidebar/40 focus:ring-2 focus:ring-sidebar/10 [color-scheme:light]';
 
 export const FORM_LABEL_CLASS =
   'block text-xs font-display font-semibold uppercase tracking-[0.12em] text-muted';

@@ -61,7 +61,7 @@ export function SharedHandRow({
   const others = hand.shownPlayers.filter((p) => !p.isViewer && p.holeCards);
   const amount = chipsWon ?? hand.winAmount;
   return (
-    <li className="overflow-hidden rounded-2xl border border-sidebar/12 bg-white p-4 shadow-[0_4px_16px_rgb(29_4_50_/_0.04)] sm:p-5">
+    <li className="overflow-hidden rounded-2xl border border-sidebar/12 bg-white p-4 shadow-[0_4px_16px_rgb(var(--ds-brand-ink)_/_0.04)] sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
         <p className="min-w-0 text-sm font-semibold text-primary">
           {handNumber != null ? (

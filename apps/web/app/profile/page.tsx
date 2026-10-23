@@ -628,13 +628,13 @@ function ProfilePageInner() {
 
       {profile ? (
         <div className="flex w-full flex-col gap-5 sm:gap-6">
-          <section className={cn('surface-card overflow-hidden border-sidebar/12 p-0 shadow-[0_14px_36px_rgb(29_4_50_/_0.08)]')}>
+          <section className={cn('surface-card overflow-hidden border-sidebar/12 p-0 shadow-[0_14px_36px_rgb(var(--ds-brand-ink)_/_0.08)]')}>
             <div className="flex flex-col gap-6 p-5 sm:p-7 md:flex-row md:items-start md:gap-8">
               <div className="flex shrink-0 flex-col items-center md:items-start">
                 <button
                   type="button"
                   onClick={openAvatarEditor}
-                  className="group relative rounded-full bg-white p-1 shadow-[0_0_0_1px_rgb(29_4_50_/_0.08)] outline-none transition focus-visible:ring-2 focus-visible:ring-sidebar/40 focus-visible:ring-offset-2"
+                  className="group relative rounded-full bg-white p-1 shadow-[0_0_0_1px_rgb(var(--ds-brand-ink)_/_0.08)] outline-none transition focus-visible:ring-2 focus-visible:ring-sidebar/40 focus-visible:ring-offset-2"
                   aria-label="Edit avatar"
                 >
                   <PlayerAvatar
@@ -909,21 +909,21 @@ function ProfilePageInner() {
                       id: 'v1' as const,
                       label: 'Classic',
                       hint: 'Purple / mushroom',
-                      swatchClass: 'bg-[#E6D9D7]',
-                      accentClass: 'bg-[#1D0432]',
+                      swatchClass: 'bg-[rgb(var(--ds-swatch-v1-page))]',
+                      accentClass: 'bg-[rgb(var(--ds-swatch-v1-accent))]',
                     },
                     {
                       id: 'v2' as const,
                       label: 'Arcade',
                       hint: 'Go Old School',
-                      swatchClass: 'bg-[#FDE93D]',
-                      accentClass: 'bg-[#5B21B6]',
+                      swatchClass: 'bg-[rgb(var(--ds-swatch-v2-page))]',
+                      accentClass: 'bg-[rgb(var(--ds-swatch-v2-accent))]',
                     },
                     {
                       id: 'v3' as const,
                       label: 'Glass',
                       hint: 'Dusk aurora',
-                      swatchClass: 'bg-[#2A1848]',
+                      swatchClass: 'bg-[rgb(var(--ds-swatch-v3-page))]',
                       accentClass: 'bg-white/70',
                     },
                   ] as const
@@ -1046,9 +1046,9 @@ function ProfilePageInner() {
                         aria-hidden
                       >
                         {layout.id === 'v1' ? (
-                          <span className="felt-surface table-rim block h-12 w-28 rounded-[42%] border-[5px] shadow-[0_2px_8px_rgb(29_4_50/0.18)]" />
+                          <span className="felt-surface table-rim block h-12 w-28 rounded-[42%] border-[5px] shadow-[0_2px_8px_rgb(var(--ds-brand-ink)/0.18)]" />
                         ) : (
-                          <span className="felt-surface flex h-16 w-12 flex-col items-center justify-between rounded-lg px-1 py-1.5 shadow-[0_2px_8px_rgb(29_4_50/0.18)]">
+                          <span className="felt-surface flex h-16 w-12 flex-col items-center justify-between rounded-lg px-1 py-1.5 shadow-[0_2px_8px_rgb(var(--ds-brand-ink)/0.18)]">
                             <span className="flex gap-0.5">
                               <span className="h-2 w-2 rounded-full bg-white/80" />
                               <span className="h-2 w-2 rounded-full bg-white/80" />
@@ -1258,7 +1258,7 @@ function ProfilePageInner() {
                         data-table-color={preset.id}
                         aria-hidden
                       >
-                        <span className="felt-surface table-rim block h-10 w-full rounded-[42%] border-[5px] shadow-[inset_0_0_0_1.5px_rgb(var(--felt-rim-edge)/0.55),0_2px_8px_rgb(29_4_50/0.18)] sm:h-11 sm:border-[6px]" />
+                        <span className="felt-surface table-rim block h-10 w-full rounded-[42%] border-[5px] shadow-[inset_0_0_0_1.5px_rgb(var(--felt-rim-edge)/0.55),0_2px_8px_rgb(var(--ds-brand-ink)/0.18)] sm:h-11 sm:border-[6px]" />
                         {selected ? (
                           <SelectedCheck tone="inverse" className="absolute -right-1 -top-1" />
                         ) : null}

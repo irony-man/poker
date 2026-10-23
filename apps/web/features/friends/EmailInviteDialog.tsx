@@ -83,7 +83,7 @@ function EmailChip({
         'inline-flex max-w-full items-center gap-1 rounded-lg border py-1 pl-2.5 pr-1 text-sm font-medium',
         invalid
           ? 'border-danger/40 bg-danger/10 text-danger'
-          : 'border-sidebar/15 bg-sidebar/10 text-[rgb(22_12_40)]',
+          : 'border-sidebar/15 bg-sidebar/10 text-[rgb(var(--ds-field-ink))]',
       )}
       title={invalid ? 'Not a valid email' : email}
     >
@@ -242,7 +242,7 @@ export function EmailInviteDialog({ open, onClose }: { open: boolean; onClose: (
               aria-label="Email addresses"
               maxLength={254}
               disabled={busy}
-              className="min-w-[10rem] flex-1 border-0 bg-transparent px-1 py-1 text-sm shadow-none outline-none ring-0 placeholder:text-[rgb(58_40_82)]/75 focus:outline-none focus:ring-0 focus-visible:outline-none"
+              className="min-w-[10rem] flex-1 border-0 bg-transparent px-1 py-1 text-sm shadow-none outline-none ring-0 placeholder:text-[rgb(var(--ds-field-muted))]/75 focus:outline-none focus:ring-0 focus-visible:outline-none"
             />
           </div>
           <p className="text-xs text-muted mt-1.5">Separate multiple addresses with comma or space.</p>

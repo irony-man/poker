@@ -19,6 +19,7 @@ export default function robots(): MetadataRoute.Robots {
         '/friends',
         '/chat',
         '/admin',
+        '/dev',
         '/profile',
         '/u/',
       ],
